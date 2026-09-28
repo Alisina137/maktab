@@ -8,9 +8,10 @@ import * as schema from "./schema.js";
 
 async function createTestStore() {
   const client = new PGlite();
-  const migrationUrl = new URL("../drizzle/0000_phase1_foundation.sql", import.meta.url);
-  const migration = await readFile(migrationUrl, "utf8");
-  await client.exec(migration);
+  for (const file of ["0000_phase1_foundation.sql", "0008_phase8_pilot_readiness.sql"]) {
+    const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
+    await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
+  }
   const db = drizzle(client, { schema });
   return {
     client,

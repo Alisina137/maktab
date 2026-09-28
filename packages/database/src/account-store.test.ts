@@ -12,7 +12,7 @@ import * as schema from "./schema.js";
 
 async function createTestDatabase() {
   const client = new PGlite();
-  for (const file of ["0000_phase1_foundation.sql", "0001_phase2_auth_accounts.sql"]) {
+  for (const file of ["0000_phase1_foundation.sql", "0001_phase2_auth_accounts.sql", "0008_phase8_pilot_readiness.sql"]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
   }
