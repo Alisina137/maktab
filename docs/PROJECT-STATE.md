@@ -31,7 +31,7 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 
 ## Current phase
 
-**Phase 5 — Attendance & Daily Teacher Workflow — complete and CI verified**
+**Phase 5 — Attendance & Daily Teacher Workflow — complete, CI verified, and locally verified**
 
 ### Implemented outcomes
 
@@ -86,23 +86,31 @@ Verified by CI:
 - Next.js production build
 - Expo Android production export
 
-The Phase 5 Neon migration has **not yet been verified locally** in this conversation.
+Local verification was completed on 2026-09-28 against the user's configured Neon database.
 
-## Local database requirement
+Confirmed locally:
 
-After pulling Phase 5, run:
+- `pnpm db:migrate` completed successfully and recorded the Phase 5 migration
+- all workspace TypeScript typechecks passed
+- localization tests passed: 2/2
+- contracts tests passed: 3/3
+- database tests passed: 8/8
+- API tests passed: 10/10
+- Next.js production build passed
+- Expo Android production export passed
+- database and API TypeScript builds passed
 
-```powershell
-pnpm db:migrate
-```
+## Local database status
 
-This applies:
+The Phase 5 migration is applied and locally verified:
 
 ```text
 0005_phase5_attendance.sql
 ```
 
-It is additive. A source rollback does not automatically undo attendance or notification records.
+Drizzle reported migrations applied successfully against the configured Neon database. No additional Phase 5 migration step is pending on that verified local environment.
+
+The migration is additive. A source rollback does not automatically undo attendance or notification records.
 
 ## Phase 5 boundary
 
