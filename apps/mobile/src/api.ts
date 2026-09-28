@@ -1,4 +1,9 @@
 import Constants from "expo-constants";
+import {
+  notifyReadCacheFallback,
+  readReadCache,
+  writeReadCache
+} from "./read-cache";
 
 declare const process: { env: { EXPO_PUBLIC_API_URL?: string } };
 
@@ -289,6 +294,27 @@ export interface SessionPayload {
   mustChangePassword: boolean;
 }
 
+export class ApiRequestError extends Error {
+  readonly status: number | null;
+  readonly code: string | null;
+  readonly network: boolean;
+
+  constructor(
+    message: string,
+    options: { status?: number | null; code?: string | null; network?: boolean } = {}
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = options.status ?? null;
+    this.code = options.code ?? null;
+    this.network = options.network ?? false;
+  }
+}
+
+export function isNetworkApiError(error: unknown): error is ApiRequestError {
+  return error instanceof ApiRequestError && error.network;
+}
+
 function apiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
   if (configured) return configured;
@@ -301,18 +327,32 @@ function apiBaseUrl(): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
+  const method = (init?.method ?? "GET").toUpperCase();
+  const cacheable = method === "GET";
 
   try {
     const baseUrl = apiBaseUrl();
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      signal: init?.signal ?? controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-        ...(init?.headers ?? {})
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        signal: init?.signal ?? controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+          ...(init?.headers ?? {})
+        }
+      });
+    } catch {
+      if (cacheable) {
+        const cached = await readReadCache<T>(path);
+        if (cached) {
+          notifyReadCacheFallback(cached.savedAt);
+          return cached.data;
+        }
       }
-    });
+      throw new ApiRequestError("Network unavailable.", { network: true });
+    }
 
     const text = await response.text();
     let body: unknown = null;
@@ -321,7 +361,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         body = JSON.parse(text);
       } catch {
         const contentType = response.headers.get("content-type") ?? "unknown content type";
-        throw new Error(`API returned a non-JSON response (${contentType}) from ${baseUrl}.`);
+        throw new ApiRequestError(
+          `API returned a non-JSON response (${contentType}) from ${baseUrl}.`,
+          { status: response.status }
+        );
       }
     }
 
@@ -330,8 +373,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         body && typeof body === "object" && "message" in body && typeof body.message === "string"
           ? body.message
           : "Request failed.";
-      throw new Error(message);
+      const code =
+        body && typeof body === "object" && "error" in body && typeof body.error === "string"
+          ? body.error
+          : null;
+      throw new ApiRequestError(message, { status: response.status, code });
     }
+
+    if (cacheable) await writeReadCache(path, body as T);
     return body as T;
   } finally {
     clearTimeout(timeout);

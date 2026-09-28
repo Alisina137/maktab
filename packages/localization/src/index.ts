@@ -51,6 +51,9 @@ export type TranslationKey =
   | "auth.logout"
   | "common.loading"
   | "common.networkError"
+  | "common.cachedOffline"
+  | "common.serviceUnavailable"
+  | "common.sessionExpired"
   | "teacher.todayTitle"
   | "teacher.supervisedClass"
   | "teacher.schedule"
@@ -267,6 +270,9 @@ const en: Record<TranslationKey, string> = {
   "fees.due": "Due",
   "fees.none": "No issued fees for this student.",
   "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
+  "common.cachedOffline": "Internet is unavailable. You are viewing securely saved information from this device.",
+  "common.serviceUnavailable": "Your school's MaktabLink service is currently unavailable. Please contact the school administration.",
+  "common.sessionExpired": "Your session has expired. Sign in again when a connection is available.",
 };
 
 const dari: Record<TranslationKey, string> = {
@@ -401,6 +407,9 @@ const dari: Record<TranslationKey, string> = {
   "fees.due": "موعد",
   "fees.none": "برای این شاگرد فیس صادرشده‌ای وجود ندارد.",
   "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
+  "common.cachedOffline": "اینترنت در دسترس نیست. معلومات امن ذخیره‌شده در این دستگاه را مشاهده می‌کنید.",
+  "common.serviceUnavailable": "خدمت MaktabLink مکتب شما فعلاً در دسترس نیست. لطفاً با اداره مکتب تماس بگیرید.",
+  "common.sessionExpired": "نشست شما پایان یافته است. وقتی اینترنت در دسترس شد دوباره وارد شوید.",
 };
 
 const pashto: Record<TranslationKey, string> = {
@@ -535,6 +544,9 @@ const pashto: Record<TranslationKey, string> = {
   "fees.due": "موعد",
   "fees.none": "د دې زده کوونکي لپاره صادر شوی فیس نشته.",
   "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
+  "common.cachedOffline": "انټرنېټ نشته. تاسو په دې وسیله کې خوندي شوي معلومات ګورئ.",
+  "common.serviceUnavailable": "ستاسو د ښوونځي MaktabLink خدمت اوس شتون نه لري. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
+  "common.sessionExpired": "ستاسو ناسته پای ته رسېدلې ده. کله چې انټرنېټ موجود شي بیا ننوځئ.",
 };
 
 export const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {

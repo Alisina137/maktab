@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
@@ -21,7 +22,9 @@ import {
   type TranslationKey
 } from "@maktablink/localization";
 import {
+  ApiRequestError,
   api,
+  isNetworkApiError,
   type AttendanceSheetPayload,
   type AttendanceStatus,
   type ParentAttendanceDay,
@@ -34,6 +37,10 @@ import {
 import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
+import {
+  setReadCacheFallbackListener,
+  setReadCacheScope
+} from "./src/read-cache";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -96,6 +103,7 @@ function AppContent() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
   const childOpacity = useRef(new Animated.Value(1)).current;
@@ -115,10 +123,34 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    setReadCacheFallbackListener(() => {
+      setNotice(translate(locale, "common.cachedOffline"));
+    });
+    return () => setReadCacheFallbackListener(null);
+  }, [locale]);
+
+  useEffect(() => {
+    setReadCacheScope(
+      session && school ? `${school.id}:${session.user.id}` : null
+    );
+  }, [session?.user.id, school?.id]);
+
+  useEffect(() => {
     if (screen === "school") void loadSchools();
   }, [screen]);
 
   useEffect(() => {
+    if (reduceMotion) {
+      screenOpacity.setValue(1);
+      screenTranslate.setValue(0);
+      return;
+    }
     screenOpacity.setValue(0);
     screenTranslate.setValue(14);
     Animated.parallel([
@@ -135,9 +167,14 @@ function AppContent() {
         useNativeDriver: true
       })
     ]).start();
-  }, [screen, screenOpacity, screenTranslate]);
+  }, [screen, reduceMotion, screenOpacity, screenTranslate]);
 
   useEffect(() => {
+    if (reduceMotion) {
+      childOpacity.setValue(1);
+      childScale.setValue(1);
+      return;
+    }
     childOpacity.setValue(0);
     childScale.setValue(0.985);
     Animated.parallel([
@@ -155,7 +192,7 @@ function AppContent() {
         useNativeDriver: true
       })
     ]).start();
-  }, [selectedChildId, childOpacity, childScale]);
+  }, [selectedChildId, reduceMotion, childOpacity, childScale]);
 
   useEffect(() => {
     if (screen !== "home" || !session || session.mustChangePassword) return;
@@ -182,6 +219,7 @@ function AppContent() {
       const stored = await loadStoredSession();
       if (!stored) return;
       setSchool(stored.school);
+      setReadCacheScope(`${stored.school.id}:${stored.auth.user.id}`);
       const userRole = stored.auth.user.role;
       if (userRole === "PARENT" || userRole === "TEACHER" || userRole === "STUDENT") setRole(userRole);
 
@@ -190,17 +228,55 @@ function AppContent() {
         const restored = { ...stored.auth, user: me.user, mustChangePassword: me.mustChangePassword };
         setSession(restored);
         setScreen(me.mustChangePassword ? "change-password" : "home");
-      } catch {
+        return;
+      } catch (cause) {
+        if (isNetworkApiError(cause)) {
+          setSession(stored.auth);
+          setNotice(translate(locale, "common.cachedOffline"));
+          setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+          return;
+        }
+        if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
+          setError(translate(locale, "common.serviceUnavailable"));
+          setScreen("login");
+          return;
+        }
+      }
+
+      try {
         const refreshed = await api.refresh(stored.auth.refreshToken);
         await saveStoredSession({ auth: refreshed, school: stored.school });
         setSession(refreshed);
         setScreen(refreshed.mustChangePassword ? "change-password" : "home");
+      } catch (cause) {
+        if (isNetworkApiError(cause)) {
+          setSession(stored.auth);
+          setNotice(translate(locale, "common.cachedOffline"));
+          setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+          return;
+        }
+        if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
+          setError(translate(locale, "common.serviceUnavailable"));
+          setScreen("login");
+          return;
+        }
+        await clearStoredSession();
       }
     } catch {
       await clearStoredSession();
     } finally {
       setBusy(false);
     }
+  }
+
+  function errorMessage(cause: unknown, fallback: TranslationKey = "common.networkError") {
+    if (cause instanceof ApiRequestError) {
+      if (cause.code === "school_service_unavailable") return translate(locale, "common.serviceUnavailable");
+      if (cause.code === "session_invalid" || cause.code === "refresh_invalid") return translate(locale, "common.sessionExpired");
+      if (cause.network) return translate(locale, "common.networkError");
+      return cause.message;
+    }
+    return cause instanceof Error ? cause.message : translate(locale, fallback);
   }
 
   async function loadSchools() {
@@ -210,7 +286,7 @@ function AppContent() {
       const result = await api.schools(query);
       setSchools(result.schools);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -228,7 +304,7 @@ function AppContent() {
           : result.children[0]?.student.id ?? ""
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -240,7 +316,7 @@ function AppContent() {
       setParentToday(result.today);
       setParentAttendance(result.days);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     }
   }
 
@@ -249,7 +325,7 @@ function AppContent() {
       const result = await api.parentNotifications(accessToken);
       setParentNotifications(result.notifications);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     }
   }
 
@@ -259,7 +335,7 @@ function AppContent() {
     try {
       setTeacherToday(await api.teacherToday(accessToken));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -282,7 +358,7 @@ function AppContent() {
       );
       setScreen("teacher-attendance");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -312,7 +388,7 @@ function AppContent() {
       setNotice(result.changed ? translate(locale, "attendance.saved") : translate(locale, "attendance.noChanges"));
       await loadTeacherToday(session.accessToken);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -342,6 +418,7 @@ function AppContent() {
         password
       });
       setSession(next);
+      setReadCacheScope(`${school.id}:${next.user.id}`);
       await saveStoredSession({ auth: next, school });
       setPassword("");
       setScreen(next.mustChangePassword ? "change-password" : "home");
@@ -363,7 +440,10 @@ function AppContent() {
     try {
       const next = await api.changeTemporaryPassword(session.accessToken, newPassword);
       setSession(next);
-      if (school) await saveStoredSession({ auth: next, school });
+      if (school) {
+        setReadCacheScope(`${school.id}:${next.user.id}`);
+        await saveStoredSession({ auth: next, school });
+      }
       setNewPassword("");
       setConfirmPassword("");
       setScreen("home");
@@ -384,6 +464,7 @@ function AppContent() {
       // Local logout still succeeds if the network is unavailable.
     } finally {
       await clearStoredSession();
+      setReadCacheScope(null);
       setSession(null);
       setParentHome(null);
       setSelectedChildId("");
@@ -450,6 +531,9 @@ function AppContent() {
             {supportedLocales.map((item) => (
               <Pressable
                 key={item}
+                accessibilityRole="button"
+                accessibilityState={{ selected: item === locale }}
+                accessibilityLabel={item === "fa-AF" ? "دری" : item === "ps-AF" ? "پښتو" : "English"}
                 onPress={() => setLocale(item)}
                 style={({ pressed }) => [
                   styles.languageButton,
@@ -488,6 +572,8 @@ function AppContent() {
               {(["PARENT", "TEACHER", "STUDENT"] as MobileRole[]).map((item) => (
                 <Pressable
                   key={item}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${translate(locale, roleKey[item])}. ${translate(locale, roleHintKey[item])}`}
                   onPress={() => chooseRole(item)}
                   style={({ pressed }) => [
                     styles.roleCard,
@@ -525,6 +611,7 @@ function AppContent() {
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "school.chooseHint")}</Text>
             <View style={styles.searchRow}>
               <TextInput
+                accessibilityLabel={translate(locale, "school.search")}
                 value={query}
                 onChangeText={setQuery}
                 onSubmitEditing={() => void loadSchools()}
@@ -532,6 +619,8 @@ function AppContent() {
                 style={[styles.input, styles.searchInput, textDirection]}
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={translate(locale, "school.search")}
                 style={({ pressed }) => [styles.smallPrimaryButton, pressed && styles.buttonPressed]}
                 onPress={() => void loadSchools()}
               >
@@ -543,6 +632,8 @@ function AppContent() {
               {schools.map((item) => (
                 <Pressable
                   key={item.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.name}, ${item.city}, ${item.code}`}
                   style={({ pressed }) => [
                     styles.schoolCard,
                     direction === "rtl" && styles.schoolCardRtl,
@@ -1061,13 +1152,13 @@ function AppContent() {
         )}
 
         {notice ? (
-          <View style={styles.successNotice}>
+          <View style={styles.successNotice} accessibilityLiveRegion="polite">
             <Ionicons name="checkmark-circle-outline" size={20} color={tokens.color.success} />
             <Text style={[styles.successNoticeText, textDirection]}>{notice}</Text>
           </View>
         ) : null}
         {error ? (
-          <View style={styles.errorCard}>
+          <View style={styles.errorCard} accessibilityLiveRegion="assertive">
             <Ionicons name="alert-circle-outline" size={20} color={tokens.color.danger} />
             <Text style={[styles.errorText, textDirection]}>{error}</Text>
           </View>
@@ -1115,6 +1206,8 @@ function BackButton({ locale, onPress }: { locale: SupportedLocale; onPress: () 
   const rtl = getDirection(locale) === "rtl";
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={translate(locale, "action.back")}
       onPress={onPress}
       style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
     >
@@ -1131,6 +1224,9 @@ function BackButton({ locale, onPress }: { locale: SupportedLocale; onPress: () 
 function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
@@ -1195,7 +1291,7 @@ const styles = StyleSheet.create({
     gap: 3
   },
   languageButton: {
-    minHeight: 34,
+    minHeight: 44,
     justifyContent: "center",
     paddingHorizontal: 13,
     borderRadius: 999
@@ -1357,7 +1453,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   cardPressed: { opacity: 0.74, transform: [{ scale: 0.99 }] },
   buttonPressed: { opacity: 0.84, transform: [{ scale: 0.985 }] },
-  backButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingRight: 10 },
+  backButton: { alignSelf: "flex-start", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingRight: 10 },
   backButtonText: { color: tokens.color.brandStrong, fontWeight: "800", fontSize: 13 },
   schoolPill: {
     alignSelf: "flex-start",
