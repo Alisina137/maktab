@@ -291,7 +291,7 @@ export function registerCommunicationRoutes(
           await accounts.writeAudit({
             schoolId: context.user.schoolId,
             actorUserId: context.user.id,
-            action: `fee_invoice.${action}d`,
+            action: action === "issue" ? "fee_invoice.issued" : "fee_invoice.cancelled",
             entityType: "fee_invoice",
             entityId: invoice.id,
             metadata: { status: invoice.status }

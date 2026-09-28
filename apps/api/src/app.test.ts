@@ -1307,3 +1307,242 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     91
   );
 });
+
+
+async function activateRoleLogin(
+  app: Awaited<ReturnType<typeof createTestApp>>["app"],
+  schoolId: string,
+  role: "PARENT" | "TEACHER" | "STUDENT",
+  username: string,
+  temporaryPassword: string,
+  permanentPassword: string
+) {
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: { schoolId, expectedRole: role, username, password: temporaryPassword }
+  });
+  assert.equal(login.statusCode, 200);
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: permanentPassword }
+  });
+  assert.equal(changed.statusCode, 200);
+  return changed.json<{ accessToken: string }>().accessToken;
+}
+
+test("Phase 7 class announcements stay inside the intended class and fee payments use immutable reversals", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "COMM7");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: admin,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: admin });
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: admin,
+    payload: { code: "G11", name: "Grade 11", sortOrder: 11 }
+  });
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const classAResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "11A", name: "Grade 11 A" }
+  });
+  const classBResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "11B", name: "Grade 11 B" }
+  });
+  const classA = classAResponse.json<{ class: { id: string } }>().class.id;
+  const classB = classBResponse.json<{ class: { id: string } }>().class.id;
+
+  const parentAResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "class.a.parent", fullName: "Class A Parent" }
+  });
+  const parentBResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "class.b.parent", fullName: "Class B Parent" }
+  });
+  const parentA = parentAResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+  const parentB = parentBResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+
+  const studentAResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: admin,
+    payload: {
+      parentUserId: parentA.user.id,
+      studentCode: "C7-A",
+      fullName: "Class A Student",
+      academicYearId: yearId,
+      classId: classA
+    }
+  });
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: admin,
+    payload: {
+      parentUserId: parentB.user.id,
+      studentCode: "C7-B",
+      fullName: "Class B Student",
+      academicYearId: yearId,
+      classId: classB
+    }
+  });
+  const studentA = studentAResponse.json<{ student: { id: string } }>().student;
+
+  const parentAToken = await activateRoleLogin(
+    app, schoolId, "PARENT", "class.a.parent", parentA.temporaryPassword, "ClassAParent2026!"
+  );
+  const parentBToken = await activateRoleLogin(
+    app, schoolId, "PARENT", "class.b.parent", parentB.temporaryPassword, "ClassBParent2026!"
+  );
+
+  const announcement = await app.inject({
+    method: "POST",
+    url: "/v1/admin/announcements",
+    headers: admin,
+    payload: {
+      title: "Class A meeting",
+      content: "This message belongs only to Grade 11 A.",
+      audienceScope: "CLASS",
+      classId: classA
+    }
+  });
+  assert.equal(announcement.statusCode, 201);
+
+  const classAAnnouncements = await app.inject({
+    method: "GET",
+    url: "/v1/announcements",
+    headers: { authorization: `Bearer ${parentAToken}` }
+  });
+  const classBAnnouncements = await app.inject({
+    method: "GET",
+    url: "/v1/announcements",
+    headers: { authorization: `Bearer ${parentBToken}` }
+  });
+  assert.equal(classAAnnouncements.statusCode, 200);
+  assert.equal(classBAnnouncements.statusCode, 200);
+  assert.equal(classAAnnouncements.json<{ announcements: unknown[] }>().announcements.length, 1);
+  assert.equal(classBAnnouncements.json<{ announcements: unknown[] }>().announcements.length, 0);
+
+  const classANotifications = await app.inject({
+    method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${parentAToken}` }
+  });
+  const classBNotifications = await app.inject({
+    method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${parentBToken}` }
+  });
+  assert.equal(
+    classANotifications.json<{ notifications: Array<{ type: string }> }>().notifications.filter((item) => item.type === "ANNOUNCEMENT").length,
+    1
+  );
+  assert.equal(
+    classBNotifications.json<{ notifications: Array<{ type: string }> }>().notifications.filter((item) => item.type === "ANNOUNCEMENT").length,
+    0
+  );
+
+  const invoiceResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/fees/invoices",
+    headers: admin,
+    payload: {
+      studentId: studentA.id,
+      amount: 1000,
+      dueDate: "2099-12-31",
+      description: "Tuition"
+    }
+  });
+  assert.equal(invoiceResponse.statusCode, 201);
+  const invoiceId = invoiceResponse.json<{ invoice: { id: string } }>().invoice.id;
+
+  const issued = await app.inject({
+    method: "POST",
+    url: `/v1/admin/fees/invoices/${invoiceId}/issue`,
+    headers: admin
+  });
+  assert.equal(issued.statusCode, 200);
+
+  const paymentResponse = await app.inject({
+    method: "POST",
+    url: `/v1/admin/fees/invoices/${invoiceId}/payments`,
+    headers: admin,
+    payload: { amount: 400, method: "CASH", transactionReference: "RCPT-001" }
+  });
+  assert.equal(paymentResponse.statusCode, 201);
+  const paidView = paymentResponse.json<{
+    paid: number;
+    outstanding: number;
+    invoice: { status: string };
+    payments: Array<{ id: string; kind: string }>;
+  }>();
+  assert.equal(paidView.paid, 400);
+  assert.equal(paidView.outstanding, 600);
+  assert.equal(paidView.invoice.status, "PARTIALLY_PAID");
+  const paymentId = paidView.payments.find((item) => item.kind === "PAYMENT")?.id;
+  assert.ok(paymentId);
+
+  const reversed = await app.inject({
+    method: "POST",
+    url: `/v1/admin/fees/payments/${paymentId}/reverse`,
+    headers: admin,
+    payload: { reason: "Cash entry was recorded against the wrong receipt." }
+  });
+  assert.equal(reversed.statusCode, 201);
+  const reversedView = reversed.json<{
+    paid: number;
+    outstanding: number;
+    invoice: { status: string };
+    payments: Array<{ kind: string; reversalOfPaymentId: string | null }>;
+  }>();
+  assert.equal(reversedView.paid, 0);
+  assert.equal(reversedView.outstanding, 1000);
+  assert.equal(reversedView.invoice.status, "ISSUED");
+  assert.equal(reversedView.payments.length, 2);
+  assert.ok(reversedView.payments.some((item) => item.kind === "REVERSAL" && item.reversalOfPaymentId === paymentId));
+
+  const secondReversal = await app.inject({
+    method: "POST",
+    url: `/v1/admin/fees/payments/${paymentId}/reverse`,
+    headers: admin,
+    payload: { reason: "Duplicate reversal should fail." }
+  });
+  assert.equal(secondReversal.statusCode, 409);
+
+  const parentFees = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentA.id}/fees`,
+    headers: { authorization: `Bearer ${parentAToken}` }
+  });
+  assert.equal(parentFees.statusCode, 200);
+  assert.equal(parentFees.json<{ invoices: Array<{ outstanding: number }> }>().invoices[0]?.outstanding, 1000);
+});

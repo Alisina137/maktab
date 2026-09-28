@@ -212,8 +212,8 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     ]));
   }
 
-  async function materializeAnnouncement(announcement: Announcement): Promise<number> {
-    if (announcement.archivedAt || announcement.publishAt.getTime() > Date.now()) return 0;
+  async function materializeAnnouncement(announcement: Announcement, effectiveNow = new Date()): Promise<number> {
+    if (announcement.archivedAt || announcement.publishAt.getTime() > effectiveNow.getTime()) return 0;
     const recipients = await announcementRecipients(announcement);
     let created = 0;
     for (const userId of recipients) {
@@ -469,7 +469,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         const today = localDate(now, settings.timezone);
         const dueAnnouncements = await db.select().from(announcements)
           .where(and(eq(announcements.schoolId, settings.schoolId), isNull(announcements.archivedAt), lte(announcements.publishAt, now)));
-        for (const announcement of dueAnnouncements) announcementNotifications += await materializeAnnouncement(announcement);
+        for (const announcement of dueAnnouncements) announcementNotifications += await materializeAnnouncement(announcement, now);
 
         const invoices = await db.select().from(feeInvoices)
           .where(and(
