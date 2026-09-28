@@ -43,11 +43,17 @@ PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred host
 - `negaran_assignments`
 - `timetable_periods`
 
+### Phase 4
+
+- `parent_profiles`
+- `students`
+- `student_class_history`
+
 ## Tenant isolation
 
 The school is the tenant boundary.
 
-Every academic table carries `schoolId`, and every academic lookup/mutation is scoped by the authenticated school. Cross-school IDs are rejected by the academic store even when a valid UUID is supplied.
+Every operational table carries or derives a school tenant boundary. Academic and family lookups/mutations are scoped by the authenticated school. Cross-school parent, class, year, and student identifiers are rejected even when a valid UUID is supplied.
 
 ## Authentication model
 
@@ -107,6 +113,49 @@ Overlapping timetable periods are rejected for:
 
 - the same class
 - the same teacher
+
+## Phase 4 family model
+
+A parent profile extends one existing school-scoped `PARENT` user identity.
+
+```text
+School
+  → many Parent users
+  → many Students
+
+Parent user
+  → many Students
+
+Student
+  → exactly one parentUserId
+```
+
+There is intentionally no Parent ↔ Student many-to-many table. The database stores one non-null `students.parent_user_id`, and family-store queries always include the authenticated `schoolId`.
+
+Student class placement is current-state data on `students`. The additive `student_class_history` table retains prior class/year placement when an administrator moves a student, so transfers do not erase academic history.
+
+### Parent mobile boundary
+
+`GET /v1/parent/home` derives the parent identity from the authenticated session. It does not accept a parent or student ID from the client and returns only students whose `parentUserId` is that authenticated parent.
+
+Child switching is local mobile UI state over that already-scoped response.
+
+### Bulk import
+
+The Phase 4 import pipeline is deliberately staged:
+
+```text
+CSV/XLSX upload
+→ parse preview
+→ explicit column mapping
+→ domain validation
+→ row error preview
+→ explicit confirm
+→ transactional import
+→ temporary credentials where accounts are created
+```
+
+Invalid rows are never silently committed. Parent/teacher imports generate school-issued temporary credentials; student imports create student records linked to an existing same-school parent.
 
 ## Localization
 

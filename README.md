@@ -2,11 +2,11 @@
 
 MaktabLink is a mobile-first, multi-tenant school-family platform for private schools in Afghanistan.
 
-This repository follows the approved **MaktabLink Product Specification V1** and **Software Development Workflow V4**.
+This repository follows the approved **MaktabLink Product Specification V1** and **Software Development Workflow V5 — GitHub-First Delivery**.
 
 ## Current implementation
 
-Phase 3 adds the school academic-structure layer on top of the verified tenant and authentication foundations.
+Phase 4 adds the student-and-family onboarding layer on top of the verified tenant, authentication, and academic foundations.
 
 Implemented:
 
@@ -31,8 +31,17 @@ Implemented:
 - teacher academic read API
 - school-admin academic management UI
 - audit logs for Phase 3 administrative mutations
-
-Student/family onboarding remains Phase 4.
+- parent profiles extending school-scoped PARENT accounts
+- students linked through one singular parentUserId
+- one parent account supporting multiple children in the same school
+- duplicate student-code rejection per school
+- retained student class history when class/year changes
+- school-admin family onboarding and one-time parent credentials
+- validated CSV/XLSX import for parents, students, and teachers
+- import column mapping and error preview before commit
+- credential generation for imported parent/teacher accounts
+- parent mobile home with linked-child switching
+- tenant-scoped parent home API
 
 ## Setup
 
@@ -70,7 +79,7 @@ School administration:
 http://localhost:3000/admin
 ```
 
-The admin workspace now contains both account management and Phase 3 academic structure.
+The admin workspace contains account management, Phase 3 academic structure, and Phase 4 student/family onboarding.
 
 ## Database
 
@@ -80,16 +89,20 @@ Phase 3 migration:
 packages/database/drizzle/0002_phase3_academic_structure.sql
 ```
 
-It adds:
+Phase 4 migration:
 
-- `academic_years`
-- `grade_levels`
-- `class_sections`
-- `subjects`
-- `teacher_profiles`
-- `teacher_assignments`
-- `negaran_assignments`
-- `timetable_periods`
+```text
+packages/database/drizzle/0003_phase4_student_family.sql
+```
+
+Phase 4 adds:
+
+- `parent_profiles`
+- `students`
+- `student_class_history`
+- `student_status`
+
+The `students.parent_user_id` column is singular by design; there is no parent/student many-to-many join table.
 
 ## Verification
 
@@ -97,4 +110,4 @@ It adds:
 pnpm verify
 ```
 
-See `docs/PROJECT-STATE.md` and `docs/PHASE-03-ACADEMIC-STRUCTURE.md`.
+See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, and `docs/PHASE-04-STUDENT-FAMILY.md`.
