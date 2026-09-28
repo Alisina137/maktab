@@ -474,3 +474,80 @@ footer {
     flex-direction: column;
   }
 }
+
+
+.family-section {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.family-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.family-import-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.family-import-controls,
+.family-mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.family-import-controls label,
+.family-mapping-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.family-import-controls input,
+.family-import-controls select,
+.family-mapping-grid select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 11px;
+  background: white;
+  color: var(--ml-color-text);
+  padding: 0 12px;
+}
+
+.family-import-actions {
+  justify-content: flex-start;
+}
+
+.family-import-errors {
+  margin: 10px 0 0;
+  padding-inline-start: 22px;
+}
+
+.family-import-errors li {
+  margin-top: 5px;
+}
+
+@media (max-width: 760px) {
+  .family-summary-grid,
+  .family-import-controls,
+  .family-mapping-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  body:has(.family-credential) .admin-shell > *:not(.family-section),
+  body:has(.family-credential) .family-section > *:not(.family-credential) {
+    display: none !important;
+  }
+
+  .family-credential .admin-secondary {
+    display: none !important;
+  }
+}
