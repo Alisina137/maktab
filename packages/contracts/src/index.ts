@@ -6,6 +6,12 @@ export type LanguageCode = z.infer<typeof languageCodeSchema>;
 export const schoolStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
 export type SchoolStatus = z.infer<typeof schoolStatusSchema>;
 
+export const subscriptionStatusSchema = z.enum(["TRIAL", "ACTIVE", "PAST_DUE", "GRACE", "SUSPENDED", "CANCELLED"]);
+export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
+
+export const billingCycleSchema = z.enum(["MONTHLY", "ANNUAL"]);
+export type BillingCycle = z.infer<typeof billingCycleSchema>;
+
 export const userRoleSchema = z.enum(["SCHOOL_ADMIN", "SCHOOL_STAFF", "TEACHER", "PARENT", "STUDENT"]);
 export type UserRole = z.infer<typeof userRoleSchema>;
 
@@ -81,6 +87,40 @@ export const createSchoolInputSchema = z.object({
   defaultLanguage: languageCodeSchema.default("fa-AF")
 });
 export type CreateSchoolInput = z.infer<typeof createSchoolInputSchema>;
+
+export const updateSchoolStatusSchema = z.object({
+  status: schoolStatusSchema
+});
+export type UpdateSchoolStatusInput = z.infer<typeof updateSchoolStatusSchema>;
+
+export const updateSubscriptionSchema = z
+  .object({
+    planCode: z.string().trim().min(1).max(64).optional(),
+    status: subscriptionStatusSchema.optional(),
+    billingCycle: billingCycleSchema.optional(),
+    priceAfn: z.number().int().min(0).max(100000000).optional(),
+    setupFeeAfn: z.number().int().min(0).max(100000000).optional(),
+    startsOn: isoDateSchema.nullable().optional(),
+    expiresOn: isoDateSchema.nullable().optional(),
+    graceEndsOn: isoDateSchema.nullable().optional(),
+    supportNotes: z.string().trim().max(2000).nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (value.startsOn && value.expiresOn && value.startsOn > value.expiresOn) {
+      context.addIssue({ code: "custom", path: ["expiresOn"], message: "Subscription expiry cannot be before its start date." });
+    }
+    if (value.expiresOn && value.graceEndsOn && value.expiresOn > value.graceEndsOn) {
+      context.addIssue({ code: "custom", path: ["graceEndsOn"], message: "Grace end cannot be before subscription expiry." });
+    }
+  });
+export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;
+
+export const pilotOnboardSchoolSchema = z.object({
+  school: createSchoolInputSchema,
+  adminUsername: usernameSchema,
+  subscription: updateSubscriptionSchema.optional()
+});
+export type PilotOnboardSchoolInput = z.infer<typeof pilotOnboardSchoolSchema>;
 
 export const updateSchoolSettingsSchema = z.object({
   defaultLanguage: languageCodeSchema.optional(),

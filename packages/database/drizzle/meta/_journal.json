@@ -57,6 +57,13 @@
       "when": 1790641200000,
       "tag": "0007_phase7_communication_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790649600000,
+      "tag": "0008_phase8_pilot_readiness",
+      "breakpoints": true
     }
   ]
 }

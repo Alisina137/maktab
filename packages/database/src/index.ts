@@ -5,5 +5,6 @@ export * from "./family-store.js";
 export * from "./attendance-store.js";
 export * from "./learning-store.js";
 export * from "./communication-store.js";
+export * from "./pilot-store.js";
 export * from "./schema.js";
 export * from "./store.js";

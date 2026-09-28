@@ -30,6 +30,8 @@ export const feeInvoiceStatusEnum = pgEnum("fee_invoice_status", ["DRAFT", "ISSU
 export const feePaymentKindEnum = pgEnum("fee_payment_kind", ["PAYMENT", "REVERSAL"]);
 export const devicePlatformEnum = pgEnum("device_platform", ["ANDROID", "IOS"]);
 export const pushDeliveryStatusEnum = pgEnum("push_delivery_status", ["PENDING", "SENT", "FAILED"]);
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["TRIAL", "ACTIVE", "PAST_DUE", "GRACE", "SUSPENDED", "CANCELLED"]);
+export const billingCycleEnum = pgEnum("billing_cycle", ["MONTHLY", "ANNUAL"]);
 export const weekdayEnum = pgEnum("weekday", [
   "SATURDAY",
   "SUNDAY",
@@ -51,6 +53,30 @@ export const schools = pgTable("schools", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
+
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    schoolId: uuid("school_id")
+      .primaryKey()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    planCode: varchar("plan_code", { length: 64 }).notNull().default("PILOT"),
+    status: subscriptionStatusEnum("status").notNull().default("TRIAL"),
+    billingCycle: billingCycleEnum("billing_cycle").notNull().default("ANNUAL"),
+    priceAfn: integer("price_afn").notNull().default(0),
+    setupFeeAfn: integer("setup_fee_afn").notNull().default(0),
+    startsOn: date("starts_on"),
+    expiresOn: date("expires_on"),
+    graceEndsOn: date("grace_ends_on"),
+    supportNotes: text("support_notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("subscriptions_status_idx").on(table.status),
+    index("subscriptions_expiry_idx").on(table.expiresOn)
+  ]
+);
 
 export const schoolSettings = pgTable("school_settings", {
   schoolId: uuid("school_id")
@@ -716,6 +742,7 @@ export const notificationPushDeliveries = pgTable(
 
 export const databaseSchema = {
   schools,
+  subscriptions,
   schoolSettings,
   users,
   authSessions,
@@ -748,6 +775,7 @@ export const databaseSchema = {
 
 export type School = typeof schools.$inferSelect;
 export type SchoolSettings = typeof schoolSettings.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type AuthSession = typeof authSessions.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;

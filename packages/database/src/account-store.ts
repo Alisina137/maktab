@@ -1,26 +1,30 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
   auditLogs,
   authSessions,
   schools,
+  subscriptions,
   users,
   type AuthSession,
   type School,
+  type Subscription,
   type User
 } from "./schema.js";
 
 export interface UserLoginContext {
   user: User;
   school: School;
+  subscription: Subscription;
 }
 
 export interface AuthenticatedSessionContext {
   session: AuthSession;
   user: User;
   school: School;
+  subscription: Subscription;
 }
 
 export interface CreateAccountInput {
@@ -64,6 +68,19 @@ export interface AccountStore {
   revokeSession(sessionId: string): Promise<void>;
   revokeAllUserSessions(schoolId: string, userId: string): Promise<void>;
   writeAudit(input: AuditInput): Promise<void>;
+  listAuditLogs(
+    schoolId: string,
+    input?: { limit?: number; offset?: number }
+  ): Promise<{ logs: Array<{
+    id: string;
+    schoolId: string;
+    actorUserId: string | null;
+    action: string;
+    entityType: string;
+    entityId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: Date;
+  }>; limit: number; offset: number; hasMore: boolean }>;
 }
 
 export class AccountConflictError extends Error {
@@ -76,10 +93,11 @@ export class AccountConflictError extends Error {
 export function createAccountStore(db: FoundationDatabase): AccountStore {
   const sessionContext = async (where: ReturnType<typeof eq>) => {
     const rows = await db
-      .select({ session: authSessions, user: users, school: schools })
+      .select({ session: authSessions, user: users, school: schools, subscription: subscriptions })
       .from(authSessions)
       .innerJoin(users, and(eq(users.id, authSessions.userId), eq(users.schoolId, authSessions.schoolId)))
       .innerJoin(schools, eq(schools.id, users.schoolId))
+      .innerJoin(subscriptions, eq(subscriptions.schoolId, users.schoolId))
       .where(and(where, isNull(authSessions.revokedAt)))
       .limit(1);
     return rows[0] ?? null;
@@ -117,9 +135,10 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async findUserForLogin(schoolId, username) {
       const rows = await db
-        .select({ user: users, school: schools })
+        .select({ user: users, school: schools, subscription: subscriptions })
         .from(users)
         .innerJoin(schools, eq(schools.id, users.schoolId))
+        .innerJoin(subscriptions, eq(subscriptions.schoolId, users.schoolId))
         .where(and(eq(users.schoolId, schoolId), eq(users.username, username)))
         .limit(1);
       return rows[0] ?? null;
@@ -252,6 +271,24 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         entityId: input.entityId ?? null,
         metadata: input.metadata ?? {}
       });
+    },
+
+    async listAuditLogs(schoolId, input = {}) {
+      const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+      const offset = Math.max(input.offset ?? 0, 0);
+      const rows = await db
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.schoolId, schoolId))
+        .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+        .limit(limit + 1)
+        .offset(offset);
+      return {
+        logs: rows.slice(0, limit),
+        limit,
+        offset,
+        hasMore: rows.length > limit
+      };
     }
   };
 }
