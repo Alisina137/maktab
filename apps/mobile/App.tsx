@@ -405,7 +405,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        ))}
+        )}
 
         {screen === "home" && session && session.user.role !== "PARENT" && (
           <View style={styles.section}>
@@ -420,7 +420,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        ))}
+        )}
 
         {error ? <Text style={[styles.error, textDirection]}>{error}</Text> : null}
         {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} /> : null}
