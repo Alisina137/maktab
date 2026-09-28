@@ -6,7 +6,7 @@ This repository follows the approved **MaktabLink Product Specification V1** and
 
 ## Current implementation
 
-Phase 4 adds the student-and-family onboarding layer on top of the verified tenant, authentication, and academic foundations.
+Phase 5 adds the daily attendance and teacher workflow layer on top of the verified tenant, authentication, academic, and family foundations.
 
 Implemented:
 
@@ -42,6 +42,18 @@ Implemented:
 - credential generation for imported parent/teacher accounts
 - parent mobile home with linked-child switching
 - tenant-scoped parent home API
+- school-local Teacher Today agenda
+- active Negaran supervised-class cards
+- explicit daily attendance for every active student
+- Present / Absent / Late / Excused attendance states
+- one attendance sheet per school/class/date with duplicate-request protection
+- same-day Negaran correction and post-day admin correction boundary
+- parent attendance history scoped to linked children
+- idempotent in-app absence/late alerts
+- parent alert read/unread state
+- admin attendance reports with class/date filters
+- submitted/pending class counts for single-day oversight
+- audited school-admin attendance corrections
 
 ## Setup
 
@@ -79,7 +91,7 @@ School administration:
 http://localhost:3000/admin
 ```
 
-The admin workspace contains account management, Phase 3 academic structure, and Phase 4 student/family onboarding.
+The admin workspace contains account management, academic structure, student/family onboarding, and Phase 5 attendance oversight/corrections.
 
 ## Database
 
@@ -89,10 +101,17 @@ Phase 3 migration:
 packages/database/drizzle/0002_phase3_academic_structure.sql
 ```
 
-Phase 4 migration:
+Phase 4 migrations:
 
 ```text
 packages/database/drizzle/0003_phase4_student_family.sql
+packages/database/drizzle/0004_phase4_parent_profile_backfill.sql
+```
+
+Phase 5 migration:
+
+```text
+packages/database/drizzle/0005_phase5_attendance.sql
 ```
 
 Phase 4 adds:
@@ -104,10 +123,19 @@ Phase 4 adds:
 
 The `students.parent_user_id` column is singular by design; there is no parent/student many-to-many join table.
 
+Phase 5 adds:
+
+- `daily_attendances`
+- `student_attendances`
+- `notifications`
+- attendance/record/delivery status enums
+
+Attendance notifications are currently in-app queue records. Push delivery remains a later notification phase.
+
 ## Verification
 
 ```powershell
 pnpm verify
 ```
 
-See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, and `docs/PHASE-04-STUDENT-FAMILY.md`.
+See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, and `docs/PHASE-05-ATTENDANCE.md`.

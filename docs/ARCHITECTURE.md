@@ -49,6 +49,12 @@ PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred host
 - `students`
 - `student_class_history`
 
+### Phase 5
+
+- `daily_attendances`
+- `student_attendances`
+- `notifications`
+
 ## Tenant isolation
 
 The school is the tenant boundary.
@@ -156,6 +162,78 @@ CSV/XLSX upload
 ```
 
 Invalid rows are never silently committed. Parent/teacher imports generate school-issued temporary credentials; student imports create student records linked to an existing same-school parent.
+
+## Phase 5 attendance model
+
+Daily attendance is class-level and school-scoped:
+
+```text
+DailyAttendance
+  → school
+  → academic year
+  → class
+  → date
+  → submitted/updated actor
+
+DailyAttendance
+  → many StudentAttendance rows
+```
+
+The database enforces one daily attendance sheet per:
+
+```text
+school + class + date
+```
+
+and one mark per:
+
+```text
+attendance sheet + student
+```
+
+Each active student in the supervised class must receive exactly one explicit state before a Negaran submission is accepted:
+
+- PRESENT
+- ABSENT
+- LATE
+- EXCUSED
+
+### Negaran authorization and locking
+
+The teacher API derives teacher/school identity from the authenticated session. Access to a class attendance sheet additionally requires an active Negaran assignment that covers the requested date.
+
+The product specification requires a lock boundary but does not define a numeric lock time. The Phase 5 MVP therefore uses the school-local calendar day as the boundary:
+
+- active Negaran may submit/correct today's attendance
+- future attendance is rejected
+- after the school-local date changes, the Negaran sheet becomes read-only
+- school admin may make a later correction
+- admin correction is written to the audit log
+
+School-local date is computed server-side from `school_settings.timezone`; parent and teacher flows do not trust the phone clock for the meaning of “today.”
+
+### Attendance alerts
+
+ABSENT/LATE marks create an in-app notification for the linked parent with:
+
+- type
+- timestamp
+- deep link
+- deduplication key
+- delivery status
+- read/unread state
+
+The deduplication key is tied to attendance sheet + student, so a duplicate attendance retry does not create another alert.
+
+Changing an unread ABSENT/LATE mark to PRESENT/EXCUSED cancels its pending in-app alert.
+
+Attendance persistence is separate from future push delivery. Phase 5 creates the in-app alert/queue record; push transport remains Phase 7.
+
+### Reporting
+
+School admins can filter attendance by date range and active class. The report returns individual student marks plus Present/Absent/Late/Excused totals.
+
+For a single-day report, it also compares active classes against submitted attendance sheets to surface submitted/pending class counts.
 
 ## Localization
 

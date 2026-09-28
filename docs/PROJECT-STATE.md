@@ -16,97 +16,116 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 - Role selection is UX only; backend role is authoritative.
 - Initial credentials are temporary.
 - Permanent passwords are never retrievable.
-- Every operational/account/academic/family operation is school-scoped.
+- Every operational/account/academic/family/attendance operation is school-scoped.
 - A parent account belongs to one school and may own multiple students in that school.
-- Every student has one singular parent account relationship; there is no parent/student many-to-many table.
-- Parent identities never merge across schools.
+- Every student has one singular parent account relationship.
 - Parent sees only linked children.
 - Negaran is a teacher assignment, not a role.
-- Teachers may teach multiple subjects/classes.
-- Timetable teacher/class conflicts are prohibited.
-- Academic and student class history is retained.
-- Bulk imports validate before commit; invalid rows are not silently imported.
+- Daily attendance is primarily the active Negaran's responsibility.
+- Every active student must receive an explicit daily attendance state before submission.
+- Duplicate daily attendance requests must not create duplicate sheets/alerts.
+- School admins may correct attendance and corrections are audited.
+- Period attendance remains optional and independent from daily attendance.
+- Academic/student/attendance history is retained.
+- Cross-school access is prohibited.
 
 ## Current phase
 
-**Phase 4 — Student & Family System — complete and CI verified**
+**Phase 5 — Attendance & Daily Teacher Workflow — complete and CI verified**
 
 ### Implemented outcomes
 
-- `parent_profiles` for school-scoped PARENT users
-- compatibility backfill for PARENT accounts created before Phase 4
-- `students` with singular non-null `parentUserId`
-- one parent → many same-school students
-- duplicate student-code rejection within a school
-- cross-school parent/class/year link rejection
-- `student_class_history` for retained class/year placement
-- school-admin parent creation with one-time temporary credential
-- school-admin student creation linked to an existing parent
-- parent reset/suspend/reactivate controls
-- family/student admin overview
-- CSV/TSV and XLSX import preview
-- explicit import column mapping
-- parent/student/teacher row validation and error preview
-- explicit import confirmation
-- generated temporary credentials for imported parent/teacher accounts
-- parent mobile home
-- default-child selection and sibling switching
-- authenticated parent-home API that returns only linked children
-- Dari/Pashto/English parent-home localization
-- Phase 4 audit records for sensitive mutations/import completion
+- `daily_attendances` class/date attendance sheets
+- `student_attendances` explicit student marks
+- PRESENT / ABSENT / LATE / EXCUSED states
+- one daily attendance sheet per school/class/date
+- one student mark per attendance sheet/student
+- school-local date calculation from school timezone
+- Teacher Today chronological timetable
+- active Negaran supervised-class card
+- pending/submitted attendance indicator
+- same-school/date/class authorization checks
+- explicit mark-every-student validation
+- duplicate retry/idempotency protection
+- same-day Negaran correction
+- school-local day attendance lock for teacher edits
+- admin post-lock correction
+- audited admin attendance correction
+- parent recent attendance history
+- parent today's attendance state
+- server-provided school-local `today`
+- in-app absent/late parent alerts
+- notification deduplication and read/unread state
+- cancellation of unread alert after Present/Excused correction
+- admin date/class attendance reports
+- Present/Absent/Late/Excused summaries
+- single-day submitted/pending class counts
+- Dari/Pashto/English mobile attendance UI
 
 ## Verification
 
-GitHub Actions CI passed on the complete implementation commit:
+GitHub Actions CI passed on the complete Phase 5 implementation commit:
 
 ```text
-0a95f79f20699c8c334a8bef7096298946606fa6
+03a38f9771b771adb70eb286b1102bc45b9b0008
 ```
 
 Verified by CI:
 
 - dependency installation
-- TypeScript typecheck across the monorepo
-- Phase 1–4 database/API test suites
-- one parent owning three students
-- parent login showing all three linked children
-- singular parent ownership
-- cross-school parent link rejection
-- duplicate student-code rejection
-- bulk-import duplicate validation without mutation
-- CSV parsing
-- XLSX worksheet parsing
-- existing academic/auth/tenant regressions
+- monorepo TypeScript typecheck
+- Phase 1–5 database/API tests
+- Negaran attendance submission
+- non-Negaran class-access rejection
+- duplicate attendance retry idempotency
+- parent attendance visibility
+- absent parent alert creation
+- admin correction and parent corrected visibility
+- school-local today value
+- all existing tenant/auth/academic/family regressions
 - Next.js production build
 - Expo Android production export
 
-The earlier Phase 3 migration and Windows `pnpm verify` were confirmed by the user. The Phase 4 Neon migration remains a local deployment step after pulling the final source.
+The Phase 5 Neon migration has **not yet been verified locally** in this conversation.
 
 ## Local database requirement
 
-After pulling Phase 4, apply:
+After pulling Phase 5, run:
 
 ```powershell
 pnpm db:migrate
 ```
 
-This applies the Phase 4 migrations not already recorded in the database, including:
+This applies:
 
 ```text
-0003_phase4_student_family.sql
-0004_phase4_parent_profile_backfill.sql
+0005_phase5_attendance.sql
 ```
 
-Migration `0004` creates missing parent profiles for legacy PARENT users. Their existing username is used as the initial profile display name so the administrator can later replace it with the real parent name in the family workflow.
+It is additive. A source rollback does not automatically undo attendance or notification records.
 
-The migration is additive. A source rollback does not automatically undo the database migration or remove Phase 4 data.
+## Phase 5 boundary
 
-## Phase boundary
+Implemented now:
 
-Phase 4 does not implement attendance, homework, exams, marks, announcements, fees, or push notifications. Teacher Today and Negaran daily attendance remain Phase 5.
+- daily Negaran attendance
+- Teacher Today
+- parent attendance visibility
+- in-app absent/late alerts
+- admin reports/corrections
+
+Not included in this phase:
+
+- optional period attendance
+- push transport/delivery
+- homework
+- exams/results
+- announcements/fees
+
+Push notifications remain Phase 7. Period attendance remains optional according to the product specification.
 
 ## Next phase
 
-**Phase 5 — Attendance**, when explicitly requested.
+**Phase 6 — Homework, Exams & Results**, when explicitly requested.
 
-Phase 5 includes Teacher Today, Negaran supervised class, daily attendance, parent attendance visibility/alerts, and attendance reporting according to the Product Specification.
+Phase 6 includes homework, examination structure, marks, draft/publication state, and parent/student visibility.
