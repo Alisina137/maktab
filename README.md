@@ -53,6 +53,17 @@ pnpm dev:web
 pnpm dev:mobile
 ```
 
+For normal LAN development, the mobile app derives the API host from Expo and uses port 4000.
+
+For Expo tunnel development, Metro and the API need separate public endpoints. Set `EXPO_PUBLIC_API_URL` to the public HTTPS URL that forwards to the local API before starting Expo:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="https://YOUR-API-TUNNEL.example"
+pnpm --filter @maktablink/mobile exec expo start --tunnel --clear
+```
+
+The mobile client prefers `EXPO_PUBLIC_API_URL` when provided and otherwise falls back to LAN host detection. Mobile API requests time out after 10 seconds instead of leaving loading states indefinitely.
+
 School administration:
 
 ```text
