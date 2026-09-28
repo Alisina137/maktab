@@ -68,6 +68,7 @@ Verified:
 - API academic workflow
 - Next.js production build
 - Expo Android production export
+- PGlite database test files execute serially to avoid concurrent embedded-PostgreSQL/WASM memory spikes on Windows development machines
 
 ## Local database requirement
 
