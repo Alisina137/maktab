@@ -1,5 +1,7 @@
 import Constants from "expo-constants";
 
+declare const process: { env: { EXPO_PUBLIC_API_URL?: string } };
+
 export interface SchoolOption {
   id: string;
   code: string;
