@@ -1725,3 +1725,57 @@ test("Phase 8 readiness, audit pagination, import templates, and database readin
   assert.equal(template.statusCode, 200);
   assert.match(template.body, /studentCode,fullName,parentUsername,academicYear,classCode/);
 });
+
+
+test("Phase 8 subscription expiry reminders are idempotent across repeated scheduler runs", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "SUBREM8");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86_400_000).toISOString().slice(0, 10);
+  const grace = new Date(today.getTime() + 15 * 86_400_000).toISOString().slice(0, 10);
+
+  const updated = await app.inject({
+    method: "PATCH",
+    url: `/v1/platform/schools/${schoolId}/subscription`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: {
+      status: "ACTIVE",
+      expiresOn: tomorrow,
+      graceEndsOn: grace
+    }
+  });
+  assert.equal(updated.statusCode, 200);
+
+  const first = await app.inject({
+    method: "POST",
+    url: "/v1/platform/jobs/subscriptions/run",
+    headers: { "x-platform-provisioning-key": provisioningKey }
+  });
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.json<{ remindersCreated: number }>().remindersCreated, 1);
+
+  const second = await app.inject({
+    method: "POST",
+    url: "/v1/platform/jobs/subscriptions/run",
+    headers: { "x-platform-provisioning-key": provisioningKey }
+  });
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.json<{ remindersCreated: number }>().remindersCreated, 0);
+
+  const notifications = await app.inject({
+    method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${adminToken}` }
+  });
+  assert.equal(notifications.statusCode, 200);
+  const expiryAlerts = notifications
+    .json<{ notifications: Array<{ type: string }> }>()
+    .notifications.filter((item) => item.type === "SUBSCRIPTION_EXPIRING");
+  assert.equal(expiryAlerts.length, 1);
+});
