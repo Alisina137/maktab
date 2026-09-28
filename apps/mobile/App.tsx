@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -33,6 +35,18 @@ const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student
   STUDENT: "role.student"
 };
 
+const roleHintKey: Record<MobileRole, "role.parentHint" | "role.teacherHint" | "role.studentHint"> = {
+  PARENT: "role.parentHint",
+  TEACHER: "role.teacherHint",
+  STUDENT: "role.studentHint"
+};
+
+const roleIcon: Record<MobileRole, keyof typeof Ionicons.glyphMap> = {
+  PARENT: "people-outline",
+  TEACHER: "school-outline",
+  STUDENT: "book-outline"
+};
+
 function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
   const [screen, setScreen] = useState<Screen>("role");
@@ -52,6 +66,10 @@ function AppContent() {
   const [selectedChildId, setSelectedChildId] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const screenOpacity = useRef(new Animated.Value(1)).current;
+  const screenTranslate = useRef(new Animated.Value(0)).current;
+  const childOpacity = useRef(new Animated.Value(1)).current;
+  const childScale = useRef(new Animated.Value(1)).current;
 
   const direction = getDirection(locale);
   const textDirection = useMemo(
@@ -69,6 +87,45 @@ function AppContent() {
   useEffect(() => {
     if (screen === "school") void loadSchools();
   }, [screen]);
+
+  useEffect(() => {
+    screenOpacity.setValue(0);
+    screenTranslate.setValue(14);
+    Animated.parallel([
+      Animated.timing(screenOpacity, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.timing(screenTranslate, {
+        toValue: 0,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [screen, screenOpacity, screenTranslate]);
+
+  useEffect(() => {
+    childOpacity.setValue(0);
+    childScale.setValue(0.985);
+    Animated.parallel([
+      Animated.timing(childOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.spring(childScale, {
+        toValue: 1,
+        damping: 16,
+        stiffness: 180,
+        mass: 0.7,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [selectedChildId, childOpacity, childScale]);
 
   useEffect(() => {
     if (screen === "home" && session?.user.role === "PARENT" && !session.mustChangePassword) {
@@ -221,31 +278,86 @@ function AppContent() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <View pointerEvents="none" style={styles.backgroundAccentTop} />
+      <View pointerEvents="none" style={styles.backgroundAccentBottom} />
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.topbar}>
-          <Text style={styles.brand}>{translate(locale, "app.name")}</Text>
+          <View style={styles.brandRow}>
+            <View style={styles.brandMark}>
+              <Ionicons name="school-outline" size={21} color="#fff" />
+            </View>
+            <View>
+              <Text style={styles.brand}>{translate(locale, "app.name")}</Text>
+              <Text style={styles.brandCaption}>{translate(locale, "onboarding.caption")}</Text>
+            </View>
+          </View>
           <View style={styles.languageRow}>
             {supportedLocales.map((item) => (
               <Pressable
                 key={item}
                 onPress={() => setLocale(item)}
-                style={[styles.languageButton, item === locale && styles.languageButtonActive]}
+                style={({ pressed }) => [
+                  styles.languageButton,
+                  item === locale && styles.languageButtonActive,
+                  pressed && styles.pressed
+                ]}
               >
-                <Text style={item === locale ? styles.languageTextActive : styles.languageText}>{item}</Text>
+                <Text style={item === locale ? styles.languageTextActive : styles.languageText}>
+                  {item === "fa-AF" ? "دری" : item === "ps-AF" ? "پښتو" : "EN"}
+                </Text>
               </Pressable>
             ))}
           </View>
         </View>
 
+        <OnboardingProgress screen={screen} />
+
+        <Animated.View
+          style={[
+            styles.screenMotion,
+            {
+              opacity: screenOpacity,
+              transform: [{ translateY: screenTranslate }]
+            }
+          ]}
+        >
+
         {screen === "role" && (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.onboardingCard]}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="sparkles-outline" size={24} color={tokens.color.brandStrong} />
+            </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "auth.chooseRole")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "auth.chooseRoleHint")}</Text>
             <View style={styles.stack}>
               {(["PARENT", "TEACHER", "STUDENT"] as MobileRole[]).map((item) => (
-                <Pressable key={item} style={styles.roleCard} onPress={() => chooseRole(item)}>
-                  <Text style={[styles.roleTitle, textDirection]}>{translate(locale, roleKey[item])}</Text>
-                  <Text style={[styles.muted, textDirection]}>›</Text>
+                <Pressable
+                  key={item}
+                  onPress={() => chooseRole(item)}
+                  style={({ pressed }) => [
+                    styles.roleCard,
+                    direction === "rtl" && styles.roleCardRtl,
+                    pressed && styles.cardPressed
+                  ]}
+                >
+                  <View style={[styles.roleCardMain, direction === "rtl" && styles.roleCardMainRtl]}>
+                    <View style={styles.roleIconShell}>
+                      <Ionicons name={roleIcon[item]} size={23} color={tokens.color.brandStrong} />
+                    </View>
+                    <View style={styles.roleCopy}>
+                      <Text style={[styles.roleTitle, textDirection]}>{translate(locale, roleKey[item])}</Text>
+                      <Text style={[styles.roleHint, textDirection]}>{translate(locale, roleHintKey[item])}</Text>
+                    </View>
+                  </View>
+                  <Ionicons
+                    name={direction === "rtl" ? "chevron-back" : "chevron-forward"}
+                    size={20}
+                    color={tokens.color.textMuted}
+                  />
                 </Pressable>
               ))}
             </View>
@@ -253,8 +365,11 @@ function AppContent() {
         )}
 
         {screen === "school" && (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.onboardingCard]}>
             <BackButton locale={locale} onPress={() => setScreen("role")} />
+            <View style={styles.heroIcon}>
+              <Ionicons name="business-outline" size={24} color={tokens.color.brandStrong} />
+            </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "school.choose")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "school.chooseHint")}</Text>
             <View style={styles.searchRow}>
@@ -265,8 +380,11 @@ function AppContent() {
                 placeholder={translate(locale, "school.search")}
                 style={[styles.input, styles.searchInput, textDirection]}
               />
-              <Pressable style={styles.smallPrimaryButton} onPress={() => void loadSchools()}>
-                <Text style={styles.primaryButtonText}>⌕</Text>
+              <Pressable
+                style={({ pressed }) => [styles.smallPrimaryButton, pressed && styles.buttonPressed]}
+                onPress={() => void loadSchools()}
+              >
+                <Ionicons name="search-outline" size={21} color="#fff" />
               </Pressable>
             </View>
             {busy ? <ActivityIndicator /> : null}
@@ -274,15 +392,29 @@ function AppContent() {
               {schools.map((item) => (
                 <Pressable
                   key={item.id}
-                  style={styles.schoolCard}
+                  style={({ pressed }) => [
+                    styles.schoolCard,
+                    direction === "rtl" && styles.schoolCardRtl,
+                    pressed && styles.cardPressed
+                  ]}
                   onPress={() => {
                     setSchool(item);
                     setLocale(item.defaultLanguage);
                     setScreen("login");
                   }}
                 >
-                  <Text style={[styles.schoolName, textDirection]}>{item.name}</Text>
-                  <Text style={[styles.muted, textDirection]}>{item.city} · {item.province} · {item.code}</Text>
+                  <View style={styles.schoolIconShell}>
+                    <Ionicons name="business-outline" size={20} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.schoolCopy}>
+                    <Text style={[styles.schoolName, textDirection]}>{item.name}</Text>
+                    <Text style={[styles.muted, textDirection]}>{item.city} · {item.province} · {item.code}</Text>
+                  </View>
+                  <Ionicons
+                    name={direction === "rtl" ? "chevron-back" : "chevron-forward"}
+                    size={18}
+                    color={tokens.color.textMuted}
+                  />
                 </Pressable>
               ))}
               {!busy && schools.length === 0 ? (
@@ -293,10 +425,14 @@ function AppContent() {
         )}
 
         {screen === "login" && school && role && (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.onboardingCard]}>
             <BackButton locale={locale} onPress={() => setScreen("school")} />
             <View style={styles.schoolPill}>
+              <Ionicons name="business-outline" size={15} color={tokens.color.brandStrong} />
               <Text style={styles.schoolPillText}>{school.name}</Text>
+            </View>
+            <View style={styles.heroIcon}>
+              <Ionicons name="lock-closed-outline" size={24} color={tokens.color.brandStrong} />
             </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "login.title")}</Text>
             <Text style={[styles.subtitle, textDirection]}>
@@ -336,7 +472,10 @@ function AppContent() {
         )}
 
         {screen === "change-password" && session && (
-          <View style={styles.section}>
+          <View style={[styles.section, styles.onboardingCard]}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="shield-checkmark-outline" size={24} color={tokens.color.brandStrong} />
+            </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "passwordChange.title")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "passwordChange.hint")}</Text>
             <View style={[styles.passwordField, direction === "rtl" && styles.passwordFieldRtl]}>
@@ -424,7 +563,15 @@ function AppContent() {
                     </View>
 
                     {selectedChild ? (
-                      <View style={styles.childCard}>
+                      <Animated.View
+                        style={[
+                          styles.childCard,
+                          {
+                            opacity: childOpacity,
+                            transform: [{ scale: childScale }]
+                          }
+                        ]}
+                      >
                         <View style={styles.childBadge}><Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text></View>
                         <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
                         <View style={styles.childDetailRow}>
@@ -439,7 +586,7 @@ function AppContent() {
                           <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
                           <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.academicYear.name}</Text>
                         </View>
-                      </View>
+                      </Animated.View>
                     ) : null}
                   </>
                 ) : (
@@ -450,7 +597,7 @@ function AppContent() {
               </>
             ) : null}
 
-            <Pressable style={styles.secondaryButton} onPress={() => void logout()}>
+            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
@@ -465,14 +612,20 @@ function AppContent() {
               <Text style={[styles.accountName, textDirection]}>{session.user.username}</Text>
               <Text style={[styles.muted, textDirection]}>{session.user.role} · {school?.name}</Text>
             </View>
-            <Pressable style={styles.secondaryButton} onPress={() => void logout()}>
+            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
         )}
 
-        {error ? <Text style={[styles.error, textDirection]}>{error}</Text> : null}
-        {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} /> : null}
+        {error ? (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle-outline" size={20} color={tokens.color.danger} />
+            <Text style={[styles.errorText, textDirection]}>{error}</Text>
+          </View>
+        ) : null}
+        {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} color={tokens.color.brand} /> : null}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -486,78 +639,342 @@ export default function App() {
   );
 }
 
-function BackButton({ locale, onPress }: { locale: SupportedLocale; onPress: () => void }) {
+function OnboardingProgress({ screen }: { screen: Screen }) {
+  if (screen === "home" || screen === "change-password") return null;
+  const index = screen === "role" ? 0 : screen === "school" ? 1 : 2;
+
   return (
-    <Pressable onPress={onPress} style={styles.backButton}>
-      <Text style={styles.backButtonText}>‹ {translate(locale, "action.back")}</Text>
+    <View style={styles.progressWrap}>
+      {[0, 1, 2].map((step) => (
+        <View
+          key={step}
+          style={[styles.progressDot, step <= index && styles.progressDotActive]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function BackButton({ locale, onPress }: { locale: SupportedLocale; onPress: () => void }) {
+  const rtl = getDirection(locale) === "rtl";
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+    >
+      <Ionicons
+        name={rtl ? "arrow-forward-outline" : "arrow-back-outline"}
+        size={18}
+        color={tokens.color.brandStrong}
+      />
+      <Text style={styles.backButtonText}>{translate(locale, "action.back")}</Text>
     </Pressable>
   );
 }
 
 function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={[styles.primaryButton, disabled && styles.disabled]}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.primaryButton,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.buttonPressed
+      ]}
+    >
       <Text style={styles.primaryButtonText}>{label}</Text>
+      <Ionicons name="arrow-forward-outline" size={18} color="#fff" />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: tokens.color.canvas },
-  content: { padding: tokens.spacing.xl, paddingBottom: 48, gap: tokens.spacing.lg },
+  safeArea: { flex: 1, backgroundColor: "#f6f8fc" },
+  backgroundAccentTop: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "#eaf1ff",
+    top: -110,
+    right: -90,
+    opacity: 0.9
+  },
+  backgroundAccentBottom: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "#eef7f4",
+    bottom: -80,
+    left: -80,
+    opacity: 0.85
+  },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 52, gap: 16 },
   center: { flex: 1, minHeight: 500, alignItems: "center", justifyContent: "center", gap: 12 },
-  topbar: { gap: 12, marginBottom: 12 },
-  brand: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 22 },
-  languageRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  languageButton: { minHeight: 40, justifyContent: "center", paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
-  languageButtonActive: { backgroundColor: tokens.color.brand, borderColor: tokens.color.brand },
-  languageText: { color: tokens.color.text, fontWeight: "600" },
-  languageTextActive: { color: "#fff", fontWeight: "800" },
+  topbar: { gap: 14, marginBottom: 2 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
+  brandMark: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: tokens.color.brand,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#1d4ca8",
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3
+  },
+  brand: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 22, letterSpacing: -0.4 },
+  brandCaption: { color: tokens.color.textMuted, fontSize: 11, marginTop: 1 },
+  languageRow: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    padding: 4,
+    borderRadius: 999,
+    backgroundColor: "#edf1f7",
+    gap: 3
+  },
+  languageButton: {
+    minHeight: 34,
+    justifyContent: "center",
+    paddingHorizontal: 13,
+    borderRadius: 999
+  },
+  languageButtonActive: {
+    backgroundColor: tokens.color.surface,
+    shadowColor: "#172033",
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1
+  },
+  languageText: { color: tokens.color.textMuted, fontWeight: "700", fontSize: 12 },
+  languageTextActive: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 12 },
+  progressWrap: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginVertical: 4 },
+  progressDot: { width: 7, height: 7, borderRadius: 999, backgroundColor: "#d3dbe7" },
+  progressDotActive: { width: 22, backgroundColor: tokens.color.brand },
+  screenMotion: { gap: 16 },
   section: { gap: 16 },
-  title: { color: tokens.color.text, fontSize: 32, lineHeight: 40, fontWeight: "900" },
-  subtitle: { color: tokens.color.textMuted, fontSize: 15, lineHeight: 24 },
-  muted: { color: tokens.color.textMuted, fontSize: 14 },
-  stack: { gap: 12 },
-  roleCard: { minHeight: 82, padding: 18, borderRadius: 18, backgroundColor: tokens.color.surface, borderWidth: 1, borderColor: tokens.color.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  roleTitle: { color: tokens.color.text, fontSize: 19, fontWeight: "800" },
-  schoolCard: { padding: 18, borderRadius: 16, backgroundColor: tokens.color.surface, borderWidth: 1, borderColor: tokens.color.border, gap: 5 },
-  schoolName: { color: tokens.color.text, fontSize: 17, fontWeight: "800" },
-  input: { minHeight: 52, paddingHorizontal: 15, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface, color: tokens.color.text, fontSize: 16 },
-  passwordField: { minHeight: 52, flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
+  onboardingCard: {
+    padding: 20,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderWidth: 1,
+    borderColor: "#e3e9f2",
+    shadowColor: "#172033",
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff",
+    borderWidth: 1,
+    borderColor: "#dce7ff"
+  },
+  title: { color: tokens.color.text, fontSize: 31, lineHeight: 39, fontWeight: "900", letterSpacing: -0.55 },
+  subtitle: { color: tokens.color.textMuted, fontSize: 15, lineHeight: 23 },
+  muted: { color: tokens.color.textMuted, fontSize: 13, lineHeight: 19 },
+  stack: { gap: 11 },
+  roleCard: {
+    minHeight: 86,
+    padding: 15,
+    borderRadius: 18,
+    backgroundColor: "#fbfcfe",
+    borderWidth: 1,
+    borderColor: "#e1e7f0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  roleCardRtl: { flexDirection: "row-reverse" },
+  roleCardMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  roleCardMainRtl: { flexDirection: "row-reverse" },
+  roleIconShell: {
+    width: 48,
+    height: 48,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff"
+  },
+  roleCopy: { flex: 1, gap: 3 },
+  roleTitle: { color: tokens.color.text, fontSize: 18, fontWeight: "900" },
+  roleHint: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 18 },
+  schoolCard: {
+    minHeight: 78,
+    padding: 14,
+    borderRadius: 17,
+    backgroundColor: "#fbfcfe",
+    borderWidth: 1,
+    borderColor: "#e1e7f0",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11
+  },
+  schoolCardRtl: { flexDirection: "row-reverse" },
+  schoolIconShell: {
+    width: 43,
+    height: 43,
+    borderRadius: 14,
+    backgroundColor: "#edf3ff",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  schoolCopy: { flex: 1, gap: 3 },
+  schoolName: { color: tokens.color.text, fontSize: 16.5, fontWeight: "900" },
+  input: {
+    minHeight: 54,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#dbe3ee",
+    backgroundColor: "#fbfcfe",
+    color: tokens.color.text,
+    fontSize: 16
+  },
+  passwordField: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#dbe3ee",
+    backgroundColor: "#fbfcfe"
+  },
   passwordFieldRtl: { flexDirection: "row-reverse" },
-  passwordInput: { flex: 1, minHeight: 50, paddingHorizontal: 15, paddingVertical: 12, color: tokens.color.text, fontSize: 16 },
-  passwordToggle: { width: 52, minHeight: 50, alignItems: "center", justifyContent: "center" },
+  passwordInput: { flex: 1, minHeight: 52, paddingHorizontal: 15, paddingVertical: 12, color: tokens.color.text, fontSize: 16 },
+  passwordToggle: { width: 52, minHeight: 52, alignItems: "center", justifyContent: "center" },
   searchRow: { flexDirection: "row", gap: 8 },
   searchInput: { flex: 1 },
-  smallPrimaryButton: { width: 52, minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: tokens.color.brand },
-  primaryButton: { minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: tokens.color.brand },
-  primaryButtonText: { color: "#fff", fontWeight: "800", fontSize: 16 },
-  secondaryButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
+  smallPrimaryButton: {
+    width: 54,
+    minHeight: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    backgroundColor: tokens.color.brand,
+    shadowColor: "#265dcb",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2
+  },
+  primaryButton: {
+    minHeight: 54,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    gap: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    backgroundColor: tokens.color.brand,
+    shadowColor: "#265dcb",
+    shadowOpacity: 0.18,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2
+  },
+  primaryButtonText: { color: "#fff", fontWeight: "900", fontSize: 15.5 },
+  secondaryButton: {
+    minHeight: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#dbe3ee",
+    backgroundColor: tokens.color.surface
+  },
   secondaryButtonText: { color: tokens.color.text, fontWeight: "800" },
   disabled: { opacity: 0.45 },
-  backButton: { alignSelf: "flex-start", paddingVertical: 8, paddingRight: 12 },
-  backButtonText: { color: tokens.color.brandStrong, fontWeight: "800" },
-  schoolPill: { alignSelf: "flex-start", backgroundColor: tokens.color.surfaceMuted, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
-  schoolPillText: { color: tokens.color.text, fontWeight: "700" },
-  accountCard: { padding: 18, backgroundColor: tokens.color.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.color.border, gap: 5 },
+  pressed: { opacity: 0.72 },
+  cardPressed: { opacity: 0.74, transform: [{ scale: 0.99 }] },
+  buttonPressed: { opacity: 0.84, transform: [{ scale: 0.985 }] },
+  backButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingRight: 10 },
+  backButtonText: { color: tokens.color.brandStrong, fontWeight: "800", fontSize: 13 },
+  schoolPill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#edf3ff",
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7
+  },
+  schoolPillText: { color: tokens.color.brandStrong, fontWeight: "800", fontSize: 12 },
+  accountCard: {
+    padding: 18,
+    backgroundColor: tokens.color.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e1e7f0",
+    gap: 5,
+    shadowColor: "#172033",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 1
+  },
   accountName: { color: tokens.color.text, fontSize: 18, fontWeight: "900" },
-  sectionLabel: { color: tokens.color.text, fontSize: 15, fontWeight: "800" },
+  sectionLabel: { color: tokens.color.text, fontSize: 15, fontWeight: "900" },
   childSelector: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   childSelectorRtl: { flexDirection: "row-reverse" },
-  childChip: { minHeight: 40, justifyContent: "center", paddingHorizontal: 13, borderRadius: 999, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
+  childChip: {
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 13,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#dbe3ee",
+    backgroundColor: tokens.color.surface
+  },
   childChipActive: { backgroundColor: tokens.color.brand, borderColor: tokens.color.brand },
   childChipText: { color: tokens.color.text, fontWeight: "700" },
-  childChipTextActive: { color: "#fff", fontWeight: "800" },
-  childCard: { padding: 18, backgroundColor: tokens.color.surface, borderRadius: 18, borderWidth: 1, borderColor: tokens.color.border, gap: 12 },
-  childBadge: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.surfaceMuted },
+  childChipTextActive: { color: "#fff", fontWeight: "900" },
+  childCard: {
+    padding: 19,
+    backgroundColor: tokens.color.surface,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: "#e1e7f0",
+    gap: 12,
+    shadowColor: "#172033",
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2
+  },
+  childBadge: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#edf3ff" },
   childBadgeText: { color: tokens.color.brandStrong, fontSize: 20, fontWeight: "900" },
   childName: { color: tokens.color.text, fontSize: 22, fontWeight: "900" },
-  childDetailRow: { gap: 3, paddingTop: 9, borderTopWidth: 1, borderTopColor: tokens.color.border },
+  childDetailRow: { gap: 3, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#e9edf3" },
   childDetailLabel: { color: tokens.color.textMuted, fontSize: 12, fontWeight: "700" },
   childDetailValue: { color: tokens.color.text, fontSize: 15, fontWeight: "800" },
-  emptyCard: { padding: 18, borderRadius: 16, backgroundColor: tokens.color.surfaceMuted },
+  emptyCard: { padding: 18, borderRadius: 17, backgroundColor: "#eef3fa" },
   successMark: { width: 58, height: 58, borderRadius: 18, backgroundColor: "#e8f5ee", alignItems: "center", justifyContent: "center" },
   successMarkText: { color: tokens.color.success, fontSize: 28, fontWeight: "900" },
-  error: { color: tokens.color.danger, lineHeight: 22, backgroundColor: "#fff1f0", borderRadius: 12, padding: 12 },
+  errorCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    backgroundColor: "#fff1f0",
+    borderWidth: 1,
+    borderColor: "#ffd9d4",
+    borderRadius: 14,
+    padding: 13
+  },
+  errorText: { flex: 1, color: tokens.color.danger, lineHeight: 21, fontSize: 13.5 },
   loader: { marginTop: 8 }
 });

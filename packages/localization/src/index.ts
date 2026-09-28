@@ -16,6 +16,10 @@ export type TranslationKey =
   | "role.parent"
   | "role.teacher"
   | "role.student"
+  | "role.parentHint"
+  | "role.teacherHint"
+  | "role.studentHint"
+  | "onboarding.caption"
   | "school.choose"
   | "school.chooseHint"
   | "school.search"
@@ -62,6 +66,10 @@ const en: Record<TranslationKey, string> = {
   "role.parent": "Parent",
   "role.teacher": "Teacher",
   "role.student": "Student",
+  "role.parentHint": "Follow your children's school day in one place.",
+  "role.teacherHint": "Open your classes and school responsibilities.",
+  "role.studentHint": "See your school information and academic activity.",
+  "onboarding.caption": "School · Family · Learning",
   "school.choose": "Choose your school",
   "school.chooseHint": "Search for the school that issued your username and temporary password.",
   "school.search": "Search schools",
@@ -109,6 +117,10 @@ const dari: Record<TranslationKey, string> = {
   "role.parent": "والدین",
   "role.teacher": "استاد",
   "role.student": "شاگرد",
+  "role.parentHint": "روز مکتب فرزندان خود را در یک جا دنبال کنید.",
+  "role.teacherHint": "به صنف‌ها و مسئولیت‌های مکتب خود دسترسی داشته باشید.",
+  "role.studentHint": "معلومات مکتب و فعالیت‌های درسی خود را ببینید.",
+  "onboarding.caption": "مکتب · خانواده · آموزش",
   "school.choose": "مکتب خود را انتخاب کنید",
   "school.chooseHint": "مکتبی را جستجو کنید که نام کاربری و رمز موقت را برای شما داده است.",
   "school.search": "جستجوی مکاتب",
@@ -156,6 +168,10 @@ const pashto: Record<TranslationKey, string> = {
   "role.parent": "مور او پلار",
   "role.teacher": "ښوونکی",
   "role.student": "زده کوونکی",
+  "role.parentHint": "د خپلو ماشومانو د ښوونځي ورځ په یوه ځای کې تعقیب کړئ.",
+  "role.teacherHint": "خپلو ټولګیو او د ښوونځي مسؤلیتونو ته لاسرسی ولرئ.",
+  "role.studentHint": "د ښوونځي معلومات او درسي فعالیتونه وګورئ.",
+  "onboarding.caption": "ښوونځی · کورنۍ · زده کړه",
   "school.choose": "خپل ښوونځی وټاکئ",
   "school.chooseHint": "هغه ښوونځی ولټوئ چې کارن نوم او لنډمهاله پټنوم یې درکړی دی.",
   "school.search": "ښوونځي ولټوئ",
