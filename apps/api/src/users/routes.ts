@@ -36,6 +36,12 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
 
     try {
       const input = createSchoolUserSchema.parse(request.body);
+      if (input.role === "PARENT") {
+        return reply.code(400).send({
+          error: "parent_family_workflow_required",
+          message: "Create parent accounts from the Students & Families workflow so a parent profile is created with the account."
+        });
+      }
       const temporaryPassword = generateTemporaryPassword();
       const passwordHash = await hashPassword(temporaryPassword);
       const user = await store.createUser({

@@ -34,6 +34,7 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 ### Implemented outcomes
 
 - `parent_profiles` for school-scoped PARENT users
+- compatibility backfill for PARENT accounts created before Phase 4
 - `students` with singular non-null `parentUserId`
 - one parent → many same-school students
 - duplicate student-code rejection within a school
@@ -89,11 +90,14 @@ After pulling Phase 4, apply:
 pnpm db:migrate
 ```
 
-This applies:
+This applies the Phase 4 migrations not already recorded in the database, including:
 
 ```text
 0003_phase4_student_family.sql
+0004_phase4_parent_profile_backfill.sql
 ```
+
+Migration `0004` creates missing parent profiles for legacy PARENT users. Their existing username is used as the initial profile display name so the administrator can later replace it with the real parent name in the family workflow.
 
 The migration is additive. A source rollback does not automatically undo the database migration or remove Phase 4 data.
 

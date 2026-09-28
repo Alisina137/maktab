@@ -18,7 +18,8 @@ async function createTestDatabase() {
     "0000_phase1_foundation.sql",
     "0001_phase2_auth_accounts.sql",
     "0002_phase3_academic_structure.sql",
-    "0003_phase4_student_family.sql"
+    "0003_phase4_student_family.sql",
+    "0004_phase4_parent_profile_backfill.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
@@ -148,4 +149,49 @@ test("cross-school parent links and duplicate student codes are rejected", async
     }),
     /Parent account not found/i
   );
+});
+
+
+test("Phase 4 parent backfill makes legacy PARENT users available to parent home", async (t) => {
+  const client = new PGlite();
+  t.after(async () => client.close());
+
+  for (const file of [
+    "0000_phase1_foundation.sql",
+    "0001_phase2_auth_accounts.sql",
+    "0002_phase3_academic_structure.sql",
+    "0003_phase4_student_family.sql"
+  ]) {
+    const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
+    await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
+  }
+
+  const db = drizzle(client, { schema: databaseSchema }) as unknown as FoundationDatabase;
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const school = await schools.createSchool({
+    code: "LEGACY-PARENT",
+    name: "Legacy Parent School",
+    slug: "legacy-parent-school",
+    province: "Kabul",
+    city: "Kabul",
+    defaultLanguage: "fa-AF"
+  });
+  const legacyParent = await accounts.createUser({
+    schoolId: school.school.id,
+    username: "parent.legacy",
+    passwordHash: "legacy-hash",
+    role: "PARENT"
+  });
+
+  const migration = await readFile(
+    new URL("../drizzle/0004_phase4_parent_profile_backfill.sql", import.meta.url),
+    "utf8"
+  );
+  await client.exec(migration.replaceAll("--> statement-breakpoint", ""));
+
+  const home = await createFamilyStore(db).getParentHome(school.school.id, legacyParent.id);
+  assert.equal(home.parent.userId, legacyParent.id);
+  assert.equal(home.parent.fullName, "parent.legacy");
+  assert.deepEqual(home.children, []);
 });

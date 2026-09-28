@@ -32,6 +32,8 @@ export type TranslationKey =
   | "action.save"
   | "action.back"
   | "action.retry"
+  | "action.showPassword"
+  | "action.hidePassword"
   | "home.title"
   | "home.phase2"
   | "home.pending"
@@ -76,6 +78,8 @@ const en: Record<TranslationKey, string> = {
   "action.save": "Save",
   "action.back": "Back",
   "action.retry": "Retry",
+  "action.showPassword": "Show",
+  "action.hidePassword": "Hide",
   "home.title": "Account ready",
   "home.phase2": "Your school account is authenticated. Academic features will appear in the next phases.",
   "home.pending": "Your school account is authenticated. Features for this role will appear in the relevant implementation phase.",
@@ -121,6 +125,8 @@ const dari: Record<TranslationKey, string> = {
   "action.save": "ذخیره",
   "action.back": "برگشت",
   "action.retry": "تلاش دوباره",
+  "action.showPassword": "نمایش",
+  "action.hidePassword": "پنهان",
   "home.title": "حساب آماده است",
   "home.phase2": "حساب مکتب شما تأیید شد. امکانات درسی در مراحل بعدی اضافه می‌شوند.",
   "home.pending": "حساب مکتب شما تأیید شده است. امکانات این نقش در مرحله مربوط آن اضافه می‌شوند.",
@@ -166,6 +172,8 @@ const pashto: Record<TranslationKey, string> = {
   "action.save": "ساتل",
   "action.back": "شاته",
   "action.retry": "بیا هڅه",
+  "action.showPassword": "ښودل",
+  "action.hidePassword": "پټول",
   "home.title": "حساب چمتو دی",
   "home.phase2": "ستاسو د ښوونځي حساب تایید شو. درسي ځانګړتیاوې به په راتلونکو پړاوونو کې اضافه شي.",
   "home.pending": "ستاسو د ښوونځي حساب تایید شوی دی. د دې رول ځانګړتیاوې به په اړوند پړاو کې اضافه شي.",

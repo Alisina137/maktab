@@ -52,7 +52,7 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [newUsername, setNewUsername] = useState("");
-  const [newRole, setNewRole] = useState<User["role"]>("PARENT");
+  const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -243,15 +243,15 @@ export default function AdminPage() {
       <section className="admin-grid">
         <article className="admin-panel">
           <h2>Create account</h2>
+          <p className="admin-copy">Create parent accounts in the Students & Families section so their family profile is created at the same time.</p>
           <form className="admin-form" onSubmit={createUser}>
             <label>
               Username
-              <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="parent.001" required />
+              <input value={newUsername} onChange={(event) => setNewUsername(event.target.value)} placeholder="teacher.001" required />
             </label>
             <label>
               Role
               <select value={newRole} onChange={(event) => setNewRole(event.target.value as User["role"])}>
-                <option value="PARENT">Parent</option>
                 <option value="TEACHER">Teacher</option>
                 <option value="STUDENT">Student</option>
                 <option value="SCHOOL_STAFF">School staff</option>

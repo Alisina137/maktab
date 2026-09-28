@@ -21,7 +21,8 @@ async function createTestApp() {
     "0000_phase1_foundation.sql",
     "0001_phase2_auth_accounts.sql",
     "0002_phase3_academic_structure.sql",
-    "0003_phase4_student_family.sql"
+    "0003_phase4_student_family.sql",
+    "0004_phase4_parent_profile_backfill.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -118,11 +119,20 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const schoolB = await provisionSchool(app, "BB");
   const adminAccessToken = await bootstrapAdmin(app, schoolA);
 
-  const createParent = await app.inject({
+  const genericParent = await app.inject({
     method: "POST",
     url: "/v1/admin/users",
     headers: { authorization: `Bearer ${adminAccessToken}` },
-    payload: { username: "parent.one", role: "PARENT" }
+    payload: { username: "legacy.parent", role: "PARENT" }
+  });
+  assert.equal(genericParent.statusCode, 400);
+  assert.equal(genericParent.json<{ error: string }>().error, "parent_family_workflow_required");
+
+  const createParent = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminAccessToken}` },
+    payload: { username: "parent.one", fullName: "Parent One" }
   });
   assert.equal(createParent.statusCode, 201);
   const createdParent = createParent.json<{
