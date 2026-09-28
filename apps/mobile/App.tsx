@@ -96,8 +96,8 @@ function AppContent() {
     try {
       const result = await api.schools(query);
       setSchools(result.schools);
-    } catch {
-      setError(translate(locale, "common.networkError"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
     } finally {
       setBusy(false);
     }

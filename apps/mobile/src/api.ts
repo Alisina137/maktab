@@ -43,19 +43,33 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const response = await fetch(`${apiBaseUrl()}${path}`, {
+    const baseUrl = apiBaseUrl();
+    const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       signal: init?.signal ?? controller.signal,
       headers: {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
         ...(init?.headers ?? {})
       }
     });
 
     const text = await response.text();
-    const body = text ? JSON.parse(text) : null;
+    let body: unknown = null;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        const contentType = response.headers.get("content-type") ?? "unknown content type";
+        throw new Error(`API returned a non-JSON response (${contentType}) from ${baseUrl}.`);
+      }
+    }
+
     if (!response.ok) {
-      const message = body?.message ?? "Request failed.";
+      const message =
+        body && typeof body === "object" && "message" in body && typeof body.message === "string"
+          ? body.message
+          : "Request failed.";
       throw new Error(message);
     }
     return body as T;
