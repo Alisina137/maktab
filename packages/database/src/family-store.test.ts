@@ -186,11 +186,14 @@ test("Phase 4 parent backfill makes legacy PARENT users available to parent home
     role: "PARENT"
   });
 
-  const migration = await readFile(
-    new URL("../drizzle/0004_phase4_parent_profile_backfill.sql", import.meta.url),
-    "utf8"
-  );
-  await client.exec(migration.replaceAll("--> statement-breakpoint", ""));
+  for (const file of [
+    "0004_phase4_parent_profile_backfill.sql",
+    "0005_phase5_attendance.sql",
+    "0006_phase6_learning.sql"
+  ]) {
+    const migration = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
+    await client.exec(migration.replaceAll("--> statement-breakpoint", ""));
+  }
 
   const home = await createFamilyStore(db).getParentHome(school.school.id, legacyParent.id);
   assert.equal(home.parent.userId, legacyParent.id);

@@ -807,3 +807,408 @@ test("teacher without Negaran assignment cannot access another class attendance"
   assert.equal(sheet.statusCode, 400);
   assert.equal(sheet.json<{ error: string }>().error, "attendance_validation");
 });
+
+
+test("homework stays private as draft, then becomes visible to parent and linked student after publish", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "LEARN-HW");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: admin,
+    payload: { username: "teacher.homework", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const teacherBody = teacherAccount.json<{ user: { id: string }; temporaryPassword: string }>();
+
+  const year = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: admin,
+    payload: { name: "1406", startDate: "2027-03-21", endDate: "2028-03-20" }
+  });
+  const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: admin });
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: admin,
+    payload: { code: "G6", name: "Grade 6", sortOrder: 6 }
+  });
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "6A", name: "Grade 6 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  const subject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: admin,
+    payload: { code: "SCI", name: "Science" }
+  });
+  const subjectId = subject.json<{ subject: { id: string } }>().subject.id;
+
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: admin,
+    payload: { userId: teacherBody.user.id, employeeCode: "T-HW", fullName: "Homework Teacher" }
+  });
+  const assignment = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: admin,
+    payload: { academicYearId: yearId, classId, subjectId, teacherUserId: teacherBody.user.id }
+  });
+  const assignmentId = assignment.json<{ assignment: { id: string } }>().assignment.id;
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "learn.parent", fullName: "Learning Parent" }
+  });
+  const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+
+  const studentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: admin,
+    payload: {
+      parentUserId: parent.user.id,
+      studentCode: "LRN-001",
+      fullName: "Learning Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+
+  const studentAccount = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentId}/account`,
+    headers: admin,
+    payload: { username: "student.learning" }
+  });
+  assert.equal(studentAccount.statusCode, 201);
+  const studentCredential = studentAccount.json<{ temporaryPassword: string }>();
+
+  const teacherLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "TEACHER",
+      username: "teacher.homework",
+      password: teacherBody.temporaryPassword
+    }
+  });
+  const teacherChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${teacherLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "HomeworkTeacher2027!" }
+  });
+  const teacherAuth = { authorization: `Bearer ${teacherChanged.json<{ accessToken: string }>().accessToken}` };
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "learn.parent",
+      password: parent.temporaryPassword
+    }
+  });
+  const parentChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${parentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "LearningParent2027!" }
+  });
+  const parentAuth = { authorization: `Bearer ${parentChanged.json<{ accessToken: string }>().accessToken}` };
+
+  const studentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "STUDENT",
+      username: "student.learning",
+      password: studentCredential.temporaryPassword
+    }
+  });
+  const studentChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${studentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "LearningStudent2027!" }
+  });
+  const studentAuth = { authorization: `Bearer ${studentChanged.json<{ accessToken: string }>().accessToken}` };
+
+  const created = await app.inject({
+    method: "POST",
+    url: "/v1/teacher/homework",
+    headers: teacherAuth,
+    payload: {
+      assignmentId,
+      title: "Read chapter 3",
+      content: "Read chapter 3 and answer the review questions.",
+      dueAt: "2099-12-31T12:00:00Z"
+    }
+  });
+  assert.equal(created.statusCode, 201);
+  const homeworkId = created.json<{ homework: { id: string; status: string } }>().homework.id;
+  assert.equal(created.json<{ homework: { status: string } }>().homework.status, "DRAFT");
+
+  const parentDraft = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  assert.equal(parentDraft.statusCode, 200);
+  assert.equal(parentDraft.json<{ homework: unknown[] }>().homework.length, 0);
+
+  const studentDraft = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
+  assert.equal(studentDraft.statusCode, 200);
+  assert.equal(studentDraft.json<{ homework: unknown[] }>().homework.length, 0);
+
+  const published = await app.inject({
+    method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/publish`,
+    headers: teacherAuth
+  });
+  assert.equal(published.statusCode, 200);
+
+  const parentPublished = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  assert.equal(parentPublished.json<{ homework: Array<{ homework: { title: string } }> }>().homework[0]?.homework.title, "Read chapter 3");
+
+  const studentPublished = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
+  assert.equal(studentPublished.json<{ homework: Array<{ homework: { title: string } }> }>().homework[0]?.homework.title, "Read chapter 3");
+});
+
+test("draft grades are hidden until admin publishes the complete exam, and unrelated teachers cannot grade", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "LEARN-EXAM");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  async function createTeacher(username: string, employeeCode: string) {
+    const account = await app.inject({
+      method: "POST",
+      url: "/v1/admin/users",
+      headers: admin,
+      payload: { username, role: "TEACHER" }
+    });
+    const body = account.json<{ user: { id: string }; temporaryPassword: string }>();
+    await app.inject({
+      method: "POST",
+      url: "/v1/admin/academics/teachers",
+      headers: admin,
+      payload: { userId: body.user.id, employeeCode, fullName: username }
+    });
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/login",
+      payload: { schoolId, expectedRole: "TEACHER", username, password: body.temporaryPassword }
+    });
+    const changed = await app.inject({
+      method: "POST",
+      url: "/v1/auth/change-temporary-password",
+      headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+      payload: { newPassword: `${employeeCode}Secure2027!` }
+    });
+    return { userId: body.user.id, auth: { authorization: `Bearer ${changed.json<{ accessToken: string }>().accessToken}` } };
+  }
+
+  const year = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: admin,
+    payload: { name: "1407", startDate: "2028-03-21", endDate: "2029-03-20" }
+  });
+  const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: admin });
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: admin,
+    payload: { code: "G5", name: "Grade 5", sortOrder: 5 }
+  });
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "5A", name: "Grade 5 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+  const subject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: admin,
+    payload: { code: "MATH5", name: "Mathematics 5" }
+  });
+  const subjectId = subject.json<{ subject: { id: string } }>().subject.id;
+
+  const assignedTeacher = await createTeacher("teacher.marks", "TMARK");
+  const unrelatedTeacher = await createTeacher("teacher.unrelated", "TOTHER");
+
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: admin,
+    payload: { academicYearId: yearId, classId, subjectId, teacherUserId: assignedTeacher.userId }
+  });
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "marks.parent", fullName: "Marks Parent" }
+  });
+  const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+  const studentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: admin,
+    payload: {
+      parentUserId: parent.user.id,
+      studentCode: "MRK-001",
+      fullName: "Marks Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: { schoolId, expectedRole: "PARENT", username: "marks.parent", password: parent.temporaryPassword }
+  });
+  const parentChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${parentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "MarksParent2028!" }
+  });
+  const parentAuth = { authorization: `Bearer ${parentChanged.json<{ accessToken: string }>().accessToken}` };
+
+  const exam = await app.inject({
+    method: "POST",
+    url: "/v1/admin/exams",
+    headers: admin,
+    payload: { academicYearId: yearId, name: "Midyear", type: "MIDYEAR" }
+  });
+  const examId = exam.json<{ exam: { id: string } }>().exam.id;
+  const examSubject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/exam-subjects",
+    headers: admin,
+    payload: { examId, subjectId, classId, maxScore: 100 }
+  });
+  const examSubjectId = examSubject.json<{ examSubject: { id: string } }>().examSubject.id;
+
+  await app.inject({
+    method: "POST",
+    url: `/v1/admin/exams/${examId}/status`,
+    headers: admin,
+    payload: { status: "SCHEDULED" }
+  });
+  await app.inject({
+    method: "POST",
+    url: `/v1/admin/exams/${examId}/status`,
+    headers: admin,
+    payload: { status: "IN_PROGRESS" }
+  });
+
+  const unrelated = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: unrelatedTeacher.auth
+  });
+  assert.equal(unrelated.statusCode, 400);
+  assert.equal(unrelated.json<{ error: string }>().error, "learning_validation");
+
+  const invalidScore = await app.inject({
+    method: "POST",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth,
+    payload: { entries: [{ studentId, score: 101 }] }
+  });
+  assert.equal(invalidScore.statusCode, 400);
+
+  const save = await app.inject({
+    method: "POST",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth,
+    payload: { entries: [{ studentId, score: 88, remark: "Good work" }] }
+  });
+  assert.equal(save.statusCode, 200);
+
+  const parentDraft = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  assert.equal(parentDraft.statusCode, 200);
+  assert.equal(parentDraft.json<{ results: unknown[] }>().results.length, 0);
+
+  const ready = await app.inject({
+    method: "POST",
+    url: `/v1/admin/exams/${examId}/status`,
+    headers: admin,
+    payload: { status: "RESULTS_READY" }
+  });
+  assert.equal(ready.statusCode, 200);
+
+  const beforePublish = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  assert.equal(beforePublish.json<{ results: unknown[] }>().results.length, 0);
+
+  const publish = await app.inject({
+    method: "POST",
+    url: `/v1/admin/exams/${examId}/publish`,
+    headers: admin
+  });
+  assert.equal(publish.statusCode, 200);
+
+  const parentPublished = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  const results = parentPublished.json<{ results: Array<{ grade: { score: number; status: string } }> }>().results;
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.grade.score, 88);
+  assert.equal(results[0]?.grade.status, "PUBLISHED");
+});
