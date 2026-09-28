@@ -8,7 +8,14 @@ CREATE TYPE "public"."device_platform" AS ENUM('ANDROID', 'IOS');
 --> statement-breakpoint
 CREATE TYPE "public"."push_delivery_status" AS ENUM('PENDING', 'SENT', 'FAILED');
 --> statement-breakpoint
-ALTER TABLE "school_settings" ADD COLUMN "fee_reminder_days" jsonb DEFAULT '[7,1]'::jsonb NOT NULL;
+CREATE TABLE "communication_settings" (
+  "school_id" uuid PRIMARY KEY NOT NULL,
+  "fee_reminder_days" jsonb DEFAULT '[7,1]'::jsonb NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "communication_settings" ADD CONSTRAINT "communication_settings_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE cascade;
 --> statement-breakpoint
 CREATE TABLE "announcements" (
   "id" uuid PRIMARY KEY NOT NULL,

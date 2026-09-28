@@ -13,6 +13,7 @@ import type { FoundationDatabase } from "./client.js";
 import {
   announcements,
   classSections,
+  communicationSettings,
   devices,
   feeInvoices,
   feePayments,
@@ -345,7 +346,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       const [announcementRows, invoiceRows, settings] = await Promise.all([
         db.select().from(announcements).where(eq(announcements.schoolId, schoolId)).orderBy(desc(announcements.publishAt)),
         db.select().from(feeInvoices).where(eq(feeInvoices.schoolId, schoolId)).orderBy(desc(feeInvoices.createdAt)),
-        db.select().from(schoolSettings).where(eq(schoolSettings.schoolId, schoolId)).limit(1)
+        db.select().from(communicationSettings).where(eq(communicationSettings.schoolId, schoolId)).limit(1)
       ]);
       return {
         announcements: announcementRows,
@@ -441,9 +442,15 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
     async updateFeeReminderDays(schoolId, days) {
       const clean = Array.from(new Set(days)).sort((a,b) => b-a);
-      const [updated] = await db.update(schoolSettings).set({ feeReminderDays: clean, updatedAt: new Date() })
-        .where(eq(schoolSettings.schoolId, schoolId)).returning();
-      if (!updated) throw new CommunicationNotFoundError("School settings not found.");
+      const [updated] = await db
+        .insert(communicationSettings)
+        .values({ schoolId, feeReminderDays: clean })
+        .onConflictDoUpdate({
+          target: communicationSettings.schoolId,
+          set: { feeReminderDays: clean, updatedAt: new Date() }
+        })
+        .returning();
+      if (!updated) throw new CommunicationNotFoundError("Communication settings could not be saved.");
       return updated.feeReminderDays;
     },
 
@@ -453,6 +460,12 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let overdueInvoices = 0;
       const schoolRows = await db.select().from(schoolSettings);
       for (const settings of schoolRows) {
+        const [communicationConfig] = await db
+          .select()
+          .from(communicationSettings)
+          .where(eq(communicationSettings.schoolId, settings.schoolId))
+          .limit(1);
+        const reminderDays = communicationConfig?.feeReminderDays ?? [7, 1];
         const today = localDate(now, settings.timezone);
         const dueAnnouncements = await db.select().from(announcements)
           .where(and(eq(announcements.schoolId, settings.schoolId), isNull(announcements.archivedAt), lte(announcements.publishAt, now)));
@@ -475,7 +488,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
             if (updated) invoice = updated;
             overdueInvoices += 1;
           }
-          if (settings.feeReminderDays.includes(daysUntil)) {
+          if (reminderDays.includes(daysUntil)) {
             if (await createNotificationOnce({
               schoolId: settings.schoolId, userId: student.parentUserId, type: "FEE_DUE",
               title: "Fee payment due", message: `${student.fullName} has AFN ${outstanding} due on ${invoice.dueDate}.`,

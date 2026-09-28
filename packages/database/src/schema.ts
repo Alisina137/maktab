@@ -60,7 +60,6 @@ export const schoolSettings = pgTable("school_settings", {
   timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kabul"),
   dateSystem: varchar("date_system", { length: 32 }).notNull().default("solar-hijri"),
   weekStartsOn: integer("week_starts_on").notNull().default(6),
-  feeReminderDays: jsonb("fee_reminder_days").$type<number[]>().notNull().default([7, 1]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
@@ -596,6 +595,18 @@ export const gradeRecords = pgTable(
   ]
 );
 
+export const communicationSettings = pgTable(
+  "communication_settings",
+  {
+    schoolId: uuid("school_id")
+      .primaryKey()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    feeReminderDays: jsonb("fee_reminder_days").$type<number[]>().notNull().default([7, 1]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  }
+);
+
 export const announcements = pgTable(
   "announcements",
   {
@@ -727,6 +738,7 @@ export const databaseSchema = {
   exams,
   examSubjects,
   gradeRecords,
+  communicationSettings,
   announcements,
   feeInvoices,
   feePayments,
@@ -765,3 +777,4 @@ export type FeeInvoice = typeof feeInvoices.$inferSelect;
 export type FeePayment = typeof feePayments.$inferSelect;
 export type Device = typeof devices.$inferSelect;
 export type NotificationPushDelivery = typeof notificationPushDeliveries.$inferSelect;
+export type CommunicationSettings = typeof communicationSettings.$inferSelect;
