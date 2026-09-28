@@ -1107,6 +1107,35 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
 
+  const studentAccount = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentId}/account`,
+    headers: admin,
+    payload: { username: "marks.student" }
+  });
+  assert.equal(studentAccount.statusCode, 201);
+  const studentCredential = studentAccount.json<{ temporaryPassword: string }>();
+
+  const studentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "STUDENT",
+      username: "marks.student",
+      password: studentCredential.temporaryPassword
+    }
+  });
+  assert.equal(studentLogin.statusCode, 200);
+  const studentChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${studentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "MarksStudent2028!" }
+  });
+  assert.equal(studentChanged.statusCode, 200);
+  const studentAuth = { authorization: `Bearer ${studentChanged.json<{ accessToken: string }>().accessToken}` };
+
   const parentLogin = await app.inject({
     method: "POST",
     url: "/v1/auth/login",
@@ -1180,6 +1209,14 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(parentDraft.statusCode, 200);
   assert.equal(parentDraft.json<{ results: unknown[] }>().results.length, 0);
 
+  const studentDraft = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: studentAuth
+  });
+  assert.equal(studentDraft.statusCode, 200);
+  assert.equal(studentDraft.json<{ results: unknown[] }>().results.length, 0);
+
   const ready = await app.inject({
     method: "POST",
     url: `/v1/admin/exams/${examId}/status`,
@@ -1195,6 +1232,13 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(beforePublish.json<{ results: unknown[] }>().results.length, 0);
 
+  const studentBeforePublish = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: studentAuth
+  });
+  assert.equal(studentBeforePublish.json<{ results: unknown[] }>().results.length, 0);
+
   const publish = await app.inject({
     method: "POST",
     url: `/v1/admin/exams/${examId}/publish`,
@@ -1207,8 +1251,49 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/parent/children/${studentId}/learning`,
     headers: parentAuth
   });
-  const results = parentPublished.json<{ results: Array<{ grade: { score: number; status: string } }> }>().results;
+  const results = parentPublished.json<{ results: Array<{ grade: { id: string; score: number; status: string } }> }>().results;
   assert.equal(results.length, 1);
   assert.equal(results[0]?.grade.score, 88);
   assert.equal(results[0]?.grade.status, "PUBLISHED");
+
+  const studentPublished = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: studentAuth
+  });
+  const studentResults = studentPublished.json<{ results: Array<{ grade: { score: number; status: string } }> }>().results;
+  assert.equal(studentResults.length, 1);
+  assert.equal(studentResults[0]?.grade.score, 88);
+  assert.equal(studentResults[0]?.grade.status, "PUBLISHED");
+
+  const resultAlerts = await app.inject({
+    method: "GET",
+    url: "/v1/parent/notifications",
+    headers: parentAuth
+  });
+  assert.ok(
+    resultAlerts
+      .json<{ notifications: Array<{ type: string }> }>()
+      .notifications.some((notification) => notification.type === "RESULTS_PUBLISHED")
+  );
+
+  const corrected = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/grades/${results[0]!.grade.id}/correct`,
+    headers: admin,
+    payload: { score: 91, remark: "Reviewed", reason: "Verified scoring correction" }
+  });
+  assert.equal(corrected.statusCode, 200);
+  assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
+  assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
+
+  const parentCorrected = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/learning`,
+    headers: parentAuth
+  });
+  assert.equal(
+    parentCorrected.json<{ results: Array<{ grade: { score: number } }> }>().results[0]?.grade.score,
+    91
+  );
 });
