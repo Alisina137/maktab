@@ -21,6 +21,9 @@ export type AcademicYearStatus = z.infer<typeof academicYearStatusSchema>;
 export const studentStatusSchema = z.enum(["ACTIVE", "WITHDRAWN"]);
 export type StudentStatus = z.infer<typeof studentStatusSchema>;
 
+export const attendanceStatusSchema = z.enum(["PRESENT", "ABSENT", "LATE", "EXCUSED"]);
+export type AttendanceStatus = z.infer<typeof attendanceStatusSchema>;
+
 export const weekdaySchema = z.enum([
   "SATURDAY",
   "SUNDAY",
@@ -232,3 +235,34 @@ export type TeacherImportRow = z.infer<typeof teacherImportRowSchema>;
 
 export const bulkImportEntitySchema = z.enum(["PARENT", "STUDENT", "TEACHER"]);
 export type BulkImportEntity = z.infer<typeof bulkImportEntitySchema>;
+
+
+export const attendanceEntrySchema = z.object({
+  studentId: z.string().uuid(),
+  status: attendanceStatusSchema,
+  note: z.string().trim().max(240).optional()
+});
+export type AttendanceEntryInput = z.infer<typeof attendanceEntrySchema>;
+
+export const submitDailyAttendanceSchema = z.object({
+  classId: z.string().uuid(),
+  date: isoDateSchema,
+  entries: z.array(attendanceEntrySchema).min(1).max(300)
+});
+export type SubmitDailyAttendanceInput = z.infer<typeof submitDailyAttendanceSchema>;
+
+export const correctAttendanceSchema = z.object({
+  status: attendanceStatusSchema,
+  note: z.string().trim().max(240).optional()
+});
+export type CorrectAttendanceInput = z.infer<typeof correctAttendanceSchema>;
+
+export const attendanceDateRangeSchema = z
+  .object({
+    from: isoDateSchema.optional(),
+    to: isoDateSchema.optional()
+  })
+  .refine((value) => !value.from || !value.to || value.from <= value.to, {
+    message: "Attendance date range is invalid.",
+    path: ["to"]
+  });

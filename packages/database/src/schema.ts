@@ -19,6 +19,9 @@ export const userRoleEnum = pgEnum("user_role", ["SCHOOL_ADMIN", "SCHOOL_STAFF",
 export const userStatusEnum = pgEnum("user_status", ["INVITED", "ACTIVE", "SUSPENDED", "ARCHIVED"]);
 export const academicYearStatusEnum = pgEnum("academic_year_status", ["DRAFT", "ACTIVE", "CLOSED", "ARCHIVED"]);
 export const studentStatusEnum = pgEnum("student_status", ["ACTIVE", "WITHDRAWN"]);
+export const attendanceStatusEnum = pgEnum("attendance_status", ["PRESENT", "ABSENT", "LATE", "EXCUSED"]);
+export const attendanceRecordStatusEnum = pgEnum("attendance_record_status", ["SUBMITTED", "CORRECTED"]);
+export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_status", ["PENDING", "SENT", "FAILED", "CANCELLED"]);
 export const weekdayEnum = pgEnum("weekday", [
   "SATURDAY",
   "SUNDAY",
@@ -383,6 +386,88 @@ export const timetablePeriods = pgTable(
   ]
 );
 
+export const dailyAttendances = pgTable(
+  "daily_attendances",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classSections.id, { onDelete: "restrict" }),
+    date: date("date").notNull(),
+    status: attendanceRecordStatusEnum("status").notNull().default("SUBMITTED"),
+    submittedBy: uuid("submitted_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("daily_attendances_school_class_date_unique").on(table.schoolId, table.classId, table.date),
+    index("daily_attendances_school_date_idx").on(table.schoolId, table.date),
+    index("daily_attendances_class_date_idx").on(table.schoolId, table.classId, table.date)
+  ]
+);
+
+export const studentAttendances = pgTable(
+  "student_attendances",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    attendanceId: uuid("attendance_id")
+      .notNull()
+      .references(() => dailyAttendances.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "restrict" }),
+    status: attendanceStatusEnum("status").notNull(),
+    note: varchar("note", { length: 240 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("student_attendances_attendance_student_unique").on(table.attendanceId, table.studentId),
+    index("student_attendances_student_idx").on(table.schoolId, table.studentId),
+    index("student_attendances_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 64 }).notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    message: text("message").notNull(),
+    deepLink: varchar("deep_link", { length: 240 }),
+    dedupKey: varchar("dedup_key", { length: 180 }).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    deliveryStatus: notificationDeliveryStatusEnum("delivery_status").notNull().default("PENDING"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("notifications_school_dedup_unique").on(table.schoolId, table.dedupKey),
+    index("notifications_user_created_idx").on(table.schoolId, table.userId, table.createdAt)
+  ]
+);
+
 export const databaseSchema = {
   schools,
   schoolSettings,
@@ -399,7 +484,10 @@ export const databaseSchema = {
   teacherProfiles,
   teacherAssignments,
   negaranAssignments,
-  timetablePeriods
+  timetablePeriods,
+  dailyAttendances,
+  studentAttendances,
+  notifications
 };
 
 export type School = typeof schools.$inferSelect;
@@ -418,3 +506,7 @@ export type TeacherProfile = typeof teacherProfiles.$inferSelect;
 export type TeacherAssignment = typeof teacherAssignments.$inferSelect;
 export type NegaranAssignment = typeof negaranAssignments.$inferSelect;
 export type TimetablePeriod = typeof timetablePeriods.$inferSelect;
+
+export type DailyAttendance = typeof dailyAttendances.$inferSelect;
+export type StudentAttendance = typeof studentAttendances.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
