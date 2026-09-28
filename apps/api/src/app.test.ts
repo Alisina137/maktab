@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import {
   createAcademicStore,
   createAccountStore,
+  createFamilyStore,
   createSchoolStore,
   databaseSchema,
   type FoundationDatabase
@@ -19,7 +20,8 @@ async function createTestApp() {
   for (const file of [
     "0000_phase1_foundation.sql",
     "0001_phase2_auth_accounts.sql",
-    "0002_phase3_academic_structure.sql"
+    "0002_phase3_academic_structure.sql",
+    "0003_phase4_student_family.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -33,6 +35,7 @@ async function createTestApp() {
     schoolStore: createSchoolStore(db),
     accountStore: createAccountStore(db),
     academicStore: createAcademicStore(db),
+    familyStore: createFamilyStore(db),
     provisioningKey
   });
   return { app, client };
@@ -339,4 +342,102 @@ test("public school search returns active minimal school records", async (t) => 
   const body = response.json<{ schools: Array<{ code: string; name: string }> }>();
   assert.equal(body.schools.length, 1);
   assert.equal(body.schools[0]?.code, "SEARCH");
+});
+
+
+test("parent account can own three students and sees all three through one login", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "FAMILY");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: auth });
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G7", name: "Grade 7", sortOrder: 7 }
+  });
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "7A", name: "Grade 7 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "family.parent", fullName: "Family Parent", phone: "0700000000" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parent = parentResponse.json<{
+    user: { id: string };
+    temporaryPassword: string;
+  }>();
+
+  for (let index = 1; index <= 3; index += 1) {
+    const student = await app.inject({
+      method: "POST",
+      url: "/v1/admin/families/students",
+      headers: auth,
+      payload: {
+        parentUserId: parent.user.id,
+        studentCode: `S-00${index}`,
+        fullName: `Student ${index}`,
+        academicYearId: yearId,
+        classId
+      }
+    });
+    assert.equal(student.statusCode, 201);
+  }
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "family.parent",
+      password: parent.temporaryPassword
+    }
+  });
+  assert.equal(login.statusCode, 200);
+  const loginBody = login.json<{ accessToken: string }>();
+
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${loginBody.accessToken}` },
+    payload: { newPassword: "ParentSecure2026!" }
+  });
+  assert.equal(changed.statusCode, 200);
+  const parentAccess = changed.json<{ accessToken: string }>().accessToken;
+
+  const home = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${parentAccess}` }
+  });
+  assert.equal(home.statusCode, 200);
+  const body = home.json<{ children: Array<{ student: { studentCode: string } }> }>();
+  assert.equal(body.children.length, 3);
+  assert.deepEqual(body.children.map((item) => item.student.studentCode), ["S-001", "S-002", "S-003"]);
 });
