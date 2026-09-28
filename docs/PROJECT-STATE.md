@@ -14,96 +14,97 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 
 - School controls school-user identities.
 - Role selection is UX only; backend role is authoritative.
-- Every operational/account/academic/family/attendance/learning/communication/fee operation is school-scoped.
+- Every school-owned operational query/mutation remains tenant-scoped.
 - Parent sees only linked children; student sees only their own linked record.
 - Negaran remains an assignment rather than a role.
-- Announcements always have an explicit SCHOOL, CLASS, or ROLE audience.
-- Announcement reads require both same-school membership and audience match.
-- Negaran announcement capability is limited to the actively supervised class.
-- Fee collection remains manual in the MVP; MaktabLink records rather than processes payment.
-- Fee PAYMENT records are immutable; corrections use separate reasoned REVERSAL transactions.
-- Sensitive finance/announcement operations are audited.
-- Scheduled notification materialization is idempotent.
-- Push-provider failure cannot undo the underlying school action.
+- Draft academic results remain hidden until publication.
+- Announcements always have explicit audience scope.
+- Fee payments are immutable ledger records; corrections use separate reversals.
+- Scheduled notifications/reminders must be idempotent.
+- Push failure must never undo the underlying school action.
+- Subscription entitlements apply to the school rather than individual users.
+- SUSPENDED/CANCELLED schools retain data; operational writes are disabled.
 - Cross-school access is prohibited.
 
 ## Current phase
 
-**Phase 7 — Communication & Fees — complete and CI verified**
+**Phase 8 — Pilot Release Readiness — complete and CI verified**
 
 ### Implemented outcomes
 
-- migration `0007_phase7_communication_fees.sql`
-- independent `communication_settings` with configurable fee reminder days
-- SCHOOL / CLASS / ROLE announcement scopes
-- explicit class/role audience validation
-- admin immediate/future announcement publishing
-- announcement archive
-- active-Negaran class announcement endpoint
-- audience-filtered Parent/Teacher/Student announcement feeds
-- class-announcement recipient isolation
-- fee DRAFT / ISSUED / PARTIALLY_PAID / PAID / OVERDUE / CANCELLED lifecycle
-- whole-AFN manual fee invoices
-- parent linked-child fee visibility
-- linked Student own-fee visibility
-- immutable PAYMENT ledger rows
-- separate reason-required REVERSAL ledger rows
-- duplicate reversal rejection
-- fee billed/paid/outstanding derivation
-- configurable due reminders
-- idempotent fee due/overdue reminder creation
-- scheduled announcement materialization
-- unified read/unread notification API
-- mobile device/push-token registration
-- per-notification/per-device push delivery records
-- Expo Push Service adapter
-- failed push retry state
-- push failure isolation from business records
-- protected communication/reminder/push job endpoint
-- Phase 7 admin announcement/fee workspace
-- Phase 7 Parent/Teacher/Student mobile communication UI
-- best-effort mobile push registration
-- Dari/Pashto/English Phase 7 labels
+- migration `0008_phase8_pilot_readiness.sql`
+- explicit school subscription records and lifecycle
+- TRIAL / ACTIVE / PAST_DUE / GRACE / SUSPENDED / CANCELLED states
+- configurable plan code, billing cycle, AFN price, setup fee and lifecycle dates
+- existing-school subscription backfill
+- default PILOT subscription for newly provisioned schools
+- central operational-write blocking for suspended/cancelled schools
+- clear service-unavailable behavior for Parent/Teacher/Student when school service is suspended
+- school-admin billing/export/readiness access retained during suspension
+- protected pilot onboarding route without direct database manipulation
+- initial school + settings + subscription + admin + temporary credential creation
+- pilot readiness checklist API
+- downloadable Parent/Student/Teacher CSV import templates
+- school-scoped safe JSON export excluding password/session secrets
+- paginated school audit review
+- Phase 8 pilot-readiness admin workspace
+- low-bandwidth authenticated GET caching on mobile
+- seven-day bounded cached-read fallback for transport failures
+- authorization/subscription failures never replaced by cached data
+- no offline replay of writes
+- improved mobile/web accessibility semantics and minimum touch targets
+- reduced-motion support
+- live error/success announcements
+- production `/health`, `/ready`, and `/metrics` endpoints
+- low-cardinality Prometheus metrics
+- structured production request/error logging
+- protected platform health summary
+- idempotent subscription expiry reminders
+- encrypted PostgreSQL backup tooling using AES-256-GCM
+- streamed restore tooling with explicit restore confirmation
+- admin guide
+- pilot runbook
+- pilot test matrix
+- backup/restore runbook
+- production operations runbook
 
 ## Verification
 
-GitHub Actions CI passed on the complete Phase 7 implementation commit:
+GitHub Actions CI passed on the final Phase 8 repository head:
 
 ```text
-5e4c041decedac3a2087683e2157f57e52ad6efc
+04be061b3ad3d4943998ece37a03c2b226f234f9
 ```
 
-Verified by CI:
+Verified by CI across the Phase 8 implementation history and final head:
 
-- dependency installation, including Expo notification/device packages
+- dependency installation
 - monorepo TypeScript typecheck
-- Phase 1–7 database/API tests
-- intended-class announcement visibility
-- unrelated-class announcement isolation
-- class-notification audience isolation
-- historical/ended Negaran assignments excluded from current class communication
-- partial payment and outstanding-balance behavior
-- immutable payment reversal
-- duplicate reversal rejection
-- parent linked-child fee visibility
-- scheduled fee reminder idempotency
-- push provider failure handling
-- persistence of announcement/fee data after push failure
-- existing tenant/auth/academic/family/attendance/learning regressions
+- Phase 1–8 database/API tests
+- pilot onboarding without direct database manipulation
+- school subscription suspension behavior
+- school-admin retained readiness/export access during suspension
+- subscription lifecycle/reminder behavior
+- idempotent subscription reminders
+- Phase 7 reminder/push regressions
+- tenant/auth/academic/family/attendance/learning/communication regressions
+- readiness/observability code
 - Next.js production build
 - Expo Android production export
+- Phase 8 documentation/runbooks
 
 ## Local database status
 
-Phase 7 is **not yet locally migrated/verified** in this conversation.
+Phase 8 has **not yet been locally migrated/verified** in this conversation.
 
-Pending migration:
+Pending migrations on a local environment that has not yet applied Phase 7:
 
 ```text
 0007_phase7_communication_fees.sql
+0008_phase8_pilot_readiness.sql
 ```
 
-After pulling the final Phase 7 source:
+After pulling:
 
 ```powershell
 pnpm install
@@ -111,53 +112,127 @@ pnpm db:migrate
 pnpm verify
 ```
 
-The new mobile dependencies make `pnpm install` required before verification.
+Drizzle applies only migrations that are not already recorded.
 
-## Push deployment status
+## Pilot onboarding
 
-Code/configuration for device registration and Expo push delivery is implemented and CI-build verified.
+Protected platform endpoint:
 
-Actual remote-push delivery to the user's Android device is not claimed as verified yet.
+```text
+POST /v1/platform/pilot/onboard
+```
 
-For real remote push:
+It provisions the pilot school, school settings, subscription, initial school admin, temporary credential, and audit event without direct SQL/database editing.
 
-- configure an EAS project ID / push credentials
-- use an Expo development or production build
-- Expo Go on Android cannot perform remote push notification testing
+School-admin readiness endpoints:
 
-The mobile app remains functional if push setup is absent because registration is best-effort.
+```text
+GET /v1/admin/pilot/readiness
+GET /v1/admin/pilot/export
+GET /v1/admin/pilot/import-template/:entityType
+GET /v1/admin/audit
+GET /v1/admin/subscription
+```
 
-## Scheduled-job deployment status
+## Subscription behavior
 
-Phase 7 implements the protected idempotent job endpoint:
+Suggested product lifecycle is implemented:
+
+```text
+TRIAL
+→ ACTIVE
+→ PAST_DUE
+→ GRACE
+→ SUSPENDED
+→ CANCELLED
+```
+
+Reactivation is supported from non-cancelled service states according to platform controls.
+
+During SUSPENDED/CANCELLED service:
+
+- school operational writes are centrally blocked
+- Parent/Teacher/Student service access returns a clear unavailable state
+- school admin retains subscription/readiness/audit/export access
+- school data remains stored
+
+## Observability
+
+Available API surfaces:
+
+```text
+GET /health
+GET /ready
+GET /metrics
+GET /v1/platform/health/summary
+```
+
+`/ready` verifies database connectivity. `/metrics` exposes low-cardinality Prometheus text metrics without tenant/student identifiers.
+
+External metrics scraping, alerting, error tracking, and log aggregation are deployment integrations and are not claimed as configured.
+
+## Backups
+
+Repository tooling:
+
+```powershell
+pnpm backup:db
+pnpm restore:db -- backups/<backup>.mlbk
+```
+
+Required backup secret:
+
+```text
+BACKUP_ENCRYPTION_KEY
+```
+
+Backup creation also requires PostgreSQL client tooling (`pg_dump`) on PATH. Restore requires `pg_restore` and:
+
+```text
+CONFIRM_RESTORE=YES
+```
+
+The scripts stream encrypted data and do not intentionally write plaintext database dumps to disk.
+
+A real production backup/restore has not yet been performed in this conversation.
+
+## Scheduled jobs
+
+Phase 7 communication/reminder job:
 
 ```text
 POST /v1/platform/jobs/communication/run
 ```
 
-A production scheduler/cron still needs to invoke that endpoint on the deployment platform. The job infrastructure itself is an operational deployment concern and is not silently simulated by the API process.
+Phase 8 subscription job:
 
-## Phase 7 boundary
+```text
+POST /v1/platform/jobs/subscriptions/run
+```
 
-Implemented now:
+Both require the platform provisioning credential and must be invoked by a deployment scheduler/cron.
 
-- scoped announcements
-- Negaran class communication
-- basic manual fees
-- fee payment/reversal history
-- reminder jobs
-- in-app notifications
-- Expo push transport plumbing
+## Manual pilot checks still required
 
-Not included:
+CI cannot prove these real-world deployment checks:
 
-- online fee collection
-- payment gateway integration
-- unrestricted teacher announcements
-- Phase 8 production/pilot operational hardening
+- real Android push delivery with EAS credentials
+- production cron/scheduler invocation
+- real encrypted backup + restore rehearsal
+- external monitoring/log aggregation connection
+- screen-reader and large-text device smoke testing
+- final real-school pilot onboarding/training
 
-## Next phase
+These steps are documented in:
 
-**Phase 8 — Pilot Readiness**, when explicitly requested.
+- `docs/PILOT-RUNBOOK.md`
+- `docs/PILOT-TEST-MATRIX.md`
+- `docs/BACKUP-RESTORE.md`
+- `docs/PRODUCTION-OPERATIONS.md`
+- `docs/ADMIN-GUIDE.md`
 
-Phase 8 includes imports/pilot onboarding hardening, audit review, accessibility, error states, low-bandwidth optimization, backups, production observability, subscription controls, and admin documentation according to the Product Specification.
+## Roadmap status
+
+All eight implementation phases are now represented in the repository.
+
+Phase 8 is the final planned implementation phase from Product Specification V1. The remaining work is deployment and real pilot validation rather than a Phase 9 product implementation.
