@@ -878,7 +878,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        ))}
+        )}
 
         {screen === "home" && session?.user.role === "STUDENT" && (
           <View style={styles.section}>
@@ -893,7 +893,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        ))}
+        )}
 
         {screen === "teacher-attendance" && session?.user.role === "TEACHER" && attendanceSheet && (
           <View style={styles.section}>
@@ -983,7 +983,7 @@ function AppContent() {
               />
             )}
           </View>
-        ))}
+        )}
 
         {notice ? (
           <View style={styles.successNotice}>
