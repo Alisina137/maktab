@@ -17,11 +17,13 @@ import {
   safeUser
 } from "./session.js";
 
-function subscriptionUnavailable(context: AuthenticatedSessionContext) {
+function subscriptionUnavailable(context: Pick<AuthenticatedSessionContext, "subscription">) {
   return context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED";
 }
 
-function endUserBlockedBySubscription(context: AuthenticatedSessionContext) {
+function endUserBlockedBySubscription(
+  context: Pick<AuthenticatedSessionContext, "user" | "subscription">
+) {
   return context.user.role !== "SCHOOL_ADMIN" && subscriptionUnavailable(context);
 }
 
