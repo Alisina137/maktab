@@ -32,7 +32,7 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 
 ## Current phase
 
-**Phase 1 — Product Foundation**
+**Phase 1 — Product Foundation — complete and verified**
 
 ### Implemented outcomes
 
@@ -45,26 +45,38 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 - shared design tokens
 - web foundation shell
 - mobile foundation shell
-- tenant isolation test
+- tenant isolation integration test
 - API tests
 - CI workflow
 
 ## Verification status
 
-- Local dependency installation/build is unavailable in the implementation environment because npm registry access timed out.
-- CI is configured to run install, typecheck, test, and build on GitHub.
-- Final phase status must be updated after GitHub CI completes.
+GitHub Actions CI passed for Phase 1 source commit `b55a639b5767309458c6cf799840c7044592f549` on 2026-09-28.
+
+Verified successfully:
+
+- dependency installation
+- full TypeScript typecheck
+- automated test suite
+- tenant-isolation integration test
+- API tests
+- production build of all workspace projects
+
+The tenant-isolation test creates two schools, changes School A settings, and verifies School B remains unchanged.
 
 ## Known issues / external requirements
 
-- A real Neon/PostgreSQL `DATABASE_URL` is required before applying the production/development migration.
+- A real Neon/PostgreSQL `DATABASE_URL` is required before applying the migration to a persistent development/production database.
 - `PLATFORM_PROVISIONING_KEY` must be configured as a strong secret before starting the API.
-- No real school data should be entered until authentication and account controls are implemented in later phases.
+- No real school user data should be entered until authentication and account controls are implemented in Phase 2.
+- The platform provisioning key is Phase 1 bootstrap infrastructure and must not become a normal end-user authentication mechanism.
 
 ## Latest source baseline
 
-Phase 1 foundation implementation.
+Phase 1 foundation implementation, verified on commit `b55a639b5767309458c6cf799840c7044592f549`, followed by this project-state documentation update.
 
 ## Next approved phase
 
-Phase 2 — Authentication & School Accounts, after Phase 1 verification is complete.
+**Phase 2 — Authentication & School Accounts**
+
+Phase 2 may begin once the user requests it.
