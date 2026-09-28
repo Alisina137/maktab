@@ -8,6 +8,7 @@ import {
   createAccountStore,
   createAttendanceStore,
   createFamilyStore,
+  createLearningStore,
   createSchoolStore,
   databaseSchema,
   type FoundationDatabase
@@ -24,7 +25,8 @@ async function createTestApp() {
     "0002_phase3_academic_structure.sql",
     "0003_phase4_student_family.sql",
     "0004_phase4_parent_profile_backfill.sql",
-    "0005_phase5_attendance.sql"
+    "0005_phase5_attendance.sql",
+    "0006_phase6_learning.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -40,6 +42,7 @@ async function createTestApp() {
     academicStore: createAcademicStore(db),
     familyStore: createFamilyStore(db),
     attendanceStore: createAttendanceStore(db),
+    learningStore: createLearningStore(db),
     provisioningKey
   });
   return { app, client };
@@ -129,7 +132,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: { username: "legacy.parent", role: "PARENT" }
   });
   assert.equal(genericParent.statusCode, 400);
-  assert.equal(genericParent.json<{ error: string }>().error, "parent_family_workflow_required");
+  assert.equal(genericParent.json<{ error: string }>().error, "family_workflow_required");
 
   const createParent = await app.inject({
     method: "POST",

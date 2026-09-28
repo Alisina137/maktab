@@ -561,7 +561,21 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           }
         }
       });
-      return this.getGradeSheet(schoolId, teacherUserId, examSubjectId);
+      const refreshed = await requireTeacherExamSubject(schoolId, teacherUserId, examSubjectId);
+      const refreshedStudents = await classStudents(schoolId, refreshed.examSubject.classId, refreshed.exam.academicYearId);
+      const refreshedGrades = await db
+        .select()
+        .from(gradeRecords)
+        .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.examSubjectId, examSubjectId)));
+      const refreshedByStudent = new Map(refreshedGrades.map((grade) => [grade.studentId, grade]));
+      return {
+        examSubject: refreshed.examSubject,
+        exam: refreshed.exam,
+        classSection: { id: refreshed.classSection.id, name: refreshed.classSection.name, code: refreshed.classSection.code },
+        subject: { id: refreshed.subject.id, name: refreshed.subject.name, code: refreshed.subject.code },
+        students: refreshedStudents.map((student) => ({ student, grade: refreshedByStudent.get(student.id) ?? null })),
+        canEdit: refreshed.exam.status === "IN_PROGRESS"
+      };
     },
 
     async getParentAcademicView(schoolId, parentUserId, studentId) {
@@ -715,22 +729,19 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         throw new LearningConflictError("Exam results can be published only from RESULTS_READY.");
       }
       const publishedAt = new Date();
+      const subjectIds = (
+        await db
+          .select({ id: examSubjects.id })
+          .from(examSubjects)
+          .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)))
+      ).map((item) => item.id);
+      if (subjectIds.length === 0) throw new LearningConflictError("Exam has no subjects to publish.");
+
       const result = await db.transaction(async (tx) => {
         await tx
           .update(gradeRecords)
           .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })
-          .where(
-            and(
-              eq(gradeRecords.schoolId, schoolId),
-              inArray(
-                gradeRecords.examSubjectId,
-                tx
-                  .select({ id: examSubjects.id })
-                  .from(examSubjects)
-                  .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)))
-              )
-            )
-          );
+          .where(and(eq(gradeRecords.schoolId, schoolId), inArray(gradeRecords.examSubjectId, subjectIds)));
         const [published] = await tx
           .update(exams)
           .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })

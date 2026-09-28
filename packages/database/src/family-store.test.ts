@@ -19,7 +19,9 @@ async function createTestDatabase() {
     "0001_phase2_auth_accounts.sql",
     "0002_phase3_academic_structure.sql",
     "0003_phase4_student_family.sql",
-    "0004_phase4_parent_profile_backfill.sql"
+    "0004_phase4_parent_profile_backfill.sql",
+    "0005_phase5_attendance.sql",
+    "0006_phase6_learning.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));

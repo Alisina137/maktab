@@ -6,6 +6,7 @@ import {
   createAttendanceStore,
   createDatabaseClient,
   createFamilyStore,
+  createLearningStore,
   createSchoolStore
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
@@ -34,6 +35,7 @@ const app = buildApp({
   academicStore: createAcademicStore(database.db),
   familyStore: createFamilyStore(database.db),
   attendanceStore: createAttendanceStore(database.db),
+  learningStore: createLearningStore(database.db),
   provisioningKey,
   webOrigin
 });

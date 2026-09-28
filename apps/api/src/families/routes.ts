@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   bulkImportEntitySchema,
   createParentAccountSchema,
+  createStudentAccountSchema,
   createStudentSchema,
   teacherImportRowSchema,
   updateStudentSchema,
@@ -99,6 +100,39 @@ export function registerFamilyRoutes(
       return sendFamilyError(reply, error);
     }
   });
+
+  app.post<{ Params: { studentId: string } }>(
+    "/v1/admin/families/students/:studentId/account",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = createStudentAccountSchema.parse(request.body);
+        const temporaryPassword = generateTemporaryPassword();
+        const passwordHash = await hashPassword(temporaryPassword);
+        const created = await families.createStudentAccount(
+          context.user.schoolId,
+          request.params.studentId,
+          { username: input.username, passwordHash }
+        );
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "student.account_created",
+          entityType: "student",
+          entityId: created.student.id,
+          metadata: { userId: created.user.id, username: created.user.username }
+        });
+        return reply.code(201).send({
+          user: safeUser(created.user),
+          student: created.student,
+          temporaryPassword
+        });
+      } catch (error) {
+        return sendFamilyError(reply, error);
+      }
+    }
+  );
 
   app.post("/v1/admin/families/students", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
