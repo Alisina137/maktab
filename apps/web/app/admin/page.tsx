@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { AcademicPanel } from "./academic-panel";
+import { AttendancePanel } from "./attendance-panel";
 import { FamilyPanel } from "./family-panel";
 
 type School = {
@@ -224,7 +225,7 @@ export default function AdminPage() {
         <div>
           <span className="eyebrow">School Admin</span>
           <h1 className="admin-title">School administration</h1>
-          <p className="admin-copy">Manage school accounts, academic structure, students, families, and validated onboarding from one workspace.</p>
+          <p className="admin-copy">Manage school accounts, academic structure, students, families, daily attendance, and validated onboarding from one workspace.</p>
         </div>
         <button className="admin-secondary" onClick={() => { setSession(null); setUsers([]); setCredential(null); }}>Sign out</button>
       </div>
@@ -292,6 +293,7 @@ export default function AdminPage() {
         </article>
       </section>
 
+      <AttendancePanel accessToken={session.accessToken} />
       <FamilyPanel accessToken={session.accessToken} />
       <AcademicPanel accessToken={session.accessToken} />
     </main>

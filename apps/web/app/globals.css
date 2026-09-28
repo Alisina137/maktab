@@ -551,3 +551,91 @@ footer {
     display: none !important;
   }
 }
+
+
+.attendance-section {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.attendance-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.attendance-filter label,
+.attendance-report-row label {
+  display: grid;
+  gap: 7px;
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.attendance-filter input,
+.attendance-filter select,
+.attendance-report-row input,
+.attendance-report-row select {
+  min-height: 44px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 11px;
+  background: white;
+  color: var(--ml-color-text);
+  padding: 0 11px;
+}
+
+.attendance-summary-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.attendance-report-list {
+  display: grid;
+  gap: 10px;
+}
+
+.attendance-report-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(130px, 0.55fr) minmax(180px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px 0;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.attendance-record-main {
+  display: grid;
+  gap: 4px;
+  align-self: center;
+}
+
+.attendance-record-main strong {
+  color: var(--ml-color-text);
+}
+
+.attendance-record-main span {
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .attendance-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendance-filter,
+  .attendance-report-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .attendance-summary-grid,
+  .attendance-filter,
+  .attendance-report-row {
+    grid-template-columns: 1fr;
+  }
+}

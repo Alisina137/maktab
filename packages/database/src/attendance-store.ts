@@ -115,6 +115,7 @@ export interface AttendanceReport {
     excused: number;
     totalMarks: number;
     submittedClasses: number;
+    pendingClasses: number;
   };
   rows: AttendanceReportRow[];
 }
@@ -764,6 +765,28 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         .orderBy(desc(dailyAttendances.date), asc(classSections.name), asc(students.fullName));
 
       const attendanceIds = new Set(rows.map((row) => row.attendanceId));
+      let pendingClasses = 0;
+      if (from === to) {
+        const activeClasses = await db
+          .select({ id: classSections.id })
+          .from(classSections)
+          .innerJoin(
+            academicYears,
+            and(
+              eq(academicYears.id, classSections.academicYearId),
+              eq(academicYears.schoolId, classSections.schoolId),
+              eq(academicYears.status, "ACTIVE")
+            )
+          )
+          .where(
+            classId
+              ? and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId))
+              : eq(classSections.schoolId, schoolId)
+          );
+        const submittedClassIds = new Set(rows.map((row) => row.classId));
+        pendingClasses = activeClasses.filter((item) => !submittedClassIds.has(item.id)).length;
+      }
+
       return {
         from,
         to,
@@ -773,7 +796,8 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
           late: rows.filter((row) => row.status === "LATE").length,
           excused: rows.filter((row) => row.status === "EXCUSED").length,
           totalMarks: rows.length,
-          submittedClasses: attendanceIds.size
+          submittedClasses: attendanceIds.size,
+          pendingClasses
         },
         rows
       };
