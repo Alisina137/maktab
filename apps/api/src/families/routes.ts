@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   bulkImportEntitySchema,
   createParentAccountSchema,
-  createSchoolUserSchema,
   createStudentSchema,
   teacherImportRowSchema,
   updateStudentSchema,

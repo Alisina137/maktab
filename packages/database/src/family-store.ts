@@ -87,6 +87,8 @@ export class FamilyValidationError extends Error {
   }
 }
 
+type FamilyTransaction = Parameters<Parameters<FoundationDatabase["transaction"]>[0]>[0];
+
 export class FamilyNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -148,7 +150,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
   }
 
   async function insertStudent(
-    tx: FoundationDatabase,
+    tx: FamilyTransaction,
     schoolId: string,
     input: CreateStudentInput
   ): Promise<Student> {
@@ -261,7 +263,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
     async createStudent(schoolId, input) {
       try {
-        return await db.transaction((tx) => insertStudent(tx as FoundationDatabase, schoolId, input));
+        return await db.transaction((tx) => insertStudent(tx, schoolId, input));
       } catch (error) {
         if (isUniqueError(error)) throw new FamilyConflictError("That student code already exists in this school.");
         throw error;
@@ -379,7 +381,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       try {
         return await db.transaction(async (tx) => {
           const created: Student[] = [];
-          for (const row of rows) created.push(await insertStudent(tx as FoundationDatabase, schoolId, row));
+          for (const row of rows) created.push(await insertStudent(tx, schoolId, row));
           return created;
         });
       } catch (error) {
