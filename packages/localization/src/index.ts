@@ -76,7 +76,47 @@ export type TranslationKey =
   | "notifications.title"
   | "notifications.absent"
   | "notifications.late"
-  | "notifications.empty";
+  | "notifications.empty"
+  | "notifications.homework"
+  | "notifications.results"
+  | "student.homeTitle"
+  | "student.homeSubtitle"
+  | "learning.homework"
+  | "learning.homeworkHint"
+  | "learning.assignments"
+  | "learning.createHomework"
+  | "learning.editHomework"
+  | "learning.homeworkTitle"
+  | "learning.instructions"
+  | "learning.dueDate"
+  | "learning.dueTime"
+  | "learning.attachmentUrl"
+  | "learning.saveDraft"
+  | "learning.edit"
+  | "learning.publish"
+  | "learning.close"
+  | "learning.archive"
+  | "learning.due"
+  | "learning.noAssignments"
+  | "learning.noHomework"
+  | "learning.completeHomework"
+  | "learning.homeworkSaved"
+  | "learning.homeworkPublished"
+  | "learning.homeworkUpdated"
+  | "learning.marks"
+  | "learning.marksHint"
+  | "learning.maxScore"
+  | "learning.score"
+  | "learning.remark"
+  | "learning.saveMarks"
+  | "learning.noExamSubjects"
+  | "learning.validScores"
+  | "learning.marksSaved"
+  | "learning.marksReadOnly"
+  | "learning.publishedHomework"
+  | "learning.publishedResults"
+  | "learning.noPublishedHomework"
+  | "learning.noPublishedResults";
 
 const en: Record<TranslationKey, string> = {
   "app.name": "MaktabLink",
@@ -148,10 +188,50 @@ const en: Record<TranslationKey, string> = {
   "attendance.saved": "Attendance saved.",
   "attendance.noChanges": "Attendance was already submitted with these states.",
   "attendance.locked": "This attendance day is locked. A school administrator can make a correction.",
-  "notifications.title": "Attendance alerts",
+  "notifications.title": "Notifications",
   "notifications.absent": "Absence alert",
   "notifications.late": "Late arrival alert",
   "notifications.empty": "No attendance alerts.",
+  "notifications.homework": "New homework",
+  "notifications.results": "Results published",
+  "student.homeTitle": "Student home",
+  "student.homeSubtitle": "Your published homework and results from this school.",
+  "learning.homework": "Homework",
+  "learning.homeworkHint": "Create work only for your active subject and class assignments.",
+  "learning.assignments": "Teaching assignments",
+  "learning.createHomework": "Create homework",
+  "learning.editHomework": "Edit draft homework",
+  "learning.homeworkTitle": "Homework title",
+  "learning.instructions": "Instructions",
+  "learning.dueDate": "Due date · YYYY-MM-DD",
+  "learning.dueTime": "Time · HH:mm",
+  "learning.attachmentUrl": "Optional attachment URL",
+  "learning.saveDraft": "Save draft",
+  "learning.edit": "Edit",
+  "learning.publish": "Publish",
+  "learning.close": "Close",
+  "learning.archive": "Archive",
+  "learning.due": "Due",
+  "learning.noAssignments": "No active subject/class assignments.",
+  "learning.noHomework": "No homework created yet.",
+  "learning.completeHomework": "Complete the assignment, title, instructions, due date and time.",
+  "learning.homeworkSaved": "Homework draft saved.",
+  "learning.homeworkPublished": "Homework published to the class.",
+  "learning.homeworkUpdated": "Homework status updated.",
+  "learning.marks": "Marks",
+  "learning.marksHint": "Enter draft marks only for your assigned subjects and classes.",
+  "learning.maxScore": "Max",
+  "learning.score": "Score",
+  "learning.remark": "Optional remark",
+  "learning.saveMarks": "Save draft marks",
+  "learning.noExamSubjects": "No exam subjects are currently open for mark entry.",
+  "learning.validScores": "Enter at least one whole-number score.",
+  "learning.marksSaved": "Draft marks saved. Parents and students still cannot see them.",
+  "learning.marksReadOnly": "This exam is no longer open for teacher mark entry.",
+  "learning.publishedHomework": "Published homework",
+  "learning.publishedResults": "Published results",
+  "learning.noPublishedHomework": "No published homework for this student.",
+  "learning.noPublishedResults": "No published results for this student.",
   "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
 };
 
@@ -225,10 +305,50 @@ const dari: Record<TranslationKey, string> = {
   "attendance.saved": "حاضری ذخیره شد.",
   "attendance.noChanges": "حاضری قبلاً با همین وضعیت‌ها ثبت شده است.",
   "attendance.locked": "حاضری این روز قفل شده است. مدیر مکتب می‌تواند آن را اصلاح کند.",
-  "notifications.title": "هشدارهای حاضری",
+  "notifications.title": "اعلان‌ها",
   "notifications.absent": "هشدار غیابت",
   "notifications.late": "هشدار ناوقت رسیدن",
   "notifications.empty": "هشدار حاضری وجود ندارد.",
+  "notifications.homework": "وظیفه جدید",
+  "notifications.results": "نتایج نشر شد",
+  "student.homeTitle": "خانه شاگرد",
+  "student.homeSubtitle": "وظایف و نتایج نشرشده شما در این مکتب.",
+  "learning.homework": "وظیفه",
+  "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
+  "learning.assignments": "تکالیف تدریس",
+  "learning.createHomework": "ایجاد وظیفه",
+  "learning.editHomework": "ویرایش وظیفه پیش‌نویس",
+  "learning.homeworkTitle": "عنوان وظیفه",
+  "learning.instructions": "دستورالعمل",
+  "learning.dueDate": "تاریخ تحویل · YYYY-MM-DD",
+  "learning.dueTime": "زمان · HH:mm",
+  "learning.attachmentUrl": "لینک اختیاری ضمیمه",
+  "learning.saveDraft": "ذخیره پیش‌نویس",
+  "learning.edit": "ویرایش",
+  "learning.publish": "نشر",
+  "learning.close": "بستن",
+  "learning.archive": "آرشیف",
+  "learning.due": "موعد",
+  "learning.noAssignments": "هیچ مضمون/صنف فعال به شما سپرده نشده است.",
+  "learning.noHomework": "هنوز وظیفه‌ای ساخته نشده است.",
+  "learning.completeHomework": "مضمون، عنوان، دستورالعمل، تاریخ و زمان تحویل را تکمیل کنید.",
+  "learning.homeworkSaved": "پیش‌نویس وظیفه ذخیره شد.",
+  "learning.homeworkPublished": "وظیفه برای صنف نشر شد.",
+  "learning.homeworkUpdated": "وضعیت وظیفه به‌روزرسانی شد.",
+  "learning.marks": "نمرات",
+  "learning.marksHint": "فقط برای مضمون‌ها و صنف‌های سپرده‌شده نمرات پیش‌نویس وارد کنید.",
+  "learning.maxScore": "حداکثر",
+  "learning.score": "نمره",
+  "learning.remark": "ملاحظه اختیاری",
+  "learning.saveMarks": "ذخیره نمرات پیش‌نویس",
+  "learning.noExamSubjects": "فعلاً هیچ مضمون امتحانی برای درج نمره باز نیست.",
+  "learning.validScores": "حداقل یک نمره عدد صحیح وارد کنید.",
+  "learning.marksSaved": "نمرات پیش‌نویس ذخیره شد. والدین و شاگردان هنوز آن را نمی‌بینند.",
+  "learning.marksReadOnly": "این امتحان دیگر برای درج نمره توسط استاد باز نیست.",
+  "learning.publishedHomework": "وظایف نشرشده",
+  "learning.publishedResults": "نتایج نشرشده",
+  "learning.noPublishedHomework": "برای این شاگرد وظیفه نشرشده‌ای نیست.",
+  "learning.noPublishedResults": "برای این شاگرد نتیجه نشرشده‌ای نیست.",
   "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
 };
 
@@ -302,10 +422,50 @@ const pashto: Record<TranslationKey, string> = {
   "attendance.saved": "حاضري خوندي شوه.",
   "attendance.noChanges": "حاضري مخکې له همدې حالتونو سره ثبت شوې ده.",
   "attendance.locked": "د دې ورځې حاضري تړل شوې ده. د ښوونځي مدیر یې اصلاح کولی شي.",
-  "notifications.title": "د حاضري خبرتیاوې",
+  "notifications.title": "خبرتیاوې",
   "notifications.absent": "د غیابت خبرتیا",
   "notifications.late": "د ناوخته راتګ خبرتیا",
   "notifications.empty": "د حاضري خبرتیا نشته.",
+  "notifications.homework": "نوې کورنۍ دنده",
+  "notifications.results": "پایلې خپرې شوې",
+  "student.homeTitle": "د زده کوونکي کور",
+  "student.homeSubtitle": "په دې ښوونځي کې ستاسو خپرې شوې دندې او پایلې.",
+  "learning.homework": "کورنۍ دنده",
+  "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
+  "learning.assignments": "د تدریس دندې",
+  "learning.createHomework": "کورنۍ دنده جوړه کړئ",
+  "learning.editHomework": "مسوده دنده سمول",
+  "learning.homeworkTitle": "د دندې سرلیک",
+  "learning.instructions": "لارښوونې",
+  "learning.dueDate": "د سپارلو نېټه · YYYY-MM-DD",
+  "learning.dueTime": "وخت · HH:mm",
+  "learning.attachmentUrl": "اختیاري ضمیمه لینک",
+  "learning.saveDraft": "مسوده ساتل",
+  "learning.edit": "سمول",
+  "learning.publish": "خپرول",
+  "learning.close": "تړل",
+  "learning.archive": "آرشیف",
+  "learning.due": "موعد",
+  "learning.noAssignments": "فعال مضمون/ټولګي دنده نشته.",
+  "learning.noHomework": "تر اوسه کورنۍ دنده نه ده جوړه شوې.",
+  "learning.completeHomework": "دنده، سرلیک، لارښوونې، نېټه او وخت بشپړ کړئ.",
+  "learning.homeworkSaved": "د کورنۍ دندې مسوده وساتل شوه.",
+  "learning.homeworkPublished": "کورنۍ دنده ټولګي ته خپره شوه.",
+  "learning.homeworkUpdated": "د کورنۍ دندې حالت تازه شو.",
+  "learning.marks": "نمرې",
+  "learning.marksHint": "یوازې د خپلو ټاکل شوو مضمونونو او ټولګیو لپاره مسوده نمرې ولیکئ.",
+  "learning.maxScore": "لوړه نمره",
+  "learning.score": "نمره",
+  "learning.remark": "اختیاري یادونه",
+  "learning.saveMarks": "مسوده نمرې ساتل",
+  "learning.noExamSubjects": "اوس د نمرې لپاره ازموینې مضمون نشته.",
+  "learning.validScores": "لږ تر لږه یوه بشپړه عددي نمره ولیکئ.",
+  "learning.marksSaved": "مسوده نمرې وساتل شوې. مور او پلار او زده کوونکي یې لا نه شي لیدلی.",
+  "learning.marksReadOnly": "دا ازموینه نور د ښوونکي د نمرې لپاره خلاصه نه ده.",
+  "learning.publishedHomework": "خپرې شوې دندې",
+  "learning.publishedResults": "خپرې شوې پایلې",
+  "learning.noPublishedHomework": "د دې زده کوونکي لپاره خپره شوې دنده نشته.",
+  "learning.noPublishedResults": "د دې زده کوونکي لپاره خپره شوې پایله نشته.",
   "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
 };
 

@@ -31,6 +31,7 @@ import {
   type SessionPayload,
   type TeacherTodayPayload
 } from "./src/api";
+import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -770,6 +771,16 @@ function AppContent() {
                   ) : null}
                 </View>
 
+                <LearnerLearningPanel
+                  accessToken={session.accessToken}
+                  studentId={selectedChild.student.id}
+                  mode="PARENT"
+                  locale={locale}
+                  textDirection={textDirection}
+                  onError={setError}
+                  onNotice={setNotice}
+                />
+
                 <View style={styles.phaseCard}>
                   <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
                   {parentNotifications.slice(0, 5).map((notification) => (
@@ -791,9 +802,15 @@ function AppContent() {
                             ? translate(locale, "notifications.absent")
                             : notification.type === "ATTENDANCE_LATE"
                               ? translate(locale, "notifications.late")
-                              : notification.title}
+                              : notification.type === "HOMEWORK_PUBLISHED"
+                                ? translate(locale, "notifications.homework")
+                                : notification.type === "RESULTS_PUBLISHED"
+                                  ? translate(locale, "notifications.results")
+                                  : notification.title}
                         </Text>
-                        <Text style={[styles.muted, textDirection]}>{String(notification.metadata.date ?? "")}</Text>
+                        <Text style={[styles.muted, textDirection]}>
+                          {String(notification.metadata.date ?? notification.metadata.dueAt ?? notification.message ?? "")}
+                        </Text>
                       </View>
                     </Pressable>
                   ))}
@@ -877,6 +894,14 @@ function AppContent() {
               ) : null}
             </View>
 
+            <TeacherLearningPanel
+              accessToken={session.accessToken}
+              locale={locale}
+              textDirection={textDirection}
+              onError={setError}
+              onNotice={setNotice}
+            />
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
@@ -885,13 +910,23 @@ function AppContent() {
 
         {screen === "home" && session?.user.role === "STUDENT" && (
           <View style={styles.section}>
-            <View style={styles.successMark}><Text style={styles.successMarkText}>✓</Text></View>
-            <Text style={[styles.title, textDirection]}>{translate(locale, "home.title")}</Text>
-            <Text style={[styles.subtitle, textDirection]}>{translate(locale, "home.pending")}</Text>
-            <View style={styles.accountCard}>
-              <Text style={[styles.accountName, textDirection]}>{session.user.username}</Text>
-              <Text style={[styles.muted, textDirection]}>{session.user.role} · {school?.name}</Text>
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="book-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "student.homeTitle")}</Text>
+                <Text style={[styles.subtitle, textDirection]}>{translate(locale, "student.homeSubtitle")}</Text>
+              </View>
             </View>
+            <LearnerLearningPanel
+              accessToken={session.accessToken}
+              mode="STUDENT"
+              locale={locale}
+              textDirection={textDirection}
+              onError={setError}
+              onNotice={setNotice}
+            />
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>

@@ -112,6 +112,131 @@ export interface ParentNotification {
   metadata: Record<string, unknown>;
 }
 
+export type HomeworkStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+export type ExamStatus = "DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "RESULTS_READY" | "PUBLISHED" | "ARCHIVED";
+
+export interface HomeworkPayload {
+  id: string;
+  schoolId: string;
+  assignmentId: string;
+  academicYearId: string;
+  classId: string;
+  subjectId: string;
+  teacherUserId: string;
+  title: string;
+  content: string;
+  dueAt: string;
+  attachmentUrl: string | null;
+  status: HomeworkStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeacherLearningPayload {
+  assignments: Array<{
+    assignmentId: string;
+    academicYearId: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
+  homeworks: HomeworkPayload[];
+  examSubjects: Array<{
+    examSubject: {
+      id: string;
+      examId: string;
+      subjectId: string;
+      classId: string;
+      maxScore: number;
+    };
+    exam: {
+      id: string;
+      academicYearId: string;
+      name: string;
+      type: string;
+      status: ExamStatus;
+    };
+    className: string;
+    classCode: string;
+    subjectName: string;
+  }>;
+}
+
+export interface GradeSheetPayload {
+  examSubject: {
+    id: string;
+    examId: string;
+    subjectId: string;
+    classId: string;
+    maxScore: number;
+  };
+  exam: {
+    id: string;
+    academicYearId: string;
+    name: string;
+    type: string;
+    status: ExamStatus;
+  };
+  classSection: { id: string; name: string; code: string };
+  subject: { id: string; name: string; code: string };
+  students: Array<{
+    student: {
+      id: string;
+      studentCode: string;
+      fullName: string;
+    };
+    grade: {
+      id: string;
+      score: number;
+      remark: string | null;
+      status: "DRAFT" | "PUBLISHED";
+    } | null;
+  }>;
+  canEdit: boolean;
+}
+
+export interface LearnerAcademicPayload {
+  student: {
+    id: string;
+    studentCode: string;
+    fullName: string;
+    academicYearId: string;
+    classId: string;
+  };
+  homework: Array<{
+    homework: HomeworkPayload;
+    subjectName: string;
+    className: string;
+  }>;
+  results: Array<{
+    grade: {
+      id: string;
+      score: number;
+      remark: string | null;
+      status: "DRAFT" | "PUBLISHED";
+      publishedAt: string | null;
+    };
+    exam: {
+      id: string;
+      name: string;
+      type: string;
+      status: ExamStatus;
+      publishedAt: string | null;
+    };
+    examSubject: {
+      id: string;
+      maxScore: number;
+      subjectId: string;
+      classId: string;
+    };
+    subjectName: string;
+    className: string;
+  }>;
+}
+
 export interface SessionPayload {
   accessToken: string;
   refreshToken: string;
@@ -238,6 +363,83 @@ export const api = {
   teacherAttendance(accessToken: string, classId: string, date?: string) {
     const suffix = date ? `?date=${encodeURIComponent(date)}` : "";
     return request<AttendanceSheetPayload>(`/v1/teacher/negaran/${classId}/attendance${suffix}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  teacherLearning(accessToken: string) {
+    return request<TeacherLearningPayload>("/v1/teacher/learning", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  createHomework(
+    accessToken: string,
+    input: {
+      assignmentId: string;
+      title: string;
+      content: string;
+      dueAt: string;
+      attachmentUrl?: string;
+    }
+  ) {
+    return request<{ homework: HomeworkPayload }>("/v1/teacher/homework", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
+
+  updateHomework(
+    accessToken: string,
+    homeworkId: string,
+    input: {
+      title?: string;
+      content?: string;
+      dueAt?: string;
+      attachmentUrl?: string | null;
+    }
+  ) {
+    return request<{ homework: HomeworkPayload }>(`/v1/teacher/homework/${homeworkId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
+
+  homeworkAction(accessToken: string, homeworkId: string, action: "publish" | "close" | "archive") {
+    return request<{ homework: HomeworkPayload }>(`/v1/teacher/homework/${homeworkId}/${action}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  gradeSheet(accessToken: string, examSubjectId: string) {
+    return request<GradeSheetPayload>(`/v1/teacher/exam-subjects/${examSubjectId}/grades`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  saveDraftGrades(
+    accessToken: string,
+    examSubjectId: string,
+    entries: Array<{ studentId: string; score: number; remark?: string }>
+  ) {
+    return request<{ sheet: GradeSheetPayload }>(`/v1/teacher/exam-subjects/${examSubjectId}/grades`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ entries })
+    });
+  },
+
+  parentLearning(accessToken: string, studentId: string) {
+    return request<LearnerAcademicPayload>(`/v1/parent/children/${studentId}/learning`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  studentHome(accessToken: string) {
+    return request<LearnerAcademicPayload>("/v1/student/home", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
