@@ -3,6 +3,7 @@ import { config as loadEnv } from "dotenv";
 import {
   createAcademicStore,
   createAccountStore,
+  createAttendanceStore,
   createDatabaseClient,
   createFamilyStore,
   createSchoolStore
@@ -32,6 +33,7 @@ const app = buildApp({
   accountStore: createAccountStore(database.db),
   academicStore: createAcademicStore(database.db),
   familyStore: createFamilyStore(database.db),
+  attendanceStore: createAttendanceStore(database.db),
   provisioningKey,
   webOrigin
 });

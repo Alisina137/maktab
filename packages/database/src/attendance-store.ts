@@ -10,8 +10,8 @@ import {
   or
 } from "drizzle-orm";
 import type {
-  AttendanceEntryInput,
   AttendanceStatus,
+  CorrectAttendanceInput,
   SubmitDailyAttendanceInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
@@ -154,7 +154,7 @@ export interface AttendanceStore {
     actorUserId: string,
     attendanceId: string,
     studentId: string,
-    input: AttendanceEntryInput
+    input: CorrectAttendanceInput
   ): Promise<AttendanceCorrection>;
 }
 

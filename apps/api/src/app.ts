@@ -1,7 +1,8 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, FamilyStore, PlatformSchoolStore } from "@maktablink/database";
+import type { AcademicStore, AccountStore, AttendanceStore, FamilyStore, PlatformSchoolStore } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
+import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { registerFamilyRoutes } from "./families/routes.js";
@@ -14,6 +15,7 @@ export interface BuildAppOptions {
   accountStore: AccountStore;
   academicStore: AcademicStore;
   familyStore: FamilyStore;
+  attendanceStore: AttendanceStore;
   provisioningKey: string;
   webOrigin?: string;
 }
@@ -28,7 +30,7 @@ export function buildApp(options: BuildAppOptions) {
     allowedHeaders: ["Content-Type", "Authorization", "x-platform-provisioning-key"]
   });
 
-  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 4 }));
+  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 5 }));
 
   const loginLimiter = new LoginRateLimiter();
   registerPublicRoutes(app, options.schoolStore);
@@ -36,6 +38,7 @@ export function buildApp(options: BuildAppOptions) {
   registerUserRoutes(app, options.accountStore);
   registerAcademicRoutes(app, options.accountStore, options.academicStore);
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
+  registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);
   registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
 
   app.setErrorHandler((error, _request, reply) => {

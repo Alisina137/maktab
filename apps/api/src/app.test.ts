@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import {
   createAcademicStore,
   createAccountStore,
+  createAttendanceStore,
   createFamilyStore,
   createSchoolStore,
   databaseSchema,
@@ -22,7 +23,8 @@ async function createTestApp() {
     "0001_phase2_auth_accounts.sql",
     "0002_phase3_academic_structure.sql",
     "0003_phase4_student_family.sql",
-    "0004_phase4_parent_profile_backfill.sql"
+    "0004_phase4_parent_profile_backfill.sql",
+    "0005_phase5_attendance.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -37,6 +39,7 @@ async function createTestApp() {
     accountStore: createAccountStore(db),
     academicStore: createAcademicStore(db),
     familyStore: createFamilyStore(db),
+    attendanceStore: createAttendanceStore(db),
     provisioningKey
   });
   return { app, client };
@@ -533,4 +536,269 @@ test("bulk student import validation reports duplicate rows without committing t
   });
   assert.equal(overview.statusCode, 200);
   assert.equal(overview.json<{ students: unknown[] }>().students.length, 0);
+});
+
+
+test("Negaran submits daily attendance once, duplicate retry is idempotent, and parent sees state plus alert", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ATTENDANCE");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: admin,
+    payload: { username: "teacher.negaran", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const teacherBody = teacherAccount.json<{ user: { id: string }; temporaryPassword: string }>();
+  const teacherId = teacherBody.user.id;
+
+  const year = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: admin,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: admin });
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: admin,
+    payload: { code: "G9", name: "Grade 9", sortOrder: 9 }
+  });
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "9A", name: "Grade 9 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: admin,
+    payload: { userId: teacherId, employeeCode: "T-N-1", fullName: "Negaran Teacher" }
+  });
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/negaran",
+    headers: admin,
+    payload: { academicYearId: yearId, classId, teacherUserId: teacherId, startDate: "2026-03-21" }
+  });
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "attendance.parent", fullName: "Attendance Parent" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parentBody = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+
+  const studentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: admin,
+    payload: {
+      parentUserId: parentBody.user.id,
+      studentCode: "ATT-001",
+      fullName: "Attendance Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  assert.equal(studentResponse.statusCode, 201);
+  const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+
+  const teacherLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "TEACHER",
+      username: "teacher.negaran",
+      password: teacherBody.temporaryPassword
+    }
+  });
+  const teacherChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${teacherLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "TeacherSecure2026!" }
+  });
+  const teacherToken = teacherChanged.json<{ accessToken: string }>().accessToken;
+  const teacherAuth = { authorization: `Bearer ${teacherToken}` };
+
+  const todayResponse = await app.inject({ method: "GET", url: "/v1/teacher/today", headers: teacherAuth });
+  assert.equal(todayResponse.statusCode, 200);
+  const today = todayResponse.json<{ date: string; supervisedClasses: Array<{ classId: string; attendanceStatus: string }> }>();
+  assert.equal(today.supervisedClasses[0]?.classId, classId);
+  assert.equal(today.supervisedClasses[0]?.attendanceStatus, "PENDING");
+
+  const payload = {
+    classId,
+    date: today.date,
+    entries: [{ studentId, status: "ABSENT" }]
+  };
+  const submitted = await app.inject({
+    method: "POST",
+    url: "/v1/teacher/negaran/attendance",
+    headers: teacherAuth,
+    payload
+  });
+  assert.equal(submitted.statusCode, 201);
+  assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().changed, true);
+  assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().notificationCount, 1);
+
+  const retried = await app.inject({
+    method: "POST",
+    url: "/v1/teacher/negaran/attendance",
+    headers: teacherAuth,
+    payload
+  });
+  assert.equal(retried.statusCode, 200);
+  assert.equal(retried.json<{ changed: boolean; notificationCount: number }>().changed, false);
+  assert.equal(retried.json<{ changed: boolean; notificationCount: number }>().notificationCount, 0);
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "attendance.parent",
+      password: parentBody.temporaryPassword
+    }
+  });
+  const parentChanged = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${parentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "ParentAttendance2026!" }
+  });
+  const parentToken = parentChanged.json<{ accessToken: string }>().accessToken;
+  const parentAuth = { authorization: `Bearer ${parentToken}` };
+
+  const parentAttendance = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/attendance`,
+    headers: parentAuth
+  });
+  assert.equal(parentAttendance.statusCode, 200);
+  assert.equal(parentAttendance.json<{ days: Array<{ status: string }> }>().days[0]?.status, "ABSENT");
+
+  const alerts = await app.inject({
+    method: "GET",
+    url: "/v1/parent/notifications",
+    headers: parentAuth
+  });
+  assert.equal(alerts.statusCode, 200);
+  assert.equal(alerts.json<{ notifications: Array<{ type: string }> }>().notifications[0]?.type, "ATTENDANCE_ABSENT");
+
+  const corrected = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/attendance/${submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id}/students/${studentId}`,
+    headers: admin,
+    payload: { status: "PRESENT", note: "Corrected by school admin" }
+  });
+  assert.equal(corrected.statusCode, 200);
+  assert.equal(corrected.json<{ previousStatus: string; entry: { status: string } }>().previousStatus, "ABSENT");
+  assert.equal(corrected.json<{ entry: { status: string } }>().entry.status, "PRESENT");
+
+  const parentAfterCorrection = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/attendance`,
+    headers: parentAuth
+  });
+  assert.equal(parentAfterCorrection.json<{ days: Array<{ status: string }> }>().days[0]?.status, "PRESENT");
+});
+
+test("teacher without Negaran assignment cannot access another class attendance", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "NO-NEGARAN");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: admin,
+    payload: { username: "teacher.other", role: "TEACHER" }
+  });
+  const teacher = teacherAccount.json<{ user: { id: string }; temporaryPassword: string }>();
+
+  const year = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: admin,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: admin });
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: admin,
+    payload: { code: "G10", name: "Grade 10", sortOrder: 10 }
+  });
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "10A", name: "Grade 10 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: admin,
+    payload: { userId: teacher.user.id, employeeCode: "T-OTHER", fullName: "Other Teacher" }
+  });
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "TEACHER",
+      username: "teacher.other",
+      password: teacher.temporaryPassword
+    }
+  });
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "OtherTeacher2026!" }
+  });
+  const accessToken = changed.json<{ accessToken: string }>().accessToken;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const sheet = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/attendance?date=${today}`,
+    headers: { authorization: `Bearer ${accessToken}` }
+  });
+  assert.equal(sheet.statusCode, 400);
+  assert.equal(sheet.json<{ error: string }>().error, "attendance_validation");
 });
