@@ -156,6 +156,15 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     return student;
   }
 
+  async function schoolDateAt(schoolId: string, instant = new Date()) {
+    const [settings] = await db
+      .select({ timezone: schoolSettings.timezone })
+      .from(schoolSettings)
+      .where(eq(schoolSettings.schoolId, schoolId))
+      .limit(1);
+    return localDate(instant, settings?.timezone ?? "Asia/Kabul");
+  }
+
   async function classIdsForUser(schoolId: string, userId: string, role: UserRole): Promise<Set<string>> {
     if (role === "PARENT") {
       const rows = await db.select({ classId: students.classId }).from(students)
@@ -168,18 +177,24 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return new Set(rows.map((row) => row.classId));
     }
     if (role === "TEACHER") {
+      const today = await schoolDateAt(schoolId);
       const [assigned, supervised] = await Promise.all([
         db.select({ classId: teacherAssignments.classId }).from(teacherAssignments)
           .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.teacherUserId, userId))),
         db.select({ classId: negaranAssignments.classId }).from(negaranAssignments)
-          .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.teacherUserId, userId)))
+          .where(and(
+            eq(negaranAssignments.schoolId, schoolId),
+            eq(negaranAssignments.teacherUserId, userId),
+            lte(negaranAssignments.startDate, today),
+            or(isNull(negaranAssignments.endDate), sql`${negaranAssignments.endDate} >= ${today}`)
+          ))
       ]);
       return new Set([...assigned, ...supervised].map((row) => row.classId));
     }
     return new Set();
   }
 
-  async function announcementRecipients(announcement: Announcement): Promise<string[]> {
+  async function announcementRecipients(announcement: Announcement, effectiveAt = new Date()): Promise<string[]> {
     if (announcement.audienceScope === "SCHOOL") {
       const rows = await db.select({ id: users.id }).from(users)
         .where(and(eq(users.schoolId, announcement.schoolId), ne(users.status, "ARCHIVED"), ne(users.status, "SUSPENDED")));
@@ -197,13 +212,19 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return rows.map((row) => row.id);
     }
     if (!announcement.classId) return [];
+    const effectiveDate = await schoolDateAt(announcement.schoolId, effectiveAt);
     const [studentRows, teacherRows, negaranRows] = await Promise.all([
       db.select({ parentUserId: students.parentUserId, userId: students.userId }).from(students)
         .where(and(eq(students.schoolId, announcement.schoolId), eq(students.classId, announcement.classId), eq(students.status, "ACTIVE"))),
       db.select({ userId: teacherAssignments.teacherUserId }).from(teacherAssignments)
         .where(and(eq(teacherAssignments.schoolId, announcement.schoolId), eq(teacherAssignments.classId, announcement.classId))),
       db.select({ userId: negaranAssignments.teacherUserId }).from(negaranAssignments)
-        .where(and(eq(negaranAssignments.schoolId, announcement.schoolId), eq(negaranAssignments.classId, announcement.classId)))
+        .where(and(
+          eq(negaranAssignments.schoolId, announcement.schoolId),
+          eq(negaranAssignments.classId, announcement.classId),
+          lte(negaranAssignments.startDate, effectiveDate),
+          or(isNull(negaranAssignments.endDate), sql`${negaranAssignments.endDate} >= ${effectiveDate}`)
+        ))
     ]);
     return Array.from(new Set([
       ...studentRows.flatMap((row) => row.userId ? [row.parentUserId, row.userId] : [row.parentUserId]),
@@ -214,7 +235,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
   async function materializeAnnouncement(announcement: Announcement, effectiveNow = new Date()): Promise<number> {
     if (announcement.archivedAt || announcement.publishAt.getTime() > effectiveNow.getTime()) return 0;
-    const recipients = await announcementRecipients(announcement);
+    const recipients = await announcementRecipients(announcement, effectiveNow);
     let created = 0;
     for (const userId of recipients) {
       const dedupKey = `announcement:${announcement.id}:${userId}`;
