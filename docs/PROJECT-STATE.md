@@ -70,7 +70,7 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 GitHub Actions CI passed on the complete Phase 7 implementation commit:
 
 ```text
-c42a1d7660dce0950937012b24a518e1c91b7baa
+5e4c041decedac3a2087683e2157f57e52ad6efc
 ```
 
 Verified by CI:
@@ -81,6 +81,7 @@ Verified by CI:
 - intended-class announcement visibility
 - unrelated-class announcement isolation
 - class-notification audience isolation
+- historical/ended Negaran assignments excluded from current class communication
 - partial payment and outstanding-balance behavior
 - immutable payment reversal
 - duplicate reversal rejection
