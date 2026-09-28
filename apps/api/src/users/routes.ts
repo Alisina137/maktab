@@ -20,6 +20,18 @@ export async function requireSchoolAdmin(request: Parameters<typeof requireAcces
     await reply.code(403).send({ error: "forbidden", message: "School administrator access is required." });
     return null;
   }
+  if (
+    request.method !== "GET" &&
+    request.method !== "HEAD" &&
+    request.method !== "OPTIONS" &&
+    (context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED")
+  ) {
+    await reply.code(403).send({
+      error: "subscription_write_blocked",
+      message: "Operational changes are disabled while the school subscription is suspended. Billing and exports remain available."
+    });
+    return null;
+  }
   return context;
 }
 

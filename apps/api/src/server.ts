@@ -9,6 +9,7 @@ import {
   createFamilyStore,
   createExpoPushProvider,
   createLearningStore,
+  createPilotStore,
   createSchoolStore
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
@@ -39,9 +40,11 @@ const app = buildApp({
   attendanceStore: createAttendanceStore(database.db),
   learningStore: createLearningStore(database.db),
   communicationStore: createCommunicationStore(database.db),
+  pilotStore: createPilotStore(database.db),
   pushProvider: createExpoPushProvider(),
   provisioningKey,
-  webOrigin
+  webOrigin,
+  logger: process.env.NODE_ENV === "production" || process.env.API_STRUCTURED_LOGS === "true"
 });
 
 const close = async () => {

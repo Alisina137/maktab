@@ -10,6 +10,7 @@ import {
   createCommunicationStore,
   createFamilyStore,
   createLearningStore,
+  createPilotStore,
   createSchoolStore,
   type PushProvider,
   databaseSchema,
@@ -29,7 +30,8 @@ async function createTestApp() {
     "0004_phase4_parent_profile_backfill.sql",
     "0005_phase5_attendance.sql",
     "0006_phase6_learning.sql",
-    "0007_phase7_communication_fees.sql"
+    "0007_phase7_communication_fees.sql",
+    "0008_phase8_pilot_readiness.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -52,6 +54,7 @@ async function createTestApp() {
     attendanceStore: createAttendanceStore(db),
     learningStore: createLearningStore(db),
     communicationStore: createCommunicationStore(db),
+    pilotStore: createPilotStore(db),
     pushProvider,
     provisioningKey
   });
@@ -1545,4 +1548,180 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   });
   assert.equal(parentFees.statusCode, 200);
   assert.equal(parentFees.json<{ invoices: Array<{ outstanding: number }> }>().invoices[0]?.outstanding, 1000);
+});
+
+
+test("Phase 8 pilot onboarding works without direct database manipulation", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const onboard = await app.inject({
+    method: "POST",
+    url: "/v1/platform/pilot/onboard",
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: {
+      school: {
+        code: "PILOT8",
+        name: "Phase 8 Pilot School",
+        slug: "phase-8-pilot-school",
+        province: "Kabul",
+        city: "Kabul",
+        defaultLanguage: "fa-AF"
+      },
+      adminUsername: "pilot.admin",
+      subscription: {
+        status: "ACTIVE",
+        planCode: "PILOT-ANNUAL",
+        billingCycle: "ANNUAL",
+        priceAfn: 0
+      }
+    }
+  });
+  assert.equal(onboard.statusCode, 201);
+  const body = onboard.json<{
+    school: { id: string };
+    subscription: { status: string };
+    admin: { username: string };
+    temporaryPassword: string;
+  }>();
+  assert.equal(body.subscription.status, "ACTIVE");
+  assert.equal(body.admin.username, "pilot.admin");
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: body.school.id,
+      expectedRole: "SCHOOL_ADMIN",
+      username: "pilot.admin",
+      password: body.temporaryPassword
+    }
+  });
+  assert.equal(login.statusCode, 200);
+});
+
+test("Phase 8 subscription suspension blocks end users and operational admin writes but preserves billing and export access", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "SUSPEND8");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "suspend.parent", fullName: "Suspended Parent" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parent = parentResponse.json<{ temporaryPassword: string }>();
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "suspend.parent",
+      password: parent.temporaryPassword
+    }
+  });
+  assert.equal(parentLogin.statusCode, 200);
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${parentLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "SuspendedParent2026!" }
+  });
+  assert.equal(changed.statusCode, 200);
+  const parentAccess = changed.json<{ accessToken: string }>().accessToken;
+
+  const suspended = await app.inject({
+    method: "PATCH",
+    url: `/v1/platform/schools/${schoolId}/subscription`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "SUSPENDED" }
+  });
+  assert.equal(suspended.statusCode, 200);
+
+  const parentMe = await app.inject({
+    method: "GET",
+    url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${parentAccess}` }
+  });
+  assert.equal(parentMe.statusCode, 503);
+  assert.equal(parentMe.json<{ error: string }>().error, "school_service_unavailable");
+
+  const adminWrite = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: admin,
+    payload: { username: "blocked.teacher", role: "TEACHER" }
+  });
+  assert.equal(adminWrite.statusCode, 403);
+  assert.equal(adminWrite.json<{ error: string }>().error, "subscription_write_blocked");
+
+  const subscription = await app.inject({
+    method: "GET",
+    url: "/v1/admin/subscription",
+    headers: admin
+  });
+  assert.equal(subscription.statusCode, 200);
+  assert.equal(subscription.json<{ subscription: { status: string } }>().subscription.status, "SUSPENDED");
+
+  const exported = await app.inject({
+    method: "GET",
+    url: "/v1/admin/pilot/export",
+    headers: admin
+  });
+  assert.equal(exported.statusCode, 200);
+  assert.equal(exported.body.includes("passwordHash"), false);
+});
+
+test("Phase 8 readiness, audit pagination, import templates, and database readiness are available to school admins", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const ready = await app.inject({ method: "GET", url: "/ready" });
+  assert.equal(ready.statusCode, 200);
+  assert.equal(ready.json<{ database: string }>().database, "ok");
+
+  const schoolId = await provisionSchool(app, "READY8");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminToken}` };
+
+  const readiness = await app.inject({
+    method: "GET",
+    url: "/v1/admin/pilot/readiness",
+    headers: auth
+  });
+  assert.equal(readiness.statusCode, 200);
+  assert.equal(typeof readiness.json<{ ready: boolean }>().ready, "boolean");
+
+  const audit = await app.inject({
+    method: "GET",
+    url: "/v1/admin/audit?limit=1&offset=0",
+    headers: auth
+  });
+  assert.equal(audit.statusCode, 200);
+  assert.equal(audit.json<{ logs: unknown[]; limit: number }>().limit, 1);
+  assert.ok(audit.json<{ logs: unknown[] }>().logs.length <= 1);
+
+  const template = await app.inject({
+    method: "GET",
+    url: "/v1/admin/pilot/import-template/STUDENT",
+    headers: auth
+  });
+  assert.equal(template.statusCode, 200);
+  assert.match(template.body, /studentCode,fullName,parentUsername,academicYear,classCode/);
 });

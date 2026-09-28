@@ -17,6 +17,14 @@ import {
   safeUser
 } from "./session.js";
 
+function subscriptionUnavailable(context: AuthenticatedSessionContext) {
+  return context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED";
+}
+
+function endUserBlockedBySubscription(context: AuthenticatedSessionContext) {
+  return context.user.role !== "SCHOOL_ADMIN" && subscriptionUnavailable(context);
+}
+
 async function requireAccess(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -30,6 +38,13 @@ async function requireAccess(
   const context = await authenticateAccess(store, token);
   if (!context) {
     await reply.code(401).send({ error: "session_invalid", message: "Your session has expired or is no longer valid." });
+    return null;
+  }
+  if (endUserBlockedBySubscription(context)) {
+    await reply.code(503).send({
+      error: "school_service_unavailable",
+      message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
+    });
     return null;
   }
   return context;
@@ -59,6 +74,12 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
       }
       if (context.user.role !== input.expectedRole) {
         return reply.code(403).send({ error: "role_mismatch", message: "This account does not belong to the selected role." });
+      }
+      if (endUserBlockedBySubscription(context)) {
+        return reply.code(503).send({
+          error: "school_service_unavailable",
+          message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
+        });
       }
 
       limiter.clear(rateKey);
@@ -118,6 +139,12 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
       const context = await authenticateRefresh(store, input.refreshToken);
       if (!context) {
         return reply.code(401).send({ error: "refresh_invalid", message: "Refresh session is expired or invalid." });
+      }
+      if (endUserBlockedBySubscription(context)) {
+        return reply.code(503).send({
+          error: "school_service_unavailable",
+          message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
+        });
       }
       const session = await rotateSession(store, context);
       if (!session) {

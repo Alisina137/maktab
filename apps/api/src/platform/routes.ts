@@ -3,7 +3,10 @@ import type { FastifyInstance } from "fastify";
 import {
   bootstrapSchoolAdminSchema,
   createSchoolInputSchema,
-  updateSchoolSettingsSchema
+  pilotOnboardSchoolSchema,
+  updateSchoolSettingsSchema,
+  updateSchoolStatusSchema,
+  updateSubscriptionSchema
 } from "@maktablink/contracts";
 import {
   AccountConflictError,
@@ -37,6 +40,10 @@ export function registerPlatformRoutes(
 
   app.get("/v1/platform/schools", async () => ({ schools: await schools.listSchools() }));
 
+  app.get("/v1/platform/health/summary", async () => schools.getOperationalSummary());
+
+  app.post("/v1/platform/jobs/subscriptions/run", async () => schools.runSubscriptionLifecycle());
+
   app.get<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId", async (request, reply) => {
     const context = await schools.getSchoolContext(request.params.schoolId);
     if (!context) return reply.code(404).send({ error: "not_found", message: "School not found." });
@@ -55,6 +62,50 @@ export function registerPlatformRoutes(
     }
   });
 
+  app.patch<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId/status", async (request, reply) => {
+    try {
+      const input = updateSchoolStatusSchema.parse(request.body);
+      const context = await schools.updateSchoolStatus(request.params.schoolId, input.status);
+      if (!context) return reply.code(404).send({ error: "not_found", message: "School not found." });
+      await accounts.writeAudit({
+        schoolId: context.school.id,
+        action: "school.status_updated",
+        entityType: "school",
+        entityId: context.school.id,
+        metadata: { status: input.status }
+      });
+      return context;
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
+  });
+
+  app.patch<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId/subscription", async (request, reply) => {
+    try {
+      const input = updateSubscriptionSchema.parse(request.body);
+      const before = await schools.getSchoolContext(request.params.schoolId);
+      if (!before) return reply.code(404).send({ error: "not_found", message: "School not found." });
+      const context = await schools.updateSubscription(request.params.schoolId, input);
+      if (!context) return reply.code(404).send({ error: "not_found", message: "School not found." });
+      await accounts.writeAudit({
+        schoolId: context.school.id,
+        action: "subscription.updated",
+        entityType: "subscription",
+        metadata: {
+          previousStatus: before.subscription.status,
+          status: context.subscription.status,
+          billingCycle: context.subscription.billingCycle,
+          planCode: context.subscription.planCode
+        }
+      });
+      return context;
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
+  });
+
   app.patch<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId/settings", async (request, reply) => {
     try {
       const input = updateSchoolSettingsSchema.parse(request.body);
@@ -63,6 +114,46 @@ export function registerPlatformRoutes(
       return context;
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
+  });
+
+  app.post("/v1/platform/pilot/onboard", async (request, reply) => {
+    try {
+      const input = pilotOnboardSchoolSchema.parse(request.body);
+      let context = await schools.createSchool(input.school);
+      if (input.subscription) {
+        const updated = await schools.updateSubscription(context.school.id, input.subscription);
+        if (updated) context = updated;
+      }
+
+      const temporaryPassword = generateTemporaryPassword();
+      const user = await accounts.createUser({
+        schoolId: context.school.id,
+        username: input.adminUsername,
+        passwordHash: await hashPassword(temporaryPassword),
+        role: "SCHOOL_ADMIN"
+      });
+      await accounts.writeAudit({
+        schoolId: context.school.id,
+        action: "pilot.school_onboarded",
+        entityType: "school",
+        entityId: context.school.id,
+        metadata: {
+          code: context.school.code,
+          adminUsername: user.username,
+          subscriptionStatus: context.subscription.status
+        }
+      });
+      return reply.code(201).send({
+        ...context,
+        admin: safeUser(user),
+        temporaryPassword
+      });
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      if (error instanceof SchoolConflictError) return reply.code(409).send({ error: "school_conflict", message: error.message });
+      if (error instanceof AccountConflictError) return reply.code(409).send({ error: "username_conflict", message: error.message });
       throw error;
     }
   });
