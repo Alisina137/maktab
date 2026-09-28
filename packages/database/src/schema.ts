@@ -18,6 +18,7 @@ export const languageCodeEnum = pgEnum("language_code", ["fa-AF", "ps-AF", "en"]
 export const userRoleEnum = pgEnum("user_role", ["SCHOOL_ADMIN", "SCHOOL_STAFF", "TEACHER", "PARENT", "STUDENT"]);
 export const userStatusEnum = pgEnum("user_status", ["INVITED", "ACTIVE", "SUSPENDED", "ARCHIVED"]);
 export const academicYearStatusEnum = pgEnum("academic_year_status", ["DRAFT", "ACTIVE", "CLOSED", "ARCHIVED"]);
+export const studentStatusEnum = pgEnum("student_status", ["ACTIVE", "WITHDRAWN"]);
 export const weekdayEnum = pgEnum("weekday", [
   "SATURDAY",
   "SUNDAY",
@@ -199,6 +200,77 @@ export const subjects = pgTable(
   ]
 );
 
+export const parentProfiles = pgTable(
+  "parent_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    phone: varchar("phone", { length: 32 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("parent_profiles_school_idx").on(table.schoolId)]
+);
+
+export const students = pgTable(
+  "students",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    parentUserId: uuid("parent_user_id")
+      .notNull()
+      .references(() => parentProfiles.userId, { onDelete: "restrict" }),
+    studentCode: varchar("student_code", { length: 32 }).notNull(),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classSections.id, { onDelete: "restrict" }),
+    status: studentStatusEnum("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("students_school_code_unique").on(table.schoolId, table.studentCode),
+    index("students_school_class_idx").on(table.schoolId, table.classId),
+    index("students_parent_idx").on(table.parentUserId)
+  ]
+);
+
+export const studentClassHistory = pgTable(
+  "student_class_history",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classSections.id, { onDelete: "restrict" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true })
+  },
+  (table) => [
+    index("student_class_history_student_idx").on(table.schoolId, table.studentId),
+    index("student_class_history_class_idx").on(table.schoolId, table.classId)
+  ]
+);
+
 export const teacherProfiles = pgTable(
   "teacher_profiles",
   {
@@ -321,6 +393,9 @@ export const databaseSchema = {
   gradeLevels,
   classSections,
   subjects,
+  parentProfiles,
+  students,
+  studentClassHistory,
   teacherProfiles,
   teacherAssignments,
   negaranAssignments,
@@ -336,6 +411,9 @@ export type AcademicYear = typeof academicYears.$inferSelect;
 export type GradeLevel = typeof gradeLevels.$inferSelect;
 export type ClassSection = typeof classSections.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
+export type ParentProfile = typeof parentProfiles.$inferSelect;
+export type Student = typeof students.$inferSelect;
+export type StudentClassHistory = typeof studentClassHistory.$inferSelect;
 export type TeacherProfile = typeof teacherProfiles.$inferSelect;
 export type TeacherAssignment = typeof teacherAssignments.$inferSelect;
 export type NegaranAssignment = typeof negaranAssignments.$inferSelect;

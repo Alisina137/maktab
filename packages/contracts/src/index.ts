@@ -18,6 +18,9 @@ export type UserStatus = z.infer<typeof userStatusSchema>;
 export const academicYearStatusSchema = z.enum(["DRAFT", "ACTIVE", "CLOSED", "ARCHIVED"]);
 export type AcademicYearStatus = z.infer<typeof academicYearStatusSchema>;
 
+export const studentStatusSchema = z.enum(["ACTIVE", "WITHDRAWN"]);
+export type StudentStatus = z.infer<typeof studentStatusSchema>;
+
 export const weekdaySchema = z.enum([
   "SATURDAY",
   "SUNDAY",
@@ -186,3 +189,46 @@ export const createTimetablePeriodSchema = z
     path: ["endsAt"]
   });
 export type CreateTimetablePeriodInput = z.infer<typeof createTimetablePeriodSchema>;
+
+
+export const createParentAccountSchema = z.object({
+  username: usernameSchema,
+  fullName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(32).optional()
+});
+export type CreateParentAccountInput = z.infer<typeof createParentAccountSchema>;
+
+export const createStudentSchema = z.object({
+  parentUserId: z.string().uuid(),
+  studentCode: codeSchema,
+  fullName: z.string().trim().min(2).max(160),
+  academicYearId: z.string().uuid(),
+  classId: z.string().uuid()
+});
+export type CreateStudentInput = z.infer<typeof createStudentSchema>;
+
+export const updateStudentSchema = z.object({
+  parentUserId: z.string().uuid().optional(),
+  fullName: z.string().trim().min(2).max(160).optional(),
+  academicYearId: z.string().uuid().optional(),
+  classId: z.string().uuid().optional(),
+  status: studentStatusSchema.optional()
+}).refine(
+  (value) => (value.academicYearId ? Boolean(value.classId) : true) && (value.classId ? Boolean(value.academicYearId) : true),
+  {
+    message: "Academic year and class must be changed together.",
+    path: ["classId"]
+  }
+);
+export type UpdateStudentInput = z.infer<typeof updateStudentSchema>;
+
+export const teacherImportRowSchema = z.object({
+  username: usernameSchema,
+  employeeCode: codeSchema,
+  fullName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(32).optional()
+});
+export type TeacherImportRow = z.infer<typeof teacherImportRowSchema>;
+
+export const bulkImportEntitySchema = z.enum(["PARENT", "STUDENT", "TEACHER"]);
+export type BulkImportEntity = z.infer<typeof bulkImportEntitySchema>;
