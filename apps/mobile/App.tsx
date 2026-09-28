@@ -17,9 +17,20 @@ import {
   getDirection,
   supportedLocales,
   translate,
-  type SupportedLocale
+  type SupportedLocale,
+  type TranslationKey
 } from "@maktablink/localization";
-import { api, type ParentHomePayload, type SchoolOption, type SessionPayload } from "./src/api";
+import {
+  api,
+  type AttendanceSheetPayload,
+  type AttendanceStatus,
+  type ParentAttendanceDay,
+  type ParentHomePayload,
+  type ParentNotification,
+  type SchoolOption,
+  type SessionPayload,
+  type TeacherTodayPayload
+} from "./src/api";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -27,7 +38,7 @@ import {
 } from "./src/session";
 
 type MobileRole = "PARENT" | "TEACHER" | "STUDENT";
-type Screen = "role" | "school" | "login" | "change-password" | "home";
+type Screen = "role" | "school" | "login" | "change-password" | "home" | "teacher-attendance";
 
 const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student"> = {
   PARENT: "role.parent",
@@ -47,6 +58,15 @@ const roleIcon: Record<MobileRole, keyof typeof Ionicons.glyphMap> = {
   STUDENT: "book-outline"
 };
 
+const attendanceStatuses: AttendanceStatus[] = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
+
+const attendanceKey: Record<AttendanceStatus, TranslationKey> = {
+  PRESENT: "attendance.present",
+  ABSENT: "attendance.absent",
+  LATE: "attendance.late",
+  EXCUSED: "attendance.excused"
+};
+
 function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
   const [screen, setScreen] = useState<Screen>("role");
@@ -64,6 +84,12 @@ function AppContent() {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [parentHome, setParentHome] = useState<ParentHomePayload | null>(null);
   const [selectedChildId, setSelectedChildId] = useState("");
+  const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
+  const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
+  const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
+  const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
@@ -128,10 +154,19 @@ function AppContent() {
   }, [selectedChildId, childOpacity, childScale]);
 
   useEffect(() => {
-    if (screen === "home" && session?.user.role === "PARENT" && !session.mustChangePassword) {
+    if (screen !== "home" || !session || session.mustChangePassword) return;
+    if (session.user.role === "PARENT") {
       void loadParentHome(session.accessToken);
+      void loadParentNotifications(session.accessToken);
     }
+    if (session.user.role === "TEACHER") void loadTeacherToday(session.accessToken);
   }, [screen, session?.accessToken, session?.user.role, session?.mustChangePassword]);
+
+  useEffect(() => {
+    if (screen === "home" && session?.user.role === "PARENT" && selectedChildId) {
+      void loadParentAttendance(session.accessToken, selectedChildId);
+    }
+  }, [screen, session?.accessToken, session?.user.role, selectedChildId]);
 
   async function restore() {
     try {
@@ -187,6 +222,101 @@ function AppContent() {
       setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadParentAttendance(accessToken: string, studentId: string) {
+    try {
+      const result = await api.parentAttendance(accessToken, studentId);
+      setParentAttendance(result.days);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    }
+  }
+
+  async function loadParentNotifications(accessToken: string) {
+    try {
+      const result = await api.parentNotifications(accessToken);
+      setParentNotifications(result.notifications);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    }
+  }
+
+  async function loadTeacherToday(accessToken: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      setTeacherToday(await api.teacherToday(accessToken));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openAttendance(classId: string, date: string) {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const sheet = await api.teacherAttendance(session.accessToken, classId, date);
+      setAttendanceSheet(sheet);
+      setAttendanceDraft(
+        Object.fromEntries(
+          sheet.students
+            .filter((item) => item.status)
+            .map((item) => [item.student.id, item.status as AttendanceStatus])
+        )
+      );
+      setScreen("teacher-attendance");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitAttendance() {
+    if (!session || !attendanceSheet) return;
+    const entries = attendanceSheet.students.map((item) => ({
+      studentId: item.student.id,
+      status: attendanceDraft[item.student.id]
+    }));
+    if (entries.some((entry) => !entry.status)) {
+      setError(translate(locale, "attendance.markEveryone"));
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.submitDailyAttendance(session.accessToken, {
+        classId: attendanceSheet.classSection.id,
+        date: attendanceSheet.date,
+        entries: entries as Array<{ studentId: string; status: AttendanceStatus }>
+      });
+      setAttendanceSheet(result.sheet);
+      setNotice(result.changed ? translate(locale, "attendance.saved") : translate(locale, "attendance.noChanges"));
+      await loadTeacherToday(session.accessToken);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function readNotification(notificationId: string) {
+    if (!session) return;
+    try {
+      const result = await api.markNotificationRead(session.accessToken, notificationId);
+      setParentNotifications((current) =>
+        current.map((item) => (item.id === notificationId ? result.notification : item))
+      );
+    } catch {
+      // Keep the alert available and retry naturally on the next refresh.
     }
   }
 
@@ -246,6 +376,12 @@ function AppContent() {
       setSession(null);
       setParentHome(null);
       setSelectedChildId("");
+      setParentAttendance([]);
+      setParentNotifications([]);
+      setTeacherToday(null);
+      setAttendanceSheet(null);
+      setAttendanceDraft({});
+      setNotice(null);
       setSchool(null);
       setRole(null);
       setUsername("");
@@ -264,6 +400,9 @@ function AppContent() {
     parentHome?.children.find((item) => item.student.id === selectedChildId) ??
     parentHome?.children[0] ??
     null;
+  const attendanceMarkedCount = attendanceSheet
+    ? attendanceSheet.students.filter((item) => attendanceDraft[item.student.id]).length
+    : 0;
 
   if (busy && screen === "role") {
     return (
@@ -597,13 +736,151 @@ function AppContent() {
               </>
             ) : null}
 
+            {selectedChild ? (
+              <>
+                <View style={styles.phaseCard}>
+                  <View style={[styles.phaseCardHeader, direction === "rtl" && styles.rowRtl]}>
+                    <View style={styles.smallIconShell}>
+                      <Ionicons name="calendar-outline" size={20} color={tokens.color.brandStrong} />
+                    </View>
+                    <View style={styles.flexCopy}>
+                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.today")}</Text>
+                      <Text style={[styles.muted, textDirection]}>
+                        {parentAttendance.find((item) => item.date === new Date().toISOString().slice(0, 10))
+                          ? translate(locale, attendanceKey[parentAttendance.find((item) => item.date === new Date().toISOString().slice(0, 10))!.status])
+                          : translate(locale, "attendance.notRecorded")}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.phaseCard}>
+                  <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.recent")}</Text>
+                  {parentAttendance.slice(0, 7).map((day) => (
+                    <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
+                      <Text style={[styles.historyDate, textDirection]}>{day.date}</Text>
+                      <AttendanceBadge locale={locale} status={day.status} />
+                    </View>
+                  ))}
+                  {parentAttendance.length === 0 ? (
+                    <Text style={[styles.muted, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.phaseCard}>
+                  <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
+                  {parentNotifications.slice(0, 5).map((notification) => (
+                    <Pressable
+                      key={notification.id}
+                      onPress={() => void readNotification(notification.id)}
+                      style={[
+                        styles.notificationRow,
+                        direction === "rtl" && styles.rowRtl,
+                        !notification.readAt && styles.notificationUnread
+                      ]}
+                    >
+                      <View style={styles.notificationDotWrap}>
+                        {!notification.readAt ? <View style={styles.notificationDot} /> : null}
+                      </View>
+                      <View style={styles.flexCopy}>
+                        <Text style={[styles.notificationTitle, textDirection]}>
+                          {notification.type === "ATTENDANCE_ABSENT"
+                            ? translate(locale, "notifications.absent")
+                            : notification.type === "ATTENDANCE_LATE"
+                              ? translate(locale, "notifications.late")
+                              : notification.title}
+                        </Text>
+                        <Text style={[styles.muted, textDirection]}>{String(notification.metadata.date ?? "")}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                  {parentNotifications.length === 0 ? (
+                    <Text style={[styles.muted, textDirection]}>{translate(locale, "notifications.empty")}</Text>
+                  ) : null}
+                </View>
+              </>
+            ) : null}
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
         )}
 
-        {screen === "home" && session && session.user.role !== "PARENT" && (
+        {screen === "home" && session?.user.role === "TEACHER" && (
+          <View style={styles.section}>
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="today-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.todayTitle")}</Text>
+                <Text style={[styles.subtitle, textDirection]}>
+                  {teacherToday?.date ?? ""} · {teacherToday?.teacher.fullName ?? session.user.username}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.phaseCard}>
+              <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "teacher.supervisedClass")}</Text>
+              {teacherToday?.supervisedClasses.map((item) => (
+                <Pressable
+                  key={item.assignmentId}
+                  onPress={() => void openAttendance(item.classId, teacherToday.date)}
+                  style={({ pressed }) => [
+                    styles.supervisedCard,
+                    direction === "rtl" && styles.rowRtl,
+                    pressed && styles.cardPressed
+                  ]}
+                >
+                  <View style={styles.smallIconShell}>
+                    <Ionicons name="people-outline" size={21} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.cardTitle, textDirection]}>{item.className}</Text>
+                    <Text style={[styles.muted, textDirection]}>
+                      {item.attendanceStatus === "PENDING"
+                        ? translate(locale, "attendance.pending")
+                        : translate(locale, "attendance.submitted")}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={direction === "rtl" ? "chevron-back" : "chevron-forward"}
+                    size={19}
+                    color={tokens.color.textMuted}
+                  />
+                </Pressable>
+              ))}
+              {teacherToday && teacherToday.supervisedClasses.length === 0 ? (
+                <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noSupervisedClass")}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.phaseCard}>
+              <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "teacher.schedule")}</Text>
+              {teacherToday?.schedule.map((period) => (
+                <View key={period.id} style={[styles.scheduleRow, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.timePill}>
+                    <Text style={styles.timePillText}>{period.startsAt}</Text>
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.cardTitle, textDirection]}>{period.subjectName}</Text>
+                    <Text style={[styles.muted, textDirection]}>{period.className} · {period.endsAt}</Text>
+                  </View>
+                </View>
+              ))}
+              {teacherToday && teacherToday.schedule.length === 0 ? (
+                <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noClassesToday")}</Text>
+              ) : null}
+            </View>
+
+            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
+              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
+            </Pressable>
+          </View>
+        ))}
+
+        {screen === "home" && session?.user.role === "STUDENT" && (
           <View style={styles.section}>
             <View style={styles.successMark}><Text style={styles.successMarkText}>✓</Text></View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "home.title")}</Text>
@@ -616,8 +893,104 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        )}
+        ))}
 
+        {screen === "teacher-attendance" && session?.user.role === "TEACHER" && attendanceSheet && (
+          <View style={styles.section}>
+            <BackButton
+              locale={locale}
+              onPress={() => {
+                setNotice(null);
+                setError(null);
+                setScreen("home");
+              }}
+            />
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="checkmark-done-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "attendance.dailyTitle")}</Text>
+                <Text style={[styles.subtitle, textDirection]}>
+                  {attendanceSheet.classSection.name} · {attendanceSheet.date}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.attendanceProgress}>
+              <Text style={[styles.muted, textDirection]}>
+                {attendanceMarkedCount}/{attendanceSheet.students.length} {translate(locale, "attendance.marked")}
+              </Text>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${attendanceSheet.students.length
+                        ? (attendanceMarkedCount / attendanceSheet.students.length) * 100
+                        : 0}%`
+                    }
+                  ]}
+                />
+              </View>
+            </View>
+
+            {attendanceSheet.students.map((item) => (
+              <View key={item.student.id} style={styles.attendanceStudentCard}>
+                <View style={[styles.studentHeader, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.childBadge}>
+                    <Text style={styles.childBadgeText}>{item.student.fullName.slice(0, 1)}</Text>
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.cardTitle, textDirection]}>{item.student.fullName}</Text>
+                    <Text style={[styles.muted, textDirection]}>{item.student.studentCode}</Text>
+                  </View>
+                </View>
+                <View style={[styles.statusGrid, direction === "rtl" && styles.statusGridRtl]}>
+                  {attendanceStatuses.map((status) => {
+                    const active = attendanceDraft[item.student.id] === status;
+                    return (
+                      <Pressable
+                        key={status}
+                        disabled={!attendanceSheet.canEdit}
+                        onPress={() => setAttendanceDraft((current) => ({ ...current, [item.student.id]: status }))}
+                        style={[
+                          styles.statusButton,
+                          active && statusStyle[status],
+                          !attendanceSheet.canEdit && styles.disabled
+                        ]}
+                      >
+                        <Text style={[styles.statusButtonText, active && styles.statusButtonTextActive]}>
+                          {translate(locale, attendanceKey[status])}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+
+            {attendanceSheet.locked ? (
+              <View style={styles.warningCard}>
+                <Ionicons name="lock-closed-outline" size={20} color={tokens.color.warning} />
+                <Text style={[styles.warningText, textDirection]}>{translate(locale, "attendance.locked")}</Text>
+              </View>
+            ) : (
+              <PrimaryButton
+                disabled={busy || attendanceMarkedCount !== attendanceSheet.students.length}
+                label={translate(locale, "attendance.submit")}
+                onPress={() => void submitAttendance()}
+              />
+            )}
+          </View>
+        ))}
+
+        {notice ? (
+          <View style={styles.successNotice}>
+            <Ionicons name="checkmark-circle-outline" size={20} color={tokens.color.success} />
+            <Text style={[styles.successNoticeText, textDirection]}>{notice}</Text>
+          </View>
+        ) : null}
         {error ? (
           <View style={styles.errorCard}>
             <Ionicons name="alert-circle-outline" size={20} color={tokens.color.danger} />
@@ -640,7 +1013,7 @@ export default function App() {
 }
 
 function OnboardingProgress({ screen }: { screen: Screen }) {
-  if (screen === "home" || screen === "change-password") return null;
+  if (screen === "home" || screen === "change-password" || screen === "teacher-attendance") return null;
   const index = screen === "role" ? 0 : screen === "school" ? 1 : 2;
 
   return (
@@ -651,6 +1024,14 @@ function OnboardingProgress({ screen }: { screen: Screen }) {
           style={[styles.progressDot, step <= index && styles.progressDotActive]}
         />
       ))}
+    </View>
+  );
+}
+
+function AttendanceBadge({ locale, status }: { locale: SupportedLocale; status: AttendanceStatus }) {
+  return (
+    <View style={[styles.attendanceBadge, statusStyle[status]]}>
+      <Text style={styles.attendanceBadgeText}>{translate(locale, attendanceKey[status])}</Text>
     </View>
   );
 }
@@ -976,5 +1357,46 @@ const styles = StyleSheet.create({
     padding: 13
   },
   errorText: { flex: 1, color: tokens.color.danger, lineHeight: 21, fontSize: 13.5 },
-  loader: { marginTop: 8 }
+  loader: { marginTop: 8 },
+  rowRtl: { flexDirection: "row-reverse" },
+  flexCopy: { flex: 1, gap: 3 },
+  phaseCard: { padding: 16, backgroundColor: tokens.color.surface, borderRadius: 19, borderWidth: 1, borderColor: "#e1e7f0", gap: 12 },
+  phaseCardHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
+  smallIconShell: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#edf3ff" },
+  historyRow: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, borderTopWidth: 1, borderTopColor: "#eef1f5", paddingTop: 9 },
+  historyDate: { color: tokens.color.text, fontSize: 13, fontWeight: "700" },
+  attendanceBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  attendanceBadgeText: { color: "#fff", fontSize: 11.5, fontWeight: "900" },
+  notificationRow: { flexDirection: "row", alignItems: "center", gap: 9, minHeight: 54, padding: 10, borderRadius: 13 },
+  notificationUnread: { backgroundColor: "#f0f5ff" },
+  notificationDotWrap: { width: 9, alignItems: "center" },
+  notificationDot: { width: 7, height: 7, borderRadius: 7, backgroundColor: tokens.color.brand },
+  notificationTitle: { color: tokens.color.text, fontSize: 14, fontWeight: "800" },
+  teacherHero: { flexDirection: "row", alignItems: "center", gap: 12 },
+  supervisedCard: { minHeight: 70, flexDirection: "row", alignItems: "center", gap: 11, borderTopWidth: 1, borderTopColor: "#eef1f5", paddingTop: 11 },
+  cardTitle: { color: tokens.color.text, fontSize: 15.5, fontWeight: "900" },
+  scheduleRow: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: 11, borderTopWidth: 1, borderTopColor: "#eef1f5", paddingTop: 10 },
+  timePill: { backgroundColor: "#edf3ff", borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 },
+  timePillText: { color: tokens.color.brandStrong, fontSize: 12, fontWeight: "900" },
+  attendanceProgress: { gap: 7 },
+  progressTrack: { height: 7, borderRadius: 999, backgroundColor: "#e4e9f1", overflow: "hidden" },
+  progressFill: { height: 7, borderRadius: 999, backgroundColor: tokens.color.brand },
+  attendanceStudentCard: { padding: 15, backgroundColor: tokens.color.surface, borderRadius: 18, borderWidth: 1, borderColor: "#e1e7f0", gap: 13 },
+  studentHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  statusGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  statusGridRtl: { flexDirection: "row-reverse" },
+  statusButton: { minHeight: 40, minWidth: "47%", flexGrow: 1, paddingHorizontal: 9, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: "#dbe3ee", backgroundColor: "#f8fafc" },
+  statusButtonText: { color: tokens.color.textMuted, fontSize: 12, fontWeight: "800" },
+  statusButtonTextActive: { color: "#fff" },
+  warningCard: { flexDirection: "row", alignItems: "flex-start", gap: 9, padding: 13, borderRadius: 14, backgroundColor: "#fff8e8", borderWidth: 1, borderColor: "#f4dfae" },
+  warningText: { flex: 1, color: tokens.color.warning, fontSize: 13.5, lineHeight: 20 },
+  successNotice: { flexDirection: "row", alignItems: "center", gap: 9, padding: 13, borderRadius: 14, backgroundColor: "#edf8f2", borderWidth: 1, borderColor: "#cfead9" },
+  successNoticeText: { flex: 1, color: tokens.color.success, fontSize: 13.5, lineHeight: 20 }
 });
+
+const statusStyle: Record<AttendanceStatus, object> = {
+  PRESENT: { backgroundColor: "#198754", borderColor: "#198754" },
+  ABSENT: { backgroundColor: "#c0392b", borderColor: "#c0392b" },
+  LATE: { backgroundColor: "#b7791f", borderColor: "#b7791f" },
+  EXCUSED: { backgroundColor: "#64748b", borderColor: "#64748b" }
+};

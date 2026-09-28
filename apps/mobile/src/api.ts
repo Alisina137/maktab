@@ -52,6 +52,66 @@ export interface ParentHomePayload {
   children: ParentChild[];
 }
 
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
+
+export interface TeacherTodayPayload {
+  date: string;
+  weekday: string;
+  teacher: { userId: string; fullName: string; employeeCode: string };
+  schedule: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
+  supervisedClasses: Array<{
+    assignmentId: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    attendanceStatus: "PENDING" | "SUBMITTED";
+    attendanceId: string | null;
+  }>;
+}
+
+export interface AttendanceSheetPayload {
+  date: string;
+  classSection: { id: string; name: string; code: string; academicYearId: string };
+  attendance: { id: string; status: "SUBMITTED" | "CORRECTED" } | null;
+  students: Array<{
+    student: { id: string; studentCode: string; fullName: string };
+    status: AttendanceStatus | null;
+    note: string | null;
+  }>;
+  canEdit: boolean;
+  locked: boolean;
+}
+
+export interface ParentAttendanceDay {
+  attendanceId: string;
+  date: string;
+  status: AttendanceStatus;
+  note: string | null;
+  classId: string;
+  className: string;
+}
+
+export interface ParentNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  deepLink: string | null;
+  deliveryStatus: "PENDING" | "SENT" | "FAILED" | "CANCELLED";
+  readAt: string | null;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
 export interface SessionPayload {
   accessToken: string;
   refreshToken: string;
@@ -147,6 +207,58 @@ export const api = {
   parentHome(accessToken: string) {
     return request<ParentHomePayload>("/v1/parent/home", {
       headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  parentAttendance(accessToken: string, studentId: string) {
+    return request<{ days: ParentAttendanceDay[] }>(`/v1/parent/children/${studentId}/attendance`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  parentNotifications(accessToken: string) {
+    return request<{ notifications: ParentNotification[] }>("/v1/parent/notifications", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  markNotificationRead(accessToken: string, notificationId: string) {
+    return request<{ notification: ParentNotification }>(`/v1/parent/notifications/${notificationId}/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  teacherToday(accessToken: string) {
+    return request<TeacherTodayPayload>("/v1/teacher/today", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  teacherAttendance(accessToken: string, classId: string, date?: string) {
+    const suffix = date ? `?date=${encodeURIComponent(date)}` : "";
+    return request<AttendanceSheetPayload>(`/v1/teacher/negaran/${classId}/attendance${suffix}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  submitDailyAttendance(
+    accessToken: string,
+    input: {
+      classId: string;
+      date: string;
+      entries: Array<{ studentId: string; status: AttendanceStatus; note?: string }>;
+    }
+  ) {
+    return request<{
+      sheet: AttendanceSheetPayload;
+      created: boolean;
+      changed: boolean;
+      notificationCount: number;
+    }>("/v1/teacher/negaran/attendance", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
     });
   },
 

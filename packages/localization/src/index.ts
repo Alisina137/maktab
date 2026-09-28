@@ -50,7 +50,33 @@ export type TranslationKey =
   | "parent.academicYear"
   | "auth.logout"
   | "common.loading"
-  | "common.networkError";
+  | "common.networkError"
+  | "teacher.todayTitle"
+  | "teacher.supervisedClass"
+  | "teacher.schedule"
+  | "teacher.noSupervisedClass"
+  | "teacher.noClassesToday"
+  | "attendance.dailyTitle"
+  | "attendance.today"
+  | "attendance.recent"
+  | "attendance.present"
+  | "attendance.absent"
+  | "attendance.late"
+  | "attendance.excused"
+  | "attendance.notRecorded"
+  | "attendance.noHistory"
+  | "attendance.pending"
+  | "attendance.submitted"
+  | "attendance.marked"
+  | "attendance.markEveryone"
+  | "attendance.submit"
+  | "attendance.saved"
+  | "attendance.noChanges"
+  | "attendance.locked"
+  | "notifications.title"
+  | "notifications.absent"
+  | "notifications.late"
+  | "notifications.empty";
 
 const en: Record<TranslationKey, string> = {
   "app.name": "MaktabLink",
@@ -100,6 +126,32 @@ const en: Record<TranslationKey, string> = {
   "parent.academicYear": "Academic year",
   "auth.logout": "Log out",
   "common.loading": "Loading…",
+  "teacher.todayTitle": "Today",
+  "teacher.supervisedClass": "My supervised class",
+  "teacher.schedule": "Today's schedule",
+  "teacher.noSupervisedClass": "No supervised class is assigned to you today.",
+  "teacher.noClassesToday": "No classes are scheduled for you today.",
+  "attendance.dailyTitle": "Daily attendance",
+  "attendance.today": "Today's attendance",
+  "attendance.recent": "Recent attendance",
+  "attendance.present": "Present",
+  "attendance.absent": "Absent",
+  "attendance.late": "Late",
+  "attendance.excused": "Excused",
+  "attendance.notRecorded": "Not recorded",
+  "attendance.noHistory": "No attendance has been recorded yet.",
+  "attendance.pending": "Daily attendance pending",
+  "attendance.submitted": "Attendance submitted",
+  "attendance.marked": "marked",
+  "attendance.markEveryone": "Mark every student before submitting attendance.",
+  "attendance.submit": "Submit attendance",
+  "attendance.saved": "Attendance saved.",
+  "attendance.noChanges": "Attendance was already submitted with these states.",
+  "attendance.locked": "This attendance day is locked. A school administrator can make a correction.",
+  "notifications.title": "Attendance alerts",
+  "notifications.absent": "Absence alert",
+  "notifications.late": "Late arrival alert",
+  "notifications.empty": "No attendance alerts.",
   "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
 };
 
@@ -151,6 +203,32 @@ const dari: Record<TranslationKey, string> = {
   "parent.academicYear": "سال تعلیمی",
   "auth.logout": "خروج",
   "common.loading": "در حال بارگذاری…",
+  "teacher.todayTitle": "امروز",
+  "teacher.supervisedClass": "صنف تحت نظارت من",
+  "teacher.schedule": "برنامه امروز",
+  "teacher.noSupervisedClass": "امروز هیچ صنف تحت نظارتی برای شما ثبت نشده است.",
+  "teacher.noClassesToday": "امروز صنفی برای شما ثبت نشده است.",
+  "attendance.dailyTitle": "حاضری روزانه",
+  "attendance.today": "حاضری امروز",
+  "attendance.recent": "حاضری اخیر",
+  "attendance.present": "حاضر",
+  "attendance.absent": "غایب",
+  "attendance.late": "ناوقت",
+  "attendance.excused": "معذور",
+  "attendance.notRecorded": "ثبت نشده",
+  "attendance.noHistory": "هنوز حاضری ثبت نشده است.",
+  "attendance.pending": "حاضری روزانه باقی مانده",
+  "attendance.submitted": "حاضری ثبت شده",
+  "attendance.marked": "علامت‌گذاری شده",
+  "attendance.markEveryone": "قبل از ثبت حاضری، وضعیت همه شاگردان را مشخص کنید.",
+  "attendance.submit": "ثبت حاضری",
+  "attendance.saved": "حاضری ذخیره شد.",
+  "attendance.noChanges": "حاضری قبلاً با همین وضعیت‌ها ثبت شده است.",
+  "attendance.locked": "حاضری این روز قفل شده است. مدیر مکتب می‌تواند آن را اصلاح کند.",
+  "notifications.title": "هشدارهای حاضری",
+  "notifications.absent": "هشدار غیابت",
+  "notifications.late": "هشدار ناوقت رسیدن",
+  "notifications.empty": "هشدار حاضری وجود ندارد.",
   "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
 };
 
@@ -202,6 +280,32 @@ const pashto: Record<TranslationKey, string> = {
   "parent.academicYear": "تعلیمي کال",
   "auth.logout": "وتل",
   "common.loading": "بارېږي…",
+  "teacher.todayTitle": "نن",
+  "teacher.supervisedClass": "زما تر څار لاندې ټولګی",
+  "teacher.schedule": "د نن ورځې مهالویش",
+  "teacher.noSupervisedClass": "نن ستاسو لپاره تر څار لاندې ټولګی نشته.",
+  "teacher.noClassesToday": "نن ستاسو لپاره ټولګی نه دی ثبت شوی.",
+  "attendance.dailyTitle": "ورځنۍ حاضري",
+  "attendance.today": "د نن حاضري",
+  "attendance.recent": "وروستۍ حاضري",
+  "attendance.present": "حاضر",
+  "attendance.absent": "غایب",
+  "attendance.late": "ناوخته",
+  "attendance.excused": "معذور",
+  "attendance.notRecorded": "نه ده ثبت شوې",
+  "attendance.noHistory": "تر اوسه حاضري نه ده ثبت شوې.",
+  "attendance.pending": "ورځنۍ حاضري پاتې ده",
+  "attendance.submitted": "حاضري ثبت شوې",
+  "attendance.marked": "نښه شوي",
+  "attendance.markEveryone": "د حاضري له ثبتولو مخکې د ټولو زده کوونکو حالت وټاکئ.",
+  "attendance.submit": "حاضري ثبت کړئ",
+  "attendance.saved": "حاضري خوندي شوه.",
+  "attendance.noChanges": "حاضري مخکې له همدې حالتونو سره ثبت شوې ده.",
+  "attendance.locked": "د دې ورځې حاضري تړل شوې ده. د ښوونځي مدیر یې اصلاح کولی شي.",
+  "notifications.title": "د حاضري خبرتیاوې",
+  "notifications.absent": "د غیابت خبرتیا",
+  "notifications.late": "د ناوخته راتګ خبرتیا",
+  "notifications.empty": "د حاضري خبرتیا نشته.",
   "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
 };
 
