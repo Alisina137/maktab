@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AcademicPanel } from "./academic-panel";
 import { AttendancePanel } from "./attendance-panel";
 import { FamilyPanel } from "./family-panel";
+import { LearningPanel } from "./learning-panel";
 
 type School = {
   id: string;
@@ -225,7 +226,7 @@ export default function AdminPage() {
         <div>
           <span className="eyebrow">School Admin</span>
           <h1 className="admin-title">School administration</h1>
-          <p className="admin-copy">Manage school accounts, academic structure, students, families, daily attendance, and validated onboarding from one workspace.</p>
+          <p className="admin-copy">Manage school accounts, academic structure, students, families, attendance, exams, results, and validated onboarding from one workspace.</p>
         </div>
         <button className="admin-secondary" onClick={() => { setSession(null); setUsers([]); setCredential(null); }}>Sign out</button>
       </div>
@@ -244,7 +245,7 @@ export default function AdminPage() {
       <section className="admin-grid">
         <article className="admin-panel">
           <h2>Create account</h2>
-          <p className="admin-copy">Create parent accounts in the Students & Families section so their family profile is created at the same time.</p>
+          <p className="admin-copy">Create parent and student accounts in Students & Families so each login is linked to the correct family/student record.</p>
           <form className="admin-form" onSubmit={createUser}>
             <label>
               Username
@@ -254,7 +255,6 @@ export default function AdminPage() {
               Role
               <select value={newRole} onChange={(event) => setNewRole(event.target.value as User["role"])}>
                 <option value="TEACHER">Teacher</option>
-                <option value="STUDENT">Student</option>
                 <option value="SCHOOL_STAFF">School staff</option>
                 <option value="SCHOOL_ADMIN">School admin</option>
               </select>
@@ -293,6 +293,7 @@ export default function AdminPage() {
         </article>
       </section>
 
+      <LearningPanel accessToken={session.accessToken} />
       <AttendancePanel accessToken={session.accessToken} />
       <FamilyPanel accessToken={session.accessToken} />
       <AcademicPanel accessToken={session.accessToken} />

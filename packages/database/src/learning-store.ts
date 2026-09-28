@@ -92,6 +92,15 @@ export interface AdminLearningOverview {
     classCode: string;
     subjectName: string;
   }>;
+  publishedGrades: Array<{
+    grade: GradeRecord;
+    examName: string;
+    subjectName: string;
+    className: string;
+    studentName: string;
+    studentCode: string;
+    maxScore: number;
+  }>;
 }
 
 export interface LearningStore {
@@ -599,7 +608,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
     },
 
     async getAdminOverview(schoolId) {
-      const [schoolExams, subjectRows] = await Promise.all([
+      const [schoolExams, subjectRows, publishedGrades] = await Promise.all([
         db.select().from(exams).where(eq(exams.schoolId, schoolId)).orderBy(desc(exams.createdAt)),
         db
           .select({
@@ -612,9 +621,27 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId), eq(classSections.schoolId, examSubjects.schoolId)))
           .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId), eq(subjects.schoolId, examSubjects.schoolId)))
           .where(eq(examSubjects.schoolId, schoolId))
-          .orderBy(asc(classSections.name), asc(subjects.name))
+          .orderBy(asc(classSections.name), asc(subjects.name)),
+        db
+          .select({
+            grade: gradeRecords,
+            examName: exams.name,
+            subjectName: subjects.name,
+            className: classSections.name,
+            studentName: students.fullName,
+            studentCode: students.studentCode,
+            maxScore: examSubjects.maxScore
+          })
+          .from(gradeRecords)
+          .innerJoin(examSubjects, and(eq(examSubjects.id, gradeRecords.examSubjectId), eq(examSubjects.schoolId, gradeRecords.schoolId)))
+          .innerJoin(exams, and(eq(exams.id, examSubjects.examId), eq(exams.schoolId, gradeRecords.schoolId)))
+          .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId), eq(subjects.schoolId, gradeRecords.schoolId)))
+          .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId), eq(classSections.schoolId, gradeRecords.schoolId)))
+          .innerJoin(students, and(eq(students.id, gradeRecords.studentId), eq(students.schoolId, gradeRecords.schoolId)))
+          .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.status, "PUBLISHED")))
+          .orderBy(desc(exams.publishedAt), asc(classSections.name), asc(subjects.name), asc(students.fullName))
       ]);
-      return { exams: schoolExams, examSubjects: subjectRows };
+      return { exams: schoolExams, examSubjects: subjectRows, publishedGrades };
     },
 
     async createExam(schoolId, input) {

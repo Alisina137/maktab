@@ -21,6 +21,7 @@ type StudentRow = {
   student: {
     id: string;
     parentUserId: string;
+    userId: string | null;
     studentCode: string;
     fullName: string;
     academicYearId: string;
@@ -114,6 +115,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [credentials, setCredentials] = useState<Credential[]>([]);
 
   const [studentYearId, setStudentYearId] = useState("");
+  const [studentAccountId, setStudentAccountId] = useState("");
   const [importEntity, setImportEntity] = useState<ImportEntity>("PARENT");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -202,6 +204,35 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create student.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createStudentAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!studentAccountId) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setCredentials([]);
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await request<{ user: User; temporaryPassword: string }>(
+        accessToken,
+        `/v1/admin/families/students/${studentAccountId}/account`,
+        {
+          method: "POST",
+          body: JSON.stringify({ username: String(form.get("username") ?? "").trim() })
+        }
+      );
+      setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
+      setNotice("Student login created and linked to exactly one student record.");
+      setStudentAccountId("");
+      event.currentTarget.reset();
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create student account.");
     } finally {
       setBusy(false);
     }
@@ -424,6 +455,23 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <button className="admin-primary" disabled={busy || availableParents.length === 0}>Add student</button>
           </form>
         </article>
+
+        <article className="admin-panel academic-form-card">
+          <div><h2>Create student login</h2><p>Creates a school-issued STUDENT account and links it to exactly one existing student record.</p></div>
+          <form className="admin-form" onSubmit={createStudentAccount}>
+            <label>
+              Student without login
+              <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
+                <option value="">Select student</option>
+                {overview.students.filter((item) => !item.student.userId && item.student.status === "ACTIVE").map((item) => (
+                  <option key={item.student.id} value={item.student.id}>{item.student.fullName} · {item.student.studentCode}</option>
+                ))}
+              </select>
+            </label>
+            <label>Username<input name="username" placeholder="student.001" autoCapitalize="none" required /></label>
+            <button className="admin-primary" disabled={busy || !studentAccountId}>Create student credential</button>
+          </form>
+        </article>
       </div>
 
       <div className="academic-data-grid">
@@ -466,6 +514,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                     <strong>{item.student.fullName}</strong>
                     <span>{item.student.studentCode} · {item.classSection.name} · {item.academicYear.name}</span>
                     <span>Parent: {parent?.profile.fullName ?? "Unknown"} · {item.student.status}</span>
+                    <span>{item.student.userId ? "Student login linked" : "No student login yet"}</span>
                   </div>
                 </div>
               );
