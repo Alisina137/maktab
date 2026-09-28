@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import type { SchoolOption, SessionPayload } from "./api.js";
+import type { SchoolOption, SessionPayload } from "./api";
 
 const KEY = "maktablink.phase2.session";
 
