@@ -237,6 +237,49 @@ export interface LearnerAcademicPayload {
   }>;
 }
 
+export interface AnnouncementPayload {
+  id: string;
+  schoolId: string;
+  title: string;
+  content: string;
+  audienceScope: "SCHOOL" | "CLASS" | "ROLE";
+  classId: string | null;
+  audienceRole: SafeUser["role"] | null;
+  publishAt: string;
+  createdAt: string;
+  archivedAt: string | null;
+}
+
+export interface FeePaymentPayload {
+  id: string;
+  invoiceId: string;
+  kind: "PAYMENT" | "REVERSAL";
+  amount: number;
+  method: string;
+  transactionReference: string | null;
+  reversalOfPaymentId: string | null;
+  reversalReason: string | null;
+  recordedAt: string;
+}
+
+export interface FeeInvoiceViewPayload {
+  invoice: {
+    id: string;
+    studentId: string;
+    amount: number;
+    currency: string;
+    description: string | null;
+    dueDate: string;
+    status: "DRAFT" | "ISSUED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
+    issuedAt: string | null;
+  };
+  studentName: string;
+  studentCode: string;
+  paid: number;
+  outstanding: number;
+  payments: FeePaymentPayload[];
+}
+
 export interface SessionPayload {
   accessToken: string;
   refreshToken: string;
@@ -342,15 +385,71 @@ export const api = {
   },
 
   parentNotifications(accessToken: string) {
-    return request<{ notifications: ParentNotification[] }>("/v1/parent/notifications", {
+    return request<{ notifications: ParentNotification[] }>("/v1/notifications", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  notifications(accessToken: string) {
+    return request<{ notifications: ParentNotification[] }>("/v1/notifications", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
 
   markNotificationRead(accessToken: string, notificationId: string) {
-    return request<{ notification: ParentNotification }>(`/v1/parent/notifications/${notificationId}/read`, {
+    return request<{ notification: ParentNotification }>(`/v1/notifications/${notificationId}/read`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  announcements(accessToken: string) {
+    return request<{ announcements: AnnouncementPayload[] }>("/v1/announcements", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  createTeacherAnnouncement(
+    accessToken: string,
+    input: { title: string; content: string; classId: string }
+  ) {
+    return request<{ announcement: AnnouncementPayload }>("/v1/teacher/announcements", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        title: input.title,
+        content: input.content,
+        audienceScope: "CLASS",
+        classId: input.classId
+      })
+    });
+  },
+
+  parentFees(accessToken: string, studentId: string) {
+    return request<{ invoices: FeeInvoiceViewPayload[] }>(`/v1/parent/children/${studentId}/fees`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  studentFees(accessToken: string) {
+    return request<{ invoices: FeeInvoiceViewPayload[] }>("/v1/student/fees", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  registerPushDevice(accessToken: string, pushToken: string, platform: "ANDROID" | "IOS") {
+    return request<{ device: { id: string } }>("/v1/notifications/devices", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ pushToken, platform })
+    });
+  },
+
+  deactivatePushDevice(accessToken: string, pushToken: string, platform: "ANDROID" | "IOS") {
+    return request<null>("/v1/notifications/devices/deactivate", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ pushToken, platform })
     });
   },
 

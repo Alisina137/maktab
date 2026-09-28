@@ -31,7 +31,9 @@ import {
   type SessionPayload,
   type TeacherTodayPayload
 } from "./src/api";
+import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
+import { deactivatePushForSession, registerPushForSession } from "./src/push";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -169,6 +171,11 @@ function AppContent() {
       void loadParentAttendance(session.accessToken, selectedChildId);
     }
   }, [screen, session?.accessToken, session?.user.role, selectedChildId]);
+
+  useEffect(() => {
+    if (!session || session.mustChangePassword) return;
+    void registerPushForSession(session.accessToken);
+  }, [session?.accessToken, session?.mustChangePassword]);
 
   async function restore() {
     try {
@@ -371,6 +378,7 @@ function AppContent() {
     const refreshToken = session?.refreshToken;
     setBusy(true);
     try {
+      if (session?.accessToken) await deactivatePushForSession(session.accessToken);
       if (refreshToken) await api.logout(refreshToken);
     } catch {
       // Local logout still succeeds if the network is unavailable.
@@ -781,6 +789,16 @@ function AppContent() {
                   onNotice={setNotice}
                 />
 
+                <CommunicationPanel
+                  accessToken={session.accessToken}
+                  mode="PARENT"
+                  studentId={selectedChild.student.id}
+                  locale={locale}
+                  textDirection={textDirection}
+                  onError={setError}
+                  onNotice={setNotice}
+                />
+
                 <View style={styles.phaseCard}>
                   <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
                   {parentNotifications.slice(0, 5).map((notification) => (
@@ -902,6 +920,16 @@ function AppContent() {
               onNotice={setNotice}
             />
 
+            <CommunicationPanel
+              accessToken={session.accessToken}
+              mode="TEACHER"
+              supervisedClasses={teacherToday?.supervisedClasses ?? []}
+              locale={locale}
+              textDirection={textDirection}
+              onError={setError}
+              onNotice={setNotice}
+            />
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
@@ -920,6 +948,15 @@ function AppContent() {
               </View>
             </View>
             <LearnerLearningPanel
+              accessToken={session.accessToken}
+              mode="STUDENT"
+              locale={locale}
+              textDirection={textDirection}
+              onError={setError}
+              onNotice={setNotice}
+            />
+
+            <CommunicationPanel
               accessToken={session.accessToken}
               mode="STUDENT"
               locale={locale}

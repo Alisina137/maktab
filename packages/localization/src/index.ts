@@ -116,7 +116,24 @@ export type TranslationKey =
   | "learning.publishedHomework"
   | "learning.publishedResults"
   | "learning.noPublishedHomework"
-  | "learning.noPublishedResults";
+  | "learning.noPublishedResults"
+  | "communication.announcements"
+  | "communication.noAnnouncements"
+  | "communication.classAnnouncement"
+  | "communication.negaranOnly"
+  | "communication.title"
+  | "communication.message"
+  | "communication.publish"
+  | "communication.completeAnnouncement"
+  | "communication.announcementSent"
+  | "communication.noNotifications"
+  | "fees.title"
+  | "fees.invoice"
+  | "fees.amount"
+  | "fees.paid"
+  | "fees.outstanding"
+  | "fees.due"
+  | "fees.none";
 
 const en: Record<TranslationKey, string> = {
   "app.name": "MaktabLink",
@@ -232,6 +249,23 @@ const en: Record<TranslationKey, string> = {
   "learning.publishedResults": "Published results",
   "learning.noPublishedHomework": "No published homework for this student.",
   "learning.noPublishedResults": "No published results for this student.",
+  "communication.announcements": "Announcements",
+  "communication.noAnnouncements": "No announcements for your audience.",
+  "communication.classAnnouncement": "Class announcement",
+  "communication.negaranOnly": "As Negaran, publish only to the class you supervise.",
+  "communication.title": "Announcement title",
+  "communication.message": "Message",
+  "communication.publish": "Publish announcement",
+  "communication.completeAnnouncement": "Choose the supervised class and complete the title and message.",
+  "communication.announcementSent": "Announcement published to the class.",
+  "communication.noNotifications": "No notifications.",
+  "fees.title": "Fees",
+  "fees.invoice": "School fee",
+  "fees.amount": "Amount",
+  "fees.paid": "Paid",
+  "fees.outstanding": "Outstanding",
+  "fees.due": "Due",
+  "fees.none": "No issued fees for this student.",
   "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
 };
 
@@ -349,6 +383,23 @@ const dari: Record<TranslationKey, string> = {
   "learning.publishedResults": "نتایج نشرشده",
   "learning.noPublishedHomework": "برای این شاگرد وظیفه نشرشده‌ای نیست.",
   "learning.noPublishedResults": "برای این شاگرد نتیجه نشرشده‌ای نیست.",
+  "communication.announcements": "اعلانات",
+  "communication.noAnnouncements": "اعلانی برای مخاطبان شما وجود ندارد.",
+  "communication.classAnnouncement": "اعلان صنف",
+  "communication.negaranOnly": "به‌عنوان نگران، فقط برای صنف تحت نظارت خود اعلان نشر کنید.",
+  "communication.title": "عنوان اعلان",
+  "communication.message": "پیام",
+  "communication.publish": "نشر اعلان",
+  "communication.completeAnnouncement": "صنف تحت نظارت را انتخاب کرده و عنوان و پیام را تکمیل کنید.",
+  "communication.announcementSent": "اعلان برای صنف نشر شد.",
+  "communication.noNotifications": "اعلانی وجود ندارد.",
+  "fees.title": "فیس",
+  "fees.invoice": "فیس مکتب",
+  "fees.amount": "مبلغ",
+  "fees.paid": "پرداخت‌شده",
+  "fees.outstanding": "باقی‌مانده",
+  "fees.due": "موعد",
+  "fees.none": "برای این شاگرد فیس صادرشده‌ای وجود ندارد.",
   "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
 };
 
@@ -466,6 +517,23 @@ const pashto: Record<TranslationKey, string> = {
   "learning.publishedResults": "خپرې شوې پایلې",
   "learning.noPublishedHomework": "د دې زده کوونکي لپاره خپره شوې دنده نشته.",
   "learning.noPublishedResults": "د دې زده کوونکي لپاره خپره شوې پایله نشته.",
+  "communication.announcements": "اعلانونه",
+  "communication.noAnnouncements": "ستاسو د مخاطب لپاره اعلان نشته.",
+  "communication.classAnnouncement": "د ټولګي اعلان",
+  "communication.negaranOnly": "د نګران په توګه یوازې خپل تر څار لاندې ټولګي ته اعلان خپور کړئ.",
+  "communication.title": "د اعلان سرلیک",
+  "communication.message": "پیغام",
+  "communication.publish": "اعلان خپور کړئ",
+  "communication.completeAnnouncement": "تر څار لاندې ټولګی وټاکئ او سرلیک او پیغام بشپړ کړئ.",
+  "communication.announcementSent": "اعلان ټولګي ته خپور شو.",
+  "communication.noNotifications": "خبرتیا نشته.",
+  "fees.title": "فیسونه",
+  "fees.invoice": "د ښوونځي فیس",
+  "fees.amount": "مبلغ",
+  "fees.paid": "ورکړل شوی",
+  "fees.outstanding": "پاتې",
+  "fees.due": "موعد",
+  "fees.none": "د دې زده کوونکي لپاره صادر شوی فیس نشته.",
   "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
 };
 
