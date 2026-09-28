@@ -145,8 +145,8 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
         </button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
-      {notice ? <div className="admin-success">{notice}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <form className="admin-panel attendance-filter" onSubmit={loadReport}>
         <label>

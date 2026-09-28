@@ -133,7 +133,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </div>
           <button className="admin-secondary" onClick={() => void load()}>Retry</button>
         </div>
-        {error ? <div className="admin-error">{error}</div> : null}
+        {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
     );
   }
@@ -152,8 +152,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
-      {notice ? <div className="admin-success">{notice}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-summary-grid">
         <Summary label="Academic years" value={overview.academicYears.length} />

@@ -300,7 +300,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           <div><h2>Communication & fees</h2><p>Loading Phase 7 data…</p></div>
           <button className="admin-secondary" onClick={() => void load()}>Retry</button>
         </div>
-        {error ? <div className="admin-error">{error}</div> : null}
+        {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
     );
   }
@@ -316,8 +316,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
-      {notice ? <div className="admin-success">{notice}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-summary-grid communication-summary-grid">
         <Summary label="Announcements" value={overview.announcements.filter((item) => !item.archivedAt).length} />

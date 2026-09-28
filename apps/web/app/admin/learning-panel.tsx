@@ -203,7 +203,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
       <section className="admin-panel learning-section">
         <h2>Exams & results</h2>
         <p>Loading Phase 6 academic communication…</p>
-        {error ? <div className="admin-error">{error}</div> : null}
+        {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
     );
   }
@@ -219,8 +219,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
-      {notice ? <div className="admin-success">{notice}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">

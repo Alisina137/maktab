@@ -361,7 +361,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div><h2>Students & families</h2><p>Loading Phase 4 data…</p></div>
           <button className="admin-secondary" onClick={() => void load()}>Retry</button>
         </div>
-        {error ? <div className="admin-error">{error}</div> : null}
+        {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
     );
   }
@@ -381,8 +381,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
-      {notice ? <div className="admin-success">{notice}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       {credentials.length > 0 ? (
         <section className="credential-card family-credential">

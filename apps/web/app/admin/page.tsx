@@ -6,6 +6,7 @@ import { AttendancePanel } from "./attendance-panel";
 import { FamilyPanel } from "./family-panel";
 import { LearningPanel } from "./learning-panel";
 import { CommunicationPanel } from "./communication-panel";
+import { PilotReadinessPanel } from "./pilot-readiness-panel";
 
 type School = {
   id: string;
@@ -195,7 +196,7 @@ export default function AdminPage() {
             </label>
             <button className="admin-primary" type="submit" disabled={busy || !schoolId}>{busy ? "Signing in…" : "Sign in"}</button>
           </form>
-          {error ? <div className="admin-error">{error}</div> : null}
+          {error ? <div className="admin-error" role="alert">{error}</div> : null}
         </section>
       </main>
     );
@@ -215,7 +216,7 @@ export default function AdminPage() {
             </label>
             <button className="admin-primary" type="submit" disabled={busy}>Save password</button>
           </form>
-          {error ? <div className="admin-error">{error}</div> : null}
+          {error ? <div className="admin-error" role="alert">{error}</div> : null}
         </section>
       </main>
     );
@@ -232,10 +233,10 @@ export default function AdminPage() {
         <button className="admin-secondary" onClick={() => { setSession(null); setUsers([]); setCredential(null); }}>Sign out</button>
       </div>
 
-      {error ? <div className="admin-error">{error}</div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
 
       {credential ? (
-        <section className="credential-card">
+        <section className="credential-card" aria-live="polite">
           <strong>Temporary credential — show or print this once</strong>
           <div><span>Username</span><code>{credential.username}</code></div>
           <div><span>Temporary password</span><code>{credential.password}</code></div>
@@ -294,6 +295,7 @@ export default function AdminPage() {
         </article>
       </section>
 
+      <PilotReadinessPanel accessToken={session.accessToken} />
       <CommunicationPanel accessToken={session.accessToken} />
       <LearningPanel accessToken={session.accessToken} />
       <AttendancePanel accessToken={session.accessToken} />
