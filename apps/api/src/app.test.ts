@@ -1696,6 +1696,11 @@ test("Phase 8 readiness, audit pagination, import templates, and database readin
   assert.equal(ready.statusCode, 200);
   assert.equal(ready.json<{ database: string }>().database, "ok");
 
+  const metrics = await app.inject({ method: "GET", url: "/metrics" });
+  assert.equal(metrics.statusCode, 200);
+  assert.match(metrics.body, /maktablink_database_ready 1/);
+  assert.match(metrics.body, /maktablink_http_requests_total/);
+
   const schoolId = await provisionSchool(app, "READY8");
   const adminToken = await bootstrapAdmin(app, schoolId);
   const auth = { authorization: `Bearer ${adminToken}` };

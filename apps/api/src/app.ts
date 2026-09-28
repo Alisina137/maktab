@@ -12,6 +12,7 @@ import { registerPilotRoutes } from "./pilot/routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
 import { registerUserRoutes } from "./users/routes.js";
+import { ApiMetrics } from "./observability.js";
 
 export interface BuildAppOptions {
   schoolStore: PlatformSchoolStore;
@@ -30,6 +31,7 @@ export interface BuildAppOptions {
 
 export function buildApp(options: BuildAppOptions) {
   const app = Fastify({ logger: options.logger ?? false });
+  const metrics = new ApiMetrics();
   const webOrigin = options.webOrigin ?? "http://localhost:3000";
 
   void app.register(cors, {
@@ -44,16 +46,24 @@ export function buildApp(options: BuildAppOptions) {
   });
 
   app.addHook("onResponse", async (request, reply) => {
+    metrics.record(request.method, reply.statusCode, reply.elapsedTime);
     app.log.info({
       event: "http_request_completed",
       requestId: request.id,
       method: request.method,
       route: request.routeOptions.url,
-      statusCode: reply.statusCode
+      statusCode: reply.statusCode,
+      durationMs: Number(reply.elapsedTime.toFixed(3))
     });
   });
 
   app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 8 }));
+  app.get("/metrics", async (_request, reply) => {
+    const databaseReady = await options.schoolStore.healthCheck();
+    reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
+    reply.header("cache-control", "no-store");
+    return metrics.render(databaseReady);
+  });
   app.get("/ready", async (_request, reply) => {
     const ready = await options.schoolStore.healthCheck();
     return reply.code(ready ? 200 : 503).send({
