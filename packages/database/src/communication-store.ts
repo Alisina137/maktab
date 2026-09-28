@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type {
   CreateAnnouncementInput,
   CreateFeeInvoiceInput,
@@ -316,7 +316,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
           eq(negaranAssignments.teacherUserId, teacherUserId),
           eq(negaranAssignments.classId, input.classId),
           lte(negaranAssignments.startDate, now),
-          or(isNull(negaranAssignments.endDate), gte(negaranAssignments.endDate, now))
+          or(isNull(negaranAssignments.endDate), sql`${negaranAssignments.endDate} >= ${now}`)
         )).limit(1);
       if (!assignment) throw new CommunicationValidationError("Only the active Negaran may announce to this class.");
       return this.createAnnouncement(schoolId, teacherUserId, input);
