@@ -6,7 +6,7 @@ This repository follows the approved **MaktabLink Product Specification V1** and
 
 ## Current implementation
 
-Phase 6 adds homework, examinations, marks, publication controls, and parent/student academic visibility on top of the verified Phase 1–5 foundations.
+Phase 7 adds scoped school-family communication, manual fee visibility, reminder jobs, and push-delivery plumbing on top of the verified Phase 1–6 foundations.
 
 Implemented:
 
@@ -68,6 +68,19 @@ Implemented:
 - idempotent homework/result notification queue records
 - school-admin published-grade correction workflow with required audit reason
 - Phase 6 teacher/parent/student mobile learning UI in Dari, Pashto, and English
+- SCHOOL / CLASS / ROLE scoped announcements with explicit audiences
+- Negaran class announcements restricted to the actively supervised class
+- audience-filtered announcement visibility for parents, teachers, and students
+- manual AFN fee invoices with DRAFT / ISSUED / PARTIALLY_PAID / PAID / OVERDUE / CANCELLED states
+- parent/student fee visibility with billed, paid, outstanding, due date, and payment history
+- immutable fee payment transactions with separate reversal records
+- configurable fee reminder days with idempotent due/overdue notification jobs
+- unified notification read/unread feed
+- Expo push-token device registration and retryable push-delivery records
+- Expo Push Service provider adapter
+- push-provider failure isolation from school business actions
+- school-admin communication and fee workspace
+- Teacher/Parent/Student Phase 7 mobile communication UI
 
 ## Setup
 
@@ -105,7 +118,7 @@ School administration:
 http://localhost:3000/admin
 ```
 
-The admin workspace contains account management, academic structure, student/family onboarding, attendance oversight, and Phase 6 exam/result administration.
+The admin workspace contains account management, academic structure, student/family onboarding, attendance, exams/results, announcements, and fee administration.
 
 ## Database
 
@@ -132,6 +145,12 @@ Phase 6 migration:
 
 ```text
 packages/database/drizzle/0006_phase6_learning.sql
+```
+
+Phase 7 migration:
+
+```text
+packages/database/drizzle/0007_phase7_communication_fees.sql
 ```
 
 Phase 4 adds:
@@ -161,7 +180,43 @@ Phase 6 adds:
 - `grade_records`
 - homework/exam/grade publication-state enums
 
-Homework and result publication create deduplicated notification records for authorized parent/student recipients. Push transport remains Phase 7.
+Homework and result publication create deduplicated notification records for authorized parent/student recipients.
+
+Phase 7 adds:
+
+- `communication_settings`
+- `announcements`
+- `fee_invoices`
+- `fee_payments`
+- `devices`
+- `notification_push_deliveries`
+- announcement, fee, device, and push-delivery enums
+
+Payments are append-only at the application layer. Corrections are recorded as separate reversal rows instead of modifying or deleting the original payment.
+
+### Push configuration
+
+The mobile app can register an Expo push token when an EAS project ID is available. Configure either the EAS project normally or set:
+
+```env
+EXPO_PUBLIC_EAS_PROJECT_ID=YOUR_EAS_PROJECT_ID
+```
+
+Push registration is best-effort and does not block the app.
+
+Remote push notifications on Android are not testable through Expo Go; use an Expo development/production build with push credentials.
+
+### Scheduled communication job
+
+Phase 7 exposes this protected job endpoint:
+
+```text
+POST /v1/platform/jobs/communication/run
+```
+
+with the existing `x-platform-provisioning-key` header.
+
+A deployment scheduler should invoke it regularly. Each run materializes due scheduled announcements, fee reminders/overdue notices, then retries pending/failed push deliveries. Deduplication makes the reminder/announcement materialization idempotent.
 
 ## Verification
 
@@ -169,4 +224,4 @@ Homework and result publication create deduplicated notification records for aut
 pnpm verify
 ```
 
-See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, `docs/PHASE-05-ATTENDANCE.md`, and `docs/PHASE-06-HOMEWORK-EXAMS-RESULTS.md`.
+See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, `docs/PHASE-05-ATTENDANCE.md`, `docs/PHASE-06-HOMEWORK-EXAMS-RESULTS.md`, and `docs/PHASE-07-COMMUNICATION-FEES.md`.

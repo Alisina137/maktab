@@ -63,6 +63,15 @@ PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred host
 - `exam_subjects`
 - `grade_records`
 
+### Phase 7
+
+- `communication_settings`
+- `announcements`
+- `fee_invoices`
+- `fee_payments`
+- `devices`
+- `notification_push_deliveries`
+
 ## Tenant isolation
 
 The school is the tenant boundary.
@@ -336,6 +345,94 @@ Published grades do not have a delete route. A later correction must use the sch
 Homework/result publication inserts deduplicated recipient records in the shared `notifications` table for linked parent/student users.
 
 The Phase 6 parent mobile stream can display these notification records. Student academic visibility is provided directly through Student Home. Push transport/delivery remains Phase 7.
+
+## Phase 7 communication and fees
+
+### Announcement audience model
+
+Every announcement stores one explicit audience scope:
+
+```text
+SCHOOL
+CLASS + classId
+ROLE + audienceRole
+```
+
+Learner-facing announcement queries always begin with the authenticated school and then apply the audience rule.
+
+CLASS visibility is derived from current tenant relationships:
+
+- active students in the class
+- their linked parent account
+- linked student account when one exists
+- teachers assigned to the class
+- Negaran teacher assigned to the class
+
+A Negaran-created announcement is accepted only for the teacher's currently supervised class.
+
+### Fee model
+
+```text
+FeeInvoice
+  → Student
+  → amount in whole AFN
+  → due date
+  → lifecycle status
+
+FeeInvoice
+  → many FeePayment ledger rows
+```
+
+Invoice lifecycle:
+
+```text
+DRAFT
+→ ISSUED
+→ PARTIALLY_PAID
+→ PAID
+
+ISSUED/PARTIALLY_PAID
+→ OVERDUE
+
+eligible unpaid invoice
+→ CANCELLED
+```
+
+The payment ledger is immutable through the API. A mistake creates a separate REVERSAL row referencing the original PAYMENT. Net paid/outstanding values are derived from PAYMENT minus REVERSAL rows.
+
+Parents can read issued/non-draft invoices only for linked children. A linked STUDENT account can read only that student's fees.
+
+Online collection/payment-provider integration is intentionally outside the MVP.
+
+### Reminder automation
+
+School communication settings store configurable fee reminder days independently from earlier school-settings migrations.
+
+The protected communication job:
+
+```text
+POST /v1/platform/jobs/communication/run
+```
+
+performs:
+
+1. due scheduled-announcement materialization
+2. fee due/overdue reminder materialization
+3. pending/failed push-delivery attempts
+
+Notification deduplication keys make scheduled materialization safe to retry.
+
+### Push-delivery boundary
+
+The shared `notifications` table remains the durable in-app event/recipient record.
+
+`devices` stores a school/user-bound Expo push token.
+
+`notification_push_deliveries` stores each notification/device delivery attempt independently with status, attempt count, provider message ID, and last error.
+
+The Expo provider adapter may fail without changing or rolling back the underlying announcement, attendance, homework, published result, or fee record.
+
+Mobile push registration is also best-effort. The app remains fully usable when notification permission, EAS configuration, Expo service, or connectivity is unavailable.
 
 ## Localization
 

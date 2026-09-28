@@ -14,130 +14,149 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 
 - School controls school-user identities.
 - Role selection is UX only; backend role is authoritative.
-- Initial credentials are temporary.
-- Permanent passwords are never retrievable.
-- Every operational/account/academic/family/attendance/learning operation is school-scoped.
-- A parent account belongs to one school and may own multiple students in that school.
-- Every student has one singular parent relationship.
-- A STUDENT login, when issued, links to exactly one student record.
-- Parent sees only linked children.
-- Student sees only their own linked student record.
-- Negaran is a teacher assignment, not a role.
-- Teachers may create homework and marks only from valid assigned class/subject authority.
-- Homework drafts are not learner-visible.
-- Grade drafts are not parent/student-visible.
-- Exam results become learner-visible only through school-controlled publication.
-- Published grade records are corrected through an audited correction workflow rather than deleted.
-- Daily attendance remains primarily the active Negaran's responsibility.
+- Every operational/account/academic/family/attendance/learning/communication/fee operation is school-scoped.
+- Parent sees only linked children; student sees only their own linked record.
+- Negaran remains an assignment rather than a role.
+- Announcements always have an explicit SCHOOL, CLASS, or ROLE audience.
+- Announcement reads require both same-school membership and audience match.
+- Negaran announcement capability is limited to the actively supervised class.
+- Fee collection remains manual in the MVP; MaktabLink records rather than processes payment.
+- Fee PAYMENT records are immutable; corrections use separate reasoned REVERSAL transactions.
+- Sensitive finance/announcement operations are audited.
+- Scheduled notification materialization is idempotent.
+- Push-provider failure cannot undo the underlying school action.
 - Cross-school access is prohibited.
 
 ## Current phase
 
-**Phase 6 — Homework, Exams & Results — complete and CI verified**
+**Phase 7 — Communication & Fees — complete and CI verified**
 
 ### Implemented outcomes
 
-- Phase 6 migration `0006_phase6_learning.sql`
-- singular optional `students.userId` student-account linkage
-- school-issued student credential workflow
-- generic unlinked STUDENT account creation blocked
-- homework records bound to active teacher assignments
-- DRAFT/PUBLISHED/CLOSED/ARCHIVED homework lifecycle
-- teacher draft homework creation/editing
-- class-specific homework publication
-- parent/student published-homework visibility
-- exams associated with academic year
-- exam subject/class/max-score setup
-- DRAFT/SCHEDULED/IN_PROGRESS/RESULTS_READY/PUBLISHED/ARCHIVED exam lifecycle
-- teacher grade sheets restricted by exact assignment
-- score/max-score validation
-- student/class/year validation
-- draft grade storage
-- results-ready completeness check
-- atomic grade/exam publication
-- parent published-results visibility
-- student published-results visibility
-- homework/result notification queue records
-- published grade corrections with required reason + audit metadata
-- Phase 6 school-admin exam/result workspace
-- Phase 6 Teacher mobile homework/marks UI
-- Phase 6 Parent mobile homework/results UI
-- Phase 6 Student mobile academic home
-- Dari/Pashto/English Phase 6 mobile translations
+- migration `0007_phase7_communication_fees.sql`
+- independent `communication_settings` with configurable fee reminder days
+- SCHOOL / CLASS / ROLE announcement scopes
+- explicit class/role audience validation
+- admin immediate/future announcement publishing
+- announcement archive
+- active-Negaran class announcement endpoint
+- audience-filtered Parent/Teacher/Student announcement feeds
+- class-announcement recipient isolation
+- fee DRAFT / ISSUED / PARTIALLY_PAID / PAID / OVERDUE / CANCELLED lifecycle
+- whole-AFN manual fee invoices
+- parent linked-child fee visibility
+- linked Student own-fee visibility
+- immutable PAYMENT ledger rows
+- separate reason-required REVERSAL ledger rows
+- duplicate reversal rejection
+- fee billed/paid/outstanding derivation
+- configurable due reminders
+- idempotent fee due/overdue reminder creation
+- scheduled announcement materialization
+- unified read/unread notification API
+- mobile device/push-token registration
+- per-notification/per-device push delivery records
+- Expo Push Service adapter
+- failed push retry state
+- push failure isolation from business records
+- protected communication/reminder/push job endpoint
+- Phase 7 admin announcement/fee workspace
+- Phase 7 Parent/Teacher/Student mobile communication UI
+- best-effort mobile push registration
+- Dari/Pashto/English Phase 7 labels
 
 ## Verification
 
-GitHub Actions CI passed on the complete Phase 6 implementation commit:
+GitHub Actions CI passed on the complete Phase 7 implementation commit:
 
 ```text
-5f955b8905ef5a5ab4ddce539aba4ef7c6623f97
+c42a1d7660dce0950937012b24a518e1c91b7baa
 ```
 
 Verified by CI:
 
-- dependency installation
+- dependency installation, including Expo notification/device packages
 - monorepo TypeScript typecheck
-- Phase 1–6 database/API tests
-- draft homework hidden from parent/student
-- published homework visible to parent/student
-- unrelated-teacher grade-sheet rejection
-- max-score validation
-- draft marks hidden from parent
-- draft marks hidden from linked student
-- RESULTS_READY still hidden from learners
-- publication reveals published result to parent/student
-- result notification queue behavior
-- published-grade administrator correction
-- all existing tenant/auth/academic/family/attendance regressions
+- Phase 1–7 database/API tests
+- intended-class announcement visibility
+- unrelated-class announcement isolation
+- class-notification audience isolation
+- partial payment and outstanding-balance behavior
+- immutable payment reversal
+- duplicate reversal rejection
+- parent linked-child fee visibility
+- scheduled fee reminder idempotency
+- push provider failure handling
+- persistence of announcement/fee data after push failure
+- existing tenant/auth/academic/family/attendance/learning regressions
 - Next.js production build
 - Expo Android production export
 
 ## Local database status
 
-Phase 5 and earlier migrations were locally verified against the configured Neon database.
+Phase 7 is **not yet locally migrated/verified** in this conversation.
 
-Phase 6 is **not yet locally migrated/verified** in this conversation.
-
-Pending local migration:
+Pending migration:
 
 ```text
-0006_phase6_learning.sql
+0007_phase7_communication_fees.sql
 ```
 
-After pulling Phase 6:
+After pulling the final Phase 7 source:
 
 ```powershell
+pnpm install
 pnpm db:migrate
 pnpm verify
 ```
 
-Only after those commands pass should Phase 6 be marked locally verified.
+The new mobile dependencies make `pnpm install` required before verification.
 
-## Phase 6 boundary
+## Push deployment status
+
+Code/configuration for device registration and Expo push delivery is implemented and CI-build verified.
+
+Actual remote-push delivery to the user's Android device is not claimed as verified yet.
+
+For real remote push:
+
+- configure an EAS project ID / push credentials
+- use an Expo development or production build
+- Expo Go on Android cannot perform remote push notification testing
+
+The mobile app remains functional if push setup is absent because registration is best-effort.
+
+## Scheduled-job deployment status
+
+Phase 7 implements the protected idempotent job endpoint:
+
+```text
+POST /v1/platform/jobs/communication/run
+```
+
+A production scheduler/cron still needs to invoke that endpoint on the deployment platform. The job infrastructure itself is an operational deployment concern and is not silently simulated by the API process.
+
+## Phase 7 boundary
 
 Implemented now:
 
-- homework
-- exam structure/lifecycle
-- draft marks
-- result publication
-- parent/student academic visibility
-- school-issued student login linkage
-- notification queue records for homework/results
-- audited published-grade corrections
+- scoped announcements
+- Negaran class communication
+- basic manual fees
+- fee payment/reversal history
+- reminder jobs
+- in-app notifications
+- Expo push transport plumbing
 
-Not included in this phase:
+Not included:
 
-- dedicated S3 attachment upload UI; homework accepts an optional attachment URL
-- rich exam scheduling dates
-- push transport/delivery
-- announcements
-- fees
-
-Push transport and broader communication/fees remain Phase 7.
+- online fee collection
+- payment gateway integration
+- unrestricted teacher announcements
+- Phase 8 production/pilot operational hardening
 
 ## Next phase
 
-**Phase 7 — Communication & Fees**, when explicitly requested.
+**Phase 8 — Pilot Readiness**, when explicitly requested.
 
-Phase 7 includes scoped announcements, basic fees, push delivery, and reminder jobs according to the Product Specification.
+Phase 8 includes imports/pilot onboarding hardening, audit review, accessibility, error states, low-bandwidth optimization, backups, production observability, subscription controls, and admin documentation according to the Product Specification.
