@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Operational scripts syntax
+        run: pnpm ops:check
+
       - name: Typecheck
         run: pnpm typecheck
 

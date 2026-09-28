@@ -15,7 +15,10 @@
     "dev:web": "pnpm --filter @maktablink/web dev",
     "dev:mobile": "pnpm --filter @maktablink/mobile start",
     "db:generate": "pnpm --filter @maktablink/database db:generate",
-    "db:migrate": "pnpm --filter @maktablink/database db:migrate"
+    "db:migrate": "pnpm --filter @maktablink/database db:migrate",
+    "backup:db": "node scripts/backup-database.mjs",
+    "restore:db": "node scripts/restore-database.mjs",
+    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
