@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { AcademicPanel } from "./academic-panel";
 
 type School = {
   id: string;
@@ -221,8 +222,8 @@ export default function AdminPage() {
       <div className="admin-header">
         <div>
           <span className="eyebrow">School Admin</span>
-          <h1 className="admin-title">Account management</h1>
-          <p className="admin-copy">Generate school-controlled accounts and manage their access status.</p>
+          <h1 className="admin-title">School administration</h1>
+          <p className="admin-copy">Manage school accounts and the Phase 3 academic structure from one workspace.</p>
         </div>
         <button className="admin-secondary" onClick={() => { setSession(null); setUsers([]); setCredential(null); }}>Sign out</button>
       </div>
@@ -289,6 +290,8 @@ export default function AdminPage() {
           </div>
         </article>
       </section>
+
+      <AcademicPanel accessToken={session.accessToken} />
     </main>
   );
 }

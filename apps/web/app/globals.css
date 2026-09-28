@@ -323,3 +323,154 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.admin-success {
+  border: 1px solid #b9d9c9;
+  border-radius: 12px;
+  background: #effaf4;
+  color: var(--ml-color-success);
+  padding: 12px 14px;
+}
+
+.academic-section {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.academic-heading h2 {
+  margin: 14px 0 6px;
+  font-size: 28px;
+}
+
+.academic-heading p,
+.academic-form-card > p {
+  margin: 0;
+  color: var(--ml-color-text-muted);
+  line-height: 1.55;
+  font-size: 14px;
+}
+
+.academic-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.academic-summary {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 14px;
+  background: var(--ml-color-surface);
+}
+
+.academic-summary strong {
+  font-size: 26px;
+}
+
+.academic-summary span {
+  color: var(--ml-color-text-muted);
+  font-size: 12px;
+}
+
+.academic-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.academic-form-card {
+  display: grid;
+  gap: 16px;
+}
+
+.academic-form-card h2,
+.academic-list-panel h2 {
+  margin: 0;
+}
+
+.academic-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.academic-rows {
+  display: grid;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.academic-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.academic-row:first-child {
+  border-top: 0;
+}
+
+.academic-row > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.academic-row span {
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+}
+
+.academic-table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.academic-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.academic-table th,
+.academic-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--ml-color-border);
+  text-align: left;
+  font-size: 13px;
+}
+
+.academic-table th {
+  color: var(--ml-color-text-muted);
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .academic-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .academic-form-grid,
+  .academic-data-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .academic-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

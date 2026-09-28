@@ -9,7 +9,7 @@ import { requireAccess } from "../auth/routes.js";
 import { generateTemporaryPassword, hashPassword } from "../auth/security.js";
 import { safeUser } from "../auth/session.js";
 
-async function requireSchoolAdmin(request: Parameters<typeof requireAccess>[0], reply: Parameters<typeof requireAccess>[1], store: AccountStore) {
+export async function requireSchoolAdmin(request: Parameters<typeof requireAccess>[0], reply: Parameters<typeof requireAccess>[1], store: AccountStore) {
   const context = await requireAccess(request, reply, store);
   if (!context) return null;
   if (context.user.mustChangePassword) {

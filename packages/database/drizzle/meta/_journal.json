@@ -15,6 +15,13 @@
       "when": 1790590800000,
       "tag": "0001_phase2_auth_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790599200000,
+      "tag": "0002_phase3_academic_structure",
+      "breakpoints": true
     }
   ]
 }

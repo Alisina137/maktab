@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import {
+  createAcademicStore,
   createAccountStore,
   createDatabaseClient,
   createSchoolStore
@@ -28,6 +29,7 @@ const database = createDatabaseClient(databaseUrl);
 const app = buildApp({
   schoolStore: createSchoolStore(database.db),
   accountStore: createAccountStore(database.db),
+  academicStore: createAcademicStore(database.db),
   provisioningKey,
   webOrigin
 });
