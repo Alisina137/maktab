@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { tokens } from "@maktablink/design-tokens";
 import {
   getDirection,
@@ -32,7 +32,7 @@ const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student
   STUDENT: "role.student"
 };
 
-export default function App() {
+function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
   const [screen, setScreen] = useState<Screen>("role");
   const [role, setRole] = useState<MobileRole | null>(null);
@@ -328,6 +328,14 @@ export default function App() {
         {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} /> : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 
