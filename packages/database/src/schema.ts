@@ -25,6 +25,11 @@ export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_stat
 export const homeworkStatusEnum = pgEnum("homework_status", ["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]);
 export const examStatusEnum = pgEnum("exam_status", ["DRAFT", "SCHEDULED", "IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"]);
 export const gradeRecordStatusEnum = pgEnum("grade_record_status", ["DRAFT", "PUBLISHED"]);
+export const announcementAudienceScopeEnum = pgEnum("announcement_audience_scope", ["SCHOOL", "CLASS", "ROLE"]);
+export const feeInvoiceStatusEnum = pgEnum("fee_invoice_status", ["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]);
+export const feePaymentKindEnum = pgEnum("fee_payment_kind", ["PAYMENT", "REVERSAL"]);
+export const devicePlatformEnum = pgEnum("device_platform", ["ANDROID", "IOS"]);
+export const pushDeliveryStatusEnum = pgEnum("push_delivery_status", ["PENDING", "SENT", "FAILED"]);
 export const weekdayEnum = pgEnum("weekday", [
   "SATURDAY",
   "SUNDAY",
@@ -55,6 +60,7 @@ export const schoolSettings = pgTable("school_settings", {
   timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kabul"),
   dateSystem: varchar("date_system", { length: 32 }).notNull().default("solar-hijri"),
   weekStartsOn: integer("week_starts_on").notNull().default(6),
+  feeReminderDays: jsonb("fee_reminder_days").$type<number[]>().notNull().default([7, 1]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
@@ -590,6 +596,113 @@ export const gradeRecords = pgTable(
   ]
 );
 
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 160 }).notNull(),
+    content: text("content").notNull(),
+    audienceScope: announcementAudienceScopeEnum("audience_scope").notNull(),
+    classId: uuid("class_id").references(() => classSections.id, { onDelete: "restrict" }),
+    audienceRole: userRoleEnum("audience_role"),
+    publishAt: timestamp("publish_at", { withTimezone: true }).notNull(),
+    createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("announcements_school_publish_idx").on(table.schoolId, table.publishAt),
+    index("announcements_class_idx").on(table.schoolId, table.classId)
+  ]
+);
+
+export const feeInvoices = pgTable(
+  "fee_invoices",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "restrict" }),
+    amount: integer("amount").notNull(),
+    currency: varchar("currency", { length: 8 }).notNull().default("AFN"),
+    description: varchar("description", { length: 240 }),
+    dueDate: date("due_date").notNull(),
+    status: feeInvoiceStatusEnum("status").notNull().default("DRAFT"),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("fee_invoices_student_idx").on(table.schoolId, table.studentId),
+    index("fee_invoices_due_idx").on(table.schoolId, table.dueDate),
+    index("fee_invoices_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
+export const feePayments = pgTable(
+  "fee_payments",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    invoiceId: uuid("invoice_id").notNull().references(() => feeInvoices.id, { onDelete: "restrict" }),
+    kind: feePaymentKindEnum("kind").notNull().default("PAYMENT"),
+    amount: integer("amount").notNull(),
+    method: varchar("method", { length: 50 }).notNull(),
+    transactionReference: varchar("transaction_reference", { length: 120 }),
+    reversalOfPaymentId: uuid("reversal_of_payment_id"),
+    reversalReason: varchar("reversal_reason", { length: 240 }),
+    recordedBy: uuid("recorded_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("fee_payments_invoice_idx").on(table.schoolId, table.invoiceId),
+    uniqueIndex("fee_payments_reversal_unique").on(table.schoolId, table.reversalOfPaymentId)
+  ]
+);
+
+export const devices = pgTable(
+  "devices",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    pushToken: varchar("push_token", { length: 512 }).notNull(),
+    platform: devicePlatformEnum("platform").notNull(),
+    active: boolean("active").notNull().default(true),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("devices_push_token_unique").on(table.pushToken),
+    index("devices_user_idx").on(table.schoolId, table.userId)
+  ]
+);
+
+export const notificationPushDeliveries = pgTable(
+  "notification_push_deliveries",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    notificationId: uuid("notification_id").notNull().references(() => notifications.id, { onDelete: "cascade" }),
+    deviceId: uuid("device_id").notNull().references(() => devices.id, { onDelete: "cascade" }),
+    status: pushDeliveryStatusEnum("status").notNull().default("PENDING"),
+    attempts: integer("attempts").notNull().default(0),
+    providerMessageId: varchar("provider_message_id", { length: 160 }),
+    lastError: varchar("last_error", { length: 500 }),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("notification_push_delivery_unique").on(table.notificationId, table.deviceId),
+    index("notification_push_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
 export const databaseSchema = {
   schools,
   schoolSettings,
@@ -613,7 +726,12 @@ export const databaseSchema = {
   homeworks,
   exams,
   examSubjects,
-  gradeRecords
+  gradeRecords,
+  announcements,
+  feeInvoices,
+  feePayments,
+  devices,
+  notificationPushDeliveries
 };
 
 export type School = typeof schools.$inferSelect;
@@ -641,3 +759,9 @@ export type Homework = typeof homeworks.$inferSelect;
 export type Exam = typeof exams.$inferSelect;
 export type ExamSubject = typeof examSubjects.$inferSelect;
 export type GradeRecord = typeof gradeRecords.$inferSelect;
+
+export type Announcement = typeof announcements.$inferSelect;
+export type FeeInvoice = typeof feeInvoices.$inferSelect;
+export type FeePayment = typeof feePayments.$inferSelect;
+export type Device = typeof devices.$inferSelect;
+export type NotificationPushDelivery = typeof notificationPushDeliveries.$inferSelect;

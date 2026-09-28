@@ -339,3 +339,73 @@ export const correctPublishedGradeSchema = z.object({
   reason: z.string().trim().min(2).max(500)
 });
 export type CorrectPublishedGradeInput = z.infer<typeof correctPublishedGradeSchema>;
+
+
+export const announcementAudienceScopeSchema = z.enum(["SCHOOL", "CLASS", "ROLE"]);
+export type AnnouncementAudienceScope = z.infer<typeof announcementAudienceScopeSchema>;
+
+export const announcementAudienceRoleSchema = z.enum(["TEACHER", "PARENT", "STUDENT"]);
+export type AnnouncementAudienceRole = z.infer<typeof announcementAudienceRoleSchema>;
+
+export const feeInvoiceStatusSchema = z.enum(["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"]);
+export type FeeInvoiceStatus = z.infer<typeof feeInvoiceStatusSchema>;
+
+export const devicePlatformSchema = z.enum(["ANDROID", "IOS"]);
+export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
+
+export const createAnnouncementSchema = z
+  .object({
+    title: z.string().trim().min(2).max(160),
+    content: z.string().trim().min(1).max(10000),
+    audienceScope: announcementAudienceScopeSchema,
+    classId: z.string().uuid().optional(),
+    audienceRole: announcementAudienceRoleSchema.optional(),
+    publishAt: z.string().datetime({ offset: true }).optional()
+  })
+  .superRefine((value, context) => {
+    if (value.audienceScope === "CLASS" && !value.classId) {
+      context.addIssue({ code: "custom", path: ["classId"], message: "Class audience requires a class." });
+    }
+    if (value.audienceScope !== "CLASS" && value.classId) {
+      context.addIssue({ code: "custom", path: ["classId"], message: "Class may be set only for CLASS audience." });
+    }
+    if (value.audienceScope === "ROLE" && !value.audienceRole) {
+      context.addIssue({ code: "custom", path: ["audienceRole"], message: "Role audience requires a role." });
+    }
+    if (value.audienceScope !== "ROLE" && value.audienceRole) {
+      context.addIssue({ code: "custom", path: ["audienceRole"], message: "Audience role may be set only for ROLE audience." });
+    }
+  });
+export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
+
+export const createFeeInvoiceSchema = z.object({
+  studentId: z.string().uuid(),
+  amount: z.number().int().min(1).max(100000000),
+  dueDate: isoDateSchema,
+  description: z.string().trim().max(240).optional()
+});
+export type CreateFeeInvoiceInput = z.infer<typeof createFeeInvoiceSchema>;
+
+export const recordFeePaymentSchema = z.object({
+  amount: z.number().int().min(1).max(100000000),
+  method: z.string().trim().min(2).max(50),
+  transactionReference: z.string().trim().max(120).optional()
+});
+export type RecordFeePaymentInput = z.infer<typeof recordFeePaymentSchema>;
+
+export const reverseFeePaymentSchema = z.object({
+  reason: z.string().trim().min(2).max(240)
+});
+export type ReverseFeePaymentInput = z.infer<typeof reverseFeePaymentSchema>;
+
+export const registerPushDeviceSchema = z.object({
+  pushToken: z.string().trim().min(10).max(512),
+  platform: devicePlatformSchema
+});
+export type RegisterPushDeviceInput = z.infer<typeof registerPushDeviceSchema>;
+
+export const updateFeeReminderSettingsSchema = z.object({
+  daysBeforeDue: z.array(z.number().int().min(1).max(90)).min(1).max(6)
+    .transform((days) => Array.from(new Set(days)).sort((a, b) => b - a))
+});
+export type UpdateFeeReminderSettingsInput = z.infer<typeof updateFeeReminderSettingsSchema>;
