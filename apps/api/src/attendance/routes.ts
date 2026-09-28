@@ -154,6 +154,7 @@ export function registerAttendanceRoutes(
       if (!context) return;
       try {
         const query = parentAttendanceQuerySchema.parse(request.query);
+        const today = await attendance.getSchoolToday(context.user.schoolId);
         const days = await attendance.getParentAttendance(
           context.user.schoolId,
           context.user.id,
@@ -161,7 +162,7 @@ export function registerAttendanceRoutes(
           query.from,
           query.to
         );
-        return { days };
+        return { today, days };
       } catch (error) {
         return sendAttendanceError(reply, error);
       }

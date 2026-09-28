@@ -85,6 +85,7 @@ function AppContent() {
   const [parentHome, setParentHome] = useState<ParentHomePayload | null>(null);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
+  const [parentToday, setParentToday] = useState("");
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
@@ -228,6 +229,7 @@ function AppContent() {
   async function loadParentAttendance(accessToken: string, studentId: string) {
     try {
       const result = await api.parentAttendance(accessToken, studentId);
+      setParentToday(result.today);
       setParentAttendance(result.days);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
@@ -377,6 +379,7 @@ function AppContent() {
       setParentHome(null);
       setSelectedChildId("");
       setParentAttendance([]);
+      setParentToday("");
       setParentNotifications([]);
       setTeacherToday(null);
       setAttendanceSheet(null);
@@ -746,8 +749,8 @@ function AppContent() {
                     <View style={styles.flexCopy}>
                       <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.today")}</Text>
                       <Text style={[styles.muted, textDirection]}>
-                        {parentAttendance.find((item) => item.date === new Date().toISOString().slice(0, 10))
-                          ? translate(locale, attendanceKey[parentAttendance.find((item) => item.date === new Date().toISOString().slice(0, 10))!.status])
+                        {parentAttendance.find((item) => item.date === parentToday)
+                          ? translate(locale, attendanceKey[parentAttendance.find((item) => item.date === parentToday)!.status])
                           : translate(locale, "attendance.notRecorded")}
                       </Text>
                     </View>

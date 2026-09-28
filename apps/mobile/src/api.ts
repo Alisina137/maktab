@@ -211,7 +211,7 @@ export const api = {
   },
 
   parentAttendance(accessToken: string, studentId: string) {
-    return request<{ days: ParentAttendanceDay[] }>(`/v1/parent/children/${studentId}/attendance`, {
+    return request<{ today: string; days: ParentAttendanceDay[] }>(`/v1/parent/children/${studentId}/attendance`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },

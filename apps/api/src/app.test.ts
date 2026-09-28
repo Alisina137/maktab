@@ -697,7 +697,9 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     headers: parentAuth
   });
   assert.equal(parentAttendance.statusCode, 200);
-  assert.equal(parentAttendance.json<{ days: Array<{ status: string }> }>().days[0]?.status, "ABSENT");
+  const parentAttendanceBody = parentAttendance.json<{ today: string; days: Array<{ status: string }> }>();
+  assert.equal(parentAttendanceBody.today, today.date);
+  assert.equal(parentAttendanceBody.days[0]?.status, "ABSENT");
 
   const alerts = await app.inject({
     method: "GET",
