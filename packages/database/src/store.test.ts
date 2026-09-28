@@ -1,0 +1,59 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { createSchoolStore, type FoundationDatabase } from "./index.js";
+import * as schema from "./schema.js";
+
+async function createTestStore() {
+  const client = new PGlite();
+  const migrationUrl = new URL("../drizzle/0000_phase1_foundation.sql", import.meta.url);
+  const migration = await readFile(migrationUrl, "utf8");
+  await client.exec(migration);
+  const db = drizzle(client, { schema });
+  return {
+    client,
+    store: createSchoolStore(db as unknown as FoundationDatabase)
+  };
+}
+
+test("two schools keep settings isolated by school id", async (t) => {
+  const { client, store } = await createTestStore();
+  t.after(async () => client.close());
+
+  const schoolA = await store.createSchool({
+    code: "SCHOOL-A",
+    name: "School A",
+    slug: "school-a",
+    province: "Kabul",
+    city: "Kabul",
+    defaultLanguage: "fa-AF"
+  });
+  const schoolB = await store.createSchool({
+    code: "SCHOOL-B",
+    name: "School B",
+    slug: "school-b",
+    province: "Kabul",
+    city: "Kabul",
+    defaultLanguage: "ps-AF"
+  });
+
+  await store.updateSchoolSettings(schoolA.school.id, {
+    timezone: "Asia/Kabul",
+    dateSystem: "gregorian",
+    defaultLanguage: "en"
+  });
+
+  const contextA = await store.getSchoolContext(schoolA.school.id);
+  const contextB = await store.getSchoolContext(schoolB.school.id);
+
+  assert.equal(contextA?.school.code, "SCHOOL-A");
+  assert.equal(contextA?.settings.defaultLanguage, "en");
+  assert.equal(contextA?.settings.dateSystem, "gregorian");
+
+  assert.equal(contextB?.school.code, "SCHOOL-B");
+  assert.equal(contextB?.settings.defaultLanguage, "ps-AF");
+  assert.equal(contextB?.settings.dateSystem, "solar-hijri");
+  assert.notEqual(contextA?.school.id, contextB?.school.id);
+});

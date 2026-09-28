@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "MaktabLink",
+    "slug": "maktablink",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.maktablink.app"
+    }
+  }
+}
