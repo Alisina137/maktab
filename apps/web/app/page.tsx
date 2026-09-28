@@ -1,33 +1,39 @@
-import { translate } from "@maktablink/localization";
+import Link from "next/link";
 
 const cards = [
-  ["foundation.tenant", "Tenant-scoped school data is established at the database boundary."],
-  ["foundation.localization", "Dari and Pashto are RTL from the foundation; English remains LTR."],
-  ["foundation.api", "Internal platform provisioning can create and configure school tenants."],
-  ["foundation.design", "Web and mobile share one semantic design-token package."]
+  ["Tenant isolation", "Every account belongs to one school, and usernames are unique only inside that school."],
+  ["School-issued credentials", "Administrators generate temporary credentials; there is no public school-account signup."],
+  ["Role-safe authentication", "Selecting Parent, Teacher, or Student never grants permissions. The backend account role is authoritative."],
+  ["Secure sessions", "Temporary passwords force replacement and account suspension revokes active sessions."]
 ] as const;
 
 export default function Home() {
   return (
     <main className="shell">
       <section className="hero">
-        <span className="eyebrow">{translate("en", "foundation.eyebrow")}</span>
-        <h1>{translate("en", "foundation.title")}</h1>
-        <p>{translate("en", "foundation.subtitle")}</p>
+        <span className="eyebrow">Phase 2 · Authentication & School Accounts</span>
+        <h1>School-controlled access is now the front door to MaktabLink.</h1>
+        <p>
+          The foundation now supports school selection, role-aware login, one-time temporary credentials,
+          private password replacement, rotating sessions, and administrator-managed school accounts.
+        </p>
+        <div className="hero-actions">
+          <Link className="primary-link" href="/admin">Open school administration</Link>
+        </div>
       </section>
 
-      <section className="grid" aria-label="Phase 1 foundation capabilities">
-        {cards.map(([key, description]) => (
-          <article className="card" key={key}>
+      <section className="grid" aria-label="Phase 2 capabilities">
+        {cards.map(([title, description]) => (
+          <article className="card" key={title}>
             <div className="status" aria-hidden="true">✓</div>
-            <h2>{translate("en", key)}</h2>
+            <h2>{title}</h2>
             <p>{description}</p>
           </article>
         ))}
       </section>
 
       <footer>
-        Academic workflows begin in later phases. Phase 1 intentionally contains no student, attendance, homework, or grade features.
+        Academic years, classes, subjects, teacher assignments, Negaran assignments, and timetables remain intentionally outside Phase 2.
       </footer>
     </main>
   );

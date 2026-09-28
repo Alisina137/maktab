@@ -1,70 +1,36 @@
-import { timingSafeEqual } from "node:crypto";
+import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { createSchoolInputSchema, updateSchoolSettingsSchema } from "@maktablink/contracts";
-import { SchoolConflictError, type PlatformSchoolStore } from "@maktablink/database";
-import { ZodError } from "zod";
+import type { AccountStore, PlatformSchoolStore } from "@maktablink/database";
+import { LoginRateLimiter } from "./auth/rate-limit.js";
+import { registerAuthRoutes } from "./auth/routes.js";
+import { registerPlatformRoutes } from "./platform/routes.js";
+import { registerPublicRoutes } from "./public/routes.js";
+import { registerUserRoutes } from "./users/routes.js";
 
 export interface BuildAppOptions {
   schoolStore: PlatformSchoolStore;
+  accountStore: AccountStore;
   provisioningKey: string;
-}
-
-function secureEqual(left: string, right: string): boolean {
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  return a.length === b.length && timingSafeEqual(a, b);
+  webOrigin?: string;
 }
 
 export function buildApp(options: BuildAppOptions) {
   const app = Fastify({ logger: false });
+  const webOrigin = options.webOrigin ?? "http://localhost:3000";
 
-  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 1 }));
-
-  app.addHook("preHandler", async (request, reply) => {
-    if (!request.url.startsWith("/v1/platform/")) return;
-    const supplied = request.headers["x-platform-provisioning-key"];
-    if (typeof supplied !== "string" || !secureEqual(supplied, options.provisioningKey)) {
-      return reply.code(401).send({ error: "unauthorized", message: "Invalid platform provisioning credential." });
-    }
+  void app.register(cors, {
+    origin: [webOrigin, "http://127.0.0.1:3000"],
+    methods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-platform-provisioning-key"]
   });
 
-  app.get("/v1/platform/schools", async () => ({ schools: await options.schoolStore.listSchools() }));
+  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 2 }));
 
-  app.get<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId", async (request, reply) => {
-    const context = await options.schoolStore.getSchoolContext(request.params.schoolId);
-    if (!context) return reply.code(404).send({ error: "not_found", message: "School not found." });
-    return context;
-  });
-
-  app.post("/v1/platform/schools", async (request, reply) => {
-    try {
-      const input = createSchoolInputSchema.parse(request.body);
-      const context = await options.schoolStore.createSchool(input);
-      return reply.code(201).send(context);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return reply.code(400).send({ error: "validation_error", issues: error.issues });
-      }
-      if (error instanceof SchoolConflictError) {
-        return reply.code(409).send({ error: "school_conflict", message: error.message });
-      }
-      throw error;
-    }
-  });
-
-  app.patch<{ Params: { schoolId: string } }>("/v1/platform/schools/:schoolId/settings", async (request, reply) => {
-    try {
-      const input = updateSchoolSettingsSchema.parse(request.body);
-      const context = await options.schoolStore.updateSchoolSettings(request.params.schoolId, input);
-      if (!context) return reply.code(404).send({ error: "not_found", message: "School not found." });
-      return context;
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return reply.code(400).send({ error: "validation_error", issues: error.issues });
-      }
-      throw error;
-    }
-  });
+  const loginLimiter = new LoginRateLimiter();
+  registerPublicRoutes(app, options.schoolStore);
+  registerAuthRoutes(app, options.accountStore, loginLimiter);
+  registerUserRoutes(app, options.accountStore);
+  registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);

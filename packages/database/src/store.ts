@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import type { CreateSchoolInput, UpdateSchoolSettingsInput } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { schoolSettings, schools, type School, type SchoolSettings } from "./schema.js";
@@ -9,9 +9,19 @@ export interface SchoolContext {
   settings: SchoolSettings;
 }
 
+export interface PublicSchool {
+  id: string;
+  code: string;
+  name: string;
+  province: string;
+  city: string;
+  defaultLanguage: "fa-AF" | "ps-AF" | "en";
+}
+
 export interface PlatformSchoolStore {
   createSchool(input: CreateSchoolInput): Promise<SchoolContext>;
   listSchools(): Promise<School[]>;
+  listPublicSchools(query?: string): Promise<PublicSchool[]>;
   getSchoolContext(schoolId: string): Promise<SchoolContext | null>;
   updateSchoolSettings(schoolId: string, input: UpdateSchoolSettingsInput): Promise<SchoolContext | null>;
 }
@@ -41,22 +51,14 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
             })
             .returning();
 
-          if (!school) {
-            throw new Error("School insert did not return a row.");
-          }
+          if (!school) throw new Error("School insert did not return a row.");
 
           const [settings] = await tx
             .insert(schoolSettings)
-            .values({
-              schoolId: school.id,
-              defaultLanguage: input.defaultLanguage
-            })
+            .values({ schoolId: school.id, defaultLanguage: input.defaultLanguage })
             .returning();
 
-          if (!settings) {
-            throw new Error("School settings insert did not return a row.");
-          }
-
+          if (!settings) throw new Error("School settings insert did not return a row.");
           return { school, settings };
         });
       } catch (error) {
@@ -72,6 +74,36 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
       return db.select().from(schools).orderBy(schools.name);
     },
 
+    async listPublicSchools(query) {
+      const base = db
+        .select({
+          id: schools.id,
+          code: schools.code,
+          name: schools.name,
+          province: schools.province,
+          city: schools.city,
+          defaultLanguage: schoolSettings.defaultLanguage
+        })
+        .from(schools)
+        .innerJoin(schoolSettings, eq(schoolSettings.schoolId, schools.id));
+
+      const normalized = query?.trim();
+      if (!normalized) {
+        return base.where(eq(schools.status, "ACTIVE")).orderBy(schools.name).limit(50);
+      }
+
+      const pattern = `%${normalized}%`;
+      return base
+        .where(
+          and(
+            eq(schools.status, "ACTIVE"),
+            or(ilike(schools.name, pattern), ilike(schools.code, pattern), ilike(schools.province, pattern), ilike(schools.city, pattern))
+          )
+        )
+        .orderBy(schools.name)
+        .limit(50);
+    },
+
     async getSchoolContext(schoolId) {
       const rows = await db
         .select({ school: schools, settings: schoolSettings })
@@ -79,7 +111,6 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
         .innerJoin(schoolSettings, eq(schoolSettings.schoolId, schools.id))
         .where(and(eq(schools.id, schoolId), eq(schoolSettings.schoolId, schoolId)))
         .limit(1);
-
       return rows[0] ?? null;
     },
 

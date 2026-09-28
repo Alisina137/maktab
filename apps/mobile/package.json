@@ -1,6 +1,6 @@
 {
   "name": "@maktablink/mobile",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -13,6 +13,8 @@
     "@maktablink/design-tokens": "workspace:*",
     "@maktablink/localization": "workspace:*",
     "expo": "57.0.25",
+    "expo-constants": "57.0.19",
+    "expo-secure-store": "57.0.4",
     "react": "19.2.3",
     "react-native": "0.86.3"
   },

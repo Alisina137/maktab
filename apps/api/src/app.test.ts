@@ -1,92 +1,193 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
-import type { CreateSchoolInput, UpdateSchoolSettingsInput } from "@maktablink/contracts";
-import type { PlatformSchoolStore, School, SchoolContext } from "@maktablink/database";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import {
+  createAccountStore,
+  createSchoolStore,
+  databaseSchema,
+  type FoundationDatabase
+} from "@maktablink/database";
 import { buildApp } from "./app.js";
 
-function memoryStore(): PlatformSchoolStore {
-  const records = new Map<string, SchoolContext>();
-  let next = 1;
+const provisioningKey = "phase-2-test-provisioning-key";
 
-  return {
-    async createSchool(input: CreateSchoolInput) {
-      const id = `00000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
-      const now = new Date();
-      const school: School = {
-        id,
-        code: input.code,
-        name: input.name,
-        slug: input.slug,
-        province: input.province,
-        city: input.city,
-        status: "ACTIVE",
-        createdAt: now,
-        updatedAt: now
-      };
-      const context: SchoolContext = {
-        school,
-        settings: {
-          schoolId: id,
-          defaultLanguage: input.defaultLanguage,
-          timezone: "Asia/Kabul",
-          dateSystem: "solar-hijri",
-          weekStartsOn: 6,
-          createdAt: now,
-          updatedAt: now
-        }
-      };
-      records.set(id, context);
-      return context;
-    },
-    async listSchools() {
-      return [...records.values()].map((record) => record.school);
-    },
-    async getSchoolContext(id: string) {
-      return records.get(id) ?? null;
-    },
-    async updateSchoolSettings(id: string, input: UpdateSchoolSettingsInput) {
-      const current = records.get(id);
-      if (!current) return null;
-      const nextContext: SchoolContext = {
-        school: current.school,
-        settings: { ...current.settings, ...input, updatedAt: new Date() }
-      };
-      records.set(id, nextContext);
-      return nextContext;
-    }
-  };
+async function createTestApp() {
+  const client = new PGlite();
+  for (const file of ["0000_phase1_foundation.sql", "0001_phase2_auth_accounts.sql"]) {
+    const sql = await readFile(
+      new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
+      "utf8"
+    );
+    await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
+  }
+
+  const db = drizzle(client, { schema: databaseSchema }) as unknown as FoundationDatabase;
+  const app = buildApp({
+    schoolStore: createSchoolStore(db),
+    accountStore: createAccountStore(db),
+    provisioningKey
+  });
+  return { app, client };
 }
 
-const key = "phase-1-test-provisioning-key";
-
-test("platform routes reject a missing provisioning key", async () => {
-  const app = buildApp({ schoolStore: memoryStore(), provisioningKey: key });
-  const response = await app.inject({ method: "GET", url: "/v1/platform/schools" });
-  assert.equal(response.statusCode, 401);
-  await app.close();
-});
-
-test("platform can provision and list a school", async () => {
-  const app = buildApp({ schoolStore: memoryStore(), provisioningKey: key });
-  const headers = { "x-platform-provisioning-key": key };
-  const created = await app.inject({
+async function provisionSchool(app: Awaited<ReturnType<typeof createTestApp>>["app"], code: string) {
+  const response = await app.inject({
     method: "POST",
     url: "/v1/platform/schools",
-    headers,
+    headers: { "x-platform-provisioning-key": provisioningKey },
     payload: {
-      code: "school-a",
-      name: "School A",
-      slug: "school-a",
+      code,
+      name: `School ${code}`,
+      slug: `school-${code.toLowerCase()}`,
       province: "Kabul",
       city: "Kabul"
     }
   });
-  assert.equal(created.statusCode, 201);
+  assert.equal(response.statusCode, 201);
+  return response.json<{ school: { id: string } }>().school.id;
+}
 
-  const listed = await app.inject({ method: "GET", url: "/v1/platform/schools", headers });
-  assert.equal(listed.statusCode, 200);
-  const body = listed.json<{ schools: School[] }>();
+test("platform routes reject a missing provisioning key", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const response = await app.inject({ method: "GET", url: "/v1/platform/schools" });
+  assert.equal(response.statusCode, 401);
+});
+
+test("school-scoped credentials, forced password change, role matching, and suspension work together", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolA = await provisionSchool(app, "A");
+  const schoolB = await provisionSchool(app, "B");
+
+  const bootstrap = await app.inject({
+    method: "POST",
+    url: `/v1/platform/schools/${schoolA}/admin`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { username: "admin" }
+  });
+  assert.equal(bootstrap.statusCode, 201);
+  const adminTemporaryPassword = bootstrap.json<{ temporaryPassword: string }>().temporaryPassword;
+
+  const adminLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolA,
+      expectedRole: "SCHOOL_ADMIN",
+      username: "admin",
+      password: adminTemporaryPassword
+    }
+  });
+  assert.equal(adminLogin.statusCode, 200);
+  const adminLoginBody = adminLogin.json<{ accessToken: string; mustChangePassword: boolean }>();
+  assert.equal(adminLoginBody.mustChangePassword, true);
+
+  const adminChange = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${adminLoginBody.accessToken}` },
+    payload: { newPassword: "AdminSecure2026!" }
+  });
+  assert.equal(adminChange.statusCode, 200);
+  const adminSession = adminChange.json<{ accessToken: string }>();
+
+  const createParent = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: { authorization: `Bearer ${adminSession.accessToken}` },
+    payload: { username: "parent.one", role: "PARENT" }
+  });
+  assert.equal(createParent.statusCode, 201);
+  const createdParent = createParent.json<{
+    user: { id: string };
+    temporaryPassword: string;
+  }>();
+
+  const wrongSchool = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolB,
+      expectedRole: "PARENT",
+      username: "parent.one",
+      password: createdParent.temporaryPassword
+    }
+  });
+  assert.equal(wrongSchool.statusCode, 401);
+
+  const wrongRole = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolA,
+      expectedRole: "TEACHER",
+      username: "parent.one",
+      password: createdParent.temporaryPassword
+    }
+  });
+  assert.equal(wrongRole.statusCode, 403);
+  assert.equal(wrongRole.json<{ error: string }>().error, "role_mismatch");
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolA,
+      expectedRole: "PARENT",
+      username: "parent.one",
+      password: createdParent.temporaryPassword
+    }
+  });
+  assert.equal(parentLogin.statusCode, 200);
+  const parentLoginBody = parentLogin.json<{ accessToken: string; mustChangePassword: boolean }>();
+  assert.equal(parentLoginBody.mustChangePassword, true);
+
+  const parentChange = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${parentLoginBody.accessToken}` },
+    payload: { newPassword: "ParentSecure2026!" }
+  });
+  assert.equal(parentChange.statusCode, 200);
+  const parentSession = parentChange.json<{ accessToken: string }>();
+
+  const suspend = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${createdParent.user.id}/suspend`,
+    headers: { authorization: `Bearer ${adminSession.accessToken}` }
+  });
+  assert.equal(suspend.statusCode, 200);
+
+  const meAfterSuspend = await app.inject({
+    method: "GET",
+    url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+  });
+  assert.equal(meAfterSuspend.statusCode, 401);
+});
+
+test("public school search returns active minimal school records", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  await provisionSchool(app, "SEARCH");
+  const response = await app.inject({ method: "GET", url: "/v1/public/schools?q=SEARCH" });
+  assert.equal(response.statusCode, 200);
+  const body = response.json<{ schools: Array<{ code: string; name: string }> }>();
   assert.equal(body.schools.length, 1);
-  assert.equal(body.schools[0]?.code, "SCHOOL-A");
-  await app.close();
+  assert.equal(body.schools[0]?.code, "SEARCH");
 });

@@ -1,6 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
-import { createDatabaseClient, createSchoolStore } from "@maktablink/database";
+import {
+  createAccountStore,
+  createDatabaseClient,
+  createSchoolStore
+} from "@maktablink/database";
 import { buildApp } from "./app.js";
 
 loadEnv({
@@ -11,6 +15,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const provisioningKey = process.env.PLATFORM_PROVISIONING_KEY;
 const host = process.env.API_HOST ?? "0.0.0.0";
 const port = Number(process.env.API_PORT ?? 4000);
+const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
 
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required. Add it to the repository root .env file.");
@@ -22,7 +27,9 @@ if (!provisioningKey || provisioningKey.length < 24) {
 const database = createDatabaseClient(databaseUrl);
 const app = buildApp({
   schoolStore: createSchoolStore(database.db),
-  provisioningKey
+  accountStore: createAccountStore(database.db),
+  provisioningKey,
+  webOrigin
 });
 
 const close = async () => {

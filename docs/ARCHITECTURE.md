@@ -1,61 +1,67 @@
 # MaktabLink Architecture
 
-## Phase 1 decisions
+## Architecture style
 
-MaktabLink starts as a **structured modular monolith in a TypeScript monorepo**.
+MaktabLink uses a **structured modular monolith in a TypeScript monorepo**.
 
 ```text
 apps/
 ├── api       Fastify HTTP API
-├── web       Next.js administration/public web foundation
-└── mobile    Expo React Native mobile foundation
+├── web       Next.js school/platform web surface
+└── mobile    Expo React Native mobile app
 
 packages/
 ├── contracts       validated shared contracts
-├── database        PostgreSQL/Drizzle schema and tenant store
+├── database        PostgreSQL/Drizzle schema and stores
 ├── localization    Dari/Pashto/English messages + direction rules
 └── design-tokens   shared semantic visual tokens
 ```
 
 ## Database
 
-PostgreSQL is the system of record. Neon is the preferred hosted PostgreSQL provider, consistent with the project's workflow default for relational systems.
+PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred hosted application connection.
 
-Phase 1 creates only tenant-level entities:
+Phase 1 entities: `schools`, `school_settings`.
 
-- `schools`
-- `school_settings`
+Phase 2 entities: `users`, `auth_sessions`, `audit_logs`.
 
-No academic entity is introduced in Phase 1.
+Academic entities intentionally begin later.
 
 ## Tenant isolation
 
-The school is the tenant boundary.
+The school is the tenant boundary. Every operational account belongs to exactly one school. Username uniqueness is enforced by `(schoolId, username)`, so the same username may exist in two schools without crossing tenant boundaries.
 
-Every future school-owned entity must contain or derive an immutable `schoolId`. Server authorization must establish tenant context; clients must never be trusted to grant themselves tenant access.
+School-admin routes derive tenant context from the authenticated administrator session rather than trusting a client-provided `schoolId`.
 
-Phase 1 proves the boundary through an integration test that creates two schools, changes School A settings, and verifies School B remains unchanged.
+## Authentication model
 
-## Platform provisioning bootstrap
+There is no public school-account registration.
 
-Phase 1 needs a way to create a school before user authentication exists. The `/v1/platform/*` provisioning surface is therefore protected by a long bootstrap secret in `PLATFORM_PROVISIONING_KEY`.
+Temporary and permanent passwords are stored only as memory-hard scrypt hashes with independent salts. Administrators can generate a replacement temporary password but cannot retrieve a permanent password.
 
-This is deliberately temporary infrastructure. Phase 2 and later platform-admin work must replace/contain it behind proper authenticated administration rather than exposing the bootstrap mechanism to normal users.
+Sessions use opaque tokens:
+
+- access token: 15 minutes
+- rotating refresh token: 30 days
+
+Only SHA-256 token hashes are stored in PostgreSQL. Suspending or archiving an account revokes existing sessions.
+
+Expo SecureStore encrypts the mobile session payload on device.
+
+Phase 2 account roles are `SCHOOL_ADMIN`, `SCHOOL_STAFF`, `TEACHER`, `PARENT`, and `STUDENT`. Negaran is intentionally not a role; it remains a teacher assignment for Phase 3.
+
+Mobile role selection is UX only. The backend role is authoritative.
+
+## Platform bootstrap
+
+`/v1/platform/*` remains protected by `PLATFORM_PROVISIONING_KEY` for school provisioning and first school-admin creation only.
 
 ## Localization
-
-Supported foundation locales:
 
 - `fa-AF` — RTL
 - `ps-AF` — RTL
 - `en` — LTR
 
-RTL is modeled in the shared localization package rather than added as a later visual patch.
-
-## Design system
-
-`@maktablink/design-tokens` is the semantic source for shared colors, spacing, radii, typography and focus semantics. Web and mobile may render these tokens differently, but should preserve meaning.
-
 ## Why no microservices
 
-The current product does not justify distributed-system overhead. Domain separation remains in code and packages while deployment can stay simple.
+The current product does not justify distributed-system overhead. Domain separation remains in modules and stores while deployment stays simple.

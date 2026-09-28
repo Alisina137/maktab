@@ -1,6 +1,6 @@
 {
   "name": "@maktablink/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@fastify/cors": "11.3.0",
     "@maktablink/contracts": "workspace:*",
     "@maktablink/database": "workspace:*",
     "dotenv": "^17.0.0",
@@ -18,7 +19,9 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@types/node": "^22.0.0",
+    "drizzle-orm": "0.45.3",
     "tsx": "^4.20.0",
     "typescript": "^6.0.0"
   }

@@ -5,6 +5,8 @@
     "noEmit": true
   },
   "include": [
-    "App.tsx"
+    "App.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ]
 }

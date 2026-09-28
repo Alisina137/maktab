@@ -10,7 +10,33 @@ export type TranslationKey =
   | "foundation.tenant"
   | "foundation.localization"
   | "foundation.api"
-  | "foundation.design";
+  | "foundation.design"
+  | "auth.chooseRole"
+  | "auth.chooseRoleHint"
+  | "role.parent"
+  | "role.teacher"
+  | "role.student"
+  | "school.choose"
+  | "school.chooseHint"
+  | "school.search"
+  | "school.noResults"
+  | "login.title"
+  | "login.hint"
+  | "field.username"
+  | "field.password"
+  | "auth.signIn"
+  | "passwordChange.title"
+  | "passwordChange.hint"
+  | "field.newPassword"
+  | "field.confirmPassword"
+  | "action.save"
+  | "action.back"
+  | "action.retry"
+  | "home.title"
+  | "home.phase2"
+  | "auth.logout"
+  | "common.loading"
+  | "common.networkError";
 
 const en: Record<TranslationKey, string> = {
   "app.name": "MaktabLink",
@@ -20,7 +46,33 @@ const en: Record<TranslationKey, string> = {
   "foundation.tenant": "Tenant isolation",
   "foundation.localization": "Dari · Pashto · English",
   "foundation.api": "Provisioning API",
-  "foundation.design": "Shared design system"
+  "foundation.design": "Shared design system",
+  "auth.chooseRole": "Who are you?",
+  "auth.chooseRoleHint": "Choose your role. Your school account still decides what you are allowed to access.",
+  "role.parent": "Parent",
+  "role.teacher": "Teacher",
+  "role.student": "Student",
+  "school.choose": "Choose your school",
+  "school.chooseHint": "Search for the school that issued your username and temporary password.",
+  "school.search": "Search schools",
+  "school.noResults": "No active schools found.",
+  "login.title": "Sign in",
+  "login.hint": "Use the username and password provided by your school.",
+  "field.username": "Username",
+  "field.password": "Password",
+  "auth.signIn": "Sign in",
+  "passwordChange.title": "Create your private password",
+  "passwordChange.hint": "Your temporary password can only get you this far. Choose a new password that your school cannot see.",
+  "field.newPassword": "New password",
+  "field.confirmPassword": "Confirm password",
+  "action.save": "Save",
+  "action.back": "Back",
+  "action.retry": "Retry",
+  "home.title": "Account ready",
+  "home.phase2": "Your school account is authenticated. Academic features will appear in the next phases.",
+  "auth.logout": "Log out",
+  "common.loading": "Loading…",
+  "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
 };
 
 const dari: Record<TranslationKey, string> = {
@@ -31,7 +83,33 @@ const dari: Record<TranslationKey, string> = {
   "foundation.tenant": "جداسازی اطلاعات مکاتب",
   "foundation.localization": "دری · پشتو · انگلیسی",
   "foundation.api": "API ایجاد مکتب",
-  "foundation.design": "سیستم مشترک طراحی"
+  "foundation.design": "سیستم مشترک طراحی",
+  "auth.chooseRole": "شما کی هستید؟",
+  "auth.chooseRoleHint": "نقش خود را انتخاب کنید. صلاحیت واقعی شما توسط حساب مکتب تعیین می‌شود.",
+  "role.parent": "والدین",
+  "role.teacher": "استاد",
+  "role.student": "شاگرد",
+  "school.choose": "مکتب خود را انتخاب کنید",
+  "school.chooseHint": "مکتبی را جستجو کنید که نام کاربری و رمز موقت را برای شما داده است.",
+  "school.search": "جستجوی مکاتب",
+  "school.noResults": "هیچ مکتب فعال یافت نشد.",
+  "login.title": "ورود",
+  "login.hint": "از نام کاربری و رمز عبوری که مکتب داده است استفاده کنید.",
+  "field.username": "نام کاربری",
+  "field.password": "رمز عبور",
+  "auth.signIn": "ورود",
+  "passwordChange.title": "رمز خصوصی خود را بسازید",
+  "passwordChange.hint": "رمز موقت فقط برای اولین ورود است. رمزی انتخاب کنید که مکتب آن را نمی‌بیند.",
+  "field.newPassword": "رمز جدید",
+  "field.confirmPassword": "تکرار رمز",
+  "action.save": "ذخیره",
+  "action.back": "برگشت",
+  "action.retry": "تلاش دوباره",
+  "home.title": "حساب آماده است",
+  "home.phase2": "حساب مکتب شما تأیید شد. امکانات درسی در مراحل بعدی اضافه می‌شوند.",
+  "auth.logout": "خروج",
+  "common.loading": "در حال بارگذاری…",
+  "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
 };
 
 const pashto: Record<TranslationKey, string> = {
@@ -42,7 +120,33 @@ const pashto: Record<TranslationKey, string> = {
   "foundation.tenant": "د ښوونځیو د معلوماتو جلاوالی",
   "foundation.localization": "دري · پښتو · انګلیسي",
   "foundation.api": "د ښوونځي جوړولو API",
-  "foundation.design": "ګډ ډیزاین سیستم"
+  "foundation.design": "ګډ ډیزاین سیستم",
+  "auth.chooseRole": "تاسو څوک یاست؟",
+  "auth.chooseRoleHint": "خپل رول وټاکئ. ستاسو اصلي واک د ښوونځي د حساب له خوا ټاکل کېږي.",
+  "role.parent": "مور او پلار",
+  "role.teacher": "ښوونکی",
+  "role.student": "زده کوونکی",
+  "school.choose": "خپل ښوونځی وټاکئ",
+  "school.chooseHint": "هغه ښوونځی ولټوئ چې کارن نوم او لنډمهاله پټنوم یې درکړی دی.",
+  "school.search": "ښوونځي ولټوئ",
+  "school.noResults": "فعال ښوونځی ونه موندل شو.",
+  "login.title": "ننوتل",
+  "login.hint": "د خپل ښوونځي له خوا ورکړل شوی کارن نوم او پټنوم وکاروئ.",
+  "field.username": "کارن نوم",
+  "field.password": "پټنوم",
+  "auth.signIn": "ننوتل",
+  "passwordChange.title": "خپل شخصي پټنوم جوړ کړئ",
+  "passwordChange.hint": "لنډمهاله پټنوم یوازې د لومړي ځل لپاره دی. داسې نوی پټنوم وټاکئ چې ښوونځی یې نه ویني.",
+  "field.newPassword": "نوی پټنوم",
+  "field.confirmPassword": "پټنوم بیا ولیکئ",
+  "action.save": "ساتل",
+  "action.back": "شاته",
+  "action.retry": "بیا هڅه",
+  "home.title": "حساب چمتو دی",
+  "home.phase2": "ستاسو د ښوونځي حساب تایید شو. درسي ځانګړتیاوې به په راتلونکو پړاوونو کې اضافه شي.",
+  "auth.logout": "وتل",
+  "common.loading": "بارېږي…",
+  "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
 };
 
 export const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
