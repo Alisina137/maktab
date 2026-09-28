@@ -269,7 +269,8 @@ export function registerFamilyRoutes(
           const fullName = mapped(source, input.mapping, "fullName");
           const parentUsername = mapped(source, input.mapping, "parentUsername").toLowerCase();
           const academicYearValue = mapped(source, input.mapping, "academicYear");
-          const classValue = mapped(source, input.mapping, "classCode").toUpperCase();
+          const classRaw = mapped(source, input.mapping, "classCode");
+          const classValue = classRaw.toUpperCase();
 
           const parent = parentByUsername.get(parentUsername);
           if (!parent || parent.user.status === "SUSPENDED" || parent.user.status === "ARCHIVED") {
@@ -286,7 +287,7 @@ export function registerFamilyRoutes(
           const classSection = academicOverview.classes.find(
             (item) =>
               item.academicYearId === year.id &&
-              (item.id === classValue || item.code.toUpperCase() === classValue)
+              (item.id === classRaw || item.code.toUpperCase() === classValue)
           );
           if (!classSection) {
             errors.push({ row: rowNumber, field: "classCode", message: "Class was not found in the selected academic year." });

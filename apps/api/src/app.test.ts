@@ -441,3 +441,86 @@ test("parent account can own three students and sees all three through one login
   assert.equal(body.children.length, 3);
   assert.deepEqual(body.children.map((item) => item.student.studentCode), ["S-001", "S-002", "S-003"]);
 });
+
+
+test("bulk student import validation reports duplicate rows without committing them", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "IMPORT");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: auth });
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G8", name: "Grade 8", sortOrder: 8 }
+  });
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "8A", name: "Grade 8 A" }
+  });
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "import.parent", fullName: "Import Parent" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+
+  const rows = [
+    { code: "IMP-001", name: "Student One", parent: "import.parent", year: "1405", class: "8A" },
+    { code: "IMP-001", name: "Student Duplicate", parent: "import.parent", year: "1405", class: "8A" }
+  ];
+  const validation = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/import/validate",
+    headers: auth,
+    payload: {
+      entityType: "STUDENT",
+      rows,
+      mapping: {
+        studentCode: "code",
+        fullName: "name",
+        parentUsername: "parent",
+        academicYear: "year",
+        classCode: "class"
+      }
+    }
+  });
+  assert.equal(validation.statusCode, 200);
+  const validationBody = validation.json<{
+    valid: boolean;
+    validRowCount: number;
+    errors: Array<{ row: number; field?: string }>;
+  }>();
+  assert.equal(validationBody.valid, false);
+  assert.equal(validationBody.validRowCount, 1);
+  assert.ok(validationBody.errors.some((item) => item.row === 3 && item.field === "studentCode"));
+
+  const overview = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(overview.statusCode, 200);
+  assert.equal(overview.json<{ students: unknown[] }>().students.length, 0);
+});
