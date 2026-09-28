@@ -67,8 +67,8 @@ test("school-scoped credentials, forced password change, role matching, and susp
     await client.close();
   });
 
-  const schoolA = await provisionSchool(app, "A");
-  const schoolB = await provisionSchool(app, "B");
+  const schoolA = await provisionSchool(app, "AA");
+  const schoolB = await provisionSchool(app, "BB");
 
   const bootstrap = await app.inject({
     method: "POST",
