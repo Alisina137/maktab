@@ -3,13 +3,13 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
-
+--> statement-breakpoint
 DO $$ BEGIN
   CREATE TYPE "language_code" AS ENUM ('fa-AF', 'ps-AF', 'en');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
-
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "schools" (
   "id" uuid PRIMARY KEY NOT NULL,
   "code" varchar(32) NOT NULL UNIQUE,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS "schools" (
   "created_at" timestamptz DEFAULT now() NOT NULL,
   "updated_at" timestamptz DEFAULT now() NOT NULL
 );
-
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "school_settings" (
   "school_id" uuid PRIMARY KEY NOT NULL REFERENCES "schools"("id") ON DELETE CASCADE,
   "default_language" "language_code" DEFAULT 'fa-AF' NOT NULL,
