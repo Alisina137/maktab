@@ -6,7 +6,7 @@ This repository follows the approved **MaktabLink Product Specification V1** and
 
 ## Current implementation
 
-Phase 5 adds the daily attendance and teacher workflow layer on top of the verified tenant, authentication, academic, and family foundations.
+Phase 6 adds homework, examinations, marks, publication controls, and parent/student academic visibility on top of the verified Phase 1–5 foundations.
 
 Implemented:
 
@@ -54,6 +54,20 @@ Implemented:
 - admin attendance reports with class/date filters
 - submitted/pending class counts for single-day oversight
 - audited school-admin attendance corrections
+- school-controlled STUDENT accounts linked one-to-one to student records
+- teacher homework creation bound to active subject/class assignments
+- homework DRAFT → PUBLISHED → CLOSED → ARCHIVED lifecycle
+- class-specific published homework visibility for parents and linked students
+- exam DRAFT → SCHEDULED → IN_PROGRESS → RESULTS_READY → PUBLISHED → ARCHIVED lifecycle
+- exam subject/class maximum-score configuration
+- teacher grade entry restricted to assigned subject/class combinations
+- maximum-score and student-class validation for marks
+- draft grade isolation from parent/student APIs
+- atomic exam result publication
+- published result visibility for linked parents and the student account
+- idempotent homework/result notification queue records
+- school-admin published-grade correction workflow with required audit reason
+- Phase 6 teacher/parent/student mobile learning UI in Dari, Pashto, and English
 
 ## Setup
 
@@ -91,7 +105,7 @@ School administration:
 http://localhost:3000/admin
 ```
 
-The admin workspace contains account management, academic structure, student/family onboarding, and Phase 5 attendance oversight/corrections.
+The admin workspace contains account management, academic structure, student/family onboarding, attendance oversight, and Phase 6 exam/result administration.
 
 ## Database
 
@@ -114,6 +128,12 @@ Phase 5 migration:
 packages/database/drizzle/0005_phase5_attendance.sql
 ```
 
+Phase 6 migration:
+
+```text
+packages/database/drizzle/0006_phase6_learning.sql
+```
+
 Phase 4 adds:
 
 - `parent_profiles`
@@ -132,10 +152,21 @@ Phase 5 adds:
 
 Attendance notifications are currently in-app queue records. Push delivery remains a later notification phase.
 
+Phase 6 adds:
+
+- nullable singular `students.user_id` linkage for school-issued STUDENT accounts
+- `homeworks`
+- `exams`
+- `exam_subjects`
+- `grade_records`
+- homework/exam/grade publication-state enums
+
+Homework and result publication create deduplicated notification records for authorized parent/student recipients. Push transport remains Phase 7.
+
 ## Verification
 
 ```powershell
 pnpm verify
 ```
 
-See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, and `docs/PHASE-05-ATTENDANCE.md`.
+See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, `docs/PHASE-05-ATTENDANCE.md`, and `docs/PHASE-06-HOMEWORK-EXAMS-RESULTS.md`.

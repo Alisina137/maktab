@@ -55,6 +55,14 @@ PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred host
 - `student_attendances`
 - `notifications`
 
+### Phase 6
+
+- optional singular `students.user_id` login linkage
+- `homeworks`
+- `exams`
+- `exam_subjects`
+- `grade_records`
+
 ## Tenant isolation
 
 The school is the tenant boundary.
@@ -234,6 +242,100 @@ Attendance persistence is separate from future push delivery. Phase 5 creates th
 School admins can filter attendance by date range and active class. The report returns individual student marks plus Present/Absent/Late/Excused totals.
 
 For a single-day report, it also compares active classes against submitted attendance sheets to surface submitted/pending class counts.
+
+## Phase 6 learning model
+
+### Student identity
+
+Existing student records remain valid without a mobile login. When the school issues a STUDENT credential, the family workflow creates the user and stores one unique optional `students.user_id`.
+
+```text
+STUDENT user
+  → exactly one linked Student record
+
+Student record
+  → zero or one STUDENT user
+```
+
+The student academic endpoint derives the user ID from the authenticated session and does not accept a student ID from the client. A student can therefore resolve only their own linked student record.
+
+### Homework authorization
+
+Homework is anchored to an existing `teacher_assignments` row.
+
+```text
+Active TeacherAssignment
+  → Teacher + Academic Year + Class + Subject
+  → Homework
+```
+
+Creation and publication require that the authenticated teacher owns that assignment and that its academic year is ACTIVE. A teacher cannot create homework for an unrelated class/subject.
+
+Homework lifecycle:
+
+```text
+DRAFT → PUBLISHED → CLOSED → ARCHIVED
+```
+
+Only DRAFT homework is editable. Published/closed homework is visible to the class's linked parents and student accounts. Draft homework is never returned by learner-facing endpoints.
+
+### Exam and marks model
+
+```text
+Exam
+  → Academic Year
+  → many ExamSubjects
+
+ExamSubject
+  → Exam + Class + Subject + maxScore
+
+GradeRecord
+  → ExamSubject + Student + score + remark
+```
+
+An ExamSubject can be configured only when the selected class/subject already has a teacher assignment in that academic year.
+
+Exam lifecycle:
+
+```text
+DRAFT
+→ SCHEDULED
+→ IN_PROGRESS
+→ RESULTS_READY
+→ PUBLISHED
+→ ARCHIVED
+```
+
+Teachers may enter/update DRAFT marks only while the exam is IN_PROGRESS and only where their active teacher assignment exactly matches the exam year/class/subject.
+
+The store validates:
+
+- student belongs to the exam class/year
+- each student appears at most once in a save request
+- score does not exceed the ExamSubject maximum
+- unrelated teachers cannot open or write the grade sheet
+
+Moving an exam to RESULTS_READY requires a mark for every active student in every configured ExamSubject.
+
+### Publication boundary
+
+Draft grades are filtered out of both parent and student APIs.
+
+Publishing an exam is a database transaction that:
+
+1. changes all exam grade records to PUBLISHED
+2. sets their common publication timestamp
+3. changes the Exam to PUBLISHED
+
+Only after that transaction do learner-facing APIs expose the results.
+
+Published grades do not have a delete route. A later correction must use the school-admin correction workflow, which requires a reason and writes the previous/new values to the audit log.
+
+### Phase 6 notifications
+
+Homework/result publication inserts deduplicated recipient records in the shared `notifications` table for linked parent/student users.
+
+The Phase 6 parent mobile stream can display these notification records. Student academic visibility is provided directly through Student Home. Push transport/delivery remains Phase 7.
 
 ## Localization
 

@@ -16,124 +16,128 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 - Role selection is UX only; backend role is authoritative.
 - Initial credentials are temporary.
 - Permanent passwords are never retrievable.
-- Every operational/account/academic/family/attendance operation is school-scoped.
+- Every operational/account/academic/family/attendance/learning operation is school-scoped.
 - A parent account belongs to one school and may own multiple students in that school.
-- Every student has one singular parent account relationship.
+- Every student has one singular parent relationship.
+- A STUDENT login, when issued, links to exactly one student record.
 - Parent sees only linked children.
+- Student sees only their own linked student record.
 - Negaran is a teacher assignment, not a role.
-- Daily attendance is primarily the active Negaran's responsibility.
-- Every active student must receive an explicit daily attendance state before submission.
-- Duplicate daily attendance requests must not create duplicate sheets/alerts.
-- School admins may correct attendance and corrections are audited.
-- Period attendance remains optional and independent from daily attendance.
-- Academic/student/attendance history is retained.
+- Teachers may create homework and marks only from valid assigned class/subject authority.
+- Homework drafts are not learner-visible.
+- Grade drafts are not parent/student-visible.
+- Exam results become learner-visible only through school-controlled publication.
+- Published grade records are corrected through an audited correction workflow rather than deleted.
+- Daily attendance remains primarily the active Negaran's responsibility.
 - Cross-school access is prohibited.
 
 ## Current phase
 
-**Phase 5 — Attendance & Daily Teacher Workflow — complete, CI verified, and locally verified**
+**Phase 6 — Homework, Exams & Results — complete and CI verified**
 
 ### Implemented outcomes
 
-- `daily_attendances` class/date attendance sheets
-- `student_attendances` explicit student marks
-- PRESENT / ABSENT / LATE / EXCUSED states
-- one daily attendance sheet per school/class/date
-- one student mark per attendance sheet/student
-- school-local date calculation from school timezone
-- Teacher Today chronological timetable
-- active Negaran supervised-class card
-- pending/submitted attendance indicator
-- same-school/date/class authorization checks
-- explicit mark-every-student validation
-- duplicate retry/idempotency protection
-- same-day Negaran correction
-- school-local day attendance lock for teacher edits
-- admin post-lock correction
-- audited admin attendance correction
-- parent recent attendance history
-- parent today's attendance state
-- server-provided school-local `today`
-- in-app absent/late parent alerts
-- notification deduplication and read/unread state
-- cancellation of unread alert after Present/Excused correction
-- admin date/class attendance reports
-- Present/Absent/Late/Excused summaries
-- single-day submitted/pending class counts
-- Dari/Pashto/English mobile attendance UI
+- Phase 6 migration `0006_phase6_learning.sql`
+- singular optional `students.userId` student-account linkage
+- school-issued student credential workflow
+- generic unlinked STUDENT account creation blocked
+- homework records bound to active teacher assignments
+- DRAFT/PUBLISHED/CLOSED/ARCHIVED homework lifecycle
+- teacher draft homework creation/editing
+- class-specific homework publication
+- parent/student published-homework visibility
+- exams associated with academic year
+- exam subject/class/max-score setup
+- DRAFT/SCHEDULED/IN_PROGRESS/RESULTS_READY/PUBLISHED/ARCHIVED exam lifecycle
+- teacher grade sheets restricted by exact assignment
+- score/max-score validation
+- student/class/year validation
+- draft grade storage
+- results-ready completeness check
+- atomic grade/exam publication
+- parent published-results visibility
+- student published-results visibility
+- homework/result notification queue records
+- published grade corrections with required reason + audit metadata
+- Phase 6 school-admin exam/result workspace
+- Phase 6 Teacher mobile homework/marks UI
+- Phase 6 Parent mobile homework/results UI
+- Phase 6 Student mobile academic home
+- Dari/Pashto/English Phase 6 mobile translations
 
 ## Verification
 
-GitHub Actions CI passed on the complete Phase 5 implementation commit:
+GitHub Actions CI passed on the complete Phase 6 implementation commit:
 
 ```text
-03a38f9771b771adb70eb286b1102bc45b9b0008
+5f955b8905ef5a5ab4ddce539aba4ef7c6623f97
 ```
 
 Verified by CI:
 
 - dependency installation
 - monorepo TypeScript typecheck
-- Phase 1–5 database/API tests
-- Negaran attendance submission
-- non-Negaran class-access rejection
-- duplicate attendance retry idempotency
-- parent attendance visibility
-- absent parent alert creation
-- admin correction and parent corrected visibility
-- school-local today value
-- all existing tenant/auth/academic/family regressions
+- Phase 1–6 database/API tests
+- draft homework hidden from parent/student
+- published homework visible to parent/student
+- unrelated-teacher grade-sheet rejection
+- max-score validation
+- draft marks hidden from parent
+- draft marks hidden from linked student
+- RESULTS_READY still hidden from learners
+- publication reveals published result to parent/student
+- result notification queue behavior
+- published-grade administrator correction
+- all existing tenant/auth/academic/family/attendance regressions
 - Next.js production build
 - Expo Android production export
 
-Local verification was completed on 2026-09-28 against the user's configured Neon database.
-
-Confirmed locally:
-
-- `pnpm db:migrate` completed successfully and recorded the Phase 5 migration
-- all workspace TypeScript typechecks passed
-- localization tests passed: 2/2
-- contracts tests passed: 3/3
-- database tests passed: 8/8
-- API tests passed: 10/10
-- Next.js production build passed
-- Expo Android production export passed
-- database and API TypeScript builds passed
-
 ## Local database status
 
-The Phase 5 migration is applied and locally verified:
+Phase 5 and earlier migrations were locally verified against the configured Neon database.
+
+Phase 6 is **not yet locally migrated/verified** in this conversation.
+
+Pending local migration:
 
 ```text
-0005_phase5_attendance.sql
+0006_phase6_learning.sql
 ```
 
-Drizzle reported migrations applied successfully against the configured Neon database. No additional Phase 5 migration step is pending on that verified local environment.
+After pulling Phase 6:
 
-The migration is additive. A source rollback does not automatically undo attendance or notification records.
+```powershell
+pnpm db:migrate
+pnpm verify
+```
 
-## Phase 5 boundary
+Only after those commands pass should Phase 6 be marked locally verified.
+
+## Phase 6 boundary
 
 Implemented now:
 
-- daily Negaran attendance
-- Teacher Today
-- parent attendance visibility
-- in-app absent/late alerts
-- admin reports/corrections
+- homework
+- exam structure/lifecycle
+- draft marks
+- result publication
+- parent/student academic visibility
+- school-issued student login linkage
+- notification queue records for homework/results
+- audited published-grade corrections
 
 Not included in this phase:
 
-- optional period attendance
+- dedicated S3 attachment upload UI; homework accepts an optional attachment URL
+- rich exam scheduling dates
 - push transport/delivery
-- homework
-- exams/results
-- announcements/fees
+- announcements
+- fees
 
-Push notifications remain Phase 7. Period attendance remains optional according to the product specification.
+Push transport and broader communication/fees remain Phase 7.
 
 ## Next phase
 
-**Phase 6 — Homework, Exams & Results**, when explicitly requested.
+**Phase 7 — Communication & Fees**, when explicitly requested.
 
-Phase 6 includes homework, examination structure, marks, draft/publication state, and parent/student visibility.
+Phase 7 includes scoped announcements, basic fees, push delivery, and reminder jobs according to the Product Specification.
