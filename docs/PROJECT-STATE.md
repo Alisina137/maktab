@@ -7,7 +7,7 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 ## Source of truth
 
 - Product: **MaktabLink Product Specification V1**, supplied 2026-09-28.
-- Implementation process: **Software Development Workflow V4**.
+- Implementation process: **Software Development Workflow V5 — GitHub-First Delivery**.
 - Repository: `Alisina137/maktab`.
 
 ## Locked product rules
@@ -16,63 +16,74 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 - Role selection is UX only; backend role is authoritative.
 - Initial credentials are temporary.
 - Permanent passwords are never retrievable.
-- Every operational/account/academic operation is school-scoped.
+- Every operational/account/academic/family operation is school-scoped.
+- A parent account belongs to one school and may own multiple students in that school.
+- Every student has one singular parent account relationship; there is no parent/student many-to-many table.
+- Parent identities never merge across schools.
+- Parent sees only linked children.
 - Negaran is a teacher assignment, not a role.
 - Teachers may teach multiple subjects/classes.
 - Timetable teacher/class conflicts are prohibited.
-- Academic history is retained.
+- Academic and student class history is retained.
+- Bulk imports validate before commit; invalid rows are not silently imported.
 
 ## Current phase
 
-**Phase 3 — Academic Structure — complete and verified**
+**Phase 4 — Student & Family System — complete and CI verified**
 
 ### Implemented outcomes
 
-- academic-year state lifecycle
-- grade levels
-- academic-year class sections
-- subjects
-- teacher profiles linked to TEACHER users
-- teacher-subject-class assignments
-- dated Negaran assignments
-- retained Negaran history
-- timetable periods
-- teacher/class timetable conflict detection
-- tenant-scoped academic store
-- school-admin academic APIs
-- teacher academic read API
-- school-admin academic management UI
-- Phase 3 audit logging
-- Phase 3 database/API acceptance tests
+- `parent_profiles` for school-scoped PARENT users
+- `students` with singular non-null `parentUserId`
+- one parent → many same-school students
+- duplicate student-code rejection within a school
+- cross-school parent/class/year link rejection
+- `student_class_history` for retained class/year placement
+- school-admin parent creation with one-time temporary credential
+- school-admin student creation linked to an existing parent
+- parent reset/suspend/reactivate controls
+- family/student admin overview
+- CSV/TSV and XLSX import preview
+- explicit import column mapping
+- parent/student/teacher row validation and error preview
+- explicit import confirmation
+- generated temporary credentials for imported parent/teacher accounts
+- parent mobile home
+- default-child selection and sibling switching
+- authenticated parent-home API that returns only linked children
+- Dari/Pashto/English parent-home localization
+- Phase 4 audit records for sensitive mutations/import completion
 
 ## Verification
 
-GitHub Actions CI passed on source commit:
+GitHub Actions CI passed on the complete implementation commit:
 
 ```text
-28721df47facdd7dbf28391409f71947aa7cb3f6
+0a95f79f20699c8c334a8bef7096298946606fa6
 ```
 
-Verified:
+Verified by CI:
 
 - dependency installation
-- TypeScript typecheck
-- Phase 1–3 test suites
-- academic tenant isolation
-- teacher multi-subject/multi-class assignment
-- separate Negaran assignment
-- one active academic year
-- overlapping Negaran rejection
-- class timetable conflict rejection
-- teacher timetable conflict rejection
-- API academic workflow
+- TypeScript typecheck across the monorepo
+- Phase 1–4 database/API test suites
+- one parent owning three students
+- parent login showing all three linked children
+- singular parent ownership
+- cross-school parent link rejection
+- duplicate student-code rejection
+- bulk-import duplicate validation without mutation
+- CSV parsing
+- XLSX worksheet parsing
+- existing academic/auth/tenant regressions
 - Next.js production build
 - Expo Android production export
-- PGlite database test files execute serially to avoid concurrent embedded-PostgreSQL/WASM memory spikes on Windows development machines
+
+The earlier Phase 3 migration and Windows `pnpm verify` were confirmed by the user. The Phase 4 Neon migration remains a local deployment step after pulling the final source.
 
 ## Local database requirement
 
-After pulling Phase 3, apply the real Neon migration:
+After pulling Phase 4, apply:
 
 ```powershell
 pnpm db:migrate
@@ -81,13 +92,17 @@ pnpm db:migrate
 This applies:
 
 ```text
-0002_phase3_academic_structure.sql
+0003_phase4_student_family.sql
 ```
+
+The migration is additive. A source rollback does not automatically undo the database migration or remove Phase 4 data.
 
 ## Phase boundary
 
-Phase 3 does not create students or family relationships and does not implement attendance.
+Phase 4 does not implement attendance, homework, exams, marks, announcements, fees, or push notifications. Teacher Today and Negaran daily attendance remain Phase 5.
 
-## Next approved phase
+## Next phase
 
-**Phase 4 — Student & Family System**, only when requested.
+**Phase 5 — Attendance**, when explicitly requested.
+
+Phase 5 includes Teacher Today, Negaran supervised class, daily attendance, parent attendance visibility/alerts, and attendance reporting according to the Product Specification.
