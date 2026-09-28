@@ -154,9 +154,6 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     schoolId: string,
     input: CreateStudentInput
   ): Promise<Student> {
-    await validateParentForStudent(schoolId, input.parentUserId);
-    await getClassYear(schoolId, input.academicYearId, input.classId);
-
     const [student] = await tx
       .insert(students)
       .values({
@@ -263,6 +260,8 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
     async createStudent(schoolId, input) {
       try {
+        await validateParentForStudent(schoolId, input.parentUserId);
+        await getClassYear(schoolId, input.academicYearId, input.classId);
         return await db.transaction((tx) => insertStudent(tx, schoolId, input));
       } catch (error) {
         if (isUniqueError(error)) throw new FamilyConflictError("That student code already exists in this school.");
@@ -379,6 +378,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
     async importStudents(schoolId, rows) {
       try {
+        for (const row of rows) {
+          await validateParentForStudent(schoolId, row.parentUserId);
+          await getClassYear(schoolId, row.academicYearId, row.classId);
+        }
         return await db.transaction(async (tx) => {
           const created: Student[] = [];
           for (const row of rows) created.push(await insertStudent(tx, schoolId, row));
