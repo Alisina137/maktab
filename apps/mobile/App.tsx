@@ -16,7 +16,7 @@ import {
   translate,
   type SupportedLocale
 } from "@maktablink/localization";
-import { api, type SchoolOption, type SessionPayload } from "./src/api";
+import { api, type ParentHomePayload, type SchoolOption, type SessionPayload } from "./src/api";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -44,6 +44,8 @@ function AppContent() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [session, setSession] = useState<SessionPayload | null>(null);
+  const [parentHome, setParentHome] = useState<ParentHomePayload | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +65,12 @@ function AppContent() {
   useEffect(() => {
     if (screen === "school") void loadSchools();
   }, [screen]);
+
+  useEffect(() => {
+    if (screen === "home" && session?.user.role === "PARENT" && !session.mustChangePassword) {
+      void loadParentHome(session.accessToken);
+    }
+  }, [screen, session?.accessToken, session?.user.role, session?.mustChangePassword]);
 
   async function restore() {
     try {
@@ -96,6 +104,24 @@ function AppContent() {
     try {
       const result = await api.schools(query);
       setSchools(result.schools);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadParentHome(accessToken: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.parentHome(accessToken);
+      setParentHome(result);
+      setSelectedChildId((current) =>
+        result.children.some((item) => item.student.id === current)
+          ? current
+          : result.children[0]?.student.id ?? ""
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
     } finally {
@@ -157,6 +183,8 @@ function AppContent() {
     } finally {
       await clearStoredSession();
       setSession(null);
+      setParentHome(null);
+      setSelectedChildId("");
       setSchool(null);
       setRole(null);
       setUsername("");
@@ -170,6 +198,11 @@ function AppContent() {
     setError(null);
     setScreen("school");
   }
+
+  const selectedChild =
+    parentHome?.children.find((item) => item.student.id === selectedChildId) ??
+    parentHome?.children[0] ??
+    null;
 
   if (busy && screen === "role") {
     return (
@@ -309,11 +342,76 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session && (
+        {screen === "home" && session?.user.role === "PARENT" && (
+          <View style={styles.section}>
+            <Text style={[styles.title, textDirection]}>{translate(locale, "parent.homeTitle")}</Text>
+            <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.homeSubtitle")}</Text>
+
+            {parentHome ? (
+              <>
+                <View style={styles.accountCard}>
+                  <Text style={[styles.accountName, textDirection]}>{parentHome.parent.fullName}</Text>
+                  <Text style={[styles.muted, textDirection]}>{school?.name} · {session.user.username}</Text>
+                </View>
+
+                {parentHome.children.length > 0 ? (
+                  <>
+                    <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
+                    <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
+                      {parentHome.children.map((item) => {
+                        const active = item.student.id === selectedChild?.student.id;
+                        return (
+                          <Pressable
+                            key={item.student.id}
+                            onPress={() => setSelectedChildId(item.student.id)}
+                            style={[styles.childChip, active && styles.childChipActive]}
+                          >
+                            <Text style={active ? styles.childChipTextActive : styles.childChipText}>
+                              {item.student.fullName}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+
+                    {selectedChild ? (
+                      <View style={styles.childCard}>
+                        <View style={styles.childBadge}><Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text></View>
+                        <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
+                        <View style={styles.childDetailRow}>
+                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
+                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.student.studentCode}</Text>
+                        </View>
+                        <View style={styles.childDetailRow}>
+                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
+                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.classSection.name} · {selectedChild.classSection.code}</Text>
+                        </View>
+                        <View style={styles.childDetailRow}>
+                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
+                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.academicYear.name}</Text>
+                        </View>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <View style={styles.emptyCard}>
+                    <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
+                  </View>
+                )}
+              </>
+            ) : null}
+
+            <Pressable style={styles.secondaryButton} onPress={() => void logout()}>
+              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
+            </Pressable>
+          </View>
+        ))}
+
+        {screen === "home" && session && session.user.role !== "PARENT" && (
           <View style={styles.section}>
             <View style={styles.successMark}><Text style={styles.successMarkText}>✓</Text></View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "home.title")}</Text>
-            <Text style={[styles.subtitle, textDirection]}>{translate(locale, "home.phase2")}</Text>
+            <Text style={[styles.subtitle, textDirection]}>{translate(locale, "home.pending")}</Text>
             <View style={styles.accountCard}>
               <Text style={[styles.accountName, textDirection]}>{session.user.username}</Text>
               <Text style={[styles.muted, textDirection]}>{session.user.role} · {school?.name}</Text>
@@ -322,7 +420,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        )}
+        ))}
 
         {error ? <Text style={[styles.error, textDirection]}>{error}</Text> : null}
         {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} /> : null}
@@ -390,6 +488,21 @@ const styles = StyleSheet.create({
   schoolPillText: { color: tokens.color.text, fontWeight: "700" },
   accountCard: { padding: 18, backgroundColor: tokens.color.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.color.border, gap: 5 },
   accountName: { color: tokens.color.text, fontSize: 18, fontWeight: "900" },
+  sectionLabel: { color: tokens.color.text, fontSize: 15, fontWeight: "800" },
+  childSelector: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  childSelectorRtl: { flexDirection: "row-reverse" },
+  childChip: { minHeight: 40, justifyContent: "center", paddingHorizontal: 13, borderRadius: 999, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
+  childChipActive: { backgroundColor: tokens.color.brand, borderColor: tokens.color.brand },
+  childChipText: { color: tokens.color.text, fontWeight: "700" },
+  childChipTextActive: { color: "#fff", fontWeight: "800" },
+  childCard: { padding: 18, backgroundColor: tokens.color.surface, borderRadius: 18, borderWidth: 1, borderColor: tokens.color.border, gap: 12 },
+  childBadge: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: tokens.color.surfaceMuted },
+  childBadgeText: { color: tokens.color.brandStrong, fontSize: 20, fontWeight: "900" },
+  childName: { color: tokens.color.text, fontSize: 22, fontWeight: "900" },
+  childDetailRow: { gap: 3, paddingTop: 9, borderTopWidth: 1, borderTopColor: tokens.color.border },
+  childDetailLabel: { color: tokens.color.textMuted, fontSize: 12, fontWeight: "700" },
+  childDetailValue: { color: tokens.color.text, fontSize: 15, fontWeight: "800" },
+  emptyCard: { padding: 18, borderRadius: 16, backgroundColor: tokens.color.surfaceMuted },
   successMark: { width: 58, height: 58, borderRadius: 18, backgroundColor: "#e8f5ee", alignItems: "center", justifyContent: "center" },
   successMarkText: { color: tokens.color.success, fontSize: 28, fontWeight: "900" },
   error: { color: tokens.color.danger, lineHeight: 22, backgroundColor: "#fff1f0", borderRadius: 12, padding: 12 },

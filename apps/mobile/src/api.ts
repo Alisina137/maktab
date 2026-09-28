@@ -20,6 +20,38 @@ export interface SafeUser {
   mustChangePassword: boolean;
 }
 
+export interface ParentChild {
+  student: {
+    id: string;
+    studentCode: string;
+    fullName: string;
+    status: "ACTIVE" | "WITHDRAWN";
+    parentUserId: string;
+    academicYearId: string;
+    classId: string;
+  };
+  classSection: {
+    id: string;
+    code: string;
+    name: string;
+    academicYearId: string;
+  };
+  academicYear: {
+    id: string;
+    name: string;
+    status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+  };
+}
+
+export interface ParentHomePayload {
+  parent: {
+    userId: string;
+    fullName: string;
+    phone: string | null;
+  };
+  children: ParentChild[];
+}
+
 export interface SessionPayload {
   accessToken: string;
   refreshToken: string;
@@ -108,6 +140,12 @@ export const api = {
 
   me(accessToken: string) {
     return request<{ user: SafeUser; mustChangePassword: boolean }>("/v1/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  parentHome(accessToken: string) {
+    return request<ParentHomePayload>("/v1/parent/home", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },

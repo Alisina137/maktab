@@ -34,6 +34,14 @@ export type TranslationKey =
   | "action.retry"
   | "home.title"
   | "home.phase2"
+  | "home.pending"
+  | "parent.homeTitle"
+  | "parent.homeSubtitle"
+  | "parent.switchChild"
+  | "parent.noChildren"
+  | "parent.studentCode"
+  | "parent.class"
+  | "parent.academicYear"
   | "auth.logout"
   | "common.loading"
   | "common.networkError";
@@ -70,6 +78,14 @@ const en: Record<TranslationKey, string> = {
   "action.retry": "Retry",
   "home.title": "Account ready",
   "home.phase2": "Your school account is authenticated. Academic features will appear in the next phases.",
+  "home.pending": "Your school account is authenticated. Features for this role will appear in the relevant implementation phase.",
+  "parent.homeTitle": "Parent home",
+  "parent.homeSubtitle": "See the students linked to this school account and switch between siblings.",
+  "parent.switchChild": "Choose child",
+  "parent.noChildren": "No student is linked to your account. Please contact the school administration.",
+  "parent.studentCode": "Student code",
+  "parent.class": "Class",
+  "parent.academicYear": "Academic year",
   "auth.logout": "Log out",
   "common.loading": "Loading…",
   "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer."
@@ -107,6 +123,14 @@ const dari: Record<TranslationKey, string> = {
   "action.retry": "تلاش دوباره",
   "home.title": "حساب آماده است",
   "home.phase2": "حساب مکتب شما تأیید شد. امکانات درسی در مراحل بعدی اضافه می‌شوند.",
+  "home.pending": "حساب مکتب شما تأیید شده است. امکانات این نقش در مرحله مربوط آن اضافه می‌شوند.",
+  "parent.homeTitle": "خانه والدین",
+  "parent.homeSubtitle": "شاگردانی را که به حساب این مکتب شما متصل اند ببینید و میان فرزندان جابه‌جا شوید.",
+  "parent.switchChild": "انتخاب فرزند",
+  "parent.noChildren": "هیچ شاگردی به حساب شما متصل نشده است. لطفاً با اداره مکتب تماس بگیرید.",
+  "parent.studentCode": "کد شاگرد",
+  "parent.class": "صنف",
+  "parent.academicYear": "سال تعلیمی",
   "auth.logout": "خروج",
   "common.loading": "در حال بارگذاری…",
   "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد."
@@ -144,6 +168,14 @@ const pashto: Record<TranslationKey, string> = {
   "action.retry": "بیا هڅه",
   "home.title": "حساب چمتو دی",
   "home.phase2": "ستاسو د ښوونځي حساب تایید شو. درسي ځانګړتیاوې به په راتلونکو پړاوونو کې اضافه شي.",
+  "home.pending": "ستاسو د ښوونځي حساب تایید شوی دی. د دې رول ځانګړتیاوې به په اړوند پړاو کې اضافه شي.",
+  "parent.homeTitle": "د مور او پلار کور",
+  "parent.homeSubtitle": "له دې ښوونځي حساب سره تړلي زده کوونکي وګورئ او د خپلو ماشومانو ترمنځ واوړئ.",
+  "parent.switchChild": "ماشوم وټاکئ",
+  "parent.noChildren": "ستاسو له حساب سره هېڅ زده کوونکی نه دی تړل شوی. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
+  "parent.studentCode": "د زده کوونکي کوډ",
+  "parent.class": "ټولګی",
+  "parent.academicYear": "تعلیمي کال",
   "auth.logout": "وتل",
   "common.loading": "بارېږي…",
   "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري."
