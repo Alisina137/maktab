@@ -5,6 +5,7 @@ import { AcademicPanel } from "./academic-panel";
 import { AttendancePanel } from "./attendance-panel";
 import { FamilyPanel } from "./family-panel";
 import { LearningPanel } from "./learning-panel";
+import { CommunicationPanel } from "./communication-panel";
 
 type School = {
   id: string;
@@ -226,7 +227,7 @@ export default function AdminPage() {
         <div>
           <span className="eyebrow">School Admin</span>
           <h1 className="admin-title">School administration</h1>
-          <p className="admin-copy">Manage school accounts, academic structure, students, families, attendance, exams, results, and validated onboarding from one workspace.</p>
+          <p className="admin-copy">Manage accounts, academics, families, attendance, results, announcements, and fee visibility from one school workspace.</p>
         </div>
         <button className="admin-secondary" onClick={() => { setSession(null); setUsers([]); setCredential(null); }}>Sign out</button>
       </div>
@@ -293,6 +294,7 @@ export default function AdminPage() {
         </article>
       </section>
 
+      <CommunicationPanel accessToken={session.accessToken} />
       <LearningPanel accessToken={session.accessToken} />
       <AttendancePanel accessToken={session.accessToken} />
       <FamilyPanel accessToken={session.accessToken} />

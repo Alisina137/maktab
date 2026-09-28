@@ -700,3 +700,179 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.communication-section {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.communication-summary-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.communication-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.communication-form-card {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.communication-form-card textarea {
+  resize: vertical;
+  min-height: 110px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 11px;
+  background: white;
+  color: var(--ml-color-text);
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.communication-reminder-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  padding-top: 14px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.communication-reminder-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.communication-reminder-form input,
+.communication-payment-form input,
+.communication-reversal input {
+  min-height: 42px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: white;
+}
+
+.communication-announcement-row {
+  align-items: flex-start;
+}
+
+.communication-announcement-row p {
+  margin: 6px 0 0;
+  color: var(--ml-color-text);
+  line-height: 1.5;
+}
+
+.communication-invoice-list,
+.communication-payment-history {
+  display: grid;
+  gap: 12px;
+}
+
+.communication-invoice {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 14px;
+  background: white;
+}
+
+.communication-invoice-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.communication-invoice-header > div,
+.communication-payment-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.communication-invoice-header span,
+.communication-payment-row span {
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+}
+
+.communication-money-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.communication-money-grid span {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--ml-color-surface-muted);
+  color: var(--ml-color-text-muted);
+  font-size: 12px;
+}
+
+.communication-money-grid strong {
+  color: var(--ml-color-text);
+  font-size: 15px;
+}
+
+.communication-payment-form {
+  display: grid;
+  grid-template-columns: minmax(100px, .6fr) minmax(120px, .8fr) 1fr auto;
+  gap: 8px;
+}
+
+.communication-payment-history {
+  padding-top: 10px;
+  border-top: 1px solid var(--ml-color-border);
+}
+
+.communication-payment-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(240px, .8fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.communication-reversal {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+@media (max-width: 980px) {
+  .communication-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .communication-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-payment-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .communication-summary-grid,
+  .communication-payment-form,
+  .communication-payment-row,
+  .communication-money-grid,
+  .communication-reminder-form,
+  .communication-reversal {
+    grid-template-columns: 1fr;
+  }
+}
