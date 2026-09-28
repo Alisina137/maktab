@@ -43,6 +43,13 @@
       "when": 1790624400000,
       "tag": "0005_phase5_attendance",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790632800000,
+      "tag": "0006_phase6_learning",
+      "breakpoints": true
     }
   ]
 }

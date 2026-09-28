@@ -36,10 +36,13 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
 
     try {
       const input = createSchoolUserSchema.parse(request.body);
-      if (input.role === "PARENT") {
+      if (input.role === "PARENT" || input.role === "STUDENT") {
         return reply.code(400).send({
-          error: "parent_family_workflow_required",
-          message: "Create parent accounts from the Students & Families workflow so a parent profile is created with the account."
+          error: "family_workflow_required",
+          message:
+            input.role === "PARENT"
+              ? "Create parent accounts from the Students & Families workflow so a parent profile is created with the account."
+              : "Create student accounts from the Students & Families workflow so the login is linked to exactly one student record."
         });
       }
       const temporaryPassword = generateTemporaryPassword();

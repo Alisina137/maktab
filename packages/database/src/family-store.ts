@@ -60,6 +60,11 @@ export interface FamilyStore {
     schoolId: string,
     input: CreateParentAccountInput & { passwordHash: string }
   ): Promise<{ user: User; profile: ParentProfile }>;
+  createStudentAccount(
+    schoolId: string,
+    studentId: string,
+    input: { username: string; passwordHash: string }
+  ): Promise<{ user: User; student: Student }>;
   createStudent(schoolId: string, input: CreateStudentInput): Promise<Student>;
   updateStudent(schoolId: string, studentId: string, input: UpdateStudentInput): Promise<Student>;
   importParents(
@@ -251,6 +256,45 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
             .returning();
           if (!profile) throw new Error("Parent profile insert did not return a row.");
           return { user, profile };
+        });
+      } catch (error) {
+        if (isUniqueError(error)) throw new FamilyConflictError("That username already exists in this school.");
+        throw error;
+      }
+    },
+
+    async createStudentAccount(schoolId, studentId, input) {
+      const [student] = await db
+        .select()
+        .from(students)
+        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+        .limit(1);
+      if (!student) throw new FamilyNotFoundError("Student not found.");
+      if (student.userId) throw new FamilyConflictError("This student already has a student account.");
+
+      try {
+        return await db.transaction(async (tx) => {
+          const [user] = await tx
+            .insert(users)
+            .values({
+              id: randomUUID(),
+              schoolId,
+              username: input.username,
+              passwordHash: input.passwordHash,
+              role: "STUDENT",
+              status: "INVITED",
+              mustChangePassword: true
+            })
+            .returning();
+          if (!user) throw new Error("Student user insert did not return a row.");
+
+          const [updated] = await tx
+            .update(students)
+            .set({ userId: user.id, updatedAt: new Date() })
+            .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+            .returning();
+          if (!updated) throw new FamilyNotFoundError("Student not found.");
+          return { user, student: updated };
         });
       } catch (error) {
         if (isUniqueError(error)) throw new FamilyConflictError("That username already exists in this school.");

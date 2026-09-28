@@ -24,6 +24,15 @@ export type StudentStatus = z.infer<typeof studentStatusSchema>;
 export const attendanceStatusSchema = z.enum(["PRESENT", "ABSENT", "LATE", "EXCUSED"]);
 export type AttendanceStatus = z.infer<typeof attendanceStatusSchema>;
 
+export const homeworkStatusSchema = z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]);
+export type HomeworkStatus = z.infer<typeof homeworkStatusSchema>;
+
+export const examStatusSchema = z.enum(["DRAFT", "SCHEDULED", "IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"]);
+export type ExamStatus = z.infer<typeof examStatusSchema>;
+
+export const gradeRecordStatusSchema = z.enum(["DRAFT", "PUBLISHED"]);
+export type GradeRecordStatus = z.infer<typeof gradeRecordStatusSchema>;
+
 export const weekdaySchema = z.enum([
   "SATURDAY",
   "SUNDAY",
@@ -266,3 +275,67 @@ export const attendanceDateRangeSchema = z
     message: "Attendance date range is invalid.",
     path: ["to"]
   });
+
+
+export const createStudentAccountSchema = z.object({
+  username: usernameSchema
+});
+export type CreateStudentAccountInput = z.infer<typeof createStudentAccountSchema>;
+
+export const createHomeworkSchema = z.object({
+  assignmentId: z.string().uuid(),
+  title: z.string().trim().min(2).max(160),
+  content: z.string().trim().min(1).max(5000),
+  dueAt: z.string().datetime({ offset: true }),
+  attachmentUrl: z.string().url().max(500).optional()
+});
+export type CreateHomeworkInput = z.infer<typeof createHomeworkSchema>;
+
+export const updateHomeworkSchema = z.object({
+  title: z.string().trim().min(2).max(160).optional(),
+  content: z.string().trim().min(1).max(5000).optional(),
+  dueAt: z.string().datetime({ offset: true }).optional(),
+  attachmentUrl: z.string().url().max(500).nullable().optional()
+}).refine((value) => Object.keys(value).length > 0, {
+  message: "Provide at least one homework field to update."
+});
+export type UpdateHomeworkInput = z.infer<typeof updateHomeworkSchema>;
+
+export const createExamSchema = z.object({
+  academicYearId: z.string().uuid(),
+  name: z.string().trim().min(2).max(120),
+  type: z.string().trim().min(2).max(80)
+});
+export type CreateExamInput = z.infer<typeof createExamSchema>;
+
+export const createExamSubjectSchema = z.object({
+  examId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  classId: z.string().uuid(),
+  maxScore: z.number().int().min(1).max(10000)
+});
+export type CreateExamSubjectInput = z.infer<typeof createExamSubjectSchema>;
+
+export const setExamStatusSchema = z.object({
+  status: examStatusSchema
+});
+export type SetExamStatusInput = z.infer<typeof setExamStatusSchema>;
+
+export const gradeEntrySchema = z.object({
+  studentId: z.string().uuid(),
+  score: z.number().int().min(0).max(10000),
+  remark: z.string().trim().max(500).optional()
+});
+export type GradeEntryInput = z.infer<typeof gradeEntrySchema>;
+
+export const saveGradeEntriesSchema = z.object({
+  entries: z.array(gradeEntrySchema).min(1).max(300)
+});
+export type SaveGradeEntriesInput = z.infer<typeof saveGradeEntriesSchema>;
+
+export const correctPublishedGradeSchema = z.object({
+  score: z.number().int().min(0).max(10000),
+  remark: z.string().trim().max(500).optional(),
+  reason: z.string().trim().min(2).max(500)
+});
+export type CorrectPublishedGradeInput = z.infer<typeof correctPublishedGradeSchema>;

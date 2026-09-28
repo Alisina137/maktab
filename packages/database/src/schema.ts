@@ -22,6 +22,9 @@ export const studentStatusEnum = pgEnum("student_status", ["ACTIVE", "WITHDRAWN"
 export const attendanceStatusEnum = pgEnum("attendance_status", ["PRESENT", "ABSENT", "LATE", "EXCUSED"]);
 export const attendanceRecordStatusEnum = pgEnum("attendance_record_status", ["SUBMITTED", "CORRECTED"]);
 export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_status", ["PENDING", "SENT", "FAILED", "CANCELLED"]);
+export const homeworkStatusEnum = pgEnum("homework_status", ["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]);
+export const examStatusEnum = pgEnum("exam_status", ["DRAFT", "SCHEDULED", "IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"]);
+export const gradeRecordStatusEnum = pgEnum("grade_record_status", ["DRAFT", "PUBLISHED"]);
 export const weekdayEnum = pgEnum("weekday", [
   "SATURDAY",
   "SUNDAY",
@@ -230,6 +233,7 @@ export const students = pgTable(
     parentUserId: uuid("parent_user_id")
       .notNull()
       .references(() => parentProfiles.userId, { onDelete: "restrict" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     studentCode: varchar("student_code", { length: 32 }).notNull(),
     fullName: varchar("full_name", { length: 160 }).notNull(),
     academicYearId: uuid("academic_year_id")
@@ -244,6 +248,7 @@ export const students = pgTable(
   },
   (table) => [
     uniqueIndex("students_school_code_unique").on(table.schoolId, table.studentCode),
+    uniqueIndex("students_user_unique").on(table.userId),
     index("students_school_class_idx").on(table.schoolId, table.classId),
     index("students_parent_idx").on(table.parentUserId)
   ]
@@ -468,6 +473,123 @@ export const notifications = pgTable(
   ]
 );
 
+export const homeworks = pgTable(
+  "homeworks",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    assignmentId: uuid("assignment_id")
+      .notNull()
+      .references(() => teacherAssignments.id, { onDelete: "restrict" }),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classSections.id, { onDelete: "restrict" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "restrict" }),
+    teacherUserId: uuid("teacher_user_id")
+      .notNull()
+      .references(() => teacherProfiles.userId, { onDelete: "restrict" }),
+    title: varchar("title", { length: 160 }).notNull(),
+    content: text("content").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    attachmentUrl: varchar("attachment_url", { length: 500 }),
+    status: homeworkStatusEnum("status").notNull().default("DRAFT"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("homeworks_teacher_idx").on(table.schoolId, table.teacherUserId),
+    index("homeworks_class_due_idx").on(table.schoolId, table.classId, table.dueAt),
+    index("homeworks_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
+export const exams = pgTable(
+  "exams",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    type: varchar("type", { length: 80 }).notNull(),
+    status: examStatusEnum("status").notNull().default("DRAFT"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("exams_school_year_name_unique").on(table.schoolId, table.academicYearId, table.name),
+    index("exams_school_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
+export const examSubjects = pgTable(
+  "exam_subjects",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    examId: uuid("exam_id")
+      .notNull()
+      .references(() => exams.id, { onDelete: "restrict" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "restrict" }),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classSections.id, { onDelete: "restrict" }),
+    maxScore: integer("max_score").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("exam_subjects_unique").on(table.schoolId, table.examId, table.classId, table.subjectId),
+    index("exam_subjects_exam_idx").on(table.schoolId, table.examId),
+    index("exam_subjects_class_idx").on(table.schoolId, table.classId)
+  ]
+);
+
+export const gradeRecords = pgTable(
+  "grade_records",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    examSubjectId: uuid("exam_subject_id")
+      .notNull()
+      .references(() => examSubjects.id, { onDelete: "restrict" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "restrict" }),
+    score: integer("score").notNull(),
+    remark: varchar("remark", { length: 500 }),
+    status: gradeRecordStatusEnum("status").notNull().default("DRAFT"),
+    updatedBy: uuid("updated_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("grade_records_subject_student_unique").on(table.examSubjectId, table.studentId),
+    index("grade_records_student_idx").on(table.schoolId, table.studentId),
+    index("grade_records_status_idx").on(table.schoolId, table.status)
+  ]
+);
+
 export const databaseSchema = {
   schools,
   schoolSettings,
@@ -487,7 +609,11 @@ export const databaseSchema = {
   timetablePeriods,
   dailyAttendances,
   studentAttendances,
-  notifications
+  notifications,
+  homeworks,
+  exams,
+  examSubjects,
+  gradeRecords
 };
 
 export type School = typeof schools.$inferSelect;
@@ -510,3 +636,8 @@ export type TimetablePeriod = typeof timetablePeriods.$inferSelect;
 export type DailyAttendance = typeof dailyAttendances.$inferSelect;
 export type StudentAttendance = typeof studentAttendances.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+
+export type Homework = typeof homeworks.$inferSelect;
+export type Exam = typeof exams.$inferSelect;
+export type ExamSubject = typeof examSubjects.$inferSelect;
+export type GradeRecord = typeof gradeRecords.$inferSelect;
