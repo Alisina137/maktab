@@ -1,11 +1,12 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, AttendanceStore, FamilyStore, LearningStore, PlatformSchoolStore } from "@maktablink/database";
+import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { registerFamilyRoutes } from "./families/routes.js";
+import { registerCommunicationRoutes } from "./communication/routes.js";
 import { registerLearningRoutes } from "./learning/routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
@@ -18,6 +19,8 @@ export interface BuildAppOptions {
   familyStore: FamilyStore;
   attendanceStore: AttendanceStore;
   learningStore: LearningStore;
+  communicationStore: CommunicationStore;
+  pushProvider: PushProvider;
   provisioningKey: string;
   webOrigin?: string;
 }
@@ -32,7 +35,7 @@ export function buildApp(options: BuildAppOptions) {
     allowedHeaders: ["Content-Type", "Authorization", "x-platform-provisioning-key"]
   });
 
-  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 6 }));
+  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 7 }));
 
   const loginLimiter = new LoginRateLimiter();
   registerPublicRoutes(app, options.schoolStore);
@@ -42,6 +45,13 @@ export function buildApp(options: BuildAppOptions) {
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
   registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);
   registerLearningRoutes(app, options.accountStore, options.learningStore);
+  registerCommunicationRoutes(
+    app,
+    options.accountStore,
+    options.communicationStore,
+    options.pushProvider,
+    options.provisioningKey
+  );
   registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
 
   app.setErrorHandler((error, _request, reply) => {

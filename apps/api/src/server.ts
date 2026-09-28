@@ -4,8 +4,10 @@ import {
   createAcademicStore,
   createAccountStore,
   createAttendanceStore,
+  createCommunicationStore,
   createDatabaseClient,
   createFamilyStore,
+  createExpoPushProvider,
   createLearningStore,
   createSchoolStore
 } from "@maktablink/database";
@@ -36,6 +38,8 @@ const app = buildApp({
   familyStore: createFamilyStore(database.db),
   attendanceStore: createAttendanceStore(database.db),
   learningStore: createLearningStore(database.db),
+  communicationStore: createCommunicationStore(database.db),
+  pushProvider: createExpoPushProvider(),
   provisioningKey,
   webOrigin
 });

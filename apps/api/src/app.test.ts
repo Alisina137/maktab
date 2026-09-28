@@ -7,9 +7,11 @@ import {
   createAcademicStore,
   createAccountStore,
   createAttendanceStore,
+  createCommunicationStore,
   createFamilyStore,
   createLearningStore,
   createSchoolStore,
+  type PushProvider,
   databaseSchema,
   type FoundationDatabase
 } from "@maktablink/database";
@@ -26,7 +28,8 @@ async function createTestApp() {
     "0003_phase4_student_family.sql",
     "0004_phase4_parent_profile_backfill.sql",
     "0005_phase5_attendance.sql",
-    "0006_phase6_learning.sql"
+    "0006_phase6_learning.sql",
+    "0007_phase7_communication_fees.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -36,6 +39,11 @@ async function createTestApp() {
   }
 
   const db = drizzle(client, { schema: databaseSchema }) as unknown as FoundationDatabase;
+  const pushProvider: PushProvider = {
+    async send() {
+      return { ok: true, providerMessageId: "test-push-id" };
+    }
+  };
   const app = buildApp({
     schoolStore: createSchoolStore(db),
     accountStore: createAccountStore(db),
@@ -43,6 +51,8 @@ async function createTestApp() {
     familyStore: createFamilyStore(db),
     attendanceStore: createAttendanceStore(db),
     learningStore: createLearningStore(db),
+    communicationStore: createCommunicationStore(db),
+    pushProvider,
     provisioningKey
   });
   return { app, client };
