@@ -9,6 +9,7 @@ import {
   View
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   getDirection,
@@ -308,23 +309,26 @@ function AppContent() {
               placeholder={translate(locale, "field.username")}
               style={[styles.input, textDirection]}
             />
-            <View style={[styles.passwordRow, direction === "rtl" && styles.passwordRowRtl]}>
+            <View style={[styles.passwordField, direction === "rtl" && styles.passwordFieldRtl]}>
               <TextInput
                 secureTextEntry={!passwordVisible}
                 value={password}
                 onChangeText={setPassword}
                 placeholder={translate(locale, "field.password")}
-                style={[styles.input, styles.passwordInput, textDirection]}
+                style={[styles.passwordInput, textDirection]}
               />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={translate(locale, passwordVisible ? "action.hidePassword" : "action.showPassword")}
                 style={styles.passwordToggle}
+                hitSlop={8}
                 onPress={() => setPasswordVisible((current) => !current)}
               >
-                <Text style={styles.passwordToggleText}>
-                  {translate(locale, passwordVisible ? "action.hidePassword" : "action.showPassword")}
-                </Text>
+                <Ionicons
+                  name={passwordVisible ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={tokens.color.textMuted}
+                />
               </Pressable>
             </View>
             <PrimaryButton disabled={busy || !username || !password} label={translate(locale, "auth.signIn")} onPress={() => void signIn()} />
@@ -335,42 +339,48 @@ function AppContent() {
           <View style={styles.section}>
             <Text style={[styles.title, textDirection]}>{translate(locale, "passwordChange.title")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "passwordChange.hint")}</Text>
-            <View style={[styles.passwordRow, direction === "rtl" && styles.passwordRowRtl]}>
+            <View style={[styles.passwordField, direction === "rtl" && styles.passwordFieldRtl]}>
               <TextInput
                 secureTextEntry={!newPasswordVisible}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder={translate(locale, "field.newPassword")}
-                style={[styles.input, styles.passwordInput, textDirection]}
+                style={[styles.passwordInput, textDirection]}
               />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={translate(locale, newPasswordVisible ? "action.hidePassword" : "action.showPassword")}
                 style={styles.passwordToggle}
+                hitSlop={8}
                 onPress={() => setNewPasswordVisible((current) => !current)}
               >
-                <Text style={styles.passwordToggleText}>
-                  {translate(locale, newPasswordVisible ? "action.hidePassword" : "action.showPassword")}
-                </Text>
+                <Ionicons
+                  name={newPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={tokens.color.textMuted}
+                />
               </Pressable>
             </View>
-            <View style={[styles.passwordRow, direction === "rtl" && styles.passwordRowRtl]}>
+            <View style={[styles.passwordField, direction === "rtl" && styles.passwordFieldRtl]}>
               <TextInput
                 secureTextEntry={!confirmPasswordVisible}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder={translate(locale, "field.confirmPassword")}
-                style={[styles.input, styles.passwordInput, textDirection]}
+                style={[styles.passwordInput, textDirection]}
               />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={translate(locale, confirmPasswordVisible ? "action.hidePassword" : "action.showPassword")}
                 style={styles.passwordToggle}
+                hitSlop={8}
                 onPress={() => setConfirmPasswordVisible((current) => !current)}
               >
-                <Text style={styles.passwordToggleText}>
-                  {translate(locale, confirmPasswordVisible ? "action.hidePassword" : "action.showPassword")}
-                </Text>
+                <Ionicons
+                  name={confirmPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={tokens.color.textMuted}
+                />
               </Pressable>
             </View>
             <PrimaryButton
@@ -513,11 +523,10 @@ const styles = StyleSheet.create({
   schoolCard: { padding: 18, borderRadius: 16, backgroundColor: tokens.color.surface, borderWidth: 1, borderColor: tokens.color.border, gap: 5 },
   schoolName: { color: tokens.color.text, fontSize: 17, fontWeight: "800" },
   input: { minHeight: 52, paddingHorizontal: 15, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface, color: tokens.color.text, fontSize: 16 },
-  passwordRow: { flexDirection: "row", alignItems: "stretch", gap: 8 },
-  passwordRowRtl: { flexDirection: "row-reverse" },
-  passwordInput: { flex: 1 },
-  passwordToggle: { minWidth: 72, minHeight: 52, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
-  passwordToggleText: { color: tokens.color.brandStrong, fontWeight: "800", fontSize: 13 },
+  passwordField: { minHeight: 52, flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, borderColor: tokens.color.border, backgroundColor: tokens.color.surface },
+  passwordFieldRtl: { flexDirection: "row-reverse" },
+  passwordInput: { flex: 1, minHeight: 50, paddingHorizontal: 15, paddingVertical: 12, color: tokens.color.text, fontSize: 16 },
+  passwordToggle: { width: 52, minHeight: 50, alignItems: "center", justifyContent: "center" },
   searchRow: { flexDirection: "row", gap: 8 },
   searchInput: { flex: 1 },
   smallPrimaryButton: { width: 52, minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: tokens.color.brand },
