@@ -16,12 +16,12 @@ import {
   translate,
   type SupportedLocale
 } from "@maktablink/localization";
-import { api, type SchoolOption, type SessionPayload } from "./src/api.js";
+import { api, type SchoolOption, type SessionPayload } from "./src/api";
 import {
   clearStoredSession,
   loadStoredSession,
   saveStoredSession
-} from "./src/session.js";
+} from "./src/session";
 
 type MobileRole = "PARENT" | "TEACHER" | "STUDENT";
 type Screen = "role" | "school" | "login" | "change-password" | "home";
