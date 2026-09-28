@@ -1,28 +1,29 @@
 import Link from "next/link";
 
 const cards = [
-  ["Tenant isolation", "Every account belongs to one school, and usernames are unique only inside that school."],
-  ["School-issued credentials", "Administrators generate temporary credentials; there is no public school-account signup."],
-  ["Role-safe authentication", "Selecting Parent, Teacher, or Student never grants permissions. The backend account role is authoritative."],
-  ["Secure sessions", "Temporary passwords force replacement and account suspension revokes active sessions."]
+  ["Academic years", "Model the school year with an explicit DRAFT → ACTIVE → CLOSED → ARCHIVED lifecycle."],
+  ["Teacher assignments", "A teacher can teach several subjects and classes through explicit subject-class assignments."],
+  ["Negaran", "Class supervision is a dated teacher assignment with retained history, never a separate account role."],
+  ["Conflict-safe timetable", "Each period maps class, subject, and teacher while rejecting teacher/class overlaps."]
 ] as const;
 
 export default function Home() {
   return (
     <main className="shell">
       <section className="hero">
-        <span className="eyebrow">Phase 2 · Authentication & School Accounts</span>
-        <h1>School-controlled access is now the front door to MaktabLink.</h1>
+        <span className="eyebrow">Phase 3 · Academic Structure</span>
+        <h1>MaktabLink can now model the real structure of a school day.</h1>
         <p>
-          The foundation now supports school selection, role-aware login, one-time temporary credentials,
-          private password replacement, rotating sessions, and administrator-managed school accounts.
+          School administrators can define academic years, grades, classes, subjects, teachers,
+          teacher assignments, Negaran responsibilities, and timetable periods while preserving
+          strict tenant boundaries.
         </p>
         <div className="hero-actions">
           <Link className="primary-link" href="/admin">Open school administration</Link>
         </div>
       </section>
 
-      <section className="grid" aria-label="Phase 2 capabilities">
+      <section className="grid" aria-label="Phase 3 capabilities">
         {cards.map(([title, description]) => (
           <article className="card" key={title}>
             <div className="status" aria-hidden="true">✓</div>
@@ -33,7 +34,7 @@ export default function Home() {
       </section>
 
       <footer>
-        Academic years, classes, subjects, teacher assignments, Negaran assignments, and timetables remain intentionally outside Phase 2.
+        Student/family onboarding is intentionally deferred to Phase 4. Attendance remains Phase 5.
       </footer>
     </main>
   );

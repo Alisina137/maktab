@@ -6,44 +6,46 @@ This repository follows the approved **MaktabLink Product Specification V1** and
 
 ## Current implementation
 
-Phase 2 adds the secure school-issued account system on top of the verified Phase 1 foundation.
+Phase 3 adds the school academic-structure layer on top of the verified tenant and authentication foundations.
 
 Implemented:
 
-- pnpm TypeScript monorepo
-- Next.js web app
+- TypeScript monorepo with pnpm
+- Next.js school-admin web app
 - Expo Android-first mobile app
 - Fastify API
 - PostgreSQL + Drizzle
-- school tenant isolation
+- strict school tenant isolation
 - Dari, Pashto, and English localization
-- school selection
-- Parent / Teacher / Student role selection
-- school-scoped username/password authentication
-- temporary-password replacement
-- rotating access + refresh sessions
-- encrypted mobile session storage
-- school-admin account generation
-- reset / suspend / reactivate account actions
-- audit logs for sensitive account actions
+- school-issued accounts and secure authentication
+- academic years with DRAFT → ACTIVE → CLOSED → ARCHIVED lifecycle
+- grade levels
+- class sections tied to an academic year
+- subject catalog
+- teacher profiles extending existing TEACHER accounts
+- teacher → subject → class assignments
+- dated Negaran assignments with retained history
+- one active primary Negaran per class/date range
+- timetable periods tied to valid teacher assignments
+- teacher and class timetable conflict rejection
+- teacher academic read API
+- school-admin academic management UI
+- audit logs for Phase 3 administrative mutations
 
-Academic structure is intentionally deferred to Phase 3.
+Student/family onboarding remains Phase 4.
 
 ## Setup
 
 ```powershell
 cd C:\projects\maktab
 pnpm install
-```
-
-Fill in your real root `.env` values, then run:
-
-```powershell
 pnpm db:migrate
 pnpm verify
 ```
 
 ## Run locally
+
+Use separate terminals:
 
 ```powershell
 pnpm dev:api
@@ -51,29 +53,32 @@ pnpm dev:web
 pnpm dev:mobile
 ```
 
-Run those in separate terminals.
+School administration:
 
-## First school + first school administrator
-
-Phase 2 keeps platform provisioning protected by `PLATFORM_PROVISIONING_KEY`.
-
-With the API running, create a school:
-
-```powershell
-$headers = @{ "x-platform-provisioning-key" = $env:PLATFORM_PROVISIONING_KEY }
-$schoolBody = @{ code = "SCHOOL-A"; name = "Example Private School"; slug = "example-private-school"; province = "Kabul"; city = "Kabul"; defaultLanguage = "fa-AF" } | ConvertTo-Json
-$school = Invoke-RestMethod -Method Post -Uri "http://localhost:4000/v1/platform/schools" -Headers $headers -ContentType "application/json" -Body $schoolBody
+```text
+http://localhost:3000/admin
 ```
 
-Then create the first school-admin account:
+The admin workspace now contains both account management and Phase 3 academic structure.
 
-```powershell
-$adminBody = @{ username = "admin" } | ConvertTo-Json
-$admin = Invoke-RestMethod -Method Post -Uri "http://localhost:4000/v1/platform/schools/$($school.school.id)/admin" -Headers $headers -ContentType "application/json" -Body $adminBody
-$admin
+## Database
+
+Phase 3 migration:
+
+```text
+packages/database/drizzle/0002_phase3_academic_structure.sql
 ```
 
-The returned temporary password is shown once. Sign in at `http://localhost:3000/admin`, then replace it with a private password.
+It adds:
+
+- `academic_years`
+- `grade_levels`
+- `class_sections`
+- `subjects`
+- `teacher_profiles`
+- `teacher_assignments`
+- `negaran_assignments`
+- `timetable_periods`
 
 ## Verification
 
@@ -81,4 +86,4 @@ The returned temporary password is shown once. Sign in at `http://localhost:3000
 pnpm verify
 ```
 
-See `docs/PROJECT-STATE.md` for current implementation status.
+See `docs/PROJECT-STATE.md` and `docs/PHASE-03-ACADEMIC-STRUCTURE.md`.

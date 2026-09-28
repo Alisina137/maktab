@@ -12,7 +12,7 @@ apps/
 
 packages/
 ├── contracts       validated shared contracts
-├── database        PostgreSQL/Drizzle schema and stores
+├── database        PostgreSQL/Drizzle schema and domain stores
 ├── localization    Dari/Pashto/English messages + direction rules
 └── design-tokens   shared semantic visual tokens
 ```
@@ -21,40 +21,92 @@ packages/
 
 PostgreSQL is the system of record. Neon pooled PostgreSQL is the preferred hosted application connection.
 
-Phase 1 entities: `schools`, `school_settings`.
+### Phase 1
 
-Phase 2 entities: `users`, `auth_sessions`, `audit_logs`.
+- `schools`
+- `school_settings`
 
-Academic entities intentionally begin later.
+### Phase 2
+
+- `users`
+- `auth_sessions`
+- `audit_logs`
+
+### Phase 3
+
+- `academic_years`
+- `grade_levels`
+- `class_sections`
+- `subjects`
+- `teacher_profiles`
+- `teacher_assignments`
+- `negaran_assignments`
+- `timetable_periods`
 
 ## Tenant isolation
 
-The school is the tenant boundary. Every operational account belongs to exactly one school. Username uniqueness is enforced by `(schoolId, username)`, so the same username may exist in two schools without crossing tenant boundaries.
+The school is the tenant boundary.
 
-School-admin routes derive tenant context from the authenticated administrator session rather than trusting a client-provided `schoolId`.
+Every academic table carries `schoolId`, and every academic lookup/mutation is scoped by the authenticated school. Cross-school IDs are rejected by the academic store even when a valid UUID is supplied.
 
 ## Authentication model
 
 There is no public school-account registration.
 
-Temporary and permanent passwords are stored only as memory-hard scrypt hashes with independent salts. Administrators can generate a replacement temporary password but cannot retrieve a permanent password.
+Temporary and permanent passwords are stored only as salted, memory-hard scrypt hashes. Opaque access/refresh tokens are stored only as hashes.
 
-Sessions use opaque tokens:
+School-admin routes derive tenant context from the authenticated administrator session rather than trusting a client-provided school ID.
 
-- access token: 15 minutes
-- rotating refresh token: 30 days
+## Phase 3 academic model
 
-Only SHA-256 token hashes are stored in PostgreSQL. Suspending or archiving an account revokes existing sessions.
+### Academic year
 
-Expo SecureStore encrypts the mobile session payload on device.
+```text
+DRAFT → ACTIVE → CLOSED → ARCHIVED
+```
 
-Phase 2 account roles are `SCHOOL_ADMIN`, `SCHOOL_STAFF`, `TEACHER`, `PARENT`, and `STUDENT`. Negaran is intentionally not a role; it remains a teacher assignment for Phase 3.
+Only one academic year may be ACTIVE per school.
 
-Mobile role selection is UX only. The backend role is authoritative.
+Closed/archived years do not accept new academic structure.
 
-## Platform bootstrap
+### Teacher model
 
-`/v1/platform/*` remains protected by `PLATFORM_PROVISIONING_KEY` for school provisioning and first school-admin creation only.
+A teacher profile extends one existing `TEACHER` user account.
+
+```text
+Teacher
+  → many TeacherAssignments
+  → many NegaranAssignments
+  → many TimetablePeriods
+```
+
+A teacher assignment explicitly binds:
+
+```text
+Academic Year + Teacher + Subject + Class
+```
+
+### Negaran
+
+Negaran remains an assignment, not a role.
+
+Assignments are dated so history is retained. A class cannot have overlapping primary Negaran assignments.
+
+### Timetable
+
+Each period maps:
+
+```text
+Academic Year + Weekday + Time
+→ Class + Subject + Teacher
+```
+
+The API requires a matching teacher assignment before a period can be created.
+
+Overlapping timetable periods are rejected for:
+
+- the same class
+- the same teacher
 
 ## Localization
 
@@ -64,4 +116,4 @@ Mobile role selection is UX only. The backend role is authoritative.
 
 ## Why no microservices
 
-The current product does not justify distributed-system overhead. Domain separation remains in modules and stores while deployment stays simple.
+The current product does not justify distributed-system overhead. Domain separation remains explicit while deployment stays operationally simple.

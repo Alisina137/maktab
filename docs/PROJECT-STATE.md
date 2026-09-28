@@ -13,72 +13,80 @@ Build a mobile-first, multi-tenant school-family communication platform designed
 ## Locked product rules
 
 - School controls school-user identities.
-- Mobile users choose role, then school, then use school-issued credentials.
 - Role selection is UX only; backend role is authoritative.
 - Initial credentials are temporary.
 - Permanent passwords are never retrievable.
-- Parent accounts remain school-scoped.
-- Negaran is a teacher assignment, not a separate role.
+- Every operational/account/academic operation is school-scoped.
+- Negaran is a teacher assignment, not a role.
+- Teachers may teach multiple subjects/classes.
+- Timetable teacher/class conflicts are prohibited.
+- Academic history is retained.
 
 ## Current phase
 
-**Phase 2 — Authentication & School Accounts — complete and verified**
+**Phase 3 — Academic Structure — complete and verified**
 
 ### Implemented outcomes
 
-- school-scoped user/account schema
-- `(schoolId, username)` uniqueness
-- user status lifecycle: INVITED / ACTIVE / SUSPENDED / ARCHIVED
-- generated temporary credentials
-- memory-hard salted password hashing
-- forced private-password replacement on first login
-- opaque short-lived access tokens
-- rotating refresh tokens
-- only token hashes persisted to PostgreSQL
-- active-session revocation on suspension/archive/reset
-- role-matched school login
-- public active-school search for onboarding
-- school-admin account creation and lifecycle APIs
-- platform bootstrap for first school administrator
-- sensitive account action audit logs
-- login rate limiting
-- Expo role → school → credentials → password-change flow
-- Expo SecureStore session persistence
-- school-admin web login and account-management UI
-- Phase 2 integration/acceptance tests
+- academic-year state lifecycle
+- grade levels
+- academic-year class sections
+- subjects
+- teacher profiles linked to TEACHER users
+- teacher-subject-class assignments
+- dated Negaran assignments
+- retained Negaran history
+- timetable periods
+- teacher/class timetable conflict detection
+- tenant-scoped academic store
+- school-admin academic APIs
+- teacher academic read API
+- school-admin academic management UI
+- Phase 3 audit logging
+- Phase 3 database/API acceptance tests
 
-## Phase 2 acceptance verification
+## Verification
 
-GitHub Actions CI passed on source commit `53d4ab6f68e23a5c1a35b0639f996911d119b2a2` on 2026-09-28.
+GitHub Actions CI passed on source commit:
 
-Verified successfully:
+```text
+28721df47facdd7dbf28391409f71947aa7cb3f6
+```
+
+Verified:
 
 - dependency installation
-- full TypeScript typecheck
-- contract/localization/database/API test suites
-- production Next.js build
-- production Expo Android export
-- same username can exist independently in different schools
-- duplicate username inside one school is rejected
-- parent credentials issued by School A cannot authenticate against School B
-- selected mobile role must match the backend account role
-- first login requires replacement of the temporary password
-- suspended accounts lose active sessions
+- TypeScript typecheck
+- Phase 1–3 test suites
+- academic tenant isolation
+- teacher multi-subject/multi-class assignment
+- separate Negaran assignment
+- one active academic year
+- overlapping Negaran rejection
+- class timetable conflict rejection
+- teacher timetable conflict rejection
+- API academic workflow
+- Next.js production build
+- Expo Android production export
 
 ## Local database requirement
 
-The real Neon database still needs the Phase 2 migration after pulling this source:
+After pulling Phase 3, apply the real Neon migration:
 
 ```powershell
 pnpm db:migrate
 ```
 
-This applies `0001_phase2_auth_accounts.sql`.
+This applies:
+
+```text
+0002_phase3_academic_structure.sql
+```
 
 ## Phase boundary
 
-Phase 3 academic structure is intentionally not implemented yet. There are no academic years, grades/classes, subjects, teacher-subject-class assignments, Negaran assignments, or timetables in Phase 2.
+Phase 3 does not create students or family relationships and does not implement attendance.
 
 ## Next approved phase
 
-**Phase 3 — Academic Structure**, only after the user requests it.
+**Phase 4 — Student & Family System**, only when requested.
