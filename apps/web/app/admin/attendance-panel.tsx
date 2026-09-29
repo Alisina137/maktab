@@ -3,7 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
-import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
@@ -210,8 +210,8 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <h2>{t("Attendance records")}</h2>
                 <p>{adminFormat(locale, "{count} student mark(s) from {from} to {to}", {
                   count: report.rows.length,
-                  from: report.from,
-                  to: report.to
+                  from: formatAdminHijriDate(locale, report.from),
+                  to: formatAdminHijriDate(locale, report.to)
                 })}</p>
               </div>
             </div>
@@ -220,6 +220,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <AttendanceReportItem
                   key={`${row.attendanceId}-${row.studentId}`}
                   row={row}
+                  locale={locale}
                   busy={busy}
                   onCorrect={correct}
                 />
@@ -237,13 +238,16 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
 function AttendanceReportItem({
   row,
+  locale,
   busy,
   onCorrect
 }: {
   row: AttendanceReportRow;
+  locale: "fa-AF" | "ps-AF" | "en";
   busy: boolean;
   onCorrect: (row: AttendanceReportRow, status: AttendanceStatus, note: string) => Promise<void>;
 }) {
+  const t = (english: string) => adminText(locale, english);
   const [status, setStatus] = useState<AttendanceStatus>(row.status);
   const [note, setNote] = useState(row.note ?? "");
 
@@ -258,16 +262,16 @@ function AttendanceReportItem({
     <div className="attendance-report-row">
       <div className="attendance-record-main">
         <strong>{row.studentName}</strong>
-        <span>{row.studentCode} · {row.className} · {row.date}</span>
+        <span>{row.studentCode} · {row.className} · {formatAdminHijriDate(locale, row.date)}</span>
       </div>
       <label>
-        Status
+        {t("Status")}
         <select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus)}>
-          {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
+          {statuses.map((item) => <option key={item} value={item}>{t(item)}</option>)}
         </select>
       </label>
       <label>
-        Correction note
+        {t("Correction note")}
         <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder={t("Optional reason")} />
       </label>
       <button
@@ -276,7 +280,7 @@ function AttendanceReportItem({
         disabled={busy || !changed}
         onClick={() => void onCorrect(row, status, note)}
       >
-        Save correction
+        {t("Save correction")}
       </button>
     </div>
   );
