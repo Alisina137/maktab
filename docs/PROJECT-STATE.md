@@ -268,3 +268,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Legacy inline success/error feedback in Academics, Families, Attendance, Learning, Communication/Fees, and Pilot Operations now follows the same transient behavior.
 - Ongoing mobile connectivity warnings intentionally remain visible until connectivity returns because they represent a current state rather than a completed action.
 - CI verified typecheck, tests, and production build after these refinements.
+
+
+## Post-implementation refinement — Admin motion and loading UX
+
+- Added a shared branded admin loader and skeleton system for authenticated admin data-loading states.
+- Loading UX now covers routed workspace startup plus Accounts, Profile, Academics, Families, Attendance, Learning, Communication/Fees, and Pilot Operations.
+- Added subtle page, heading, card, row, navigation, login, hover, and press animations across the admin panel.
+- RTL row motion mirrors LTR direction correctly.
+- All animations honor `prefers-reduced-motion` and collapse to effectively no motion when the user requests reduced motion.
+- CI verified typecheck, tests, and production build after the animation/loading refinement.
