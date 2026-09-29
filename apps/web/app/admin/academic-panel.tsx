@@ -3,8 +3,9 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminText } from "./admin-i18n";
 
 type AcademicYear = {
   id: string;
@@ -92,7 +93,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       setOverview(academicData);
       setUsers(accountData.users);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load academic structure.");
+      setError(adminErrorText(locale, cause, "Could not load academic structure."));
     }
   }
 
@@ -105,10 +106,10 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         method: "POST",
         ...(payload ? { body: JSON.stringify(payload) } : {})
       });
-      setNotice(success);
+      setNotice(t(success));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Academic action failed.");
+      setError(adminErrorText(locale, cause, "Academic action failed."));
     } finally {
       setBusy(false);
     }
@@ -177,8 +178,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             endDate: formValue(form, "endDate")
           }), "Academic year created.")}>
             <label>{t("Name")}<input name="name" placeholder="1405" required /></label>
-            <label>{t("Start date")}<input name="startDate" type="date" required /></label>
-            <label>{t("End date")}<input name="endDate" type="date" required /></label>
+            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
+            <label>{t("End date")}<AdminHijriDatePicker locale={locale} name="endDate" required /></label>
             <button className="admin-primary" disabled={busy}>{t("Create year")}</button>
           </form>
         </AcademicForm>
@@ -190,7 +191,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             sortOrder: Number(formValue(form, "sortOrder") || "0")
           }), "Grade level created.")}>
             <label>{t("Code")}<input name="code" placeholder="G7" required /></label>
-            <label>{t("Name")}<input name="name" placeholder="Grade 7" required /></label>
+            <label>{t("Name")}<input name="name" placeholder={t("Grade 7")} required /></label>
             <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue="7" required /></label>
             <button className="admin-primary" disabled={busy}>{t("Create grade")}</button>
           </form>
@@ -202,7 +203,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             name: formValue(form, "name")
           }), "Subject created.")}>
             <label>{t("Code")}<input name="code" placeholder="MATH" required /></label>
-            <label>{t("Name")}<input name="name" placeholder="Mathematics" required /></label>
+            <label>{t("Name")}<input name="name" placeholder={t("Mathematics")} required /></label>
             <button className="admin-primary" disabled={busy}>{t("Create subject")}</button>
           </form>
         </AcademicForm>
@@ -217,7 +218,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${year.status}`])} />
             <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
             <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
-            <label>{t("Name")}<input name="name" placeholder="Grade 7 A" required /></label>
+            <label>{t("Name")}<input name="name" placeholder={t("Grade 7 A")} required /></label>
             <button className="admin-primary" disabled={busy}>{t("Create class")}</button>
           </form>
         </AcademicForm>
@@ -235,7 +236,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
               items={teacherAccounts.filter((user) => !profiledTeacherIds.has(user.id)).map((user) => [user.id, user.username])}
             />
             <label>{t("Employee code")}<input name="employeeCode" placeholder="T-001" required /></label>
-            <label>{t("Full name")}<input name="fullName" placeholder="Teacher full name" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder={t("Teacher full name")} required /></label>
             <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
             <button className="admin-primary" disabled={busy}>{t("Create teacher profile")}</button>
           </form>
@@ -267,8 +268,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <label>{t("Start date")}<input name="startDate" type="date" required /></label>
-            <label>{t("End date (optional)")}<input name="endDate" type="date" /></label>
+            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
+            <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" /></label>
             <button className="admin-primary" disabled={busy}>{t("Assign Negaran")}</button>
           </form>
         </AcademicForm>
@@ -325,25 +326,23 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           rows={overview.assignments.map((item) => ({
             id: item.id,
             title: teacherMap.get(item.teacherUserId)?.fullName ?? item.teacherUserId,
-            detail: `${subjectMap.get(item.subjectId)?.name ?? "Subject"} · ${classMap.get(item.classId)?.name ?? "Class"} · ${yearMap.get(item.academicYearId)?.name ?? "Year"}`
+            detail: `${subjectMap.get(item.subjectId)?.name ?? t("Subject")} · ${classMap.get(item.classId)?.name ?? t("Class")} · ${yearMap.get(item.academicYearId)?.name ?? t("Year")}`
           }))}
         />
         <DataList
           title={t("Negaran history")}
           rows={overview.negaranAssignments.map((item) => ({
             id: item.id,
-            title: classMap.get(item.classId)?.name ?? "Class",
-            detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? "Teacher"} · ${item.startDate} → ${item.endDate ?? "current"}`,
+            title: classMap.get(item.classId)?.name ?? t("Class"),
+            detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")} · ${item.startDate} → ${item.endDate ?? t("Current")}`,
             action: item.endDate ? undefined : (
-              <button
-                disabled={busy}
-                onClick={() => {
-                  const endDate = window.prompt("End date (YYYY-MM-DD)");
-                  if (endDate) void mutate(`/v1/admin/academics/negaran/${item.id}/end`, { endDate }, "Negaran assignment ended.");
-                }}
-              >
-                End assignment
-              </button>
+              <NegaranEndAction
+                locale={locale}
+                busy={busy}
+                onEnd={(endDate) =>
+                  mutate(`/v1/admin/academics/negaran/${item.id}/end`, { endDate }, "Negaran assignment ended.")
+                }
+              />
             )
           }))}
         />
@@ -393,7 +392,7 @@ function Select({ label, name, items }: { label: string; name: string; items: Ar
     <label>
       {label}
       <select name={name} required defaultValue="">
-        <option value="" disabled>Select {label.toLowerCase()}</option>
+        <option value="" disabled>—</option>
         {items.map(([value, text]) => <option value={value} key={value}>{text}</option>)}
       </select>
     </label>
@@ -417,8 +416,31 @@ function DataList({
             {row.action ? <div className="admin-actions">{row.action}</div> : null}
           </div>
         ))}
-        {rows.length === 0 ? <p className="admin-copy">Nothing here yet.</p> : null}
+        {rows.length === 0 ? <p className="admin-copy">—</p> : null}
       </div>
     </article>
+  );
+}
+
+
+function NegaranEndAction({
+  locale,
+  busy,
+  onEnd
+}: {
+  locale: "fa-AF" | "ps-AF" | "en";
+  busy: boolean;
+  onEnd: (endDate: string) => Promise<void>;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const [endDate, setEndDate] = useState("");
+
+  return (
+    <div className="admin-negaran-end">
+      <AdminHijriDatePicker locale={locale} value={endDate} onChange={setEndDate} />
+      <button disabled={busy || !endDate} onClick={() => void onEnd(endDate)}>
+        {t("End assignment")}
+      </button>
+    </div>
   );
 }
