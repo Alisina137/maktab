@@ -1,22 +1,37 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { api } from "./api";
 
 declare const process: { env: { EXPO_PUBLIC_EAS_PROJECT_ID?: string } };
 
 let registeredToken: string | null = null;
 let registeredPlatform: "ANDROID" | "IOS" | null = null;
+let notificationHandlerConfigured = false;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false
-  })
-});
+function isExpoGo() {
+  return Constants.appOwnership === "expo";
+}
+
+async function loadNotifications() {
+  if (isExpoGo()) return null;
+
+  const Notifications = await import("expo-notifications");
+
+  if (!notificationHandlerConfigured) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false
+      })
+    });
+    notificationHandlerConfigured = true;
+  }
+
+  return Notifications;
+}
 
 function projectId() {
   return (
@@ -29,9 +44,13 @@ function projectId() {
 
 export async function registerPushForSession(accessToken: string) {
   try {
-    if (!Device.isDevice) return null;
+    if (!Device.isDevice || isExpoGo()) return null;
+
     const id = projectId();
     if (!id) return null;
+
+    const Notifications = await loadNotifications();
+    if (!Notifications) return null;
 
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
