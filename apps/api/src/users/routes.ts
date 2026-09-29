@@ -11,10 +11,22 @@ import { safeUser } from "../auth/session.js";
 
 const adminProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
-  phone: z.string().trim().max(32).nullable().optional()
+  jobTitle: z.string().trim().max(120).nullable().optional(),
+  imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+  email: z.string().trim().email().max(254).nullable().optional(),
+  whatsapp: z.string().trim().max(32).nullable().optional(),
+  phone: z.string().trim().max(32).nullable().optional(),
+  officeLocation: z.string().trim().max(200).nullable().optional(),
+  officeHours: z.string().trim().max(160).nullable().optional(),
+  bio: z.string().trim().max(1000).nullable().optional()
 });
 
-export async function requireSchoolAdmin(request: Parameters<typeof requireAccess>[0], reply: Parameters<typeof requireAccess>[1], store: AccountStore) {
+export async function requireSchoolAdmin(
+  request: Parameters<typeof requireAccess>[0],
+  reply: Parameters<typeof requireAccess>[1],
+  store: AccountStore,
+  options: { allowSecurityWriteWhenSubscriptionBlocked?: boolean } = {}
+) {
   const context = await requireAccess(request, reply, store);
   if (!context) return null;
   if (context.user.mustChangePassword) {
@@ -29,7 +41,8 @@ export async function requireSchoolAdmin(request: Parameters<typeof requireAcces
     request.method !== "GET" &&
     request.method !== "HEAD" &&
     request.method !== "OPTIONS" &&
-    (context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED")
+    (context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED") &&
+    !options.allowSecurityWriteWhenSubscriptionBlocked
   ) {
     await reply.code(403).send({
       error: "subscription_write_blocked",
@@ -60,7 +73,27 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     const profile = await store.getAdminProfile(context.user.schoolId, context.user.id);
     return {
       user: safeUser(context.user),
-      profile: profile ?? { fullName: context.user.username, phone: null }
+      profile: profile ?? {
+        fullName: context.user.username,
+        jobTitle: null,
+        imageUrl: null,
+        email: null,
+        whatsapp: null,
+        phone: null,
+        officeLocation: null,
+        officeHours: null,
+        bio: null
+      }
+    };
+  });
+
+  app.get("/v1/school/admin-contact", async (request, reply) => {
+    const context = await requireAccess(request, reply, store);
+    if (!context) return;
+
+    const contact = await store.getSchoolAdminContact(context.user.schoolId);
+    return {
+      contact: contact ?? null
     };
   });
 
@@ -77,7 +110,13 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
         action: "admin.profile_updated",
         entityType: "user",
         entityId: context.user.id,
-        metadata: { fullName: profile.fullName, hasPhone: Boolean(profile.phone) }
+        metadata: {
+          fullName: profile.fullName,
+          hasEmail: Boolean(profile.email),
+          hasWhatsapp: Boolean(profile.whatsapp),
+          hasPhone: Boolean(profile.phone),
+          hasImage: Boolean(profile.imageUrl)
+        }
       });
       return { user: safeUser(context.user), profile };
     } catch (error) {
@@ -130,7 +169,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
   });
 
   app.post<{ Params: { userId: string } }>("/v1/admin/users/:userId/reset-password", async (request, reply) => {
-    const context = await requireSchoolAdmin(request, reply, store);
+    const context = await requireSchoolAdmin(request, reply, store, {
+      allowSecurityWriteWhenSubscriptionBlocked: true
+    });
     if (!context) return;
 
     const target = await store.findUserById(context.user.schoolId, request.params.userId);
@@ -158,7 +199,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
   });
 
   app.post<{ Params: { userId: string } }>("/v1/admin/users/:userId/suspend", async (request, reply) => {
-    const context = await requireSchoolAdmin(request, reply, store);
+    const context = await requireSchoolAdmin(request, reply, store, {
+      allowSecurityWriteWhenSubscriptionBlocked: true
+    });
     if (!context) return;
     if (context.user.id === request.params.userId) {
       return reply.code(409).send({ error: "self_suspend_blocked", message: "You cannot suspend your own administrator account." });
@@ -176,7 +219,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
   });
 
   app.post<{ Params: { userId: string } }>("/v1/admin/users/:userId/reactivate", async (request, reply) => {
-    const context = await requireSchoolAdmin(request, reply, store);
+    const context = await requireSchoolAdmin(request, reply, store, {
+      allowSecurityWriteWhenSubscriptionBlocked: true
+    });
     if (!context) return;
     const existing = await store.findUserById(context.user.schoolId, request.params.userId);
     if (!existing) return reply.code(404).send({ error: "not_found", message: "User not found." });
