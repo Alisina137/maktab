@@ -450,6 +450,8 @@ function TimetableViews({
 }) {
   const t = (english: string) => adminText(locale, english);
   const [view, setView] = useState<"TEACHER" | "CLASS">("TEACHER");
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
 
   const classMap = useMemo(() => new Map(classes.map((item) => [item.id, item])), [classes]);
   const teacherMap = useMemo(() => new Map(teachers.map((item) => [item.userId, item])), [teachers]);
@@ -500,7 +502,44 @@ function TimetableViews({
     [classes, visiblePeriods]
   );
 
+  useEffect(() => {
+    if (teacherGroups.length === 0) {
+      setSelectedTeacherId("");
+      return;
+    }
+    if (!teacherGroups.some((group) => group.id === selectedTeacherId)) {
+      setSelectedTeacherId(teacherGroups[0]?.id ?? "");
+    }
+  }, [teacherGroups, selectedTeacherId]);
+
+  useEffect(() => {
+    if (classGroups.length === 0) {
+      setSelectedClassId("");
+      return;
+    }
+    if (!classGroups.some((group) => group.id === selectedClassId)) {
+      setSelectedClassId(classGroups[0]?.id ?? "");
+    }
+  }, [classGroups, selectedClassId]);
+
   const groups = view === "TEACHER" ? teacherGroups : classGroups;
+  const selectedId = view === "TEACHER" ? selectedTeacherId : selectedClassId;
+  const selectedGroup = groups.find((group) => group.id === selectedId) ?? groups[0] ?? null;
+
+  function changeView(next: "TEACHER" | "CLASS") {
+    setView(next);
+    if (next === "TEACHER" && !selectedTeacherId && teacherGroups[0]) {
+      setSelectedTeacherId(teacherGroups[0].id);
+    }
+    if (next === "CLASS" && !selectedClassId && classGroups[0]) {
+      setSelectedClassId(classGroups[0].id);
+    }
+  }
+
+  function selectGroup(id: string) {
+    if (view === "TEACHER") setSelectedTeacherId(id);
+    else setSelectedClassId(id);
+  }
 
   return (
     <article className="admin-panel academic-list-panel academic-timetable-panel">
@@ -515,7 +554,7 @@ function TimetableViews({
             role="tab"
             aria-selected={view === "TEACHER"}
             className={view === "TEACHER" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
-            onClick={() => setView("TEACHER")}
+            onClick={() => changeView("TEACHER")}
           >
             {t("Teacher timetables")}
           </button>
@@ -524,7 +563,7 @@ function TimetableViews({
             role="tab"
             aria-selected={view === "CLASS"}
             className={view === "CLASS" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
-            onClick={() => setView("CLASS")}
+            onClick={() => changeView("CLASS")}
           >
             {t("Class timetables")}
           </button>
@@ -536,76 +575,108 @@ function TimetableViews({
           <strong>{t("No timetable periods yet")}</strong>
           <span>{t("Add timetable periods above and they will appear here automatically.")}</span>
         </div>
+      ) : groups.length === 0 || !selectedGroup ? (
+        <div className="admin-empty-state academic-timetable-empty">
+          <strong>{t(view === "TEACHER" ? "No teachers available" : "No classes available")}</strong>
+          <span>{t(view === "TEACHER" ? "Create teacher profiles to view teacher timetables." : "Create classes to view class timetables.")}</span>
+        </div>
       ) : (
-        <div className="academic-timetable-groups">
-          {groups.map((group) => (
-            <section className="academic-timetable-card" key={group.id}>
-              <div className="academic-timetable-card-heading">
-                <div>
-                  <strong>{group.title}</strong>
-                  <span>{group.subtitle}</span>
-                </div>
-                <span className="academic-timetable-count">
-                  {group.periods.length} {t("period(s)")}
-                </span>
+        <div className="academic-timetable-browser">
+          <aside className="academic-timetable-selector" aria-label={t(view === "TEACHER" ? "Teachers" : "Classes")}>
+            <div className="academic-timetable-selector-heading">
+              <strong>{t(view === "TEACHER" ? "Teachers" : "Classes")}</strong>
+              <span>{groups.length}</span>
+            </div>
+            <div className="academic-timetable-selector-list">
+              {groups.map((group) => (
+                <button
+                  type="button"
+                  key={group.id}
+                  className={group.id === selectedGroup.id
+                    ? "academic-timetable-person academic-timetable-person-active"
+                    : "academic-timetable-person"}
+                  onClick={() => selectGroup(group.id)}
+                  aria-pressed={group.id === selectedGroup.id}
+                >
+                  <span className="academic-timetable-person-avatar" aria-hidden="true">
+                    {group.title.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="academic-timetable-person-copy">
+                    <strong>{group.title}</strong>
+                    <small>{group.subtitle}</small>
+                  </span>
+                  <span className="academic-timetable-person-count">{group.periods.length}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          <section className="academic-timetable-card" key={selectedGroup.id}>
+            <div className="academic-timetable-card-heading">
+              <div>
+                <strong>{selectedGroup.title}</strong>
+                <span>{selectedGroup.subtitle}</span>
               </div>
+              <span className="academic-timetable-count">
+                {selectedGroup.periods.length} {t("period(s)")}
+              </span>
+            </div>
 
-              <div className="academic-timetable-scroll">
-                <table className="academic-week-grid">
-                  <thead>
-                    <tr>
-                      <th className="academic-week-day-column">{t("Day")}</th>
-                      {timeSlots.map((slot) => (
-                        <th key={slot.key}>
-                          <span>{slot.startsAt}</span>
-                          <small>{slot.endsAt}</small>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schoolWeekdays.map((day) => (
-                      <tr key={day}>
-                        <th className="academic-week-day-column" scope="row">{t(day)}</th>
-                        {timeSlots.map((slot) => {
-                          const periods = group.periods.filter(
-                            (period) =>
-                              period.weekday === day &&
-                              period.startsAt === slot.startsAt &&
-                              period.endsAt === slot.endsAt
-                          );
-
-                          return (
-                            <td key={slot.key}>
-                              {periods.length > 0 ? (
-                                <div className="academic-timetable-cell-stack">
-                                  {periods.map((period) => (
-                                    <div className="academic-timetable-cell" key={period.id}>
-                                      <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
-                                      <span>
-                                        {view === "TEACHER"
-                                          ? classMap.get(period.classId)?.name ?? t("Class")
-                                          : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}
-                                      </span>
-                                      {periods.length > 1 ? (
-                                        <small>{yearMap.get(period.academicYearId)?.name ?? ""}</small>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="academic-timetable-free" aria-label={t("No class scheduled")}>—</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
+            <div className="academic-timetable-scroll">
+              <table className="academic-week-grid">
+                <thead>
+                  <tr>
+                    <th className="academic-week-day-column">{t("Day")}</th>
+                    {timeSlots.map((slot) => (
+                      <th key={slot.key}>
+                        <span>{slot.startsAt}</span>
+                        <small>{slot.endsAt}</small>
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {schoolWeekdays.map((day) => (
+                    <tr key={day}>
+                      <th className="academic-week-day-column" scope="row">{t(day)}</th>
+                      {timeSlots.map((slot) => {
+                        const periods = selectedGroup.periods.filter(
+                          (period) =>
+                            period.weekday === day &&
+                            period.startsAt === slot.startsAt &&
+                            period.endsAt === slot.endsAt
+                        );
+
+                        return (
+                          <td key={slot.key}>
+                            {periods.length > 0 ? (
+                              <div className="academic-timetable-cell-stack">
+                                {periods.map((period) => (
+                                  <div className="academic-timetable-cell" key={period.id}>
+                                    <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
+                                    <span>
+                                      {view === "TEACHER"
+                                        ? classMap.get(period.classId)?.name ?? t("Class")
+                                        : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}
+                                    </span>
+                                    {periods.length > 1 ? (
+                                      <small>{yearMap.get(period.academicYearId)?.name ?? ""}</small>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="academic-timetable-free" aria-label={t("No class scheduled")}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       )}
     </article>
