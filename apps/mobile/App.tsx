@@ -29,6 +29,7 @@ import {
   api,
   isNetworkApiError,
   setPreferCachedReads,
+  type AdminContactPayload,
   type AttendanceSheetPayload,
   type AttendanceStatus,
   type ParentAttendanceDay,
@@ -38,6 +39,7 @@ import {
   type SessionPayload,
   type TeacherTodayPayload
 } from "./src/api";
+import { AdminContactCard } from "./src/admin-contact-card";
 import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
@@ -113,6 +115,7 @@ function AppContent() {
   const [parentToday, setParentToday] = useState("");
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
+  const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -238,6 +241,7 @@ function AppContent() {
 
   useEffect(() => {
     if (screen !== "home" || !session || session.mustChangePassword) return;
+    void loadAdminContact(session.accessToken);
     if (session.user.role === "PARENT") {
       void loadParentHome(session.accessToken);
       void loadParentNotifications(session.accessToken);
@@ -487,6 +491,15 @@ function AppContent() {
     }
   }
 
+  async function loadAdminContact(accessToken: string) {
+    try {
+      const result = await api.adminContact(accessToken);
+      setAdminContact(result.contact);
+    } catch {
+      // Contact information is supplementary; other home data should remain usable.
+    }
+  }
+
   async function loadTeacherToday(accessToken: string) {
     setBusy(true);
     setAppError(null);
@@ -631,6 +644,7 @@ function AppContent() {
       setParentToday("");
       setParentNotifications([]);
       setTeacherToday(null);
+      setAdminContact(null);
       setAttendanceSheet(null);
       setAttendanceDraft({});
       setNotice(null);
@@ -1106,6 +1120,8 @@ function AppContent() {
               </>
             ) : null}
 
+            <AdminContactCard contact={adminContact} locale={locale} />
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
@@ -1199,6 +1215,8 @@ function AppContent() {
               onNotice={setNotice}
             />
 
+            <AdminContactCard contact={adminContact} locale={locale} />
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
@@ -1235,6 +1253,8 @@ function AppContent() {
               onError={setAppError}
               onNotice={setNotice}
             />
+            <AdminContactCard contact={adminContact} locale={locale} />
+
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
