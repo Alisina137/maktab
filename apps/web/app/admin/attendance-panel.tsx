@@ -142,7 +142,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
         <div>
           <span className="eyebrow">{t("Phase 5 · Attendance")}</span>
           <h2>{t("Attendance oversight")}</h2>
-          <p>Review class attendance, absence/late totals, pending class submissions, and make audited corrections.</p>
+          <p>{t("Review class attendance, absence/late totals, pending class submissions, and make audited corrections.")}</p>
         </div>
         <button className="admin-secondary" type="button" onClick={() => void loadReport()} disabled={busy}>{t("Refresh")}</button>
       </div>
@@ -174,12 +174,12 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
       {report ? (
         <>
           <div className="academic-summary-grid attendance-summary-grid">
-            <Summary label="Present" value={report.summary.present} />
-            <Summary label="Absent" value={report.summary.absent} />
-            <Summary label="Late" value={report.summary.late} />
-            <Summary label="Excused" value={report.summary.excused} />
-            <Summary label="Submitted classes" value={report.summary.submittedClasses} />
-            <Summary label="Pending classes" value={report.summary.pendingClasses} />
+            <Summary label={t("Present")} value={report.summary.present} />
+            <Summary label={t("Absent")} value={report.summary.absent} />
+            <Summary label={t("Late")} value={report.summary.late} />
+            <Summary label={t("Excused")} value={report.summary.excused} />
+            <Summary label={t("Submitted classes")} value={report.summary.submittedClasses} />
+            <Summary label={t("Pending classes")} value={report.summary.pendingClasses} />
           </div>
 
           <article className="admin-panel academic-list-panel">
