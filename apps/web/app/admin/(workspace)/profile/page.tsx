@@ -11,7 +11,7 @@ type ProfileResponse = {
 };
 
 export default function AdminProfilePage() {
-  const { stored, t, showToast } = useAdminWorkspace();
+  const { stored, locale, t, showToast } = useAdminWorkspace();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,7 @@ export default function AdminProfilePage() {
       showToast({
         kind: "error",
         title: t("Profile could not be loaded"),
-        message: friendlyAdminError(cause, "Please try again.")
+        message: friendlyAdminError(cause, "Please try again.", locale)
       });
     } finally {
       setBusy(false);
@@ -61,7 +61,7 @@ export default function AdminProfilePage() {
       showToast({
         kind: "error",
         title: t("Profile was not updated"),
-        message: friendlyAdminError(cause, "Please review the profile information and try again.")
+        message: friendlyAdminError(cause, "Please review the profile information and try again.", locale)
       });
     } finally {
       setBusy(false);
