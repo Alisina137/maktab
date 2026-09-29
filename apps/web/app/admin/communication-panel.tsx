@@ -3,7 +3,11 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
-import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
+import {
+  AdminHijriDatePicker,
+  formatAdminHijriDate,
+  formatAdminHijriDateTime
+} from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminText } from "./admin-i18n";
 
@@ -338,12 +342,12 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       <div className="communication-two-column">
         <article className="admin-panel communication-form-card">
-          <div><h2>{t("Create announcement")}</h2><p>Every announcement has an explicit school, class, or role audience.</p></div>
+          <div><h2>{t("Create announcement")}</h2><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
             <label>{t("Title")}<input name="title" maxLength={160} required /></label>
             <label>{t("Message")}<textarea name="content" rows={5} maxLength={10000} required /></label>
             <label>
-              Audience
+              {t("Audience")}
               <select value={scope} onChange={(event) => setScope(event.target.value as AnnouncementScope)}>
                 <option value="SCHOOL">{t("Whole school")}</option>
                 <option value="CLASS">{t("One class")}</option>
@@ -373,10 +377,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         </article>
 
         <article className="admin-panel communication-form-card">
-          <div><h2>{t("Create fee invoice")}</h2><p>Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.</p></div>
+          <div><h2>{t("Create fee invoice")}</h2><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
           <form className="admin-form" onSubmit={createInvoice}>
             <label>
-              Student
+              {t("Student")}
               <select name="studentId" required defaultValue="">
                 <option value="">{t("Select student")}</option>
                 {activeStudents.map((item) => (
@@ -394,7 +398,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
           <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
             <label>
-              Fee reminders · days before due
+              {t("Fee reminders · days before due")}
               <input value={reminderText} onChange={(event) => setReminderText(event.target.value)} placeholder="7, 1" />
             </label>
             <button className="admin-secondary" disabled={busy}>{t("Save reminder days")}</button>
@@ -404,15 +408,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>{t("Announcements")}</h2><p>Scheduled and published school communication</p></div>
+          <div><h2>{t("Announcements")}</h2><p>{t("Scheduled and published school communication")}</p></div>
         </div>
         <div className="academic-rows">
           {overview.announcements.map((item) => (
             <div className="academic-row communication-announcement-row" key={item.id}>
               <div>
                 <strong>{item.title}</strong>
-                <span>{item.audienceScope}{item.audienceRole ? ` · ${item.audienceRole}` : ""}{item.classId ? " · class scoped" : ""}</span>
-                <span>{new Date(item.publishAt).toLocaleString()} {item.archivedAt ? "· ARCHIVED" : ""}</span>
+                <span>{t(item.audienceScope)}{item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}{item.classId ? ` · ${t("class scoped")}` : ""}</span>
+                <span>{formatAdminHijriDateTime(locale, item.publishAt)} {item.archivedAt ? `· ${t("ARCHIVED")}` : ""}</span>
                 <p>{item.content}</p>
               </div>
               {!item.archivedAt ? (
@@ -426,7 +430,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>{t("Fee invoices & payments")}</h2><p>Payments are appended; reversals never overwrite the original transaction.</p></div>
+          <div><h2>{t("Fee invoices & payments")}</h2><p>{t("Payments are appended; reversals never overwrite the original transaction.")}</p></div>
         </div>
         <div className="communication-invoice-list">
           {overview.invoices.map((item) => {
@@ -440,9 +444,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <div className="communication-invoice-header">
                   <div>
                     <strong>{item.studentName}</strong>
-                    <span>{item.studentCode} · {item.invoice.description || "School fee"} · due {item.invoice.dueDate}</span>
+                    <span>{item.studentCode} · {item.invoice.description || t("School fee")} · {adminFormat(locale, "due {date}", { date: formatAdminHijriDate(locale, item.invoice.dueDate) })}</span>
                   </div>
-                  <strong>{item.invoice.status}</strong>
+                  <strong>{t(item.invoice.status)}</strong>
                 </div>
                 <div className="communication-money-grid">
                   <span>{t("Amount")}<strong>AFN {item.invoice.amount}</strong></span>
@@ -508,10 +512,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                     {item.payments.map((payment) => (
                       <div key={payment.id} className="communication-payment-row">
                         <div>
-                          <strong>{payment.kind} · AFN {payment.amount}</strong>
-                          <span>{payment.method} · {new Date(payment.recordedAt).toLocaleString()}</span>
-                          {payment.transactionReference ? <span>Ref: {payment.transactionReference}</span> : null}
-                          {payment.reversalReason ? <span>Reason: {payment.reversalReason}</span> : null}
+                          <strong>{t(payment.kind)} · AFN {payment.amount}</strong>
+                          <span>{payment.method} · {formatAdminHijriDateTime(locale, payment.recordedAt)}</span>
+                          {payment.transactionReference ? <span>{t("Ref")}: {payment.transactionReference}</span> : null}
+                          {payment.reversalReason ? <span>{t("Reason")}: {payment.reversalReason}</span> : null}
                         </div>
                         {payment.kind === "PAYMENT" && !reversedPaymentIds.has(payment.id) ? (
                           <div className="communication-reversal">
