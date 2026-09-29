@@ -2,13 +2,14 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type User } from "../../admin-client";
+import { adminFormat } from "../../admin-i18n";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 
 export default function AccountsPage() {
-  const { stored, t, showToast } = useAdminWorkspace();
+  const { stored, locale, t, showToast } = useAdminWorkspace();
   const [users, setUsers] = useState<User[]>([]);
   const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
@@ -33,7 +34,7 @@ export default function AccountsPage() {
       showToast({
         kind: "error",
         title: t("School accounts"),
-        message: friendlyAdminError(cause, "Could not load school accounts.")
+        message: friendlyAdminError(cause, "Could not load school accounts.", locale)
       });
     } finally {
       setInitialLoading(false);
@@ -56,13 +57,13 @@ export default function AccountsPage() {
       showToast({
         kind: "success",
         title: t("Temporary credential created"),
-        message: `${result.user.username} is ready.`
+        message: adminFormat(locale, "{username} is ready.", { username: result.user.username })
       });
     } catch (cause) {
       showToast({
         kind: "error",
         title: t("Create account"),
-        message: friendlyAdminError(cause, "Could not create account.")
+        message: friendlyAdminError(cause, "Could not create account.", locale)
       });
     } finally {
       setBusy(false);
@@ -96,7 +97,7 @@ export default function AccountsPage() {
       showToast({
         kind: "error",
         title: t("School accounts"),
-        message: friendlyAdminError(cause, "Could not update account.")
+        message: friendlyAdminError(cause, "Could not update account.", locale)
       });
     } finally {
       setBusy(false);
