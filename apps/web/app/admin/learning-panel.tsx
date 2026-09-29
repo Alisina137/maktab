@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type ExamStatus = "DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "RESULTS_READY" | "PUBLISHED" | "ARCHIVED";
 
@@ -71,6 +73,8 @@ async function request<T>(accessToken: string, path: string, init?: RequestInit)
 }
 
 export function LearningPanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const [learning, setLearning] = useState<LearningOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -201,8 +205,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   if (!learning || !academics) {
     return (
       <section className="admin-panel learning-section">
-        <h2>Exams & results</h2>
-        <p>Loading Phase 6 academic communication…</p>
+        <h2>{t("Exams & results")}</h2>
+        <p>{t("Loading Phase 6 academic communication…")}</p>
         {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
     );
@@ -212,11 +216,11 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     <section className="learning-section">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 6 · Homework, Exams & Results</span>
-          <h2>Exam cycles & result publication</h2>
+          <span className="eyebrow">{t("Phase 6 · Homework, Exams & Results")}</span>
+          <h2>{t("Exam cycles & result publication")}</h2>
           <p>Configure exam subjects and maximum scores, control the publication lifecycle, and audit corrections after publication.</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
+        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -224,56 +228,52 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
-          <div><h2>Create exam</h2><p>Exam cycles begin as DRAFT. Scheduling dates are intentionally outside the MVP Phase 6 scope.</p></div>
+          <div><h2>{t("Create exam")}</h2><p>Exam cycles begin as DRAFT. Scheduling dates are intentionally outside the MVP Phase 6 scope.</p></div>
           <form className="admin-form" onSubmit={createExam}>
             <label>
               Active academic year
               <select name="academicYearId" required defaultValue="">
-                <option value="">Select year</option>
+                <option value="">{t("Select year")}</option>
                 {activeYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
               </select>
             </label>
-            <label>Exam name<input name="name" placeholder="Midyear exam" required /></label>
-            <label>Exam type<input name="type" placeholder="MIDYEAR" required /></label>
-            <button className="admin-primary" disabled={busy || activeYears.length === 0}>Create draft exam</button>
+            <label>{t("Exam name")}<input name="name" placeholder="Midyear exam" required /></label>
+            <label>{t("Exam type")}<input name="type" placeholder="MIDYEAR" required /></label>
+            <button className="admin-primary" disabled={busy || activeYears.length === 0}>{t("Create draft exam")}</button>
           </form>
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>Add exam subject</h2><p>A class/subject can be added only when a teacher assignment already exists for it.</p></div>
+          <div><h2>{t("Add exam subject")}</h2><p>A class/subject can be added only when a teacher assignment already exists for it.</p></div>
           <form className="admin-form" onSubmit={addExamSubject}>
             <label>
               Exam
               <select name="examId" required value={examId} onChange={(event) => { setExamId(event.target.value); setExamClassId(""); }}>
-                <option value="">Select exam</option>
+                <option value="">{t("Select exam")}</option>
                 {learning.exams.filter((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED").map((exam) => (
                   <option key={exam.id} value={exam.id}>{exam.name} · {exam.status}</option>
                 ))}
               </select>
             </label>
-            <label>
-              Class
-              <select name="classId" required value={examClassId} onChange={(event) => setExamClassId(event.target.value)}>
-                <option value="">Select class</option>
+            <label>{t("Class")}<select name="classId" required value={examClassId} onChange={(event) => setExamClassId(event.target.value)}>
+                <option value="">{t("Select class")}</option>
                 {examClasses.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}
               </select>
             </label>
-            <label>
-              Subject
-              <select name="subjectId" required defaultValue="" key={examClassId}>
-                <option value="">Select assigned subject</option>
+            <label>{t("Subject")}<select name="subjectId" required defaultValue="" key={examClassId}>
+                <option value="">{t("Select assigned subject")}</option>
                 {examSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
               </select>
             </label>
-            <label>Maximum score<input name="maxScore" type="number" min={1} max={10000} defaultValue={100} required /></label>
-            <button className="admin-primary" disabled={busy || !examId || !examClassId || examSubjects.length === 0}>Add subject</button>
+            <label>{t("Maximum score")}<input name="maxScore" type="number" min={1} max={10000} defaultValue={100} required /></label>
+            <button className="admin-primary" disabled={busy || !examId || !examClassId || examSubjects.length === 0}>{t("Add subject")}</button>
           </form>
         </article>
       </div>
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>Exam lifecycle</h2><p>Draft → Scheduled → In progress → Results ready → Published → Archived</p></div>
+          <div><h2>{t("Exam lifecycle")}</h2><p>Draft → Scheduled → In progress → Results ready → Published → Archived</p></div>
         </div>
         <div className="academic-rows">
           {learning.exams.map((exam) => {
@@ -301,19 +301,19 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
               </div>
             );
           })}
-          {learning.exams.length === 0 ? <p className="admin-copy">No exams yet.</p> : null}
+          {learning.exams.length === 0 ? <p className="admin-copy">{t("No exams yet.")}</p> : null}
         </div>
       </article>
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>Published result corrections</h2><p>Published marks cannot be deleted. Corrections require a reason and create audit history.</p></div>
+          <div><h2>{t("Published result corrections")}</h2><p>Published marks cannot be deleted. Corrections require a reason and create audit history.</p></div>
         </div>
         <div className="learning-grade-list">
           {learning.publishedGrades.map((item) => (
             <PublishedGradeRow key={item.grade.id} item={item} accessToken={accessToken} busy={busy} onBusy={setBusy} onError={setError} onNotice={setNotice} onReload={load} />
           ))}
-          {learning.publishedGrades.length === 0 ? <p className="admin-copy">No published grades yet.</p> : null}
+          {learning.publishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades yet.")}</p> : null}
         </div>
       </article>
     </section>
