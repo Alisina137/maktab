@@ -302,3 +302,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Reset password, Suspend, and Reactivate for other accounts are treated as security operations and remain available even while subscription operational writes are blocked.
 - Added regression coverage for richer admin-profile round trips, public contact visibility to a parent account, administrator self-password changes, and reset/suspend actions under a suspended subscription.
 - CI verified typecheck, tests, and production build after this refinement.
+
+
+## Post-implementation refinement — Teacher and class timetable views
+
+- Replaced the flat Academics timetable list with weekly timetable grids.
+- Added two admin timetable modes: **Teacher timetables** and **Class timetables**.
+- Teacher mode renders one table per teacher; rows are Saturday–Thursday and time columns show each scheduled subject plus class.
+- Class mode renders one table per class; rows are Saturday–Thursday and time columns show each scheduled subject plus teacher.
+- Friday is excluded from timetable display and from the admin weekday selector for newly created timetable periods. Existing Friday database records are left unchanged and simply hidden from the admin timetable grids.
+- Time columns are derived from the actual scheduled period ranges and sorted by start time.
+- The day column is sticky and the table scrolls horizontally on narrower screens.
+- Persian/Dari and Pashto labels were added for the new timetable controls and empty states.
+- CI verified typecheck, tests, and production build after the timetable refinement.
