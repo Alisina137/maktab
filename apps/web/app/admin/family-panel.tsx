@@ -3,6 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
@@ -420,7 +421,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create parent account")}</h2><p>Creates a PARENT identity and profile together and generates a one-time temporary password.</p></div>
+          <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
           <form className="admin-form" onSubmit={createParent}>
             <label>{t("Username")}<input name="username" placeholder="parent.001" autoCapitalize="none" required /></label>
             <label>{t("Full name")}<input name="fullName" placeholder={t("Parent full name")} required /></label>
@@ -430,12 +431,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Add student")}</h2><p>Link the student to one existing parent account. The relationship is singular, not many-to-many.</p></div>
+          <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
           <form className="admin-form" onSubmit={createStudent}>
             <label>{t("Student code")}<input name="studentCode" placeholder="S-001" required /></label>
             <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
             <label>
-              Parent
+              {t("Parent")}
               <select name="parentUserId" required defaultValue="">
                 <option value="">{t("Select parent")}</option>
                 {availableParents.map((parent) => (
@@ -448,7 +449,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <label>{t("Academic year")}<select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
                 <option value="">{t("Select year")}</option>
                 {academics.academicYears.filter((year) => year.status !== "CLOSED" && year.status !== "ARCHIVED").map((year) => (
-                  <option key={year.id} value={year.id}>{year.name} · {year.status}</option>
+                  <option key={year.id} value={year.id}>{year.name} · {t(year.status)}</option>
                 ))}
               </select>
             </label>
@@ -464,10 +465,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create student login")}</h2><p>Creates a school-issued STUDENT account and links it to exactly one existing student record.</p></div>
+          <div><h2>{t("Create student login")}</h2><p>{t("Creates a school-issued STUDENT account and links it to exactly one existing student record.")}</p></div>
           <form className="admin-form" onSubmit={createStudentAccount}>
             <label>
-              Student without login
+              {t("Student without login")}
               <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
                 <option value="">{t("Select student")}</option>
                 {overview.students.filter((item) => !item.student.userId && item.student.status === "ACTIVE").map((item) => (
@@ -484,15 +485,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <div className="academic-data-grid">
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>{t("Parents")}</h2><p>{overview.parents.length} school-controlled family account(s)</p></div>
+            <div><h2>{t("Parents")}</h2><p>{adminFormat(locale, "{count} school-controlled family account(s)", { count: overview.parents.length })}</p></div>
           </div>
           <div className="academic-rows">
             {overview.parents.map((parent) => (
               <div className="academic-row" key={parent.user.id}>
                 <div>
                   <strong>{parent.profile.fullName}</strong>
-                  <span>{parent.user.username} · {parent.childCount} child{parent.childCount === 1 ? "" : "ren"} · {parent.profile.phone || "No phone"}</span>
-                  <span>{parent.user.status}{parent.user.lastLoginAt ? ` · last login ${new Date(parent.user.lastLoginAt).toLocaleDateString()}` : " · never logged in"}</span>
+                  <span>{parent.user.username} · {adminFormat(locale, "{count} child(ren)", { count: parent.childCount })} · {parent.profile.phone || t("No phone")}</span>
+                  <span>{t(parent.user.status)}{parent.user.lastLoginAt
+  ? ` · ${adminFormat(locale, "last login {date}", { date: formatAdminHijriDateTime(locale, parent.user.lastLoginAt) })}`
+  : ` · ${t("never logged in")}`}</span>
                 </div>
                 <div className="admin-actions">
                   <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "reset-password")}>{t("Reset password")}</button>
@@ -510,7 +513,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>{t("Students")}</h2><p>{overview.students.length} student record(s)</p></div>
+            <div><h2>{t("Students")}</h2><p>{adminFormat(locale, "{count} student record(s)", { count: overview.students.length })}</p></div>
           </div>
           <div className="academic-rows">
             {overview.students.map((item) => {
@@ -520,8 +523,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                   <div>
                     <strong>{item.student.fullName}</strong>
                     <span>{item.student.studentCode} · {item.classSection.name} · {item.academicYear.name}</span>
-                    <span>Parent: {parent?.profile.fullName ?? "Unknown"} · {item.student.status}</span>
-                    <span>{item.student.userId ? "Student login linked" : "No student login yet"}</span>
+                    <span>{t("Parent")}: {parent?.profile.fullName ?? t("Unknown")} · {t(item.student.status)}</span>
+                    <span>{t(item.student.userId ? "Student login linked" : "No student login yet")}</span>
                   </div>
                 </div>
               );
@@ -542,7 +545,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
         <div className="family-import-controls">
           <label>
-            Import type
+            {t("Import type")}
             <select value={importEntity} onChange={(event) => resetImport(event.target.value as ImportEntity)} disabled={busy}>
               <option value="PARENT">{t("Parents")}</option>
               <option value="STUDENT">{t("Students")}</option>
@@ -550,7 +553,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             </select>
           </label>
           <label>
-            CSV or XLSX file
+            {t("CSV or XLSX file")}
             <input
               type="file"
               accept=".csv,.tsv,.xlsx"
@@ -562,11 +565,14 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
         {preview ? (
           <>
-            <p className="admin-copy"><strong>{importFileName}</strong> · {preview.rows.length} data row(s) · {preview.headers.length} column(s)</p>
+            <p className="admin-copy"><strong>{importFileName}</strong> · {adminFormat(locale, "{rows} data row(s) · {columns} column(s)", {
+              rows: preview.rows.length,
+              columns: preview.headers.length
+            })}</p>
             <div className="family-mapping-grid">
               {importFields[importEntity].map((field) => (
                 <label key={field.key}>
-                  {field.label}{field.required ? " *" : ""}
+                  {t(field.label)}{field.required ? " *" : ""}
                   <select
                     value={mapping[field.key] ?? ""}
                     onChange={(event) => {
@@ -592,13 +598,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
         {validation ? (
           <div className={validation.valid ? "admin-success" : "admin-error"}>
-            <strong>{validation.valid ? "Validation passed." : "Import not committed — fix the errors and validate again."}</strong>
-            <div>{validation.validRowCount} of {validation.rowCount} row(s) valid.</div>
+            <strong>{t(validation.valid ? "Validation passed." : "Import not committed — fix the errors and validate again.")}</strong>
+            <div>{adminFormat(locale, "{valid} of {total} row(s) valid.", {
+              valid: validation.validRowCount,
+              total: validation.rowCount
+            })}</div>
             {validation.errors.length > 0 ? (
               <ul className="family-import-errors">
                 {validation.errors.slice(0, 50).map((item, index) => (
                   <li key={`${item.row}-${item.field ?? "row"}-${index}`}>
-                    Row {item.row}{item.field ? ` · ${item.field}` : ""}: {item.message}
+                    {adminFormat(locale, "Row {row}", { row: item.row })}
+                    {item.field ? ` · ${t(item.field)}` : ""}: {adminErrorText(locale, new Error(item.message), "Validation issue")}
                   </li>
                 ))}
               </ul>
