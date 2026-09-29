@@ -1,4 +1,5 @@
 "use client";
+import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -114,8 +115,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [credentials, setCredentials] = useState<Credential[]>([]);
 
   const [studentYearId, setStudentYearId] = useState("");
