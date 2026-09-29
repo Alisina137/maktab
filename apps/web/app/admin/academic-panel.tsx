@@ -151,7 +151,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <div>
           <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
           <h2>{t("Model the school year")}</h2>
-          <p>Academic years, grades, classes, subjects, teachers, assignments, Negaran responsibility, and conflict-safe timetables.</p>
+          <p>{t("Academic years, grades, classes, subjects, teachers, assignments, Negaran responsibility, and conflict-safe timetables.")}</p>
         </div>
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
@@ -298,7 +298,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h2>{t("Academic years")}</h2>
-            <p>Lifecycle: DRAFT → ACTIVE → CLOSED → ARCHIVED. Only one year can be active.</p>
+            <p>{t("Lifecycle: DRAFT → ACTIVE → CLOSED → ARCHIVED. Only one year can be active.")}</p>
           </div>
         </div>
         <div className="academic-rows">
@@ -320,7 +320,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-data-grid">
         <DataList
-          title="Teacher assignments"
+          title={t("Teacher assignments")}
           rows={overview.assignments.map((item) => ({
             id: item.id,
             title: teacherMap.get(item.teacherUserId)?.fullName ?? item.teacherUserId,
@@ -328,7 +328,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           }))}
         />
         <DataList
-          title="Negaran history"
+          title={t("Negaran history")}
           rows={overview.negaranAssignments.map((item) => ({
             id: item.id,
             title: classMap.get(item.classId)?.name ?? "Class",
