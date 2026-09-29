@@ -156,7 +156,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       try {
         await adminApi("/v1/auth/logout", {
           method: "POST",
-          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+          body: JSON.stringify({ refreshToken: stored.session.refreshToken })
         });
       } catch (cause) {
         showToast({
