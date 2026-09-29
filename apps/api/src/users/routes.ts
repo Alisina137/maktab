@@ -103,7 +103,17 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
 
     try {
       const input = adminProfileSchema.parse(request.body);
-      const profile = await store.upsertAdminProfile(context.user.schoolId, context.user.id, input);
+      const profile = await store.upsertAdminProfile(context.user.schoolId, context.user.id, {
+        fullName: input.fullName,
+        jobTitle: input.jobTitle ?? null,
+        imageUrl: input.imageUrl ?? null,
+        email: input.email ?? null,
+        whatsapp: input.whatsapp ?? null,
+        phone: input.phone ?? null,
+        officeLocation: input.officeLocation ?? null,
+        officeHours: input.officeHours ?? null,
+        bio: input.bio ?? null
+      });
       await store.writeAudit({
         schoolId: context.user.schoolId,
         actorUserId: context.user.id,
