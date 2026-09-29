@@ -114,6 +114,8 @@ export function friendlyAdminError(
     not_found: "This account could not be found. Refresh the page and try again.",
     validation_error: "Some information is not valid. Please review it and try again.",
     username_conflict: "That username already exists in this school.",
+    current_password_invalid: "The current password is incorrect.",
+    password_unchanged: "Choose a new password that is different from the current password.",
     internal_error: "MaktabLink could not complete this request. Please try again.",
     invalid_response: "The school service returned an unreadable response. Please try again."
   };
