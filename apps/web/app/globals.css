@@ -3337,3 +3337,167 @@ html[dir="rtl"] body {
     transition: none;
   }
 }
+
+
+/* Timetable entity selector */
+.academic-timetable-browser {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.academic-timetable-selector {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.academic-timetable-selector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.academic-timetable-selector-heading strong {
+  font-size: 13px;
+  color: var(--ml-color-text);
+}
+
+.academic-timetable-selector-heading span {
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #eef3ff;
+  color: #315aa8;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.academic-timetable-selector-list {
+  display: grid;
+  gap: 7px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding-inline-end: 3px;
+}
+
+.academic-timetable-person {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 13px;
+  background: #fff;
+  color: var(--ml-color-text);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease,
+    transform .16s ease;
+}
+
+.academic-timetable-person:hover {
+  border-color: #c8d7f0;
+  background: #f8faff;
+  transform: translateY(-1px);
+}
+
+.academic-timetable-person-active,
+.academic-timetable-person-active:hover {
+  border-color: #aebfe4;
+  background: linear-gradient(145deg, #f2f6ff, #eaf1ff);
+  box-shadow: 0 8px 18px rgba(45, 87, 166, .10);
+}
+
+.academic-timetable-person-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #edf3ff;
+  color: #315aa8;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.academic-timetable-person-active .academic-timetable-person-avatar {
+  background: #2a5fc8;
+  color: white;
+}
+
+.academic-timetable-person-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.academic-timetable-person-copy strong,
+.academic-timetable-person-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academic-timetable-person-copy strong {
+  font-size: 12px;
+}
+
+.academic-timetable-person-copy small {
+  color: var(--ml-color-text-muted);
+  font-size: 10px;
+}
+
+.academic-timetable-person-count {
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f1f4f8;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.academic-timetable-person-active .academic-timetable-person-count {
+  background: #dfe9ff;
+  color: #234f9f;
+}
+
+@media (max-width: 900px) {
+  .academic-timetable-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-timetable-selector {
+    position: static;
+  }
+
+  .academic-timetable-selector-list {
+    display: flex;
+    gap: 8px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 1px 6px;
+  }
+
+  .academic-timetable-person {
+    flex: 0 0 min(250px, 78vw);
+  }
+}
