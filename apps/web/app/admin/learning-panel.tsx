@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -204,16 +205,21 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
   if (!learning || !academics) {
     return (
-      <section className="admin-panel learning-section">
-        <h2>{t("Exams & results")}</h2>
-        <p>{t("Loading Phase 6 academic communication…")}</p>
-        {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      <section className="admin-panel learning-section admin-loading-card">
+        <AdminLoader label={t("Loading Phase 6 academic communication…")} />
+        <AdminSkeleton rows={5} />
+        {error ? (
+          <>
+            <div className="admin-error" role="alert">{error}</div>
+            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+          </>
+        ) : null}
       </section>
     );
   }
 
   return (
-    <section className="learning-section">
+    <section className="learning-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 6 · Homework, Exams & Results")}</span>
