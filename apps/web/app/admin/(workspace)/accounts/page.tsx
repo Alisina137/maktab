@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type User } from "../../admin-client";
+import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
@@ -16,6 +17,7 @@ export default function AccountsPage() {
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     void loadUsers();
@@ -33,6 +35,8 @@ export default function AccountsPage() {
         title: t("School accounts"),
         message: friendlyAdminError(cause, "Could not load school accounts.")
       });
+    } finally {
+      setInitialLoading(false);
     }
   }
 
@@ -124,8 +128,17 @@ export default function AccountsPage() {
     return groupMatch && statusMatch && (!q || haystack.includes(q));
   });
 
+  if (initialLoading) {
+    return (
+      <section className="admin-panel admin-loading-card">
+        <AdminLoader label={t("Loading…")} />
+        <AdminSkeleton rows={5} />
+      </section>
+    );
+  }
+
   return (
-    <section className="admin-dashboard-section">
+    <section className="admin-dashboard-section admin-page-enter">
       {credential ? (
         <section className="credential-card credential-card-premium" aria-live="polite">
           <div className="credential-heading">
