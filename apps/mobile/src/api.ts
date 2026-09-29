@@ -316,6 +316,12 @@ export function isNetworkApiError(error: unknown): error is ApiRequestError {
   return error instanceof ApiRequestError && error.network;
 }
 
+let preferCachedReads = false;
+
+export function setPreferCachedReads(value: boolean) {
+  preferCachedReads = value;
+}
+
 function apiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
   if (configured) return configured;
@@ -328,14 +334,19 @@ function apiBaseUrl(): string {
 async function request<T>(
   path: string,
   init?: RequestInit,
-  options: { cache?: boolean } = {}
+  options: { cache?: boolean; timeoutMs?: number } = {}
 ): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
   const method = (init?.method ?? "GET").toUpperCase();
   const cacheable = method === "GET" && options.cache !== false;
 
   try {
+    if (cacheable && preferCachedReads) {
+      const cached = await readReadCache<T>(path);
+      if (cached) return cached.data;
+    }
+
     const baseUrl = apiBaseUrl();
     let response: Response;
     try {
@@ -393,8 +404,8 @@ async function request<T>(
 }
 
 export const api = {
-  health() {
-    return request<{ status: string }>("/health", undefined, { cache: false });
+  health(timeoutMs = 5_000) {
+    return request<{ status: string }>("/health", undefined, { cache: false, timeoutMs });
   },
 
   async schools(query = "") {

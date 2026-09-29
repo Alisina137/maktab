@@ -28,6 +28,7 @@ import {
   ApiRequestError,
   api,
   isNetworkApiError,
+  setPreferCachedReads,
   type AttendanceSheetPayload,
   type AttendanceStatus,
   type ParentAttendanceDay,
@@ -152,7 +153,9 @@ function AppContent() {
 
   useEffect(() => {
     setReadCacheFallbackListener(() => {
-      setNotice(translate(locale, "common.cachedOffline"));
+      setPreferCachedReads(true);
+      setNotice(null);
+      setAppError("common.apiUnavailable", "network");
     });
     return () => setReadCacheFallbackListener(null);
   }, [locale]);
@@ -278,10 +281,12 @@ function AppContent() {
 
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
     const failure = appErrorFromCause(cause, fallback);
+    if (failure.kind === "network") setPreferCachedReads(true);
     setAppError(failure.key, failure.kind);
   }
 
   function finishConnectionRecovery() {
+    setPreferCachedReads(false);
     setErrorKey(null);
     setErrorKind(null);
     setErrorMinimized(false);
@@ -310,6 +315,7 @@ function AppContent() {
       }
       return true;
     } catch {
+      setPreferCachedReads(true);
       if (manual) {
         setAppError("common.apiStillUnavailable", "network");
       }
@@ -323,26 +329,54 @@ function AppContent() {
     try {
       const stored = await loadStoredSession();
       if (!stored) return;
+
       setSchool(stored.school);
       setReadCacheScope(`${stored.school.id}:${stored.auth.user.id}`);
+      setPreferCachedReads(true);
+
       const userRole = stored.auth.user.role;
-      if (userRole === "PARENT" || userRole === "TEACHER" || userRole === "STUDENT") setRole(userRole);
+      if (userRole === "PARENT" || userRole === "TEACHER" || userRole === "STUDENT") {
+        setRole(userRole);
+      }
+
+      // Render the stored session immediately. Cached GET data can now populate
+      // the home screen without waiting for a dead API tunnel to time out.
+      setSession(stored.auth);
+      setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+      setBusy(false);
+
+      try {
+        await api.health(1_500);
+      } catch {
+        setNotice(null);
+        setAppError("common.apiUnavailable", "network");
+        return;
+      }
+
+      setPreferCachedReads(false);
 
       try {
         const me = await api.me(stored.auth.accessToken);
-        const restored = { ...stored.auth, user: me.user, mustChangePassword: me.mustChangePassword };
+        const restored = {
+          ...stored.auth,
+          user: me.user,
+          mustChangePassword: me.mustChangePassword
+        };
         setSession(restored);
+        await saveStoredSession({ auth: restored, school: stored.school });
         setScreen(me.mustChangePassword ? "change-password" : "home");
+        setReconnectEpoch((current) => current + 1);
         return;
       } catch (cause) {
         if (isNetworkApiError(cause)) {
-          setSession(stored.auth);
-          setNotice(translate(locale, "common.cachedOffline"));
-          setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+          setPreferCachedReads(true);
+          setNotice(null);
+          setAppError("common.apiUnavailable", "network");
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
           setAppError("common.serviceUnavailable");
+          setSession(null);
           setScreen("login");
           return;
         }
@@ -353,22 +387,35 @@ function AppContent() {
         await saveStoredSession({ auth: refreshed, school: stored.school });
         setSession(refreshed);
         setScreen(refreshed.mustChangePassword ? "change-password" : "home");
+        setReconnectEpoch((current) => current + 1);
       } catch (cause) {
         if (isNetworkApiError(cause)) {
+          setPreferCachedReads(true);
           setSession(stored.auth);
-          setNotice(translate(locale, "common.cachedOffline"));
+          setNotice(null);
+          setAppError("common.apiUnavailable", "network");
           setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
           setAppError("common.serviceUnavailable");
+          setSession(null);
           setScreen("login");
           return;
         }
+
         await clearStoredSession();
+        setReadCacheScope(null);
+        setPreferCachedReads(false);
+        setSession(null);
+        setSchool(stored.school);
+        setScreen("login");
+        setAppError("common.sessionExpired");
       }
     } catch {
       await clearStoredSession();
+      setReadCacheScope(null);
+      setPreferCachedReads(false);
     } finally {
       setBusy(false);
     }
@@ -576,6 +623,7 @@ function AppContent() {
     } finally {
       await clearStoredSession();
       setReadCacheScope(null);
+      setPreferCachedReads(false);
       setSession(null);
       setParentHome(null);
       setSelectedChildId("");
