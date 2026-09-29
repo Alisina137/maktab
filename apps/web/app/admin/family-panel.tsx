@@ -4,7 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
 type User = {
   id: string;
@@ -152,7 +152,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setAcademics(academicData);
       setStudentYearId((current) => current || academicData.academicYears.find((year) => year.status === "ACTIVE")?.id || academicData.academicYears[0]?.id || "");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load family data.");
+      setError(adminErrorText(locale, cause, "Could not load family data."));
     }
   }
 
@@ -177,11 +177,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         }
       );
       setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
-      setNotice("Parent account created. Give the temporary credential to the parent securely.");
+      setNotice(t("Parent account created. Give the temporary credential to the parent securely."));
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create parent.");
+      setError(adminErrorText(locale, cause, "Could not create parent."));
     } finally {
       setBusy(false);
     }
@@ -204,11 +204,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           classId: String(form.get("classId") ?? "")
         })
       });
-      setNotice("Student created and linked to the selected parent.");
+      setNotice(t("Student created and linked to the selected parent."));
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create student.");
+      setError(adminErrorText(locale, cause, "Could not create student."));
     } finally {
       setBusy(false);
     }
@@ -232,12 +232,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         }
       );
       setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
-      setNotice("Student login created and linked to exactly one student record.");
+      setNotice(t("Student login created and linked to exactly one student record."));
       setStudentAccountId("");
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create student account.");
+      setError(adminErrorText(locale, cause, "Could not create student account."));
     } finally {
       setBusy(false);
     }
@@ -256,13 +256,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       );
       if (result.temporaryPassword) {
         setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
-        setNotice("A new temporary password was generated. It is shown only in this response.");
+        setNotice(t("A new temporary password was generated. It is shown only in this response."));
       } else {
-        setNotice(action === "suspend" ? "Parent account suspended." : "Parent account reactivated.");
+        setNotice(t(action === "suspend" ? "Parent account suspended." : "Parent account reactivated."));
       }
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Parent account action failed.");
+      setError(adminErrorText(locale, cause, "Parent account action failed."));
     } finally {
       setBusy(false);
     }
@@ -298,7 +298,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setMapping(autoMapping);
       setImportFileName(file.name);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not preview import file.");
+      setError(adminErrorText(locale, cause, "Could not preview import file."));
     } finally {
       setBusy(false);
     }
@@ -308,7 +308,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     if (!preview) return;
     const missing = importFields[importEntity].filter((field) => field.required && !mapping[field.key]);
     if (missing.length > 0) {
-      setError(`Map all required fields before validation: ${missing.map((item) => item.label).join(", ")}.`);
+      setError(adminFormat(locale, "Map all required fields before validation: {fields}.", { fields: missing.map((item) => t(item.label)).join(", ") }));
       return;
     }
 
@@ -322,9 +322,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({ entityType: importEntity, rows: preview.rows, mapping })
       });
       setValidation(result);
-      if (result.valid) setNotice(`${result.validRowCount} rows validated. Review and confirm the import.`);
+      if (result.valid) setNotice(adminFormat(locale, "{count} rows validated. Review and confirm the import.", { count: result.validRowCount }));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Import validation failed.");
+      setError(adminErrorText(locale, cause, "Import validation failed."));
     } finally {
       setBusy(false);
     }
@@ -346,14 +346,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         }
       );
       setCredentials(result.credentials);
-      setNotice(`${result.importedCount} ${importEntity.toLowerCase()} row(s) imported successfully.`);
+      setNotice(adminFormat(locale, "{count} {entity} row(s) imported successfully.", {
+        count: result.importedCount,
+        entity: importEntity === "PARENT" ? t("Parents") : t("Students")
+      }));
       setPreview(null);
       setValidation(null);
       setMapping({});
       setImportFileName("");
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Import failed.");
+      setError(adminErrorText(locale, cause, "Import failed."));
     } finally {
       setBusy(false);
     }
@@ -420,7 +423,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div><h2>{t("Create parent account")}</h2><p>Creates a PARENT identity and profile together and generates a one-time temporary password.</p></div>
           <form className="admin-form" onSubmit={createParent}>
             <label>{t("Username")}<input name="username" placeholder="parent.001" autoCapitalize="none" required /></label>
-            <label>{t("Full name")}<input name="fullName" placeholder="Parent full name" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder={t("Parent full name")} required /></label>
             <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
             <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
           </form>
@@ -430,7 +433,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div><h2>{t("Add student")}</h2><p>Link the student to one existing parent account. The relationship is singular, not many-to-many.</p></div>
           <form className="admin-form" onSubmit={createStudent}>
             <label>{t("Student code")}<input name="studentCode" placeholder="S-001" required /></label>
-            <label>{t("Full name")}<input name="fullName" placeholder="Student full name" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
             <label>
               Parent
               <select name="parentUserId" required defaultValue="">
