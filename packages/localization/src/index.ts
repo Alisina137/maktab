@@ -161,7 +161,15 @@ export type TranslationKey =
   | "fees.paid"
   | "fees.outstanding"
   | "fees.due"
-  | "fees.none";
+  | "fees.none"
+  | "contact.adminTitle"
+  | "contact.adminHint"
+  | "contact.email"
+  | "contact.whatsapp"
+  | "contact.phone"
+  | "contact.office"
+  | "contact.hours"
+  | "contact.noDetails";
 
 const en: Record<TranslationKey, string> = {
   "app.name": "MaktabLink",
@@ -323,6 +331,14 @@ const en: Record<TranslationKey, string> = {
   "common.cachedOffline": "Internet is unavailable. You are viewing securely saved information from this device.",
   "common.serviceUnavailable": "Your school's MaktabLink service is currently unavailable. Please contact the school administration.",
   "common.sessionExpired": "Your session has expired. Sign in again when a connection is available.",
+  "contact.adminTitle": "School administration",
+  "contact.adminHint": "Contact your school administration when you need help or have a question.",
+  "contact.email": "Email",
+  "contact.whatsapp": "WhatsApp",
+  "contact.phone": "Call",
+  "contact.office": "Office",
+  "contact.hours": "Office hours",
+  "contact.noDetails": "The school has not published contact details yet.",
 };
 
 const dari: Record<TranslationKey, string> = {
@@ -485,6 +501,14 @@ const dari: Record<TranslationKey, string> = {
   "common.cachedOffline": "اینترنت در دسترس نیست. معلومات امن ذخیره‌شده در این دستگاه را مشاهده می‌کنید.",
   "common.serviceUnavailable": "خدمت MaktabLink مکتب شما فعلاً در دسترس نیست. لطفاً با اداره مکتب تماس بگیرید.",
   "common.sessionExpired": "نشست شما پایان یافته است. وقتی اینترنت در دسترس شد دوباره وارد شوید.",
+  "contact.adminTitle": "مدیریت مکتب",
+  "contact.adminHint": "اگر پرسش یا نیاز به کمک دارید با مدیریت مکتب تماس بگیرید.",
+  "contact.email": "ایمیل",
+  "contact.whatsapp": "واتساپ",
+  "contact.phone": "تماس",
+  "contact.office": "دفتر",
+  "contact.hours": "ساعات کاری",
+  "contact.noDetails": "مکتب هنوز معلومات تماس مدیریت را نشر نکرده است.",
 };
 
 const pashto: Record<TranslationKey, string> = {
@@ -647,6 +671,14 @@ const pashto: Record<TranslationKey, string> = {
   "common.cachedOffline": "انټرنېټ نشته. تاسو په دې وسیله کې خوندي شوي معلومات ګورئ.",
   "common.serviceUnavailable": "ستاسو د ښوونځي MaktabLink خدمت اوس شتون نه لري. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
   "common.sessionExpired": "ستاسو ناسته پای ته رسېدلې ده. کله چې انټرنېټ موجود شي بیا ننوځئ.",
+  "contact.adminTitle": "د ښوونځي اداره",
+  "contact.adminHint": "که پوښتنه یا مرستې ته اړتیا لرئ، د ښوونځي له ادارې سره اړیکه ونیسئ.",
+  "contact.email": "برېښنالیک",
+  "contact.whatsapp": "واټس‌اپ",
+  "contact.phone": "زنګ",
+  "contact.office": "دفتر",
+  "contact.hours": "کاري ساعتونه",
+  "contact.noDetails": "ښوونځي تر اوسه د ادارې د اړیکې معلومات نه دي خپاره کړي.",
 };
 
 export const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
