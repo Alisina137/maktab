@@ -4,7 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 
 type ExamStatus = "DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "RESULTS_READY" | "PUBLISHED" | "ARCHIVED";
 
@@ -99,7 +99,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
       setAcademics(academicData);
       setExamId((current) => current || learningData.exams.find((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED")?.id || "");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load exams and results.");
+      setError(adminErrorText(locale, cause, "Could not load exams and results."));
     }
   }
 
@@ -118,11 +118,11 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           type: String(form.get("type") ?? "").trim()
         })
       });
-      setNotice("Exam cycle created in DRAFT state.");
+      setNotice(t("Exam cycle created in DRAFT state."));
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create exam.");
+      setError(adminErrorText(locale, cause, "Could not create exam."));
     } finally {
       setBusy(false);
     }
@@ -144,10 +144,10 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           maxScore: Number(form.get("maxScore"))
         })
       });
-      setNotice("Exam subject added.");
+      setNotice(t("Exam subject added."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not add exam subject.");
+      setError(adminErrorText(locale, cause, "Could not add exam subject."));
     } finally {
       setBusy(false);
     }
@@ -164,7 +164,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           `/v1/admin/exams/${exam.id}/publish`,
           { method: "POST" }
         );
-        setNotice(`Results published. ${result.notificationCount} in-app notification(s) queued.`);
+        setNotice(adminFormat(locale, "Results published. {count} in-app notification(s) queued.", { count: result.notificationCount }));
       } else {
         const next: Partial<Record<ExamStatus, ExamStatus>> = {
           DRAFT: "SCHEDULED",
@@ -178,11 +178,11 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           method: "POST",
           body: JSON.stringify({ status })
         });
-        setNotice(`Exam moved to ${status}.`);
+        setNotice(adminFormat(locale, "Exam moved to {status}.", { status }));
       }
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Exam action failed.");
+      setError(adminErrorText(locale, cause, "Exam action failed."));
     } finally {
       setBusy(false);
     }
@@ -234,16 +234,16 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create exam")}</h2><p>Exam cycles begin as DRAFT. Scheduling dates are intentionally outside the MVP Phase 6 scope.</p></div>
+          <div><h2>{t("Create exam")}</h2><p>{t("Exam cycles begin as DRAFT. Scheduling dates are intentionally outside the MVP Phase 6 scope.")}</p></div>
           <form className="admin-form" onSubmit={createExam}>
             <label>
-              Active academic year
+              {t("Active academic year")}
               <select name="academicYearId" required defaultValue="">
                 <option value="">{t("Select year")}</option>
                 {activeYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
               </select>
             </label>
-            <label>{t("Exam name")}<input name="name" placeholder="Midyear exam" required /></label>
+            <label>{t("Exam name")}<input name="name" placeholder={t("Midyear exam")} required /></label>
             <label>{t("Exam type")}<input name="type" placeholder="MIDYEAR" required /></label>
             <button className="admin-primary" disabled={busy || activeYears.length === 0}>{t("Create draft exam")}</button>
           </form>
@@ -279,7 +279,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>{t("Exam lifecycle")}</h2><p>Draft → Scheduled → In progress → Results ready → Published → Archived</p></div>
+          <div><h2>{t("Exam lifecycle")}</h2><p>{t("Draft → Scheduled → In progress → Results ready → Published → Archived")}</p></div>
         </div>
         <div className="academic-rows">
           {learning.exams.map((exam) => {
@@ -301,7 +301,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                 </div>
                 {action ? (
                   <div className="admin-actions">
-                    <button disabled={busy} onClick={() => void examAction(exam)}>{action}</button>
+                    <button disabled={busy} onClick={() => void examAction(exam)}>{t(action)}</button>
                   </div>
                 ) : null}
               </div>
@@ -313,11 +313,11 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>{t("Published result corrections")}</h2><p>Published marks cannot be deleted. Corrections require a reason and create audit history.</p></div>
+          <div><h2>{t("Published result corrections")}</h2><p>{t("Published marks cannot be deleted. Corrections require a reason and create audit history.")}</p></div>
         </div>
         <div className="learning-grade-list">
           {learning.publishedGrades.map((item) => (
-            <PublishedGradeRow key={item.grade.id} item={item} accessToken={accessToken} busy={busy} onBusy={setBusy} onError={setError} onNotice={setNotice} onReload={load} />
+            <PublishedGradeRow key={item.grade.id} item={item} accessToken={accessToken} locale={locale} busy={busy} onBusy={setBusy} onError={setError} onNotice={setNotice} onReload={load} />
           ))}
           {learning.publishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades yet.")}</p> : null}
         </div>
@@ -329,6 +329,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 function PublishedGradeRow({
   item,
   accessToken,
+  locale,
   busy,
   onBusy,
   onError,
@@ -337,12 +338,14 @@ function PublishedGradeRow({
 }: {
   item: PublishedGrade;
   accessToken: string;
+  locale: AdminLocale;
   busy: boolean;
   onBusy: (value: boolean) => void;
   onError: (value: string) => void;
   onNotice: (value: string) => void;
   onReload: () => Promise<void>;
 }) {
+  const t = (english: string) => adminText(locale, english);
   const [score, setScore] = useState(String(item.grade.score));
   const [remark, setRemark] = useState(item.grade.remark ?? "");
   const [reason, setReason] = useState("");
@@ -365,11 +368,11 @@ function PublishedGradeRow({
           reason: reason.trim()
         })
       });
-      onNotice(`Published mark corrected for ${item.studentName}. The reason and previous value are in the audit log.`);
+      onNotice(adminFormat(locale, "Published mark corrected for {name}. The reason and previous value are in the audit log.", { name: item.studentName }));
       setReason("");
       await onReload();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : "Could not correct published grade.");
+      onError(adminErrorText(locale, cause, "Could not correct published grade."));
     } finally {
       onBusy(false);
     }
@@ -381,11 +384,11 @@ function PublishedGradeRow({
         <strong>{item.studentName}</strong>
         <span>{item.studentCode} · {item.examName} · {item.className} · {item.subjectName}</span>
       </div>
-      <label>Score<input type="number" min={0} max={item.maxScore} value={score} onChange={(event) => setScore(event.target.value)} /></label>
-      <label>Remark<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} /></label>
-      <label>Correction reason<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required /></label>
+      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} value={score} onChange={(event) => setScore(event.target.value)} /></label>
+      <label>{t("Remark")}<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} /></label>
+      <label>{t("Correction reason")}<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required /></label>
       <button className="admin-secondary" type="button" disabled={busy || !reason.trim() || Number(score) < 0 || Number(score) > item.maxScore} onClick={() => void save()}>
-        Save correction
+        {t("Save correction")}
       </button>
     </div>
   );
