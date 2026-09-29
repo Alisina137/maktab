@@ -1133,7 +1133,7 @@ button,
 .admin-auth-copy h1 {
   margin: 12px 0 18px;
   max-width: 720px;
-  font-size: clamp(42px, 5.4vw, 72px);
+  font-size: clamp(34px, 4.2vw, 52px);
   line-height: .98;
   letter-spacing: -.055em;
 }
@@ -1177,13 +1177,14 @@ button,
 }
 
 .admin-auth-feature-grid strong {
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.35;
 }
 
 .admin-auth-feature-grid span {
-  color: rgba(255,255,255,.67);
-  font-size: 11px;
-  line-height: 1.5;
+  color: rgba(255,255,255,.76);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .admin-login-premium {
@@ -2019,5 +2020,268 @@ button,
   .admin-toast,
   .admin-toast-leaving {
     animation: none;
+  }
+}
+
+
+/* Routed admin workspace */
+.admin-workspace {
+  align-content: start;
+}
+
+.admin-route-loading {
+  min-height: 100vh;
+  place-content: center;
+}
+
+.admin-login-language {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -18px;
+}
+
+.admin-login-language label,
+.admin-language-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,.82);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-login-language select {
+  min-height: 38px;
+  padding: 0 30px 0 10px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 10px;
+  background: rgba(255,255,255,.12);
+  color: white;
+}
+
+.admin-login-language option {
+  color: #17233a;
+  background: white;
+}
+
+.admin-header-actions-premium {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-language-control {
+  color: var(--ml-color-text-muted);
+}
+
+.admin-language-control select {
+  min-height: 38px;
+  border: 1px solid #dfe6f0;
+  border-radius: 10px;
+  background: white;
+  color: var(--ml-color-text);
+  padding: 0 10px;
+  font-weight: 750;
+}
+
+.admin-profile-link {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid #e1e7f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #495a74;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-profile-link:hover {
+  background: #f4f7fb;
+  color: #2458ba;
+}
+
+.admin-school-hero-route {
+  padding-top: 26px;
+  padding-bottom: 26px;
+}
+
+.admin-route-nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+  border: 1px solid #e0e7f2;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 10px 30px rgba(33,54,96,.06);
+  scrollbar-width: none;
+}
+
+.admin-route-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-route-nav-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 11px;
+  color: #59677d;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+  transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.admin-route-nav-link:hover {
+  background: #f3f6fb;
+  color: #2859ba;
+}
+
+.admin-route-nav-link-active {
+  background: linear-gradient(135deg, #285fd0, #174cb7);
+  color: white;
+  box-shadow: 0 8px 18px rgba(31,82,184,.20);
+}
+
+.admin-route-nav-link-active:hover {
+  color: white;
+  background: linear-gradient(135deg, #285fd0, #174cb7);
+}
+
+.admin-route-heading {
+  display: grid;
+  gap: 6px;
+  padding: 6px 2px 0;
+}
+
+.admin-route-heading h2 {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -.035em;
+}
+
+.admin-route-heading p {
+  max-width: 820px;
+  margin: 0;
+  color: var(--ml-color-text-muted);
+  line-height: 1.65;
+}
+
+.admin-route-content {
+  min-width: 0;
+}
+
+.admin-route-content > section {
+  border-top: 0;
+}
+
+.admin-profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  gap: 18px;
+}
+
+.admin-profile-card {
+  border-radius: 20px;
+}
+
+.admin-profile-card h3 {
+  margin: 7px 0 5px;
+  font-size: 22px;
+}
+
+.admin-profile-card .admin-section-header p {
+  margin: 0;
+  color: var(--ml-color-text-muted);
+}
+
+.admin-profile-form {
+  margin-top: 18px;
+}
+
+.admin-profile-details {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+}
+
+.admin-profile-details > div {
+  display: grid;
+  grid-template-columns: minmax(110px,.5fr) 1fr;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid #e9edf4;
+}
+
+.admin-profile-details dt {
+  color: var(--ml-color-text-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-profile-details dd {
+  margin: 0;
+  color: var(--ml-color-text);
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+[dir="rtl"] .admin-route-heading,
+[dir="rtl"] .admin-panel,
+[dir="rtl"] .admin-auth-copy,
+[dir="rtl"] .admin-login-heading,
+[dir="rtl"] .admin-school-identity > div {
+  text-align: right;
+}
+
+[dir="rtl"] .admin-header-actions-premium {
+  justify-content: flex-start;
+}
+
+@media (max-width: 880px) {
+  .admin-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-header-actions-premium {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .admin-language-control {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-login-language {
+    justify-content: flex-start;
+    margin-top: 0;
+  }
+
+  .admin-auth-copy h1 {
+    font-size: 34px;
+  }
+
+  .admin-route-nav {
+    margin-inline: -2px;
+  }
+
+  .admin-route-heading h2 {
+    font-size: 28px;
+  }
+
+  .admin-profile-details > div {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
 }
