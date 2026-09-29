@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -131,13 +132,33 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  if ((!academics || !report) && !error) {
+    return (
+      <section className="admin-panel attendance-section admin-loading-card">
+        <AdminLoader label={t("Loading…")} />
+        <AdminSkeleton rows={5} />
+      </section>
+    );
+  }
+
+  if (!academics || !report) {
+    return (
+      <section className="admin-panel attendance-section admin-loading-card">
+        <div className="admin-error" role="alert">{error}</div>
+        <button className="admin-secondary" type="button" onClick={() => window.location.reload()}>
+          {t("Retry")}
+        </button>
+      </section>
+    );
+  }
+
   const activeYearIds = new Set(
     academics?.academicYears.filter((year) => year.status === "ACTIVE").map((year) => year.id) ?? []
   );
   const classes = academics?.classes.filter((item) => activeYearIds.has(item.academicYearId)) ?? [];
 
   return (
-    <section className="attendance-section">
+    <section className="attendance-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 5 · Attendance")}</span>
