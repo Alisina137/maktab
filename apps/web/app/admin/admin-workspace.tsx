@@ -19,6 +19,7 @@ import {
   type AdminToastState,
   type StoredAdminSession
 } from "./admin-client";
+import { ADMIN_ERROR_DURATION_MS, ADMIN_SUCCESS_DURATION_MS } from "./admin-feedback";
 import {
   ADMIN_DEFAULT_LOCALE,
   adminDirection,
@@ -141,9 +142,10 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     if (exitTimer.current) clearTimeout(exitTimer.current);
     setToastLeaving(false);
     setToast(next);
-    if (next.kind === "success") {
-      toastTimer.current = setTimeout(() => dismissToast(), 5000);
-    }
+    toastTimer.current = setTimeout(
+      () => dismissToast(),
+      next.kind === "success" ? ADMIN_SUCCESS_DURATION_MS : ADMIN_ERROR_DURATION_MS
+    );
   }
 
   function changeLocale(next: AdminLocale) {
