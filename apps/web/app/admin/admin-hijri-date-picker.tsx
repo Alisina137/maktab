@@ -62,6 +62,24 @@ function solarMonthDays(year: number, month: number): SolarDay[] {
   return days;
 }
 
+export function formatAdminHijriDate(locale: AdminLocale, value: string) {
+  return formatSelected(locale, value, false);
+}
+
+export function formatAdminHijriDateTime(locale: AdminLocale, value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat(`${localeTag(locale)}-u-ca-persian`, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
 function formatSelected(locale: AdminLocale, value: string, includeTime: boolean) {
   if (!value) return "";
   const iso = value.slice(0, 10);
