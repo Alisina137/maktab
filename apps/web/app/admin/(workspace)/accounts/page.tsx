@@ -224,7 +224,9 @@ export default function AccountsPage() {
           </div>
 
           <div className="admin-user-list admin-user-list-premium">
-            {filtered.map((user) => (
+            {filtered.map((user) => {
+              const isCurrentAdmin = user.id === stored.session.user.id;
+              return (
               <div className="admin-user-row admin-user-row-premium" key={user.id}>
                 <div className="admin-user-identity">
                   <span className="admin-user-avatar">{displayName(user).slice(0, 1).toUpperCase()}</span>
@@ -237,15 +239,31 @@ export default function AccountsPage() {
                 <div className="admin-user-meta">
                   <span className={`admin-status-badge admin-status-${user.status.toLowerCase()}`}>{statusLabel(user.status, t)}</span>
                   {user.mustChangePassword ? <span className="admin-password-badge">{t("Password change required")}</span> : null}
+                  {isCurrentAdmin ? <span className="admin-current-account-badge">{t("Current administrator")}</span> : null}
                 </div>
                 <div className="admin-actions">
-                  <button onClick={() => void action(user, "reset-password")} disabled={busy || user.status === "ARCHIVED" || user.id === stored.session.user.id}>{t("Reset password")}</button>
+                  <button
+                    onClick={() => void action(user, "reset-password")}
+                    disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
+                    title={isCurrentAdmin ? t("Use Profile to change your own password.") : undefined}
+                  >
+                    {t("Reset password")}
+                  </button>
                   {user.status === "SUSPENDED"
                     ? <button onClick={() => void action(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
-                    : <button onClick={() => void action(user, "suspend")} disabled={busy || user.status === "ARCHIVED" || user.id === stored.session.user.id}>{t("Suspend")}</button>}
+                    : (
+                      <button
+                        onClick={() => void action(user, "suspend")}
+                        disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
+                        title={isCurrentAdmin ? t("You cannot suspend the administrator account you are currently using.") : undefined}
+                      >
+                        {t("Suspend")}
+                      </button>
+                    )}
                 </div>
               </div>
-            ))}
+              );
+            })}
             {filtered.length === 0 ? (
               <div className="admin-empty-state">
                 <strong>{t("No matching accounts")}</strong>
