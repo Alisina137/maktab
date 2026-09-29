@@ -32,7 +32,8 @@ async function createTestApp() {
     "0006_phase6_learning.sql",
     "0007_phase7_communication_fees.sql",
     "0008_phase8_pilot_readiness.sql",
-    "0009_school_image.sql"
+    "0009_school_image.sql",
+    "0010_admin_profiles.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -1839,4 +1840,37 @@ test("admin reset and suspend actions succeed atomically and directory includes 
     .users.find((item) => item.id === created.user.id);
   assert.ok(directoryUser);
   assert.deepEqual(directoryUser.profile, { fullName: null, phone: null, code: null });
+});
+
+
+test("school administrator can read and update their own profile", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ADMIN-PROFILE");
+  const accessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${accessToken}` };
+
+  const initial = await app.inject({ method: "GET", url: "/v1/admin/profile", headers: auth });
+  assert.equal(initial.statusCode, 200);
+  assert.equal(initial.json<{ profile: { fullName: string } }>().profile.fullName, "admin");
+
+  const updated = await app.inject({
+    method: "PATCH",
+    url: "/v1/admin/profile",
+    headers: auth,
+    payload: { fullName: "School Administrator", phone: "0700000000" }
+  });
+  assert.equal(updated.statusCode, 200);
+  assert.deepEqual(updated.json<{ profile: { fullName: string; phone: string | null } }>().profile, {
+    fullName: "School Administrator",
+    phone: "0700000000"
+  });
+
+  const readBack = await app.inject({ method: "GET", url: "/v1/admin/profile", headers: auth });
+  assert.equal(readBack.statusCode, 200);
+  assert.equal(readBack.json<{ profile: { fullName: string } }>().profile.fullName, "School Administrator");
 });
