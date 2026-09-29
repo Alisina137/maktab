@@ -2043,3 +2043,22 @@ test("security account actions remain available while subscription writes are bl
   assert.equal(suspend.statusCode, 200);
   assert.equal(suspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
 });
+
+
+test("empty JSON requests are reported as client errors instead of internal errors", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users/not-a-user/suspend",
+    headers: { "content-type": "application/json" },
+    payload: ""
+  });
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.json<{ error: string }>().error, "invalid_request");
+});
