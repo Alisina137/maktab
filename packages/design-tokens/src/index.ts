@@ -32,7 +32,7 @@ export const tokens = {
     card: "0 10px 30px rgba(23, 32, 51, 0.08)"
   },
   typography: {
-    family: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    family: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic', 'Noto Sans', Tahoma, Arial, sans-serif",
     size: {
       sm: 13,
       md: 15,
