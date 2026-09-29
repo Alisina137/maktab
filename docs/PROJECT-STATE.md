@@ -337,3 +337,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added Persian/Dari and Pashto feedback for malformed admin requests.
 - Added regression coverage for the empty-JSON request case.
 - CI verified typecheck, tests, and production build after the fix.
+
+
+## Post-implementation fix — Restore Parent and Student account creation in Accounts
+
+- Restored **Parent** and **Student** to the Admin → Accounts role selector.
+- Parent creation now uses the family parent workflow so the PARENT user and parent profile are created together with one temporary credential.
+- Student creation now uses the existing student-account workflow and requires selecting an active student record that does not already have a login, preserving the one-student-record/one-login rule.
+- The Accounts form now shows role-specific fields for parent full name/phone and student-record selection.
+- When no student without a login exists, the UI explains that the student record must first be created in Families before generating its login.
+- Fixed the Families page request helper so bodyless Reset/Suspend/Reactivate POST actions no longer send an empty JSON content type.
+- Persian/Dari and Pashto labels were added for the restored workflows and empty states.
+- CI verified typecheck, tests, and production build after the fix.
