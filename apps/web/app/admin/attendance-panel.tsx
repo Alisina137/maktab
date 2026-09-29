@@ -1,4 +1,5 @@
 "use client";
+import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -75,8 +76,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [report, setReport] = useState<AttendanceReport | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
   useEffect(() => {
     void Promise.all([
