@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
         showToast({
           kind: "error",
           title: t("School"),
-          message: friendlyAdminError(cause, "Could not load schools. Please try again.")
+          message: friendlyAdminError(cause, "Could not load schools. Please try again.", locale)
         })
       );
   }, [router]);
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
       showToast({
         kind: "error",
         title: t("Administrator access"),
-        message: friendlyAdminError(cause, "Please check your school, username, and password, then try again.")
+        message: friendlyAdminError(cause, "Please check your school, username, and password, then try again.", locale)
       });
     } finally {
       setBusy(false);
@@ -146,7 +146,7 @@ export default function AdminLoginPage() {
       showToast({
         kind: "error",
         title: t("Choose a new password"),
-        message: friendlyAdminError(cause, "Please review the new password and try again.")
+        message: friendlyAdminError(cause, "Please review the new password and try again.", locale)
       });
     } finally {
       setBusy(false);
