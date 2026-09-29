@@ -92,14 +92,31 @@ export function buildApp(options: BuildAppOptions) {
   registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
 
   app.setErrorHandler((error, request, reply) => {
+    const statusCode =
+      typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 500
+        ? error.statusCode
+        : 500;
+
     app.log.error({
       event: "request_error",
       requestId: request.id,
       method: request.method,
       route: request.routeOptions.url,
+      statusCode,
       error
     });
-    return reply.code(500).send({ error: "internal_error", message: "An unexpected server error occurred." });
+
+    if (statusCode < 500) {
+      return reply.code(statusCode).send({
+        error: "invalid_request",
+        message: "The request could not be processed. Please try again."
+      });
+    }
+
+    return reply.code(500).send({
+      error: "internal_error",
+      message: "An unexpected server error occurred."
+    });
   });
 
   return app;
