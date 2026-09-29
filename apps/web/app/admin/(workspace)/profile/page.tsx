@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError } from "../../admin-client";
+import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type ProfileResponse = {
@@ -68,7 +69,7 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <section className="admin-profile-grid">
+    <section className="admin-profile-grid admin-page-enter">
       <article className="admin-panel admin-profile-card">
         <div className="admin-section-header">
           <div>
@@ -78,7 +79,12 @@ export default function AdminProfilePage() {
           </div>
         </div>
 
-        {!loaded && busy ? <p className="admin-copy">{t("Loading…")}</p> : (
+        {!loaded && busy ? (
+          <div className="admin-profile-loading">
+            <AdminLoader label={t("Loading…")} />
+            <AdminSkeleton rows={3} />
+          </div>
+        ) : (
           <form className="admin-form admin-profile-form" onSubmit={save}>
             <label>
               {t("Full name")}
