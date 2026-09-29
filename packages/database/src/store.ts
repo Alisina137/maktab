@@ -31,6 +31,7 @@ export interface PublicSchool {
   name: string;
   province: string;
   city: string;
+  imageUrl: string | null;
   defaultLanguage: "fa-AF" | "ps-AF" | "en";
 }
 
@@ -104,7 +105,8 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
               name: input.name,
               slug: input.slug,
               province: input.province,
-              city: input.city
+              city: input.city,
+              imageUrl: input.imageUrl ?? null
             })
             .returning();
 
@@ -156,6 +158,7 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
           name: schools.name,
           province: schools.province,
           city: schools.city,
+          imageUrl: schools.imageUrl,
           defaultLanguage: schoolSettings.defaultLanguage
         })
         .from(schools)

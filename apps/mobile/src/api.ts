@@ -13,6 +13,7 @@ export interface SchoolOption {
   name: string;
   province: string;
   city: string;
+  imageUrl: string | null;
   defaultLanguage: "fa-AF" | "ps-AF" | "en";
 }
 

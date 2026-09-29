@@ -49,6 +49,7 @@ export const schools = pgTable("schools", {
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   province: varchar("province", { length: 100 }).notNull(),
   city: varchar("city", { length: 100 }).notNull(),
+  imageUrl: text("image_url"),
   status: schoolStatusEnum("status").notNull().default("ACTIVE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()

@@ -18,6 +18,7 @@ export function registerPublicRoutes(app: FastifyInstance, schools: PlatformScho
         name: context.school.name,
         province: context.school.province,
         city: context.school.city,
+        imageUrl: context.school.imageUrl,
         defaultLanguage: context.settings.defaultLanguage
       }
     };

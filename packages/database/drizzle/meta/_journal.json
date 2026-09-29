@@ -64,6 +64,13 @@
       "when": 1790649600000,
       "tag": "0008_phase8_pilot_readiness",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790658000000,
+      "tag": "0009_school_image",
+      "breakpoints": true
     }
   ]
 }

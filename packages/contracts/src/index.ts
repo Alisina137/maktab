@@ -84,6 +84,7 @@ export const createSchoolInputSchema = z.object({
   slug: z.string().trim().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   province: z.string().trim().min(2).max(100),
   city: z.string().trim().min(2).max(100),
+  imageUrl: z.string().trim().url().max(2048).nullable().optional(),
   defaultLanguage: languageCodeSchema.default("fa-AF")
 });
 export type CreateSchoolInput = z.infer<typeof createSchoolInputSchema>;

@@ -8,7 +8,7 @@ import * as schema from "./schema.js";
 
 async function createTestStore() {
   const client = new PGlite();
-  for (const file of ["0000_phase1_foundation.sql", "0008_phase8_pilot_readiness.sql"]) {
+  for (const file of ["0000_phase1_foundation.sql", "0008_phase8_pilot_readiness.sql", "0009_school_image.sql"]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
   }
@@ -85,4 +85,39 @@ test("public school search matches name, code, city, and province", async (t) =>
   assert.deepEqual((await store.listPublicSchools("KBL-DEMO")).map((item) => item.id), [kabul.school.id]);
   assert.deepEqual((await store.listPublicSchools("Kabul City")).map((item) => item.id), [kabul.school.id]);
   assert.deepEqual((await store.listPublicSchools("Herat")).map((item) => item.id), [herat.school.id]);
+});
+
+
+test("school image URL is optional and exposed in public school results", async (t) => {
+  const { client, store } = await createTestStore();
+  t.after(async () => client.close());
+
+  const withImage = await store.createSchool({
+    code: "IMG-001",
+    name: "Image School",
+    slug: "image-school",
+    province: "Kabul",
+    city: "Kabul",
+    imageUrl: "https://example.com/schools/image-school.jpg",
+    defaultLanguage: "fa-AF"
+  });
+
+  const withoutImage = await store.createSchool({
+    code: "IMG-002",
+    name: "No Image School",
+    slug: "no-image-school",
+    province: "Kabul",
+    city: "Kabul",
+    defaultLanguage: "fa-AF"
+  });
+
+  assert.equal(withImage.school.imageUrl, "https://example.com/schools/image-school.jpg");
+  assert.equal(withoutImage.school.imageUrl, null);
+
+  const publicSchools = await store.listPublicSchools("IMG-");
+  const imageSchool = publicSchools.find((school) => school.id === withImage.school.id);
+  const noImageSchool = publicSchools.find((school) => school.id === withoutImage.school.id);
+
+  assert.equal(imageSchool?.imageUrl, "https://example.com/schools/image-school.jpg");
+  assert.equal(noImageSchool?.imageUrl, null);
 });

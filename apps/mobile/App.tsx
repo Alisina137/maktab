@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -770,9 +771,7 @@ function AppContent() {
                     setScreen("login");
                   }}
                 >
-                  <View style={styles.schoolIconShell}>
-                    <Ionicons name="business-outline" size={20} color={tokens.color.brandStrong} />
-                  </View>
+                  <SchoolAvatar school={item} />
                   <View style={styles.schoolCopy}>
                     <Text style={[styles.schoolName, textDirection]}>{item.name}</Text>
                     <Text style={[styles.muted, textDirection]}>{item.city} · {item.province} · {item.code}</Text>
@@ -1329,6 +1328,34 @@ export default function App() {
   );
 }
 
+function SchoolAvatar({ school }: { school: SchoolOption }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [school.imageUrl]);
+
+  if (school.imageUrl && !imageFailed) {
+    return (
+      <View style={styles.schoolImageShell}>
+        <Image
+          source={{ uri: school.imageUrl }}
+          style={styles.schoolImage}
+          resizeMode="cover"
+          onError={() => setImageFailed(true)}
+          accessibilityLabel={school.name}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.schoolIconShell}>
+      <Ionicons name="business-outline" size={20} color={tokens.color.brandStrong} />
+    </View>
+  );
+}
+
 function ErrorPopup({
   locale,
   errorKey,
@@ -1836,6 +1863,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#edf3ff",
     alignItems: "center",
     justifyContent: "center"
+  },
+  schoolImageShell: {
+    width: 43,
+    height: 43,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#edf3ff",
+    borderWidth: 1,
+    borderColor: "#e1e7f0"
+  },
+  schoolImage: {
+    width: "100%",
+    height: "100%"
   },
   schoolCopy: { flex: 1, gap: 3 },
   schoolName: { color: tokens.color.text, fontSize: 16.5, fontWeight: "900" },
