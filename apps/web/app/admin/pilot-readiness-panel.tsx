@@ -224,7 +224,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
 
         <article className="admin-panel">
           <h3>{t("Import templates")}</h3>
-          <p className="admin-copy">Use the exact pilot CSV headers before upload and validation.</p>
+          <p className="admin-copy">{t("Use the exact pilot CSV headers before upload and validation.")}</p>
           <div className="admin-actions pilot-template-actions">
             {(["PARENT", "STUDENT", "TEACHER"] as const).map((entity) => (
               <button
@@ -251,7 +251,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h3>{t("Audit review")}</h3>
-            <p>Sensitive changes are recorded here for school review.</p>
+            <p>{t("Sensitive changes are recorded here for school review.")}</p>
           </div>
           <div className="admin-actions">
             <button
