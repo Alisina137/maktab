@@ -65,16 +65,33 @@ export interface UserDirectoryEntry {
   };
 }
 
+export interface AdminContactProfile {
+  fullName: string;
+  jobTitle: string | null;
+  imageUrl: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  phone: string | null;
+  officeLocation: string | null;
+  officeHours: string | null;
+  bio: string | null;
+}
+
+export interface SchoolAdminContact extends AdminContactProfile {
+  username: string;
+}
+
 export interface AccountStore {
   createUser(input: CreateAccountInput): Promise<User>;
   listUsers(schoolId: string): Promise<User[]>;
   listUserDirectory(schoolId: string): Promise<UserDirectoryEntry[]>;
-  getAdminProfile(schoolId: string, userId: string): Promise<{ fullName: string; phone: string | null } | null>;
+  getAdminProfile(schoolId: string, userId: string): Promise<AdminContactProfile | null>;
+  getSchoolAdminContact(schoolId: string): Promise<SchoolAdminContact | null>;
   upsertAdminProfile(
     schoolId: string,
     userId: string,
-    input: { fullName: string; phone?: string | null }
-  ): Promise<{ fullName: string; phone: string | null }>;
+    input: AdminContactProfile
+  ): Promise<AdminContactProfile>;
   resetPasswordAsAdmin(schoolId: string, userId: string, passwordHash: string, actorUserId: string): Promise<User | null>;
   setUserStatusAsAdmin(
     schoolId: string,
@@ -204,31 +221,90 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async getAdminProfile(schoolId, userId) {
       const rows = await db
-        .select({ fullName: adminProfiles.fullName, phone: adminProfiles.phone })
+        .select({
+          fullName: adminProfiles.fullName,
+          jobTitle: adminProfiles.jobTitle,
+          imageUrl: adminProfiles.imageUrl,
+          email: adminProfiles.email,
+          whatsapp: adminProfiles.whatsapp,
+          phone: adminProfiles.phone,
+          officeLocation: adminProfiles.officeLocation,
+          officeHours: adminProfiles.officeHours,
+          bio: adminProfiles.bio
+        })
         .from(adminProfiles)
         .where(and(eq(adminProfiles.schoolId, schoolId), eq(adminProfiles.userId, userId)))
         .limit(1);
       return rows[0] ?? null;
     },
 
+    async getSchoolAdminContact(schoolId) {
+      const rows = await db
+        .select({
+          username: users.username,
+          fullName: adminProfiles.fullName,
+          jobTitle: adminProfiles.jobTitle,
+          imageUrl: adminProfiles.imageUrl,
+          email: adminProfiles.email,
+          whatsapp: adminProfiles.whatsapp,
+          phone: adminProfiles.phone,
+          officeLocation: adminProfiles.officeLocation,
+          officeHours: adminProfiles.officeHours,
+          bio: adminProfiles.bio
+        })
+        .from(adminProfiles)
+        .innerJoin(
+          users,
+          and(
+            eq(users.id, adminProfiles.userId),
+            eq(users.schoolId, adminProfiles.schoolId),
+            eq(users.role, "SCHOOL_ADMIN")
+          )
+        )
+        .where(and(eq(adminProfiles.schoolId, schoolId), eq(users.status, "ACTIVE")))
+        .orderBy(desc(adminProfiles.updatedAt))
+        .limit(1);
+      return rows[0] ?? null;
+    },
+
     async upsertAdminProfile(schoolId, userId, input) {
+      const values = {
+        fullName: input.fullName,
+        jobTitle: input.jobTitle ?? null,
+        imageUrl: input.imageUrl ?? null,
+        email: input.email ?? null,
+        whatsapp: input.whatsapp ?? null,
+        phone: input.phone ?? null,
+        officeLocation: input.officeLocation ?? null,
+        officeHours: input.officeHours ?? null,
+        bio: input.bio ?? null
+      };
+
       const [profile] = await db
         .insert(adminProfiles)
         .values({
           userId,
           schoolId,
-          fullName: input.fullName,
-          phone: input.phone ?? null
+          ...values
         })
         .onConflictDoUpdate({
           target: adminProfiles.userId,
           set: {
-            fullName: input.fullName,
-            phone: input.phone ?? null,
+            ...values,
             updatedAt: new Date()
           }
         })
-        .returning({ fullName: adminProfiles.fullName, phone: adminProfiles.phone });
+        .returning({
+          fullName: adminProfiles.fullName,
+          jobTitle: adminProfiles.jobTitle,
+          imageUrl: adminProfiles.imageUrl,
+          email: adminProfiles.email,
+          whatsapp: adminProfiles.whatsapp,
+          phone: adminProfiles.phone,
+          officeLocation: adminProfiles.officeLocation,
+          officeHours: adminProfiles.officeHours,
+          bio: adminProfiles.bio
+        });
       if (!profile) throw new Error("Admin profile upsert did not return a row.");
       return profile;
     },
