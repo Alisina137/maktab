@@ -258,3 +258,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Admin sign-out sends the refresh token to `/v1/auth/logout` so the server session is revoked before local browser session state is cleared.
 - Login hero typography and feature-card readability were refined.
 - CI verified typecheck, tests, and build after the routed workspace changes.
+
+
+## Post-implementation refinement — Typography and transient feedback
+
+- Shared web/admin typography now uses a softer multilingual system stack led by Segoe UI Variable, with Noto Sans Arabic/Noto Sans/Tahoma/Arial fallbacks for Persian/Dari, Pashto, and English.
+- RTL headings no longer inherit Latin-style negative letter spacing.
+- Admin top feedback auto-dismisses success messages after 5 seconds and ordinary errors after 8 seconds; both remain manually dismissible.
+- Legacy inline success/error feedback in Academics, Families, Attendance, Learning, Communication/Fees, and Pilot Operations now follows the same transient behavior.
+- Ongoing mobile connectivity warnings intentionally remain visible until connectivity returns because they represent a current state rather than a completed action.
+- CI verified typecheck, tests, and production build after these refinements.
