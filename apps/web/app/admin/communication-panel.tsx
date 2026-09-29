@@ -3,8 +3,9 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminText } from "./admin-i18n";
 
 type AnnouncementScope = "SCHOOL" | "CLASS" | "ROLE";
 type AudienceRole = "TEACHER" | "PARENT" | "STUDENT";
@@ -118,7 +119,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       setAcademics(academicData);
       setReminderText(communication.feeReminderDays.join(", "));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load communication and fees.");
+      setError(adminErrorText(locale, cause, "Could not load communication and fees."));
     }
   }
 
@@ -142,12 +143,12 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           publishAt: datetimeLocalToIso(String(form.get("publishAt") ?? ""))
         })
       });
-      setNotice("Announcement saved. Its audience is enforced by the API.");
+      setNotice(t("Announcement saved. Its audience is enforced by the API."));
       event.currentTarget.reset();
       setScope("SCHOOL");
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create announcement.");
+      setError(adminErrorText(locale, cause, "Could not create announcement."));
     } finally {
       setBusy(false);
     }
@@ -159,10 +160,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     try {
       await request(accessToken, `/v1/admin/announcements/${id}/archive`, { method: "POST" });
-      setNotice("Announcement archived.");
+      setNotice(t("Announcement archived."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not archive announcement.");
+      setError(adminErrorText(locale, cause, "Could not archive announcement."));
     } finally {
       setBusy(false);
     }
@@ -184,11 +185,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           description: String(form.get("description") ?? "").trim() || undefined
         })
       });
-      setNotice("Fee invoice created in DRAFT state.");
+      setNotice(t("Fee invoice created in DRAFT state."));
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create fee invoice.");
+      setError(adminErrorText(locale, cause, "Could not create fee invoice."));
     } finally {
       setBusy(false);
     }
@@ -200,10 +201,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     try {
       await request(accessToken, `/v1/admin/fees/invoices/${id}/${action}`, { method: "POST" });
-      setNotice(action === "issue" ? "Invoice issued to the family." : "Invoice cancelled.");
+      setNotice(t(action === "issue" ? "Invoice issued to the family." : "Invoice cancelled."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Fee invoice action failed.");
+      setError(adminErrorText(locale, cause, "Fee invoice action failed."));
     } finally {
       setBusy(false);
     }
@@ -224,10 +225,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         })
       });
       setPaymentDraft((current) => ({ ...current, [invoiceId]: { amount: "", method: "CASH", reference: "" } }));
-      setNotice("Payment recorded as an immutable transaction.");
+      setNotice(t("Payment recorded as an immutable transaction."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not record payment.");
+      setError(adminErrorText(locale, cause, "Could not record payment."));
     } finally {
       setBusy(false);
     }
@@ -236,7 +237,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   async function reversePayment(paymentId: string) {
     const reason = reversalReason[paymentId]?.trim() ?? "";
     if (!reason) {
-      setError("Enter a reversal reason first.");
+      setError(t("Enter a reversal reason first."));
       return;
     }
     setBusy(true);
@@ -248,10 +249,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({ reason })
       });
       setReversalReason((current) => ({ ...current, [paymentId]: "" }));
-      setNotice("Payment reversed with a separate immutable reversal transaction.");
+      setNotice(t("Payment reversed with a separate immutable reversal transaction."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not reverse payment.");
+      setError(adminErrorText(locale, cause, "Could not reverse payment."));
     } finally {
       setBusy(false);
     }
@@ -264,7 +265,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       .map((value) => Number(value.trim()))
       .filter((value) => Number.isInteger(value) && value > 0);
     if (days.length === 0) {
-      setError("Enter one or more reminder days, for example 7, 1.");
+      setError(t("Enter one or more reminder days, for example 7, 1."));
       return;
     }
     setBusy(true);
@@ -276,10 +277,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({ daysBeforeDue: days })
       });
       setReminderText(result.daysBeforeDue.join(", "));
-      setNotice("Fee reminder days updated.");
+      setNotice(t("Fee reminder days updated."));
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update fee reminder settings.");
+      setError(adminErrorText(locale, cause, "Could not update fee reminder settings."));
     } finally {
       setBusy(false);
     }
@@ -366,7 +367,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 </select>
               </label>
             ) : null}
-            <label>{t("Publish at (optional)")}<input name="publishAt" type="datetime-local" /></label>
+            <label>{t("Publish at (optional)")}<AdminHijriDatePicker locale={locale} name="publishAt" includeTime /></label>
             <button className="admin-primary" disabled={busy}>{t("Save announcement")}</button>
           </form>
         </article>
@@ -386,8 +387,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               </select>
             </label>
             <label>{t("Amount (AFN)")}<input name="amount" type="number" min="1" step="1" required /></label>
-            <label>{t("Due date")}<input name="dueDate" type="date" required /></label>
-            <label>{t("Description")}<input name="description" maxLength={240} placeholder="Monthly tuition, transport…" /></label>
+            <label>{t("Due date")}<AdminHijriDatePicker locale={locale} name="dueDate" required /></label>
+            <label>{t("Description")}<input name="description" maxLength={240} placeholder={t("Monthly tuition, transport…")} /></label>
             <button className="admin-primary" disabled={busy}>{t("Create draft invoice")}</button>
           </form>
 
