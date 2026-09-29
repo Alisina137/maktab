@@ -218,7 +218,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
         <div>
           <span className="eyebrow">{t("Phase 6 · Homework, Exams & Results")}</span>
           <h2>{t("Exam cycles & result publication")}</h2>
-          <p>Configure exam subjects and maximum scores, control the publication lifecycle, and audit corrections after publication.</p>
+          <p>{t("Configure exam subjects and maximum scores, control the publication lifecycle, and audit corrections after publication.")}</p>
         </div>
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
