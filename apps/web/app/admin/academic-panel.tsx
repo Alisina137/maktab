@@ -3,7 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
-import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminText } from "./admin-i18n";
 
@@ -171,7 +171,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       </div>
 
       <div className="academic-form-grid">
-        <AcademicForm title={t("Academic year")} hint="Dates are stored canonically; the school calendar presentation can remain Solar Hijri.">
+        <AcademicForm title={t("Academic year")} hint={t("Dates are stored canonically; the school calendar presentation can remain Solar Hijri.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/years", (form) => ({
             name: formValue(form, "name"),
             startDate: formValue(form, "startDate"),
@@ -184,7 +184,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Grade level")} hint="Reusable grade definition such as Grade 7.">
+        <AcademicForm title={t("Grade level")} hint={t("Reusable grade definition such as Grade 7.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/grades", (form) => ({
             code: formValue(form, "code"),
             name: formValue(form, "name"),
@@ -197,7 +197,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Subject")} hint="School-level subject catalog.">
+        <AcademicForm title={t("Subject")} hint={t("School-level subject catalog.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/subjects", (form) => ({
             code: formValue(form, "code"),
             name: formValue(form, "name")
@@ -208,14 +208,14 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Class section")} hint="A class belongs to one academic year and grade.">
+        <AcademicForm title={t("Class section")} hint={t("A class belongs to one academic year and grade.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/classes", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             gradeLevelId: formValue(form, "gradeLevelId"),
             code: formValue(form, "code"),
             name: formValue(form, "name")
           }), "Class created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${year.status}`])} />
+            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${t(year.status)}`])} />
             <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
             <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
             <label>{t("Name")}<input name="name" placeholder={t("Grade 7 A")} required /></label>
@@ -223,7 +223,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Teacher profile")} hint="Attach school details to an existing TEACHER account.">
+        <AcademicForm title={t("Teacher profile")} hint={t("Attach school details to an existing TEACHER account.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/teachers", (form) => ({
             userId: formValue(form, "userId"),
             employeeCode: formValue(form, "employeeCode"),
@@ -242,7 +242,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Teacher assignment")} hint="Teacher → Subject → Class for one academic year.">
+        <AcademicForm title={t("Teacher assignment")} hint={t("Teacher → Subject → Class for one academic year.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/assignments", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
@@ -257,7 +257,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Negaran assignment")} hint="One primary class supervisor may be active for a class at a time.">
+        <AcademicForm title={t("Negaran assignment")} hint={t("One primary class supervisor may be active for a class at a time.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/negaran", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
@@ -274,7 +274,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           </form>
         </AcademicForm>
 
-        <AcademicForm title={t("Timetable period")} hint="A period must match an existing teacher assignment. Class and teacher overlaps are rejected.">
+        <AcademicForm title={t("Timetable period")} hint={t("A period must match an existing teacher assignment. Class and teacher overlaps are rejected.")}>
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/timetable", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
@@ -288,7 +288,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <Select name="weekday" label={t("Weekday")} items={weekdays.map((day) => [day, day[0] + day.slice(1).toLowerCase()])} />
+            <Select name="weekday" label={t("Weekday")} items={weekdays.map((day) => [day, t(day)])} />
             <label>{t("Starts")}<input name="startsAt" type="time" required /></label>
             <label>{t("Ends")}<input name="endsAt" type="time" required /></label>
             <button className="admin-primary" disabled={busy}>{t("Add period")}</button>
@@ -308,7 +308,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <div className="academic-row" key={year.id}>
               <div>
                 <strong>{year.name}</strong>
-                <span>{year.startDate} → {year.endDate} · {year.status}</span>
+                <span>{formatAdminHijriDate(locale, year.startDate)} → {formatAdminHijriDate(locale, year.endDate)} · {t(year.status)}</span>
               </div>
               <div className="admin-actions">
                 {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Academic year activated.")}>{t("Activate")}</button> : null}
@@ -334,7 +334,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           rows={overview.negaranAssignments.map((item) => ({
             id: item.id,
             title: classMap.get(item.classId)?.name ?? t("Class"),
-            detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")} · ${item.startDate} → ${item.endDate ?? t("Current")}`,
+            detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")} · ${formatAdminHijriDate(locale, item.startDate)} → ${item.endDate ? formatAdminHijriDate(locale, item.endDate) : t("Current")}`,
             action: item.endDate ? undefined : (
               <NegaranEndAction
                 locale={locale}
@@ -358,7 +358,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <tbody>
               {overview.timetable.map((period) => (
                 <tr key={period.id}>
-                  <td>{period.weekday}</td>
+                  <td>{t(period.weekday)}</td>
                   <td>{period.startsAt}–{period.endsAt}</td>
                   <td>{classMap.get(period.classId)?.name ?? "—"}</td>
                   <td>{subjectMap.get(period.subjectId)?.name ?? "—"}</td>
