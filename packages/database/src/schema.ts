@@ -255,6 +255,23 @@ export const parentProfiles = pgTable(
   (table) => [index("parent_profiles_school_idx").on(table.schoolId)]
 );
 
+export const adminProfiles = pgTable(
+  "admin_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    fullName: varchar("full_name", { length: 160 }).notNull(),
+    phone: varchar("phone", { length: 32 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("admin_profiles_school_idx").on(table.schoolId)]
+);
+
 export const students = pgTable(
   "students",
   {
@@ -753,6 +770,7 @@ export const databaseSchema = {
   classSections,
   subjects,
   parentProfiles,
+  adminProfiles,
   students,
   studentClassHistory,
   teacherProfiles,
@@ -785,6 +803,7 @@ export type GradeLevel = typeof gradeLevels.$inferSelect;
 export type ClassSection = typeof classSections.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
 export type ParentProfile = typeof parentProfiles.$inferSelect;
+export type AdminProfile = typeof adminProfiles.$inferSelect;
 export type Student = typeof students.$inferSelect;
 export type StudentClassHistory = typeof studentClassHistory.$inferSelect;
 export type TeacherProfile = typeof teacherProfiles.$inferSelect;
