@@ -45,7 +45,7 @@ type Overview = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const weekdays = ["SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+const schoolWeekdays = ["SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"] as const;
 
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -288,7 +288,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <Select name="weekday" label={t("Weekday")} items={weekdays.map((day) => [day, t(day)])} />
+            <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} />
             <label>{t("Starts")}<input name="startsAt" type="time" required /></label>
             <label>{t("Ends")}<input name="endsAt" type="time" required /></label>
             <button className="admin-primary" disabled={busy}>{t("Add period")}</button>
@@ -348,27 +348,14 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         />
       </div>
 
-      <article className="admin-panel academic-list-panel">
-        <h2>{t("Timetable")}</h2>
-        <div className="academic-table-wrap">
-          <table className="academic-table">
-            <thead>
-              <tr><th>{t("Day")}</th><th>{t("Time")}</th><th>{t("Class")}</th><th>{t("Subject")}</th><th>{t("Teacher")}</th></tr>
-            </thead>
-            <tbody>
-              {overview.timetable.map((period) => (
-                <tr key={period.id}>
-                  <td>{t(period.weekday)}</td>
-                  <td>{period.startsAt}–{period.endsAt}</td>
-                  <td>{classMap.get(period.classId)?.name ?? "—"}</td>
-                  <td>{subjectMap.get(period.subjectId)?.name ?? "—"}</td>
-                  <td>{teacherMap.get(period.teacherUserId)?.fullName ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </article>
+      <TimetableViews
+        timetable={overview.timetable}
+        teachers={overview.teachers}
+        classes={overview.classes}
+        subjects={overview.subjects}
+        academicYears={overview.academicYears}
+        locale={locale}
+      />
     </section>
   );
 }
@@ -442,5 +429,185 @@ function NegaranEndAction({
         {t("End assignment")}
       </button>
     </div>
+  );
+}
+
+
+function TimetableViews({
+  timetable,
+  teachers,
+  classes,
+  subjects,
+  academicYears,
+  locale
+}: {
+  timetable: TimetablePeriod[];
+  teachers: Teacher[];
+  classes: ClassSection[];
+  subjects: Subject[];
+  academicYears: AcademicYear[];
+  locale: "fa-AF" | "ps-AF" | "en";
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const [view, setView] = useState<"TEACHER" | "CLASS">("TEACHER");
+
+  const classMap = useMemo(() => new Map(classes.map((item) => [item.id, item])), [classes]);
+  const teacherMap = useMemo(() => new Map(teachers.map((item) => [item.userId, item])), [teachers]);
+  const subjectMap = useMemo(() => new Map(subjects.map((item) => [item.id, item])), [subjects]);
+  const yearMap = useMemo(() => new Map(academicYears.map((item) => [item.id, item])), [academicYears]);
+
+  const visiblePeriods = useMemo(
+    () => timetable.filter((period) => period.weekday !== "FRIDAY"),
+    [timetable]
+  );
+
+  const timeSlots = useMemo(() => {
+    const slots = new Map<string, { key: string; startsAt: string; endsAt: string }>();
+    for (const period of visiblePeriods) {
+      const key = `${period.startsAt}-${period.endsAt}`;
+      if (!slots.has(key)) {
+        slots.set(key, { key, startsAt: period.startsAt, endsAt: period.endsAt });
+      }
+    }
+    return [...slots.values()].sort((left, right) =>
+      left.startsAt.localeCompare(right.startsAt) || left.endsAt.localeCompare(right.endsAt)
+    );
+  }, [visiblePeriods]);
+
+  const teacherGroups = useMemo(
+    () =>
+      teachers
+        .map((teacher) => ({
+          id: teacher.userId,
+          title: teacher.fullName,
+          subtitle: teacher.employeeCode,
+          periods: visiblePeriods.filter((period) => period.teacherUserId === teacher.userId)
+        }))
+        .sort((left, right) => left.title.localeCompare(right.title)),
+    [teachers, visiblePeriods]
+  );
+
+  const classGroups = useMemo(
+    () =>
+      classes
+        .map((classSection) => ({
+          id: classSection.id,
+          title: classSection.name,
+          subtitle: classSection.code,
+          periods: visiblePeriods.filter((period) => period.classId === classSection.id)
+        }))
+        .sort((left, right) => left.title.localeCompare(right.title)),
+    [classes, visiblePeriods]
+  );
+
+  const groups = view === "TEACHER" ? teacherGroups : classGroups;
+
+  return (
+    <article className="admin-panel academic-list-panel academic-timetable-panel">
+      <div className="admin-section-header academic-timetable-heading">
+        <div>
+          <h2>{t("Timetable")}</h2>
+          <p>{t("Weekly timetable from Saturday through Thursday. Friday is not shown.")}</p>
+        </div>
+        <div className="academic-timetable-toggle" role="tablist" aria-label={t("Timetable view")}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "TEACHER"}
+            className={view === "TEACHER" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
+            onClick={() => setView("TEACHER")}
+          >
+            {t("Teacher timetables")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "CLASS"}
+            className={view === "CLASS" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
+            onClick={() => setView("CLASS")}
+          >
+            {t("Class timetables")}
+          </button>
+        </div>
+      </div>
+
+      {timeSlots.length === 0 ? (
+        <div className="admin-empty-state academic-timetable-empty">
+          <strong>{t("No timetable periods yet")}</strong>
+          <span>{t("Add timetable periods above and they will appear here automatically.")}</span>
+        </div>
+      ) : (
+        <div className="academic-timetable-groups">
+          {groups.map((group) => (
+            <section className="academic-timetable-card" key={group.id}>
+              <div className="academic-timetable-card-heading">
+                <div>
+                  <strong>{group.title}</strong>
+                  <span>{group.subtitle}</span>
+                </div>
+                <span className="academic-timetable-count">
+                  {group.periods.length} {t("period(s)")}
+                </span>
+              </div>
+
+              <div className="academic-timetable-scroll">
+                <table className="academic-week-grid">
+                  <thead>
+                    <tr>
+                      <th className="academic-week-day-column">{t("Day")}</th>
+                      {timeSlots.map((slot) => (
+                        <th key={slot.key}>
+                          <span>{slot.startsAt}</span>
+                          <small>{slot.endsAt}</small>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schoolWeekdays.map((day) => (
+                      <tr key={day}>
+                        <th className="academic-week-day-column" scope="row">{t(day)}</th>
+                        {timeSlots.map((slot) => {
+                          const periods = group.periods.filter(
+                            (period) =>
+                              period.weekday === day &&
+                              period.startsAt === slot.startsAt &&
+                              period.endsAt === slot.endsAt
+                          );
+
+                          return (
+                            <td key={slot.key}>
+                              {periods.length > 0 ? (
+                                <div className="academic-timetable-cell-stack">
+                                  {periods.map((period) => (
+                                    <div className="academic-timetable-cell" key={period.id}>
+                                      <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
+                                      <span>
+                                        {view === "TEACHER"
+                                          ? classMap.get(period.classId)?.name ?? t("Class")
+                                          : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}
+                                      </span>
+                                      {periods.length > 1 ? (
+                                        <small>{yearMap.get(period.academicYearId)?.name ?? ""}</small>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="academic-timetable-free" aria-label={t("No class scheduled")}>—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </article>
   );
 }
