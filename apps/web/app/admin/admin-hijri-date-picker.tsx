@@ -209,10 +209,6 @@ export function AdminHijriDatePicker({
         <span className="admin-hijri-chevron" aria-hidden="true">⌄</span>
       </button>
 
-      {required && !selectedValue ? (
-        <span className="admin-hijri-required">{t("Date is required")}</span>
-      ) : null}
-
       {open ? (
         <div className="admin-hijri-popover" role="dialog" aria-label={t("Solar Hijri calendar")}>
           <div className="admin-hijri-calendar-header">
