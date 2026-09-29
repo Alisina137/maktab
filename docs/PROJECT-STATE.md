@@ -278,3 +278,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - RTL row motion mirrors LTR direction correctly.
 - All animations honor `prefers-reduced-motion` and collapse to effectively no motion when the user requests reduced motion.
 - CI verified typecheck, tests, and production build after the animation/loading refinement.
+
+
+## Post-implementation refinement — Admin localization and Solar Hijri calendar
+
+- Admin Persian/Dari and Pashto coverage was completed across routed pages, including secondary helper copy, dynamic account/action feedback, statuses, attendance rows, family/import workflows, exam lifecycle text, communication/fee details, pilot readiness, and shared API/session errors.
+- The admin UI no longer uses native Gregorian `date` or `datetime-local` controls.
+- Added a shared premium Solar Hijri (Jalali) date picker for academic-year dates, Negaran dates, attendance filters, announcement scheduling, and fee due dates.
+- Date selection/display uses the Persian calendar in the UI while API/database payloads remain canonical Gregorian ISO dates, preserving current backend contracts and date validation.
+- Existing stored Gregorian dates are formatted back to Solar Hijri for relevant admin displays such as academic years, attendance, invoices, subscription dates, audit timestamps, and family last-login metadata.
+- The Solar Hijri picker supports Persian/Dari, Pashto, and English labels, RTL/LTR layout, month navigation, optional time selection, today/clear actions, responsive styling, and reduced-motion preferences.
+- CI verified typecheck, tests, and production build after the localization/calendar refinement.
