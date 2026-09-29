@@ -542,6 +542,14 @@ const fa: Record<string, string> = {
   "Current administrator": "مدیر فعلی",
   "Use Profile to change your own password.": "برای تغییر رمز حساب خود از بخش پروفایل استفاده کنید.",
   "WhatsApp": "واتساپ",
+  "Weekly timetable from Saturday through Thursday. Friday is not shown.": "تقسیم اوقات هفتگی از شنبه تا پنج‌شنبه. جمعه نمایش داده نمی‌شود.",
+  "Timetable view": "نمایش تقسیم اوقات",
+  "Teacher timetables": "تقسیم اوقات استادان",
+  "Class timetables": "تقسیم اوقات صنف‌ها",
+  "No timetable periods yet": "هنوز ساعت درسی در تقسیم اوقات ثبت نشده است",
+  "Add timetable periods above and they will appear here automatically.": "ساعت‌های درسی را از بخش بالا اضافه کنید تا به‌صورت خودکار اینجا نمایش داده شوند.",
+  "period(s)": "ساعت درسی",
+  "No class scheduled": "کلاسی برنامه‌ریزی نشده است",
 };
 
 const ps: Record<string, string> = {
@@ -1077,6 +1085,14 @@ const ps: Record<string, string> = {
   "Current administrator": "اوسنی مدیر",
   "Use Profile to change your own password.": "د خپل پټنوم د بدلولو لپاره پروفایل وکاروئ.",
   "WhatsApp": "واټس‌اپ",
+  "Weekly timetable from Saturday through Thursday. Friday is not shown.": "اوونیز مهالویش له شنبې تر پنجشنبې پورې دی. جمعه نه ښودل کېږي.",
+  "Timetable view": "د مهالویش بڼه",
+  "Teacher timetables": "د ښوونکو مهالویشونه",
+  "Class timetables": "د ټولګیو مهالویشونه",
+  "No timetable periods yet": "تر اوسه د مهالویش ساعتونه نه دي ثبت شوي",
+  "Add timetable periods above and they will appear here automatically.": "د پورته برخې څخه د مهالویش ساعتونه زیات کړئ، دلته به په اوتومات ډول ښکاره شي.",
+  "period(s)": "درسي ساعتونه",
+  "No class scheduled": "هیڅ ټولګی نه دی مهالویش شوی",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
