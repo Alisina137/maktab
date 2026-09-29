@@ -267,7 +267,7 @@ const fa: Record<string, string> = {
   "Outstanding AFN": "باقی‌مانده (افغانی)",
   "Method · CASH": "روش · نقد",
   "Use the exact pilot CSV headers before upload and validation.": "پیش از بارگذاری و بررسی، از سرستون‌های دقیق CSV آزمایشی استفاده کنید.",
-  "Sensitive changes are recorded here for school review.": "تغییرات حساس برای بررسی مکتب در اینجا ثبت می‌شوند."
+  "Sensitive changes are recorded here for school review.": "تغییرات حساس برای بررسی مکتب در اینجا ثبت می‌شوند.",
   "Select Hijri date": "انتخاب تاریخ هجری شمسی",
   "Date is required": "تاریخ ضروری است",
   "Solar Hijri calendar": "تقویم هجری شمسی",
@@ -771,7 +771,7 @@ const ps: Record<string, string> = {
   "Outstanding AFN": "پاتې (افغانۍ)",
   "Method · CASH": "طریقه · نغدي",
   "Use the exact pilot CSV headers before upload and validation.": "له پورته کولو او تایید مخکې د ازمایښتي CSV دقیق سرلیکونه وکاروئ.",
-  "Sensitive changes are recorded here for school review.": "حساس بدلونونه د ښوونځي د بیاکتنې لپاره دلته ثبتېږي."
+  "Sensitive changes are recorded here for school review.": "حساس بدلونونه د ښوونځي د بیاکتنې لپاره دلته ثبتېږي.",
   "Select Hijri date": "د هجري شمسي نېټه وټاکئ",
   "Date is required": "نېټه اړینه ده",
   "Solar Hijri calendar": "هجري شمسي کلیز",
