@@ -115,6 +115,7 @@ export function friendlyAdminError(
     subscription_write_blocked: "Account changes are temporarily unavailable while the school subscription is suspended.",
     not_found: "This account could not be found. Refresh the page and try again.",
     validation_error: "Some information is not valid. Please review it and try again.",
+    invalid_request: "The request could not be processed. Please try again.",
     username_conflict: "That username already exists in this school.",
     current_password_invalid: "The current password is incorrect.",
     password_unchanged: "Choose a new password that is different from the current password.",
