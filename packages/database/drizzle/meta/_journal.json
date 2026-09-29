@@ -78,6 +78,13 @@
       "when": 1790666400000,
       "tag": "0010_admin_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790674800000,
+      "tag": "0011_admin_contact_profile",
+      "breakpoints": true
     }
   ]
 }
