@@ -326,3 +326,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - On narrower screens the selector becomes a horizontal scroll list above the timetable.
 - Friday remains excluded from both selector views and timetable creation.
 - CI verified typecheck, tests, and production build after this refinement.
+
+
+## Post-implementation fix — Admin Reset/Suspend empty JSON request bug
+
+- Fixed the Accounts page Reset password / Suspend / Reactivate failure caused by the shared web admin client sending `Content-Type: application/json` on POST requests that had no request body.
+- Fastify treated those bodyless requests as invalid empty JSON before the account route handler executed; the global error handler then masked that client error as a generic `internal_error`.
+- `adminApi` now adds the JSON content type only when a request actually has a body.
+- API error handling now preserves HTTP 4xx request errors as `invalid_request` instead of incorrectly converting them to HTTP 500 server failures.
+- Added Persian/Dari and Pashto feedback for malformed admin requests.
+- Added regression coverage for the empty-JSON request case.
+- CI verified typecheck, tests, and production build after the fix.
