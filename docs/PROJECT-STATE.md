@@ -236,3 +236,25 @@ These steps are documented in:
 All eight implementation phases are now represented in the repository.
 
 Phase 8 is the final planned implementation phase from Product Specification V1. The remaining work is deployment and real pilot validation rather than a Phase 9 product implementation.
+
+
+## Post-implementation refinement — Admin workspace routing, localization, and profile
+
+- Testing Step 3 remains active; this change is a refinement, not a new product phase.
+- The school admin web app now uses separate authenticated routes instead of one all-in-one page:
+  - `/admin/accounts`
+  - `/admin/pilot`
+  - `/admin/communication`
+  - `/admin/learning`
+  - `/admin/attendance`
+  - `/admin/families`
+  - `/admin/academics`
+  - `/admin/profile`
+- `/admin` is the login / first-password-change entry only.
+- The admin session is kept in browser `sessionStorage` for route-to-route continuity; locale preference alone is stored in `localStorage`.
+- Admin locale supports Persian/Dari (`fa-AF`), Pashto (`ps-AF`), and English; Persian/Dari is the default when no preference exists.
+- Existing operational panels are connected to the shared admin locale context and RTL/LTR direction.
+- Administrator profiles now support school-scoped `fullName` and optional `phone` through migration `0010_admin_profiles.sql` and `GET/PATCH /v1/admin/profile`.
+- Admin sign-out sends the refresh token to `/v1/auth/logout` so the server session is revoked before local browser session state is cleared.
+- Login hero typography and feature-card readability were refined.
+- CI verified typecheck, tests, and build after the routed workspace changes.
