@@ -39,7 +39,13 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
   app.get("/v1/admin/users", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, store);
     if (!context) return;
-    return { users: (await store.listUsers(context.user.schoolId)).map(safeUser) };
+    const directory = await store.listUserDirectory(context.user.schoolId);
+    return {
+      users: directory.map((entry) => ({
+        ...safeUser(entry.user),
+        profile: entry.profile
+      }))
+    };
   });
 
   app.post("/v1/admin/users", async (request, reply) => {
@@ -91,18 +97,23 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     if (!target) return reply.code(404).send({ error: "not_found", message: "User not found." });
     if (target.status === "ARCHIVED") return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be reset." });
 
+    if (target.id === context.user.id) {
+      return reply.code(409).send({
+        error: "self_reset_blocked",
+        message: "For your security, you cannot reset the password of the administrator account you are currently using."
+      });
+    }
+
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
-    const user = await store.resetPassword(context.user.schoolId, target.id, passwordHash);
+    const user = await store.resetPasswordAsAdmin(
+      context.user.schoolId,
+      target.id,
+      passwordHash,
+      context.user.id
+    );
     if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
 
-    await store.writeAudit({
-      schoolId: context.user.schoolId,
-      actorUserId: context.user.id,
-      action: "user.password_reset",
-      entityType: "user",
-      entityId: user.id
-    });
     return { user: safeUser(user), temporaryPassword };
   });
 
@@ -113,15 +124,14 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       return reply.code(409).send({ error: "self_suspend_blocked", message: "You cannot suspend your own administrator account." });
     }
 
-    const user = await store.setUserStatus(context.user.schoolId, request.params.userId, "SUSPENDED");
+    const user = await store.setUserStatusAsAdmin(
+      context.user.schoolId,
+      request.params.userId,
+      "SUSPENDED",
+      context.user.id,
+      "user.suspended"
+    );
     if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
-    await store.writeAudit({
-      schoolId: context.user.schoolId,
-      actorUserId: context.user.id,
-      action: "user.suspended",
-      entityType: "user",
-      entityId: user.id
-    });
     return { user: safeUser(user) };
   });
 
@@ -135,15 +145,14 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     }
 
     const status = existing.mustChangePassword ? "INVITED" : "ACTIVE";
-    const user = await store.setUserStatus(context.user.schoolId, existing.id, status);
+    const user = await store.setUserStatusAsAdmin(
+      context.user.schoolId,
+      existing.id,
+      status,
+      context.user.id,
+      "user.reactivated"
+    );
     if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
-    await store.writeAudit({
-      schoolId: context.user.schoolId,
-      actorUserId: context.user.id,
-      action: "user.reactivated",
-      entityType: "user",
-      entityId: user.id
-    });
     return { user: safeUser(user) };
   });
 }

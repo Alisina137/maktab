@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AcademicPanel } from "./academic-panel";
 import { AttendancePanel } from "./attendance-panel";
 import { FamilyPanel } from "./family-panel";
@@ -23,6 +23,19 @@ type User = {
   role: "SCHOOL_ADMIN" | "SCHOOL_STAFF" | "TEACHER" | "PARENT" | "STUDENT";
   status: "INVITED" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
   mustChangePassword: boolean;
+  profile?: {
+    fullName: string | null;
+    phone: string | null;
+    code: string | null;
+  };
+};
+
+type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
+
+type AdminToastState = {
+  kind: "error" | "success";
+  title: string;
+  message: string;
 };
 
 type Session = {
@@ -34,6 +47,20 @@ type Session = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+class AdminApiError extends Error {
+  code: string | null;
+  status: number;
+  requestId: string | null;
+
+  constructor(message: string, status: number, code: string | null, requestId: string | null) {
+    super(message);
+    this.name = "AdminApiError";
+    this.code = code;
+    this.status = status;
+    this.requestId = requestId;
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -43,9 +70,50 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     }
   });
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(body?.message ?? "Request failed.");
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new AdminApiError(
+        "MaktabLink could not read the server response.",
+        response.status,
+        "invalid_response",
+        response.headers.get("x-request-id")
+      );
+    }
+  }
+
+  if (!response.ok) {
+    const record = body && typeof body === "object" ? body as Record<string, unknown> : null;
+    throw new AdminApiError(
+      typeof record?.message === "string" ? record.message : "Request failed.",
+      response.status,
+      typeof record?.error === "string" ? record.error : null,
+      response.headers.get("x-request-id")
+    );
+  }
   return body as T;
+}
+
+function friendlyAdminError(cause: unknown, fallback = "Please try again.") {
+  if (!(cause instanceof AdminApiError)) return fallback;
+
+  const messages: Record<string, string> = {
+    session_invalid: "Your administrator session has expired. Please sign in again.",
+    unauthorized: "Please sign in again to continue.",
+    self_suspend_blocked: "You cannot suspend the administrator account you are currently using.",
+    self_reset_blocked: "For your security, reset another account here. Your current administrator password cannot be reset from its own active session.",
+    account_archived: "This account is archived and can no longer be changed.",
+    subscription_write_blocked: "Account changes are temporarily unavailable while the school subscription is suspended.",
+    not_found: "This account could not be found. Refresh the directory and try again.",
+    validation_error: "Some account information is not valid. Please review it and try again.",
+    username_conflict: "That username already exists in this school.",
+    internal_error: "MaktabLink could not complete this account change. Please try again.",
+    invalid_response: "The school service returned an unreadable response. Please try again."
+  };
+
+  return cause.code ? messages[cause.code] ?? cause.message : cause.message;
 }
 
 export default function AdminPage() {
@@ -59,8 +127,42 @@ export default function AdminPage() {
   const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState<AdminToastState | null>(null);
+  const [toastLeaving, setToastLeaving] = useState(false);
+  const [accountGroup, setAccountGroup] = useState<AccountGroup>("ALL");
+  const [accountStatus, setAccountStatus] = useState<"ALL" | User["status"]>("ALL");
+  const [accountQuery, setAccountQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function dismissToast() {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (toastExitTimer.current) clearTimeout(toastExitTimer.current);
+    setToastLeaving(true);
+    toastExitTimer.current = setTimeout(() => {
+      setToast(null);
+      setToastLeaving(false);
+    }, 220);
+  }
+
+  function showToast(next: AdminToastState) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (toastExitTimer.current) clearTimeout(toastExitTimer.current);
+    setToastLeaving(false);
+    setToast(next);
+
+    if (next.kind === "success") {
+      toastTimer.current = setTimeout(() => dismissToast(), 5000);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (toastExitTimer.current) clearTimeout(toastExitTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     void api<{ schools: School[] }>("/v1/public/schools")
@@ -68,13 +170,18 @@ export default function AdminPage() {
         setSchools(result.schools);
         setSchoolId(result.schools[0]?.id ?? "");
       })
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load schools."));
+      .catch((cause) =>
+        showToast({
+          kind: "error",
+          title: "School list unavailable",
+          message: friendlyAdminError(cause, "Could not load schools. Please try again.")
+        })
+      );
   }, []);
 
   async function login(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError("");
     try {
       const result = await api<Session>("/v1/auth/login", {
         method: "POST",
@@ -89,7 +196,11 @@ export default function AdminPage() {
       setPassword("");
       if (!result.mustChangePassword) await loadUsers(result.accessToken);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Login failed.");
+      showToast({
+        kind: "error",
+        title: "Sign in was not completed",
+        message: friendlyAdminError(cause, "Please check your school, username, and password, then try again.")
+      });
     } finally {
       setBusy(false);
     }
@@ -99,7 +210,6 @@ export default function AdminPage() {
     event.preventDefault();
     if (!session) return;
     setBusy(true);
-    setError("");
     try {
       const result = await api<Session>("/v1/auth/change-temporary-password", {
         method: "POST",
@@ -109,8 +219,17 @@ export default function AdminPage() {
       setSession(result);
       setNewPassword("");
       await loadUsers(result.accessToken);
+      showToast({
+        kind: "success",
+        title: "Password updated",
+        message: "Your private administrator password is ready."
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Password change failed.");
+      showToast({
+        kind: "error",
+        title: "Password was not changed",
+        message: friendlyAdminError(cause, "Please review the new password and try again.")
+      });
     } finally {
       setBusy(false);
     }
@@ -128,7 +247,6 @@ export default function AdminPage() {
     event.preventDefault();
     if (!session) return;
     setBusy(true);
-    setError("");
     setCredential(null);
     try {
       const result = await api<{ user: User; temporaryPassword: string }>("/v1/admin/users", {
@@ -139,8 +257,17 @@ export default function AdminPage() {
       setCredential({ username: result.user.username, password: result.temporaryPassword });
       setNewUsername("");
       await loadUsers();
+      showToast({
+        kind: "success",
+        title: "Account created",
+        message: `${result.user.username} is ready. Share the temporary credential securely.`
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create account.");
+      showToast({
+        kind: "error",
+        title: "Account was not created",
+        message: friendlyAdminError(cause, "Please review the account information and try again.")
+      });
     } finally {
       setBusy(false);
     }
@@ -148,8 +275,19 @@ export default function AdminPage() {
 
   async function accountAction(user: User, action: "reset-password" | "suspend" | "reactivate") {
     if (!session) return;
+    if (user.id === session.user.id && (action === "reset-password" || action === "suspend")) {
+      showToast({
+        kind: "error",
+        title: "Current administrator protected",
+        message:
+          action === "reset-password"
+            ? "For your security, you cannot reset the password of the administrator account you are currently using."
+            : "You cannot suspend the administrator account you are currently using."
+      });
+      return;
+    }
+
     setBusy(true);
-    setError("");
     setCredential(null);
     try {
       const result = await api<{ user: User; temporaryPassword?: string }>(
@@ -159,12 +297,47 @@ export default function AdminPage() {
           headers: { Authorization: `Bearer ${session.accessToken}` }
         }
       );
+
+      setUsers((current) =>
+        current.map((item) =>
+          item.id === result.user.id
+            ? { ...item, ...result.user, profile: item.profile }
+            : item
+        )
+      );
+
       if (result.temporaryPassword) {
         setCredential({ username: result.user.username, password: result.temporaryPassword });
       }
-      await loadUsers();
+
+      const success =
+        action === "reset-password"
+          ? {
+              title: "Temporary password created",
+              message: `A new temporary password is ready for ${displayUserName(user)}. Their existing sessions have been signed out.`
+            }
+          : action === "suspend"
+            ? {
+                title: "Account suspended",
+                message: `${displayUserName(user)} can no longer sign in until the account is reactivated.`
+              }
+            : {
+                title: "Account reactivated",
+                message: `${displayUserName(user)} can use the account again.`
+              };
+
+      showToast({ kind: "success", ...success });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Account action failed.");
+      showToast({
+        kind: "error",
+        title:
+          action === "reset-password"
+            ? "Password reset was not completed"
+            : action === "suspend"
+              ? "Account was not suspended"
+              : "Account was not reactivated",
+        message: friendlyAdminError(cause, "MaktabLink could not update this account. Please try again.")
+      });
     } finally {
       setBusy(false);
     }
@@ -176,6 +349,36 @@ export default function AdminPage() {
   const suspendedAccounts = users.filter((user) => user.status === "SUSPENDED").length;
   const teacherAccounts = users.filter((user) => user.role === "TEACHER").length;
   const staffAccounts = users.filter((user) => user.role === "SCHOOL_STAFF" || user.role === "SCHOOL_ADMIN").length;
+  const groupCounts: Record<AccountGroup, number> = {
+    ALL: users.length,
+    PARENT: users.filter((user) => user.role === "PARENT").length,
+    TEACHER: users.filter((user) => user.role === "TEACHER").length,
+    STUDENT: users.filter((user) => user.role === "STUDENT").length,
+    STAFF: staffAccounts
+  };
+  const normalizedQuery = accountQuery.trim().toLowerCase();
+  const filteredUsers = users.filter((user) => {
+    const inGroup =
+      accountGroup === "ALL" ||
+      (accountGroup === "STAFF"
+        ? user.role === "SCHOOL_ADMIN" || user.role === "SCHOOL_STAFF"
+        : user.role === accountGroup);
+    const inStatus = accountStatus === "ALL" || user.status === accountStatus;
+    const haystack = [
+      user.username,
+      formatRole(user.role),
+      user.status,
+      user.profile?.fullName,
+      user.profile?.phone,
+      user.profile?.code,
+      user.mustChangePassword ? "password change required invited temporary password" : "password ready"
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return inGroup && inStatus && (!normalizedQuery || haystack.includes(normalizedQuery));
+  });
 
   if (!session) {
     return (
@@ -256,7 +459,7 @@ export default function AdminPage() {
               {busy ? "Signing in…" : "Sign in to dashboard"}
             </button>
           </form>
-          {error ? <div className="admin-error" role="alert">{error}</div> : null}
+          {toast ? <AdminToast toast={toast} leaving={toastLeaving} onDismiss={dismissToast} /> : null}
           <p className="admin-login-footnote">Access is restricted to your selected school and authenticated role.</p>
         </section>
       </main>
@@ -303,7 +506,7 @@ export default function AdminPage() {
               {busy ? "Saving…" : "Save private password"}
             </button>
           </form>
-          {error ? <div className="admin-error" role="alert">{error}</div> : null}
+          {toast ? <AdminToast toast={toast} leaving={toastLeaving} onDismiss={dismissToast} /> : null}
         </section>
       </main>
     );
@@ -375,7 +578,7 @@ export default function AdminPage() {
         <a href="#academics">Academics</a>
       </nav>
 
-      {error ? <div className="admin-error admin-floating-message" role="alert">{error}</div> : null}
+      {toast ? <AdminToast toast={toast} leaving={toastLeaving} onDismiss={dismissToast} /> : null}
 
       {credential ? (
         <section className="credential-card credential-card-premium" aria-live="polite">
@@ -431,18 +634,82 @@ export default function AdminPage() {
             <div className="admin-section-header">
               <div>
                 <h3>Account directory</h3>
-                <p>{users.length} school account{users.length === 1 ? "" : "s"} in this workspace</p>
+                <p>{filteredUsers.length} shown · {users.length} total school account{users.length === 1 ? "" : "s"}</p>
               </div>
             </div>
 
+            <div className="admin-account-tabs" role="tablist" aria-label="Account groups">
+              {([
+                ["ALL", "All"],
+                ["PARENT", "Parents"],
+                ["TEACHER", "Teachers"],
+                ["STUDENT", "Students"],
+                ["STAFF", "Admin & staff"]
+              ] as Array<[AccountGroup, string]>).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={accountGroup === value ? "admin-account-tab admin-account-tab-active" : "admin-account-tab"}
+                  onClick={() => setAccountGroup(value)}
+                  role="tab"
+                  aria-selected={accountGroup === value}
+                >
+                  <span>{label}</span>
+                  <strong>{groupCounts[value]}</strong>
+                </button>
+              ))}
+            </div>
+
+            <div className="admin-account-filters">
+              <label className="admin-account-search">
+                <span className="sr-only">Search accounts</span>
+                <input
+                  value={accountQuery}
+                  onChange={(event) => setAccountQuery(event.target.value)}
+                  placeholder="Search name, username, phone, code, role, or status"
+                />
+              </label>
+              <label>
+                <span className="sr-only">Filter by account status</span>
+                <select
+                  value={accountStatus}
+                  onChange={(event) => setAccountStatus(event.target.value as "ALL" | User["status"])}
+                >
+                  <option value="ALL">All statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INVITED">Invited</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </label>
+              {(accountQuery || accountGroup !== "ALL" || accountStatus !== "ALL") ? (
+                <button
+                  className="admin-secondary"
+                  type="button"
+                  onClick={() => {
+                    setAccountQuery("");
+                    setAccountGroup("ALL");
+                    setAccountStatus("ALL");
+                  }}
+                >
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+
             <div className="admin-user-list admin-user-list-premium">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <div className="admin-user-row admin-user-row-premium" key={user.id}>
                   <div className="admin-user-identity">
-                    <span className="admin-user-avatar">{user.username.slice(0, 1).toUpperCase()}</span>
+                    <span className="admin-user-avatar">{displayUserName(user).slice(0, 1).toUpperCase()}</span>
                     <div>
-                      <strong>{user.username}</strong>
-                      <span>{formatRole(user.role)}</span>
+                      <strong>{displayUserName(user)}</strong>
+                      <span>@{user.username} · {formatRole(user.role)}</span>
+                      {(user.profile?.code || user.profile?.phone) ? (
+                        <span>
+                          {[user.profile?.code, user.profile?.phone].filter(Boolean).join(" · ")}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -454,7 +721,11 @@ export default function AdminPage() {
                   </div>
 
                   <div className="admin-actions">
-                    <button onClick={() => void accountAction(user, "reset-password")} disabled={busy || user.status === "ARCHIVED"}>
+                    <button
+                      onClick={() => void accountAction(user, "reset-password")}
+                      disabled={busy || user.status === "ARCHIVED" || user.id === session.user.id}
+                      title={user.id === session.user.id ? "Your active administrator account cannot reset itself." : undefined}
+                    >
                       Reset password
                     </button>
                     {user.status === "SUSPENDED" ? (
@@ -467,10 +738,10 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <div className="admin-empty-state">
-                  <strong>No school accounts yet</strong>
-                  <span>Create the first teacher or staff account from the form beside this list.</span>
+                  <strong>No matching accounts</strong>
+                  <span>Try another account group, status, name, username, phone number, or code.</span>
                 </div>
               ) : null}
             </div>
@@ -487,6 +758,35 @@ export default function AdminPage() {
     </main>
   );
 
+}
+
+function AdminToast({
+  toast,
+  leaving,
+  onDismiss
+}: {
+  toast: AdminToastState;
+  leaving: boolean;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className={`admin-toast admin-toast-${toast.kind} ${leaving ? "admin-toast-leaving" : ""}`}
+      role={toast.kind === "error" ? "alert" : "status"}
+      aria-live="polite"
+    >
+      <span className="admin-toast-icon" aria-hidden="true">{toast.kind === "success" ? "✓" : "!"}</span>
+      <div>
+        <strong>{toast.title}</strong>
+        <p>{toast.message}</p>
+      </div>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss message">×</button>
+    </div>
+  );
+}
+
+function displayUserName(user: User) {
+  return user.profile?.fullName?.trim() || user.username;
 }
 
 function MetricCard({

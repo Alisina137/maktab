@@ -31,7 +31,8 @@ async function createTestApp() {
     "0005_phase5_attendance.sql",
     "0006_phase6_learning.sql",
     "0007_phase7_communication_fees.sql",
-    "0008_phase8_pilot_readiness.sql"
+    "0008_phase8_pilot_readiness.sql",
+    "0009_school_image.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -1783,4 +1784,59 @@ test("Phase 8 subscription expiry reminders are idempotent across repeated sched
     .json<{ notifications: Array<{ type: string }> }>()
     .notifications.filter((item) => item.type === "SUBSCRIPTION_EXPIRING");
   assert.equal(expiryAlerts.length, 1);
+});
+
+
+test("admin reset and suspend actions succeed atomically and directory includes profile data", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ACCOUNT-ACTIONS");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "teacher.actions", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const created = teacherAccount.json<{
+    user: { id: string };
+    temporaryPassword: string;
+  }>();
+
+  const reset = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${created.user.id}/reset-password`,
+    headers: auth
+  });
+  assert.equal(reset.statusCode, 200);
+  const resetBody = reset.json<{ temporaryPassword: string; user: { mustChangePassword: boolean } }>();
+  assert.equal(resetBody.user.mustChangePassword, true);
+  assert.notEqual(resetBody.temporaryPassword, created.temporaryPassword);
+
+  const suspend = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${created.user.id}/suspend`,
+    headers: auth
+  });
+  assert.equal(suspend.statusCode, 200);
+  assert.equal(suspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+
+  const directory = await app.inject({
+    method: "GET",
+    url: "/v1/admin/users",
+    headers: auth
+  });
+  assert.equal(directory.statusCode, 200);
+  const directoryUser = directory
+    .json<{ users: Array<{ id: string; profile: { fullName: string | null; phone: string | null; code: string | null } }> }>()
+    .users.find((item) => item.id === created.user.id);
+  assert.ok(directoryUser);
+  assert.deepEqual(directoryUser.profile, { fullName: null, phone: null, code: null });
 });

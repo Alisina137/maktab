@@ -5,8 +5,11 @@ import type { FoundationDatabase } from "./client.js";
 import {
   auditLogs,
   authSessions,
+  parentProfiles,
   schools,
+  students,
   subscriptions,
+  teacherProfiles,
   users,
   type AuthSession,
   type School,
@@ -52,9 +55,27 @@ export interface AuditInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface UserDirectoryEntry {
+  user: User;
+  profile: {
+    fullName: string | null;
+    phone: string | null;
+    code: string | null;
+  };
+}
+
 export interface AccountStore {
   createUser(input: CreateAccountInput): Promise<User>;
   listUsers(schoolId: string): Promise<User[]>;
+  listUserDirectory(schoolId: string): Promise<UserDirectoryEntry[]>;
+  resetPasswordAsAdmin(schoolId: string, userId: string, passwordHash: string, actorUserId: string): Promise<User | null>;
+  setUserStatusAsAdmin(
+    schoolId: string,
+    userId: string,
+    status: UserStatus,
+    actorUserId: string,
+    auditAction: "user.suspended" | "user.reactivated"
+  ): Promise<User | null>;
   findUserForLogin(schoolId: string, username: string): Promise<UserLoginContext | null>;
   findUserById(schoolId: string, userId: string): Promise<User | null>;
   updateLastLogin(schoolId: string, userId: string): Promise<void>;
@@ -131,6 +152,107 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async listUsers(schoolId) {
       return db.select().from(users).where(eq(users.schoolId, schoolId)).orderBy(users.username);
+    },
+
+    async listUserDirectory(schoolId) {
+      const rows = await db
+        .select({
+          user: users,
+          parentFullName: parentProfiles.fullName,
+          parentPhone: parentProfiles.phone,
+          teacherFullName: teacherProfiles.fullName,
+          teacherPhone: teacherProfiles.phone,
+          employeeCode: teacherProfiles.employeeCode,
+          studentFullName: students.fullName,
+          studentCode: students.studentCode
+        })
+        .from(users)
+        .leftJoin(
+          parentProfiles,
+          and(eq(parentProfiles.userId, users.id), eq(parentProfiles.schoolId, schoolId))
+        )
+        .leftJoin(
+          teacherProfiles,
+          and(eq(teacherProfiles.userId, users.id), eq(teacherProfiles.schoolId, schoolId))
+        )
+        .leftJoin(
+          students,
+          and(eq(students.userId, users.id), eq(students.schoolId, schoolId))
+        )
+        .where(eq(users.schoolId, schoolId))
+        .orderBy(users.username);
+
+      return rows.map((row) => ({
+        user: row.user,
+        profile:
+          row.user.role === "PARENT"
+            ? { fullName: row.parentFullName, phone: row.parentPhone, code: null }
+            : row.user.role === "TEACHER"
+              ? { fullName: row.teacherFullName, phone: row.teacherPhone, code: row.employeeCode }
+              : row.user.role === "STUDENT"
+                ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
+                : { fullName: null, phone: null, code: null }
+      }));
+    },
+
+    async resetPasswordAsAdmin(schoolId, userId, passwordHash, actorUserId) {
+      return db.transaction(async (tx) => {
+        await tx
+          .update(authSessions)
+          .set({ revokedAt: new Date() })
+          .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+
+        const [user] = await tx
+          .update(users)
+          .set({ passwordHash, mustChangePassword: true, updatedAt: new Date() })
+          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId)))
+          .returning();
+
+        if (!user) return null;
+
+        await tx.insert(auditLogs).values({
+          id: randomUUID(),
+          schoolId,
+          actorUserId,
+          action: "user.password_reset",
+          entityType: "user",
+          entityId: user.id,
+          metadata: {}
+        });
+
+        return user;
+      });
+    },
+
+    async setUserStatusAsAdmin(schoolId, userId, status, actorUserId, auditAction) {
+      return db.transaction(async (tx) => {
+        if (status === "SUSPENDED" || status === "ARCHIVED") {
+          await tx
+            .update(authSessions)
+            .set({ revokedAt: new Date() })
+            .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+        }
+
+        const [user] = await tx
+          .update(users)
+          .set({ status, updatedAt: new Date() })
+          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId)))
+          .returning();
+
+        if (!user) return null;
+
+        await tx.insert(auditLogs).values({
+          id: randomUUID(),
+          schoolId,
+          actorUserId,
+          action: auditAction,
+          entityType: "user",
+          entityId: user.id,
+          metadata: {}
+        });
+
+        return user;
+      });
     },
 
     async findUserForLogin(schoolId, username) {
