@@ -265,7 +265,14 @@ export const adminProfiles = pgTable(
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
     fullName: varchar("full_name", { length: 160 }).notNull(),
+    jobTitle: varchar("job_title", { length: 120 }),
+    imageUrl: text("image_url"),
+    email: varchar("email", { length: 254 }),
+    whatsapp: varchar("whatsapp", { length: 32 }),
     phone: varchar("phone", { length: 32 }),
+    officeLocation: varchar("office_location", { length: 200 }),
+    officeHours: varchar("office_hours", { length: 160 }),
+    bio: text("bio"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
