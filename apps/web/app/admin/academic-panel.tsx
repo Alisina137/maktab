@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type AcademicYear = {
   id: string;
@@ -62,6 +64,8 @@ function formValue(form: FormData, key: string): string {
 }
 
 export function AcademicPanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [busy, setBusy] = useState(false);
@@ -128,10 +132,10 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       <section className="admin-panel academic-section">
         <div className="admin-section-header">
           <div>
-            <h2>Academic structure</h2>
-            <p>Loading Phase 3 data…</p>
+            <h2>{t("Academic structure")}</h2>
+            <p>{t("Loading Phase 3 data…")}</p>
           </div>
-          <button className="admin-secondary" onClick={() => void load()}>Retry</button>
+          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
         </div>
         {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
@@ -145,79 +149,79 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
     <section className="academic-section">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 3 · Academic Structure</span>
-          <h2>Model the school year</h2>
+          <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
+          <h2>{t("Model the school year")}</h2>
           <p>Academic years, grades, classes, subjects, teachers, assignments, Negaran responsibility, and conflict-safe timetables.</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
+        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-summary-grid">
-        <Summary label="Academic years" value={overview.academicYears.length} />
-        <Summary label="Classes" value={overview.classes.length} />
-        <Summary label="Subjects" value={overview.subjects.length} />
-        <Summary label="Teachers" value={overview.teachers.length} />
-        <Summary label="Assignments" value={overview.assignments.length} />
-        <Summary label="Timetable periods" value={overview.timetable.length} />
+        <Summary label={t("Academic years")} value={overview.academicYears.length} />
+        <Summary label={t("Classes")} value={overview.classes.length} />
+        <Summary label={t("Subjects")} value={overview.subjects.length} />
+        <Summary label={t("Teachers")} value={overview.teachers.length} />
+        <Summary label={t("Assignments")} value={overview.assignments.length} />
+        <Summary label={t("Timetable periods")} value={overview.timetable.length} />
       </div>
 
       <div className="academic-form-grid">
-        <AcademicForm title="Academic year" hint="Dates are stored canonically; the school calendar presentation can remain Solar Hijri.">
+        <AcademicForm title={t("Academic year")} hint="Dates are stored canonically; the school calendar presentation can remain Solar Hijri.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/years", (form) => ({
             name: formValue(form, "name"),
             startDate: formValue(form, "startDate"),
             endDate: formValue(form, "endDate")
           }), "Academic year created.")}>
-            <label>Name<input name="name" placeholder="1405" required /></label>
-            <label>Start date<input name="startDate" type="date" required /></label>
-            <label>End date<input name="endDate" type="date" required /></label>
-            <button className="admin-primary" disabled={busy}>Create year</button>
+            <label>{t("Name")}<input name="name" placeholder="1405" required /></label>
+            <label>{t("Start date")}<input name="startDate" type="date" required /></label>
+            <label>{t("End date")}<input name="endDate" type="date" required /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create year")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Grade level" hint="Reusable grade definition such as Grade 7.">
+        <AcademicForm title={t("Grade level")} hint="Reusable grade definition such as Grade 7.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/grades", (form) => ({
             code: formValue(form, "code"),
             name: formValue(form, "name"),
             sortOrder: Number(formValue(form, "sortOrder") || "0")
           }), "Grade level created.")}>
-            <label>Code<input name="code" placeholder="G7" required /></label>
-            <label>Name<input name="name" placeholder="Grade 7" required /></label>
-            <label>Sort order<input name="sortOrder" type="number" min="0" max="100" defaultValue="7" required /></label>
-            <button className="admin-primary" disabled={busy}>Create grade</button>
+            <label>{t("Code")}<input name="code" placeholder="G7" required /></label>
+            <label>{t("Name")}<input name="name" placeholder="Grade 7" required /></label>
+            <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue="7" required /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create grade")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Subject" hint="School-level subject catalog.">
+        <AcademicForm title={t("Subject")} hint="School-level subject catalog.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/subjects", (form) => ({
             code: formValue(form, "code"),
             name: formValue(form, "name")
           }), "Subject created.")}>
-            <label>Code<input name="code" placeholder="MATH" required /></label>
-            <label>Name<input name="name" placeholder="Mathematics" required /></label>
-            <button className="admin-primary" disabled={busy}>Create subject</button>
+            <label>{t("Code")}<input name="code" placeholder="MATH" required /></label>
+            <label>{t("Name")}<input name="name" placeholder="Mathematics" required /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create subject")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Class section" hint="A class belongs to one academic year and grade.">
+        <AcademicForm title={t("Class section")} hint="A class belongs to one academic year and grade.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/classes", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             gradeLevelId: formValue(form, "gradeLevelId"),
             code: formValue(form, "code"),
             name: formValue(form, "name")
           }), "Class created.")}>
-            <Select name="academicYearId" label="Academic year" items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${year.status}`])} />
-            <Select name="gradeLevelId" label="Grade" items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
-            <label>Code<input name="code" placeholder="7A" required /></label>
-            <label>Name<input name="name" placeholder="Grade 7 A" required /></label>
-            <button className="admin-primary" disabled={busy}>Create class</button>
+            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${year.status}`])} />
+            <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
+            <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
+            <label>{t("Name")}<input name="name" placeholder="Grade 7 A" required /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create class")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Teacher profile" hint="Attach school details to an existing TEACHER account.">
+        <AcademicForm title={t("Teacher profile")} hint="Attach school details to an existing TEACHER account.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/teachers", (form) => ({
             userId: formValue(form, "userId"),
             employeeCode: formValue(form, "employeeCode"),
@@ -226,32 +230,32 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           }), "Teacher profile created.")}>
             <Select
               name="userId"
-              label="Teacher account"
+              label={t("Teacher account")}
               items={teacherAccounts.filter((user) => !profiledTeacherIds.has(user.id)).map((user) => [user.id, user.username])}
             />
-            <label>Employee code<input name="employeeCode" placeholder="T-001" required /></label>
-            <label>Full name<input name="fullName" placeholder="Teacher full name" required /></label>
-            <label>Phone<input name="phone" placeholder="07xxxxxxxx" /></label>
-            <button className="admin-primary" disabled={busy}>Create teacher profile</button>
+            <label>{t("Employee code")}<input name="employeeCode" placeholder="T-001" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder="Teacher full name" required /></label>
+            <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create teacher profile")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Teacher assignment" hint="Teacher → Subject → Class for one academic year.">
+        <AcademicForm title={t("Teacher assignment")} hint="Teacher → Subject → Class for one academic year.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/assignments", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
             subjectId: formValue(form, "subjectId"),
             teacherUserId: formValue(form, "teacherUserId")
           }), "Teacher assignment created.")}>
-            <Select name="academicYearId" label="Academic year" items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label="Class" items={overview.classes.map((item) => [item.id, item.name])} />
-            <Select name="subjectId" label="Subject" items={overview.subjects.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label="Teacher" items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <button className="admin-primary" disabled={busy}>Assign teacher</button>
+            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
+            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
+            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
+            <button className="admin-primary" disabled={busy}>{t("Assign teacher")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Negaran assignment" hint="One primary class supervisor may be active for a class at a time.">
+        <AcademicForm title={t("Negaran assignment")} hint="One primary class supervisor may be active for a class at a time.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/negaran", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
@@ -259,16 +263,16 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             startDate: formValue(form, "startDate"),
             ...(formValue(form, "endDate") ? { endDate: formValue(form, "endDate") } : {})
           }), "Negaran assigned.")}>
-            <Select name="academicYearId" label="Academic year" items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label="Class" items={overview.classes.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label="Teacher" items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <label>Start date<input name="startDate" type="date" required /></label>
-            <label>End date (optional)<input name="endDate" type="date" /></label>
-            <button className="admin-primary" disabled={busy}>Assign Negaran</button>
+            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
+            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
+            <label>{t("Start date")}<input name="startDate" type="date" required /></label>
+            <label>{t("End date (optional)")}<input name="endDate" type="date" /></label>
+            <button className="admin-primary" disabled={busy}>{t("Assign Negaran")}</button>
           </form>
         </AcademicForm>
 
-        <AcademicForm title="Timetable period" hint="A period must match an existing teacher assignment. Class and teacher overlaps are rejected.">
+        <AcademicForm title={t("Timetable period")} hint="A period must match an existing teacher assignment. Class and teacher overlaps are rejected.">
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/timetable", (form) => ({
             academicYearId: formValue(form, "academicYearId"),
             classId: formValue(form, "classId"),
@@ -278,14 +282,14 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             startsAt: formValue(form, "startsAt"),
             endsAt: formValue(form, "endsAt")
           }), "Timetable period created.")}>
-            <Select name="academicYearId" label="Academic year" items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label="Class" items={overview.classes.map((item) => [item.id, item.name])} />
-            <Select name="subjectId" label="Subject" items={overview.subjects.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label="Teacher" items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <Select name="weekday" label="Weekday" items={weekdays.map((day) => [day, day[0] + day.slice(1).toLowerCase()])} />
-            <label>Starts<input name="startsAt" type="time" required /></label>
-            <label>Ends<input name="endsAt" type="time" required /></label>
-            <button className="admin-primary" disabled={busy}>Add period</button>
+            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
+            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
+            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
+            <Select name="weekday" label={t("Weekday")} items={weekdays.map((day) => [day, day[0] + day.slice(1).toLowerCase()])} />
+            <label>{t("Starts")}<input name="startsAt" type="time" required /></label>
+            <label>{t("Ends")}<input name="endsAt" type="time" required /></label>
+            <button className="admin-primary" disabled={busy}>{t("Add period")}</button>
           </form>
         </AcademicForm>
       </div>
@@ -293,7 +297,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div>
-            <h2>Academic years</h2>
+            <h2>{t("Academic years")}</h2>
             <p>Lifecycle: DRAFT → ACTIVE → CLOSED → ARCHIVED. Only one year can be active.</p>
           </div>
         </div>
@@ -305,9 +309,9 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
                 <span>{year.startDate} → {year.endDate} · {year.status}</span>
               </div>
               <div className="admin-actions">
-                {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Academic year activated.")}>Activate</button> : null}
-                {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Academic year closed.")}>Close</button> : null}
-                {year.status === "CLOSED" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Academic year archived.")}>Archive</button> : null}
+                {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Academic year activated.")}>{t("Activate")}</button> : null}
+                {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Academic year closed.")}>{t("Close")}</button> : null}
+                {year.status === "CLOSED" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Academic year archived.")}>{t("Archive")}</button> : null}
               </div>
             </div>
           ))}
@@ -345,11 +349,11 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       </div>
 
       <article className="admin-panel academic-list-panel">
-        <h2>Timetable</h2>
+        <h2>{t("Timetable")}</h2>
         <div className="academic-table-wrap">
           <table className="academic-table">
             <thead>
-              <tr><th>Day</th><th>Time</th><th>Class</th><th>Subject</th><th>Teacher</th></tr>
+              <tr><th>{t("Day")}</th><th>{t("Time")}</th><th>{t("Class")}</th><th>{t("Subject")}</th><th>{t("Teacher")}</th></tr>
             </thead>
             <tbody>
               {overview.timetable.map((period) => (
