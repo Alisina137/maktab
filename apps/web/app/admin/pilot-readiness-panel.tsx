@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useState } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -133,11 +134,31 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  if ((!subscription || !readiness) && !error) {
+    return (
+      <section className="admin-panel pilot-section admin-loading-card">
+        <AdminLoader label={t("Loading…")} />
+        <AdminSkeleton rows={5} />
+      </section>
+    );
+  }
+
+  if (!subscription || !readiness) {
+    return (
+      <section className="admin-panel pilot-section admin-loading-card">
+        <div className="admin-error" role="alert">{error}</div>
+        <button className="admin-secondary" type="button" onClick={() => void load()}>
+          {t("Retry")}
+        </button>
+      </section>
+    );
+  }
+
   const writeBlocked =
     subscription?.status === "SUSPENDED" || subscription?.status === "CANCELLED";
 
   return (
-    <section className="pilot-section" aria-labelledby="pilot-readiness-title">
+    <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 8 · Pilot Readiness")}</span>
