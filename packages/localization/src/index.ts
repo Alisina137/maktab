@@ -47,6 +47,8 @@ export type TranslationKey =
   | "action.showPassword"
   | "action.hidePassword"
   | "action.dismiss"
+  | "action.minimize"
+  | "action.expand"
   | "home.title"
   | "home.phase2"
   | "home.pending"
@@ -63,6 +65,9 @@ export type TranslationKey =
   | "common.connectionProblemTitle"
   | "common.networkError"
   | "common.apiUnavailable"
+  | "common.apiStillUnavailable"
+  | "common.checkingConnection"
+  | "common.connectionRestoredTitle"
   | "common.connectionRestored"
   | "common.validationError"
   | "common.requestFailed"
@@ -199,6 +204,8 @@ const en: Record<TranslationKey, string> = {
   "action.showPassword": "Show",
   "action.hidePassword": "Hide",
   "action.dismiss": "Close",
+  "action.minimize": "Minimize",
+  "action.expand": "Expand",
   "home.title": "Account ready",
   "home.phase2": "Your school account is authenticated. Academic features will appear in the next phases.",
   "home.pending": "Your school account is authenticated. Features for this role will appear in the relevant implementation phase.",
@@ -214,7 +221,10 @@ const en: Record<TranslationKey, string> = {
   "common.errorTitle": "Something needs your attention",
   "common.connectionProblemTitle": "Connection interrupted",
   "common.apiUnavailable": "MaktabLink cannot reach the school service right now. The app will reconnect automatically when the service is available again.",
-  "common.connectionRestored": "Connection restored. Your information is being refreshed.",
+  "common.apiStillUnavailable": "The school service is still unavailable. Please wait a moment and try again.",
+  "common.checkingConnection": "Checking the connection…",
+  "common.connectionRestoredTitle": "Back online",
+  "common.connectionRestored": "MaktabLink reconnected successfully and refreshed your information.",
   "common.validationError": "Some of the information entered is not valid. Please review it and try again.",
   "common.requestFailed": "This action could not be completed. Please try again.",
   "teacher.todayTitle": "Today",
@@ -352,6 +362,8 @@ const dari: Record<TranslationKey, string> = {
   "action.showPassword": "نمایش",
   "action.hidePassword": "پنهان",
   "action.dismiss": "بستن",
+  "action.minimize": "کوچک‌کردن",
+  "action.expand": "بازکردن",
   "home.title": "حساب آماده است",
   "home.phase2": "حساب مکتب شما تأیید شد. امکانات درسی در مراحل بعدی اضافه می‌شوند.",
   "home.pending": "حساب مکتب شما تأیید شده است. امکانات این نقش در مرحله مربوط آن اضافه می‌شوند.",
@@ -367,7 +379,10 @@ const dari: Record<TranslationKey, string> = {
   "common.errorTitle": "یک مورد نیاز به توجه شما دارد",
   "common.connectionProblemTitle": "ارتباط موقتاً قطع شده است",
   "common.apiUnavailable": "برنامه فعلاً به خدمات مکتب در MaktabLink دسترسی ندارد. پس از فعال شدن دوبارهٔ سرویس، برنامه به‌صورت خودکار وصل می‌شود.",
-  "common.connectionRestored": "ارتباط دوباره برقرار شد. معلومات شما در حال تازه‌شدن است.",
+  "common.apiStillUnavailable": "خدمات مکتب هنوز در دسترس نیست. لطفاً کمی صبر کرده و دوباره کوشش کنید.",
+  "common.checkingConnection": "در حال بررسی ارتباط…",
+  "common.connectionRestoredTitle": "دوباره آنلاین شدید",
+  "common.connectionRestored": "ارتباط MaktabLink دوباره برقرار شد و معلومات شما تازه شد.",
   "common.validationError": "بعضی از معلومات واردشده درست نیست. لطفاً آن‌ها را بررسی کرده و دوباره کوشش کنید.",
   "common.requestFailed": "این کار انجام نشد. لطفاً دوباره کوشش کنید.",
   "teacher.todayTitle": "امروز",
@@ -505,6 +520,8 @@ const pashto: Record<TranslationKey, string> = {
   "action.showPassword": "ښودل",
   "action.hidePassword": "پټول",
   "action.dismiss": "تړل",
+  "action.minimize": "کوچنی کول",
+  "action.expand": "پراخول",
   "home.title": "حساب چمتو دی",
   "home.phase2": "ستاسو د ښوونځي حساب تایید شو. درسي ځانګړتیاوې به په راتلونکو پړاوونو کې اضافه شي.",
   "home.pending": "ستاسو د ښوونځي حساب تایید شوی دی. د دې رول ځانګړتیاوې به په اړوند پړاو کې اضافه شي.",
@@ -520,7 +537,10 @@ const pashto: Record<TranslationKey, string> = {
   "common.errorTitle": "یو څه ستاسو پاملرنې ته اړتیا لري",
   "common.connectionProblemTitle": "اړیکه لنډمهاله پرې شوې",
   "common.apiUnavailable": "MaktabLink اوس د ښوونځي خدمت ته لاسرسی نه لري. کله چې خدمت بېرته فعال شي، اپ به په اوتومات ډول بیا ونښلي.",
-  "common.connectionRestored": "اړیکه بېرته جوړه شوه. ستاسو معلومات تازه کېږي.",
+  "common.apiStillUnavailable": "د ښوونځي خدمت لا هم شتون نه لري. مهرباني وکړئ لږ انتظار وکړئ او بیا هڅه وکړئ.",
+  "common.checkingConnection": "اړیکه کتل کېږي…",
+  "common.connectionRestoredTitle": "بېرته آنلاین شوئ",
+  "common.connectionRestored": "د MaktabLink اړیکه بېرته جوړه شوه او ستاسو معلومات تازه شول.",
   "common.validationError": "ځینې داخل شوي معلومات سم نه دي. مهرباني وکړئ یې وګورئ او بیا هڅه وکړئ.",
   "common.requestFailed": "دا کار بشپړ نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
   "teacher.todayTitle": "نن",

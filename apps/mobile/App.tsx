@@ -105,6 +105,9 @@ function AppContent() {
   const [busy, setBusy] = useState(true);
   const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
   const [errorKind, setErrorKind] = useState<AppErrorKind | null>(null);
+  const [errorMinimized, setErrorMinimized] = useState(false);
+  const [retryingConnection, setRetryingConnection] = useState(false);
+  const [connectionRecovered, setConnectionRecovered] = useState(false);
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const screenOpacity = useRef(new Animated.Value(1)).current;
@@ -218,16 +221,33 @@ function AppContent() {
   }, [session?.accessToken, session?.mustChangePassword]);
 
   useEffect(() => {
-    if (errorKind !== "network") return;
+    if (errorKind !== "network" || retryingConnection) return;
+    let checking = false;
     const interval = setInterval(() => {
-      void retryServiceConnection();
+      if (checking) return;
+      checking = true;
+      void retryServiceConnection(false).finally(() => {
+        checking = false;
+      });
     }, 3000);
     return () => clearInterval(interval);
-  }, [errorKind, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
+  }, [errorKind, retryingConnection, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
+
+  useEffect(() => {
+    if (!connectionRecovered) return;
+    const timeout = setTimeout(() => {
+      setConnectionRecovered(false);
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [connectionRecovered]);
 
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
     setErrorKey(key);
     setErrorKind(key ? kind : null);
+    if (key) {
+      setConnectionRecovered(false);
+      setErrorMinimized(false);
+    }
   }
 
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
@@ -235,16 +255,31 @@ function AppContent() {
     setAppError(failure.key, failure.kind);
   }
 
-  async function retryServiceConnection() {
+  async function retryServiceConnection(manual = true) {
+    if (manual) {
+      setRetryingConnection(true);
+      setErrorMinimized(false);
+    }
+
     try {
       await api.health();
-      setAppError(null);
-      setNotice(translate(locale, "common.connectionRestored"));
+      setErrorKey(null);
+      setErrorKind(null);
+      setErrorMinimized(false);
+      setConnectionRecovered(true);
       setReconnectEpoch((current) => current + 1);
-      if (screen === "school") void loadSchools();
+
+      if (screen === "school") {
+        await loadSchools();
+      }
       return true;
     } catch {
+      if (manual) {
+        setAppError("common.apiStillUnavailable", "network");
+      }
       return false;
+    } finally {
+      if (manual) setRetryingConnection(false);
     }
   }
 
@@ -1191,13 +1226,22 @@ function AppContent() {
         </Animated.View>
       </ScrollView>
 
-      {errorKey ? (
+      {connectionRecovered ? (
+        <ConnectionSuccessPopup
+          locale={locale}
+          onDismiss={() => setConnectionRecovered(false)}
+        />
+      ) : errorKey ? (
         <ErrorPopup
           locale={locale}
           errorKey={errorKey}
           kind={errorKind ?? "general"}
+          minimized={errorMinimized}
+          retrying={retryingConnection}
           onDismiss={() => setAppError(null)}
-          onRetry={() => void retryServiceConnection()}
+          onMinimize={() => setErrorMinimized(true)}
+          onExpand={() => setErrorMinimized(false)}
+          onRetry={() => void retryServiceConnection(true)}
         />
       ) : null}
     </SafeAreaView>
@@ -1216,18 +1260,62 @@ function ErrorPopup({
   locale,
   errorKey,
   kind,
+  minimized,
+  retrying,
   onDismiss,
+  onMinimize,
+  onExpand,
   onRetry
 }: {
   locale: SupportedLocale;
   errorKey: TranslationKey;
   kind: AppErrorKind;
+  minimized: boolean;
+  retrying: boolean;
   onDismiss: () => void;
+  onMinimize: () => void;
+  onExpand: () => void;
   onRetry: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const titleKey =
     kind === "network" ? "common.connectionProblemTitle" : "common.errorTitle";
+  const messageKey =
+    kind === "network" && retrying ? "common.checkingConnection" : errorKey;
+
+  if (minimized) {
+    return (
+      <View pointerEvents="box-none" style={styles.errorPopupLayer}>
+        <View
+          accessibilityLiveRegion="assertive"
+          accessibilityRole="alert"
+          style={[styles.errorPopup, styles.errorPopupMinimized, rtl && styles.errorPopupRtl]}
+        >
+          <View style={styles.errorPopupIconCompact}>
+            <Ionicons
+              name={kind === "network" ? "cloud-offline-outline" : "information-circle-outline"}
+              size={18}
+              color={kind === "network" ? tokens.color.warning : tokens.color.danger}
+            />
+          </View>
+          <Text
+            numberOfLines={1}
+            style={[styles.errorPopupMinimizedTitle, rtl && styles.errorPopupTextRtl]}
+          >
+            {translate(locale, titleKey)}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={translate(locale, "action.expand")}
+            onPress={onExpand}
+            style={({ pressed }) => [styles.errorPopupIconButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-down-outline" size={19} color={tokens.color.textMuted} />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View pointerEvents="box-none" style={styles.errorPopupLayer}>
@@ -1248,16 +1336,27 @@ function ErrorPopup({
             {translate(locale, titleKey)}
           </Text>
           <Text style={[styles.errorPopupMessage, rtl && styles.errorPopupTextRtl]}>
-            {translate(locale, errorKey)}
+            {translate(locale, messageKey)}
           </Text>
           <View style={[styles.errorPopupActions, rtl && styles.errorPopupActionsRtl]}>
             {kind === "network" ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: retrying }}
+                disabled={retrying}
                 onPress={onRetry}
-                style={({ pressed }) => [styles.errorPopupPrimary, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.errorPopupPrimary,
+                  retrying && styles.feedbackButtonDisabled,
+                  pressed && !retrying && styles.pressed
+                ]}
               >
-                <Text style={styles.errorPopupPrimaryText}>{translate(locale, "action.retry")}</Text>
+                {retrying ? <ActivityIndicator size="small" color="#fff" /> : null}
+                <Text style={styles.errorPopupPrimaryText}>
+                  {retrying
+                    ? translate(locale, "common.checkingConnection")
+                    : translate(locale, "action.retry")}
+                </Text>
               </Pressable>
             ) : (
               <Pressable
@@ -1268,6 +1367,61 @@ function ErrorPopup({
                 <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.dismiss")}</Text>
               </Pressable>
             )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: retrying }}
+              disabled={retrying}
+              onPress={onMinimize}
+              style={({ pressed }) => [
+                styles.errorPopupSecondary,
+                retrying && styles.feedbackButtonDisabled,
+                pressed && !retrying && styles.pressed
+              ]}
+            >
+              <Ionicons name="remove-outline" size={17} color={tokens.color.textMuted} />
+              <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.minimize")}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ConnectionSuccessPopup({
+  locale,
+  onDismiss
+}: {
+  locale: SupportedLocale;
+  onDismiss: () => void;
+}) {
+  const rtl = getDirection(locale) === "rtl";
+
+  return (
+    <View pointerEvents="box-none" style={styles.errorPopupLayer}>
+      <View
+        accessibilityLiveRegion="polite"
+        accessibilityRole="alert"
+        style={[styles.errorPopup, styles.successPopup, rtl && styles.errorPopupRtl]}
+      >
+        <View style={[styles.errorPopupIcon, styles.successPopupIcon]}>
+          <Ionicons name="checkmark-circle-outline" size={23} color={tokens.color.success} />
+        </View>
+        <View style={styles.errorPopupCopy}>
+          <Text style={[styles.errorPopupTitle, rtl && styles.errorPopupTextRtl]}>
+            {translate(locale, "common.connectionRestoredTitle")}
+          </Text>
+          <Text style={[styles.errorPopupMessage, rtl && styles.errorPopupTextRtl]}>
+            {translate(locale, "common.connectionRestored")}
+          </Text>
+          <View style={[styles.errorPopupActions, rtl && styles.errorPopupActionsRtl]}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onDismiss}
+              style={({ pressed }) => [styles.errorPopupSecondary, pressed && styles.pressed]}
+            >
+              <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.dismiss")}</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -1616,7 +1770,7 @@ const styles = StyleSheet.create({
   successMarkText: { color: tokens.color.success, fontSize: 28, fontWeight: "900" },
   errorPopupLayer: {
     position: "absolute",
-    top: 12,
+    top: 24,
     left: 16,
     right: 16,
     zIndex: 50,
@@ -1640,6 +1794,34 @@ const styles = StyleSheet.create({
     elevation: 8
   },
   errorPopupRtl: { flexDirection: "row-reverse" },
+  errorPopupMinimized: {
+    minHeight: 54,
+    alignItems: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 11
+  },
+  errorPopupIconCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff7e8"
+  },
+  errorPopupMinimizedTitle: {
+    flex: 1,
+    color: tokens.color.text,
+    fontSize: 13.5,
+    fontWeight: "900"
+  },
+  errorPopupIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f4f8"
+  },
   errorPopupIcon: {
     width: 42,
     height: 42,
@@ -1658,6 +1840,8 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 14,
     borderRadius: 12,
+    flexDirection: "row",
+    gap: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: tokens.color.brand
@@ -1667,11 +1851,16 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: 14,
     borderRadius: 12,
+    flexDirection: "row",
+    gap: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#edf1f7"
   },
   errorPopupSecondaryText: { color: tokens.color.text, fontWeight: "800", fontSize: 12.5 },
+  feedbackButtonDisabled: { opacity: 0.65 },
+  successPopup: { borderColor: "#cfe9da" },
+  successPopupIcon: { backgroundColor: "#e8f5ee" },
   loader: { marginTop: 8 },
   rowRtl: { flexDirection: "row-reverse" },
   flexCopy: { flex: 1, gap: 3 },
