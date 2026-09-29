@@ -8,11 +8,31 @@ import { useAdminWorkspace } from "../../admin-workspace";
 
 type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 
+type FamilyStudent = {
+  student: {
+    id: string;
+    userId: string | null;
+    studentCode: string;
+    fullName: string;
+    status: "ACTIVE" | "WITHDRAWN";
+  };
+  classSection: { code: string; name: string };
+  academicYear: { name: string };
+};
+
+type FamilyOverview = {
+  students: FamilyStudent[];
+};
+
 export default function AccountsPage() {
   const { stored, locale, t, showToast } = useAdminWorkspace();
   const [users, setUsers] = useState<User[]>([]);
   const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
+  const [parentFullName, setParentFullName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [familyStudents, setFamilyStudents] = useState<FamilyStudent[]>([]);
+  const [studentRecordId, setStudentRecordId] = useState("");
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
   const [group, setGroup] = useState<AccountGroup>("ALL");
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
@@ -26,10 +46,24 @@ export default function AccountsPage() {
 
   async function loadUsers() {
     try {
-      const result = await adminApi<{ users: User[] }>("/v1/admin/users", {
-        headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+      const [accountsResult, familyResult] = await Promise.all([
+        adminApi<{ users: User[] }>("/v1/admin/users", {
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+        }),
+        adminApi<FamilyOverview>("/v1/admin/families", {
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+        })
+      ]);
+      setUsers(accountsResult.users);
+      setFamilyStudents(familyResult.students);
+      setStudentRecordId((current) => {
+        const available = familyResult.students.filter(
+          (item) => item.student.userId === null && item.student.status === "ACTIVE"
+        );
+        return available.some((item) => item.student.id === current)
+          ? current
+          : available[0]?.student.id ?? "";
       });
-      setUsers(result.users);
     } catch (cause) {
       showToast({
         kind: "error",
@@ -46,12 +80,46 @@ export default function AccountsPage() {
     setBusy(true);
     setCredential(null);
     try {
-      const result = await adminApi<{ user: User; temporaryPassword: string }>("/v1/admin/users", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${stored.session.accessToken}` },
-        body: JSON.stringify({ username: newUsername, role: newRole })
-      });
+      let result: { user: User; temporaryPassword: string };
+
+      if (newRole === "PARENT") {
+        result = await adminApi<{ user: User; temporaryPassword: string }>("/v1/admin/families/parents", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+          body: JSON.stringify({
+            username: newUsername,
+            fullName: parentFullName,
+            phone: parentPhone.trim() || undefined
+          })
+        });
+      } else if (newRole === "STUDENT") {
+        if (!studentRecordId) {
+          showToast({
+            kind: "error",
+            title: t("Create account"),
+            message: t("Select a student record before creating the student login.")
+          });
+          return;
+        }
+        result = await adminApi<{ user: User; temporaryPassword: string }>(
+          `/v1/admin/families/students/${studentRecordId}/account`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+            body: JSON.stringify({ username: newUsername })
+          }
+        );
+      } else {
+        result = await adminApi<{ user: User; temporaryPassword: string }>("/v1/admin/users", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+          body: JSON.stringify({ username: newUsername, role: newRole })
+        });
+      }
+
       setNewUsername("");
+      setParentFullName("");
+      setParentPhone("");
       setCredential({ username: result.user.username, password: result.temporaryPassword });
       await loadUsers();
       showToast({
@@ -104,6 +172,9 @@ export default function AccountsPage() {
     }
   }
 
+  const availableStudentRecords = familyStudents.filter(
+    (item) => item.student.userId === null && item.student.status === "ACTIVE"
+  );
   const staffCount = users.filter((u) => u.role === "SCHOOL_ADMIN" || u.role === "SCHOOL_STAFF").length;
   const counts: Record<AccountGroup, number> = {
     ALL: users.length,
@@ -160,21 +231,84 @@ export default function AccountsPage() {
         <article className="admin-panel admin-create-account-card">
           <div className="admin-panel-icon" aria-hidden="true">+</div>
           <h3>{t("Create account")}</h3>
-          <p className="admin-copy">{t("Create teacher, staff, and administrator identities. Parent and student accounts stay linked through Students & Families.")}</p>
+          <p className="admin-copy">{t("Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.")}</p>
           <form className="admin-form" onSubmit={createUser}>
             <label>
-              {t("Username")}
-              <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="teacher.001" required />
-            </label>
-            <label>
               {t("Role")}
-              <select value={newRole} onChange={(e) => setNewRole(e.target.value as User["role"])}>
+              <select
+                value={newRole}
+                onChange={(e) => {
+                  const role = e.target.value as User["role"];
+                  setNewRole(role);
+                  setNewUsername("");
+                  setCredential(null);
+                }}
+              >
                 <option value="TEACHER">{t("Teacher")}</option>
+                <option value="PARENT">{t("Parent")}</option>
+                <option value="STUDENT">{t("Student")}</option>
                 <option value="SCHOOL_STAFF">{t("School staff")}</option>
                 <option value="SCHOOL_ADMIN">{t("School admin")}</option>
               </select>
             </label>
-            <button className="admin-primary" disabled={busy} type="submit">{t(busy ? "Working…" : "Generate account")}</button>
+
+            {newRole === "PARENT" ? (
+              <>
+                <label>
+                  {t("Parent full name")}
+                  <input value={parentFullName} onChange={(e) => setParentFullName(e.target.value)} required />
+                </label>
+                <label>
+                  {t("Phone")}
+                  <input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="07xxxxxxxx" />
+                </label>
+              </>
+            ) : null}
+
+            {newRole === "STUDENT" ? (
+              <label>
+                {t("Student record")}
+                <select
+                  value={studentRecordId}
+                  onChange={(e) => setStudentRecordId(e.target.value)}
+                  required
+                  disabled={availableStudentRecords.length === 0}
+                >
+                  {availableStudentRecords.length === 0 ? (
+                    <option value="">{t("No students without login")}</option>
+                  ) : (
+                    availableStudentRecords.map((item) => (
+                      <option key={item.student.id} value={item.student.id}>
+                        {item.student.fullName} · {item.student.studentCode} · {item.classSection.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {availableStudentRecords.length === 0 ? (
+                  <span className="admin-field-hint">
+                    {t("Create the student record in Families first, then return here to generate the login.")}
+                  </span>
+                ) : null}
+              </label>
+            ) : null}
+
+            <label>
+              {t("Username")}
+              <input
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder={newRole === "PARENT" ? "parent.001" : newRole === "STUDENT" ? "student.001" : "teacher.001"}
+                required
+              />
+            </label>
+
+            <button
+              className="admin-primary"
+              disabled={busy || (newRole === "STUDENT" && !studentRecordId)}
+              type="submit"
+            >
+              {t(busy ? "Working…" : "Generate account")}
+            </button>
           </form>
         </article>
 
