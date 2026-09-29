@@ -315,7 +315,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         <div>
           <span className="eyebrow">{t("Phase 7 · Communication & Fees")}</span>
           <h2>{t("School-family communication")}</h2>
-          <p>Publish scoped updates and maintain fee visibility using manual school-recorded transactions.</p>
+          <p>{t("Publish scoped updates and maintain fee visibility using manual school-recorded transactions.")}</p>
         </div>
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
@@ -325,10 +325,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-summary-grid communication-summary-grid">
         <Summary label={t("Announcements")} value={overview.announcements.filter((item) => !item.archivedAt).length} />
-        <Summary label="Invoices" value={overview.invoices.length} />
-        <Summary label="Billed AFN" value={totals.billed} />
-        <Summary label="Paid AFN" value={totals.paid} />
-        <Summary label="Outstanding AFN" value={totals.outstanding} />
+        <Summary label={t("Invoices")} value={overview.invoices.length} />
+        <Summary label={t("Billed AFN")} value={totals.billed} />
+        <Summary label={t("Paid AFN")} value={totals.paid} />
+        <Summary label={t("Outstanding AFN")} value={totals.outstanding} />
       </div>
 
       <div className="communication-two-column">
@@ -478,7 +478,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                           [item.invoice.id]: { ...draft, method: event.target.value }
                         }))
                       }
-                      placeholder="Method · CASH"
+                      placeholder={t("Method · CASH")}
                     />
                     <input
                       value={draft.reference}
