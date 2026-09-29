@@ -107,6 +107,8 @@ function toBase64(file: File): Promise<string> {
 }
 
 export function FamilyPanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -358,8 +360,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     return (
       <section className="admin-panel family-section">
         <div className="admin-section-header">
-          <div><h2>Students & families</h2><p>Loading Phase 4 data…</p></div>
-          <button className="admin-secondary" onClick={() => void load()}>Retry</button>
+          <div><h2>{t("Students & families")}</h2><p>{t("Loading Phase 4 data…")}</p></div>
+          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
         </div>
         {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
@@ -374,11 +376,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     <section className="family-section">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 4 · Student & Family System</span>
-          <h2>Onboard families</h2>
+          <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
+          <h2>{t("Onboard families")}</h2>
           <p>Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
+        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -387,8 +389,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       {credentials.length > 0 ? (
         <section className="credential-card family-credential">
           <div className="admin-section-header">
-            <strong>Temporary credentials — distribute securely</strong>
-            <button className="admin-secondary" type="button" onClick={() => window.print()}>Print</button>
+            <strong>{t("Temporary credentials — distribute securely")}</strong>
+            <button className="admin-secondary" type="button" onClick={() => window.print()}>{t("Print")}</button>
           </div>
           {credentials.map((credential) => (
             <div key={credential.username}>
@@ -401,32 +403,32 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       ) : null}
 
       <div className="academic-summary-grid family-summary-grid">
-        <Summary label="Parents" value={overview.parents.length} />
-        <Summary label="Students" value={overview.students.length} />
+        <Summary label={t("Parents")} value={overview.parents.length} />
+        <Summary label={t("Students")} value={overview.students.length} />
         <Summary label="Active students" value={overview.students.filter((item) => item.student.status === "ACTIVE").length} />
         <Summary label="Families with siblings" value={overview.parents.filter((item) => item.childCount > 1).length} />
       </div>
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
-          <div><h2>Create parent account</h2><p>Creates a PARENT identity and profile together and generates a one-time temporary password.</p></div>
+          <div><h2>{t("Create parent account")}</h2><p>Creates a PARENT identity and profile together and generates a one-time temporary password.</p></div>
           <form className="admin-form" onSubmit={createParent}>
-            <label>Username<input name="username" placeholder="parent.001" autoCapitalize="none" required /></label>
-            <label>Full name<input name="fullName" placeholder="Parent full name" required /></label>
-            <label>Phone<input name="phone" placeholder="07xxxxxxxx" /></label>
-            <button className="admin-primary" disabled={busy}>Create parent & credential</button>
+            <label>{t("Username")}<input name="username" placeholder="parent.001" autoCapitalize="none" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder="Parent full name" required /></label>
+            <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
           </form>
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>Add student</h2><p>Link the student to one existing parent account. The relationship is singular, not many-to-many.</p></div>
+          <div><h2>{t("Add student")}</h2><p>Link the student to one existing parent account. The relationship is singular, not many-to-many.</p></div>
           <form className="admin-form" onSubmit={createStudent}>
-            <label>Student code<input name="studentCode" placeholder="S-001" required /></label>
-            <label>Full name<input name="fullName" placeholder="Student full name" required /></label>
+            <label>{t("Student code")}<input name="studentCode" placeholder="S-001" required /></label>
+            <label>{t("Full name")}<input name="fullName" placeholder="Student full name" required /></label>
             <label>
               Parent
               <select name="parentUserId" required defaultValue="">
-                <option value="">Select parent</option>
+                <option value="">{t("Select parent")}</option>
                 {availableParents.map((parent) => (
                   <option key={parent.user.id} value={parent.user.id}>
                     {parent.profile.fullName} · {parent.user.username}
@@ -434,42 +436,38 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 ))}
               </select>
             </label>
-            <label>
-              Academic year
-              <select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
-                <option value="">Select year</option>
+            <label>{t("Academic year")}<select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
+                <option value="">{t("Select year")}</option>
                 {academics.academicYears.filter((year) => year.status !== "CLOSED" && year.status !== "ARCHIVED").map((year) => (
                   <option key={year.id} value={year.id}>{year.name} · {year.status}</option>
                 ))}
               </select>
             </label>
-            <label>
-              Class
-              <select name="classId" required defaultValue="" key={studentYearId}>
-                <option value="">Select class</option>
+            <label>{t("Class")}<select name="classId" required defaultValue="" key={studentYearId}>
+                <option value="">{t("Select class")}</option>
                 {availableClasses.map((classSection) => (
                   <option key={classSection.id} value={classSection.id}>{classSection.name} · {classSection.code}</option>
                 ))}
               </select>
             </label>
-            <button className="admin-primary" disabled={busy || availableParents.length === 0}>Add student</button>
+            <button className="admin-primary" disabled={busy || availableParents.length === 0}>{t("Add student")}</button>
           </form>
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>Create student login</h2><p>Creates a school-issued STUDENT account and links it to exactly one existing student record.</p></div>
+          <div><h2>{t("Create student login")}</h2><p>Creates a school-issued STUDENT account and links it to exactly one existing student record.</p></div>
           <form className="admin-form" onSubmit={createStudentAccount}>
             <label>
               Student without login
               <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
-                <option value="">Select student</option>
+                <option value="">{t("Select student")}</option>
                 {overview.students.filter((item) => !item.student.userId && item.student.status === "ACTIVE").map((item) => (
                   <option key={item.student.id} value={item.student.id}>{item.student.fullName} · {item.student.studentCode}</option>
                 ))}
               </select>
             </label>
-            <label>Username<input name="username" placeholder="student.001" autoCapitalize="none" required /></label>
-            <button className="admin-primary" disabled={busy || !studentAccountId}>Create student credential</button>
+            <label>{t("Username")}<input name="username" placeholder="student.001" autoCapitalize="none" required /></label>
+            <button className="admin-primary" disabled={busy || !studentAccountId}>{t("Create student credential")}</button>
           </form>
         </article>
       </div>
@@ -477,7 +475,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <div className="academic-data-grid">
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>Parents</h2><p>{overview.parents.length} school-controlled family account(s)</p></div>
+            <div><h2>{t("Parents")}</h2><p>{overview.parents.length} school-controlled family account(s)</p></div>
           </div>
           <div className="academic-rows">
             {overview.parents.map((parent) => (
@@ -488,22 +486,22 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                   <span>{parent.user.status}{parent.user.lastLoginAt ? ` · last login ${new Date(parent.user.lastLoginAt).toLocaleDateString()}` : " · never logged in"}</span>
                 </div>
                 <div className="admin-actions">
-                  <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "reset-password")}>Reset password</button>
+                  <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "reset-password")}>{t("Reset password")}</button>
                   {parent.user.status === "SUSPENDED" ? (
-                    <button disabled={busy} onClick={() => void parentAction(parent, "reactivate")}>Reactivate</button>
+                    <button disabled={busy} onClick={() => void parentAction(parent, "reactivate")}>{t("Reactivate")}</button>
                   ) : (
-                    <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "suspend")}>Suspend</button>
+                    <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "suspend")}>{t("Suspend")}</button>
                   )}
                 </div>
               </div>
             ))}
-            {overview.parents.length === 0 ? <p className="admin-copy">No parent accounts yet.</p> : null}
+            {overview.parents.length === 0 ? <p className="admin-copy">{t("No parent accounts yet.")}</p> : null}
           </div>
         </article>
 
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>Students</h2><p>{overview.students.length} student record(s)</p></div>
+            <div><h2>{t("Students")}</h2><p>{overview.students.length} student record(s)</p></div>
           </div>
           <div className="academic-rows">
             {overview.students.map((item) => {
@@ -519,7 +517,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 </div>
               );
             })}
-            {overview.students.length === 0 ? <p className="admin-copy">No students yet.</p> : null}
+            {overview.students.length === 0 ? <p className="admin-copy">{t("No students yet.")}</p> : null}
           </div>
         </article>
       </div>
@@ -527,19 +525,19 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <article className="admin-panel family-import-panel">
         <div className="admin-section-header">
           <div>
-            <h2>Bulk import</h2>
+            <h2>{t("Bulk import")}</h2>
             <p>CSV/XLSX · upload → map → validate → preview errors → confirm → import → credentials.</p>
           </div>
-          <button className="admin-secondary" type="button" onClick={() => resetImport()} disabled={busy}>Reset</button>
+          <button className="admin-secondary" type="button" onClick={() => resetImport()} disabled={busy}>{t("Reset")}</button>
         </div>
 
         <div className="family-import-controls">
           <label>
             Import type
             <select value={importEntity} onChange={(event) => resetImport(event.target.value as ImportEntity)} disabled={busy}>
-              <option value="PARENT">Parents</option>
-              <option value="STUDENT">Students</option>
-              <option value="TEACHER">Teachers</option>
+              <option value="PARENT">{t("Parents")}</option>
+              <option value="STUDENT">{t("Students")}</option>
+              <option value="TEACHER">{t("Teachers")}</option>
             </select>
           </label>
           <label>
@@ -567,7 +565,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                       setValidation(null);
                     }}
                   >
-                    <option value="">Do not map</option>
+                    <option value="">{t("Do not map")}</option>
                     {preview.headers.map((header) => <option key={header} value={header}>{header}</option>)}
                   </select>
                 </label>
@@ -575,9 +573,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             </div>
 
             <div className="admin-actions family-import-actions">
-              <button className="admin-primary" type="button" onClick={() => void validateImport()} disabled={busy}>Validate rows</button>
+              <button className="admin-primary" type="button" onClick={() => void validateImport()} disabled={busy}>{t("Validate rows")}</button>
               {validation?.valid ? (
-                <button className="admin-secondary" type="button" onClick={() => void commitImport()} disabled={busy}>Confirm import</button>
+                <button className="admin-secondary" type="button" onClick={() => void commitImport()} disabled={busy}>{t("Confirm import")}</button>
               ) : null}
             </div>
           </>
