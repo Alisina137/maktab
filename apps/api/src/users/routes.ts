@@ -4,10 +4,15 @@ import {
   AccountConflictError,
   type AccountStore
 } from "@maktablink/database";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { generateTemporaryPassword, hashPassword } from "../auth/security.js";
 import { safeUser } from "../auth/session.js";
+
+const adminProfileSchema = z.object({
+  fullName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(32).nullable().optional()
+});
 
 export async function requireSchoolAdmin(request: Parameters<typeof requireAccess>[0], reply: Parameters<typeof requireAccess>[1], store: AccountStore) {
   const context = await requireAccess(request, reply, store);
@@ -46,6 +51,41 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
         profile: entry.profile
       }))
     };
+  });
+
+  app.get("/v1/admin/profile", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, store);
+    if (!context) return;
+
+    const profile = await store.getAdminProfile(context.user.schoolId, context.user.id);
+    return {
+      user: safeUser(context.user),
+      profile: profile ?? { fullName: context.user.username, phone: null }
+    };
+  });
+
+  app.patch("/v1/admin/profile", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, store);
+    if (!context) return;
+
+    try {
+      const input = adminProfileSchema.parse(request.body);
+      const profile = await store.upsertAdminProfile(context.user.schoolId, context.user.id, input);
+      await store.writeAudit({
+        schoolId: context.user.schoolId,
+        actorUserId: context.user.id,
+        action: "admin.profile_updated",
+        entityType: "user",
+        entityId: context.user.id,
+        metadata: { fullName: profile.fullName, hasPhone: Boolean(profile.phone) }
+      });
+      return { user: safeUser(context.user), profile };
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      }
+      throw error;
+    }
   });
 
   app.post("/v1/admin/users", async (request, reply) => {
