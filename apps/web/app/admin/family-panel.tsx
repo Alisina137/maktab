@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type User = {
   id: string;
