@@ -3,8 +3,9 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useState } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
 type Subscription = {
   planCode: string;
@@ -114,7 +115,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
       setAuditOffset(offset);
       setAuditHasMore(auditResult.hasMore);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load pilot readiness.");
+      setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
     } finally {
       setBusy(false);
     }
@@ -128,7 +129,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
       await downloadAuthenticated(accessToken, path, name);
       setNotice(success);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Download failed.");
+      setError(adminErrorText(locale, cause, "Download failed."));
     } finally {
       setBusy(false);
     }
@@ -164,7 +165,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
           <span className="eyebrow">{t("Phase 8 · Pilot Readiness")}</span>
           <h2 id="pilot-readiness-title">{t("Pilot operations")}</h2>
           <p>
-            Review onboarding checks, subscription access, audit history, safe school export, and import templates.
+            {t("Review onboarding checks, subscription access, audit history, safe school export, and import templates.")}
           </p>
         </div>
         <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
@@ -182,12 +183,16 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
               <strong>{subscription.status}</strong> · {subscription.billingCycle} · {subscription.priceAfn.toLocaleString()} AFN
             </p>
             <p>
-              {subscription.expiresOn ? `Expires ${subscription.expiresOn}` : "No expiry date set"}
-              {subscription.graceEndsOn ? ` · Grace ends ${subscription.graceEndsOn}` : ""}
+              {subscription.expiresOn
+                ? adminFormat(locale, "Expires {date}", { date: formatAdminHijriDate(locale, subscription.expiresOn) })
+                : t("No expiry date set")}
+              {subscription.graceEndsOn
+                ? ` · ${adminFormat(locale, "Grace ends {date}", { date: formatAdminHijriDate(locale, subscription.graceEndsOn) })}`
+                : ""}
             </p>
           </div>
           <span className={writeBlocked ? "pilot-badge pilot-badge-danger" : "pilot-badge pilot-badge-ok"}>
-            {writeBlocked ? "Operational writes disabled" : "Operational access enabled"}
+            {t(writeBlocked ? "Operational writes disabled" : "Operational access enabled")}
           </span>
         </article>
       ) : null}
@@ -207,10 +212,10 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             <div className="admin-section-header">
               <div>
                 <h3>{t("Onboarding checklist")}</h3>
-                <p>{readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch."}</p>
+                <p>{t(readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch.")}</p>
               </div>
               <span className={readiness.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
-                {readiness.ready ? "Ready" : "Needs setup"}
+                {t(readiness.ready ? "Ready" : "Needs setup")}
               </span>
             </div>
             <div className="pilot-check-list">
@@ -221,7 +226,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                     <strong>{check.key.replaceAll("-", " ")}</strong>
                     <p>{check.detail}</p>
                   </div>
-                  <span className="sr-only">{check.passed ? "Passed" : "Not passed"}</span>
+                  <span className="sr-only">{t(check.passed ? "Passed" : "Not passed")}</span>
                 </div>
               ))}
             </div>
@@ -233,13 +238,13 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
         <article className="admin-panel">
           <h3>{t("School data export")}</h3>
           <p className="admin-copy">
-            Download a school-scoped JSON export. Password hashes and authentication sessions are excluded.
+            {t("Download a school-scoped JSON export. Password hashes and authentication sessions are excluded.")}
           </p>
           <button
             className="admin-primary"
             type="button"
             disabled={busy}
-            onClick={() => void download("/v1/admin/pilot/export", "maktablink-school-export.json", "School export downloaded.")}
+            onClick={() => void download("/v1/admin/pilot/export", "maktablink-school-export.json", t("School export downloaded."))}
           >{t("Download core export")}</button>
         </article>
 
@@ -257,11 +262,11 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                   void download(
                     `/v1/admin/pilot/import-template/${entity}`,
                     `maktablink-${entity.toLowerCase()}-import.csv`,
-                    `${entity.toLowerCase()} template downloaded.`
+                    adminFormat(locale, "{entity} template downloaded.", { entity: t(`${entity.toLowerCase()} CSV`) })
                   )
                 }
               >
-                {entity.toLowerCase()} CSV
+                {t(`${entity.toLowerCase()} CSV`)}
               </button>
             ))}
           </div>
@@ -297,7 +302,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                 <strong>{item.action}</strong>
                 <span>{item.entityType}{item.entityId ? ` · ${item.entityId}` : ""}</span>
               </div>
-              <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
+              <time dateTime={item.createdAt}>{formatAdminHijriDateTime(locale, item.createdAt)}</time>
             </div>
           ))}
           {audit.length === 0 ? <p className="admin-copy">{t("No audit events on this page.")}</p> : null}
