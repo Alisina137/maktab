@@ -17,6 +17,19 @@ export interface SchoolOption {
   defaultLanguage: "fa-AF" | "ps-AF" | "en";
 }
 
+export interface AdminContactPayload {
+  username: string;
+  fullName: string;
+  jobTitle: string | null;
+  imageUrl: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  phone: string | null;
+  officeLocation: string | null;
+  officeHours: string | null;
+  bio: string | null;
+}
+
 export interface SafeUser {
   id: string;
   schoolId: string;
@@ -437,6 +450,12 @@ export const api = {
 
   me(accessToken: string) {
     return request<{ user: SafeUser; mustChangePassword: boolean }>("/v1/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  adminContact(accessToken: string) {
+    return request<{ contact: AdminContactPayload | null }>("/v1/school/admin-contact", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
