@@ -180,7 +180,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             <span className="eyebrow">{t("School subscription")}</span>
             <h3>{subscription.planCode}</h3>
             <p>
-              <strong>{subscription.status}</strong> · {subscription.billingCycle} · {subscription.priceAfn.toLocaleString()} AFN
+              <strong>{t(subscription.status)}</strong> · {t(subscription.billingCycle)} · {subscription.priceAfn.toLocaleString()} AFN
             </p>
             <p>
               {subscription.expiresOn
@@ -223,8 +223,8 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                 <div className="pilot-check" key={check.key}>
                   <span aria-hidden="true">{check.passed ? "✓" : "!"}</span>
                   <div>
-                    <strong>{check.key.replaceAll("-", " ")}</strong>
-                    <p>{check.detail}</p>
+                    <strong>{pilotCheckLabel(check.key, t)}</strong>
+                    <p>{pilotCheckDetail(check.key, readiness, subscription, locale, t)}</p>
                   </div>
                   <span className="sr-only">{t(check.passed ? "Passed" : "Not passed")}</span>
                 </div>
@@ -319,4 +319,57 @@ function Summary({ label, value }: { label: string; value: number }) {
       <span>{label}</span>
     </div>
   );
+}
+
+
+function pilotCheckLabel(key: string, t: (english: string) => string) {
+  const labels: Record<string, string> = {
+    "school-active": "School active",
+    "subscription": "Subscription",
+    "admin": "Administrator account",
+    "academic-year": "Active academic year",
+    "classes": "Classes ready",
+    "subjects": "Subjects ready",
+    "teachers": "Teacher profiles",
+    "assignments": "Teacher assignments ready",
+    "families": "Families ready",
+    "school": "School"
+  };
+  return t(labels[key] ?? key);
+}
+
+function pilotCheckDetail(
+  key: string,
+  readiness: Readiness,
+  subscription: Subscription,
+  locale: "fa-AF" | "ps-AF" | "en",
+  t: (english: string) => string
+) {
+  switch (key) {
+    case "school-active":
+      return t("School is active.");
+    case "subscription":
+      return adminFormat(locale, "Subscription status: {status}.", { status: t(subscription.status) });
+    case "admin":
+      return adminFormat(locale, "{count} school administrator account(s).", { count: readiness.counts.admins });
+    case "academic-year":
+      return adminFormat(locale, "{count} active academic year(s).", { count: readiness.counts.activeAcademicYears });
+    case "classes":
+      return adminFormat(locale, "{count} class(es).", { count: readiness.counts.classes });
+    case "subjects":
+      return adminFormat(locale, "{count} subject(s).", { count: readiness.counts.subjects });
+    case "teachers":
+      return adminFormat(locale, "{count} teacher profile(s).", { count: readiness.counts.teachers });
+    case "assignments":
+      return adminFormat(locale, "{count} teacher assignment(s).", { count: readiness.counts.teacherAssignments });
+    case "families":
+      return adminFormat(locale, "{parents} parent(s), {students} student(s).", {
+        parents: readiness.counts.parents,
+        students: readiness.counts.students
+      });
+    case "school":
+      return t("School not found.");
+    default:
+      return t("Core pilot setup");
+  }
 }
