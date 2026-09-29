@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -299,18 +300,21 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
   if (!overview || !families || !academics) {
     return (
-      <section className="communication-section">
-        <div className="admin-section-header">
-          <div><h2>{t("Communication & fees")}</h2><p>{t("Loading Phase 7 data…")}</p></div>
-          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
-        </div>
-        {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      <section className="admin-panel communication-section admin-loading-card">
+        <AdminLoader label={t("Loading Phase 7 data…")} />
+        <AdminSkeleton rows={5} />
+        {error ? (
+          <>
+            <div className="admin-error" role="alert">{error}</div>
+            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+          </>
+        ) : null}
       </section>
     );
   }
 
   return (
-    <section className="communication-section">
+    <section className="communication-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 7 · Communication & Fees")}</span>
