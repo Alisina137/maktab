@@ -1,4 +1,5 @@
 "use client";
+import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useState } from "react";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -88,8 +89,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
   useEffect(() => {
     void load();
