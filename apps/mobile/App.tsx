@@ -767,7 +767,6 @@ function AppContent() {
                   ]}
                   onPress={() => {
                     setSchool(item);
-                    setLocale(item.defaultLanguage);
                     setScreen("login");
                   }}
                 >
