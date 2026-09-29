@@ -380,7 +380,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <div>
           <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
           <h2>{t("Onboard families")}</h2>
-          <p>Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.</p>
+          <p>{t("Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.")}</p>
         </div>
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
@@ -400,15 +400,15 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               <code>{credential.temporaryPassword}</code>
             </div>
           ))}
-          <p>Temporary passwords are shown after creation/reset/import. Permanent passwords are never retrievable.</p>
+          <p>{t("Temporary passwords are shown after creation/reset/import. Permanent passwords are never retrievable.")}</p>
         </section>
       ) : null}
 
       <div className="academic-summary-grid family-summary-grid">
         <Summary label={t("Parents")} value={overview.parents.length} />
         <Summary label={t("Students")} value={overview.students.length} />
-        <Summary label="Active students" value={overview.students.filter((item) => item.student.status === "ACTIVE").length} />
-        <Summary label="Families with siblings" value={overview.parents.filter((item) => item.childCount > 1).length} />
+        <Summary label={t("Active students")} value={overview.students.filter((item) => item.student.status === "ACTIVE").length} />
+        <Summary label={t("Families with siblings")} value={overview.parents.filter((item) => item.childCount > 1).length} />
       </div>
 
       <div className="academic-form-grid">
@@ -528,7 +528,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h2>{t("Bulk import")}</h2>
-            <p>CSV/XLSX · upload → map → validate → preview errors → confirm → import → credentials.</p>
+            <p>{t("CSV/XLSX · upload → map → validate → preview errors → confirm → import → credentials.")}</p>
           </div>
           <button className="admin-secondary" type="button" onClick={() => resetImport()} disabled={busy}>{t("Reset")}</button>
         </div>
