@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type AnnouncementScope = "SCHOOL" | "CLASS" | "ROLE";
 type AudienceRole = "TEACHER" | "PARENT" | "STUDENT";
@@ -85,6 +87,8 @@ function datetimeLocalToIso(value: string) {
 }
 
 export function CommunicationPanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<CommunicationOverview | null>(null);
   const [families, setFamilies] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
@@ -297,8 +301,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     return (
       <section className="communication-section">
         <div className="admin-section-header">
-          <div><h2>Communication & fees</h2><p>Loading Phase 7 data…</p></div>
-          <button className="admin-secondary" onClick={() => void load()}>Retry</button>
+          <div><h2>{t("Communication & fees")}</h2><p>{t("Loading Phase 7 data…")}</p></div>
+          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
         </div>
         {error ? <div className="admin-error" role="alert">{error}</div> : null}
       </section>
@@ -309,18 +313,18 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     <section className="communication-section">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 7 · Communication & Fees</span>
-          <h2>School-family communication</h2>
+          <span className="eyebrow">{t("Phase 7 · Communication & Fees")}</span>
+          <h2>{t("School-family communication")}</h2>
           <p>Publish scoped updates and maintain fee visibility using manual school-recorded transactions.</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>Refresh</button>
+        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-summary-grid communication-summary-grid">
-        <Summary label="Announcements" value={overview.announcements.filter((item) => !item.archivedAt).length} />
+        <Summary label={t("Announcements")} value={overview.announcements.filter((item) => !item.archivedAt).length} />
         <Summary label="Invoices" value={overview.invoices.length} />
         <Summary label="Billed AFN" value={totals.billed} />
         <Summary label="Paid AFN" value={totals.paid} />
@@ -329,23 +333,21 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       <div className="communication-two-column">
         <article className="admin-panel communication-form-card">
-          <div><h2>Create announcement</h2><p>Every announcement has an explicit school, class, or role audience.</p></div>
+          <div><h2>{t("Create announcement")}</h2><p>Every announcement has an explicit school, class, or role audience.</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
-            <label>Title<input name="title" maxLength={160} required /></label>
-            <label>Message<textarea name="content" rows={5} maxLength={10000} required /></label>
+            <label>{t("Title")}<input name="title" maxLength={160} required /></label>
+            <label>{t("Message")}<textarea name="content" rows={5} maxLength={10000} required /></label>
             <label>
               Audience
               <select value={scope} onChange={(event) => setScope(event.target.value as AnnouncementScope)}>
-                <option value="SCHOOL">Whole school</option>
-                <option value="CLASS">One class</option>
-                <option value="ROLE">One role</option>
+                <option value="SCHOOL">{t("Whole school")}</option>
+                <option value="CLASS">{t("One class")}</option>
+                <option value="ROLE">{t("One role")}</option>
               </select>
             </label>
             {scope === "CLASS" ? (
-              <label>
-                Class
-                <select name="classId" required defaultValue="">
-                  <option value="">Select class</option>
+              <label>{t("Class")}<select name="classId" required defaultValue="">
+                  <option value="">{t("Select class")}</option>
                   {academics.classes.map((item) => (
                     <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
                   ))}
@@ -353,27 +355,25 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               </label>
             ) : null}
             {scope === "ROLE" ? (
-              <label>
-                Role
-                <select name="audienceRole" required defaultValue="PARENT">
-                  <option value="PARENT">Parents</option>
-                  <option value="STUDENT">Students</option>
-                  <option value="TEACHER">Teachers</option>
+              <label>{t("Role")}<select name="audienceRole" required defaultValue="PARENT">
+                  <option value="PARENT">{t("Parents")}</option>
+                  <option value="STUDENT">{t("Students")}</option>
+                  <option value="TEACHER">{t("Teachers")}</option>
                 </select>
               </label>
             ) : null}
-            <label>Publish at (optional)<input name="publishAt" type="datetime-local" /></label>
-            <button className="admin-primary" disabled={busy}>Save announcement</button>
+            <label>{t("Publish at (optional)")}<input name="publishAt" type="datetime-local" /></label>
+            <button className="admin-primary" disabled={busy}>{t("Save announcement")}</button>
           </form>
         </article>
 
         <article className="admin-panel communication-form-card">
-          <div><h2>Create fee invoice</h2><p>Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.</p></div>
+          <div><h2>{t("Create fee invoice")}</h2><p>Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.</p></div>
           <form className="admin-form" onSubmit={createInvoice}>
             <label>
               Student
               <select name="studentId" required defaultValue="">
-                <option value="">Select student</option>
+                <option value="">{t("Select student")}</option>
                 {activeStudents.map((item) => (
                   <option key={item.student.id} value={item.student.id}>
                     {item.student.fullName} · {item.student.studentCode}
@@ -381,10 +381,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 ))}
               </select>
             </label>
-            <label>Amount (AFN)<input name="amount" type="number" min="1" step="1" required /></label>
-            <label>Due date<input name="dueDate" type="date" required /></label>
-            <label>Description<input name="description" maxLength={240} placeholder="Monthly tuition, transport…" /></label>
-            <button className="admin-primary" disabled={busy}>Create draft invoice</button>
+            <label>{t("Amount (AFN)")}<input name="amount" type="number" min="1" step="1" required /></label>
+            <label>{t("Due date")}<input name="dueDate" type="date" required /></label>
+            <label>{t("Description")}<input name="description" maxLength={240} placeholder="Monthly tuition, transport…" /></label>
+            <button className="admin-primary" disabled={busy}>{t("Create draft invoice")}</button>
           </form>
 
           <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
@@ -392,14 +392,14 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               Fee reminders · days before due
               <input value={reminderText} onChange={(event) => setReminderText(event.target.value)} placeholder="7, 1" />
             </label>
-            <button className="admin-secondary" disabled={busy}>Save reminder days</button>
+            <button className="admin-secondary" disabled={busy}>{t("Save reminder days")}</button>
           </form>
         </article>
       </div>
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>Announcements</h2><p>Scheduled and published school communication</p></div>
+          <div><h2>{t("Announcements")}</h2><p>Scheduled and published school communication</p></div>
         </div>
         <div className="academic-rows">
           {overview.announcements.map((item) => (
@@ -411,17 +411,17 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <p>{item.content}</p>
               </div>
               {!item.archivedAt ? (
-                <button className="admin-secondary" disabled={busy} onClick={() => void archiveAnnouncement(item.id)}>Archive</button>
+                <button className="admin-secondary" disabled={busy} onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
               ) : null}
             </div>
           ))}
-          {overview.announcements.length === 0 ? <p className="admin-copy">No announcements yet.</p> : null}
+          {overview.announcements.length === 0 ? <p className="admin-copy">{t("No announcements yet.")}</p> : null}
         </div>
       </article>
 
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>Fee invoices & payments</h2><p>Payments are appended; reversals never overwrite the original transaction.</p></div>
+          <div><h2>{t("Fee invoices & payments")}</h2><p>Payments are appended; reversals never overwrite the original transaction.</p></div>
         </div>
         <div className="communication-invoice-list">
           {overview.invoices.map((item) => {
@@ -440,17 +440,17 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   <strong>{item.invoice.status}</strong>
                 </div>
                 <div className="communication-money-grid">
-                  <span>Amount <strong>AFN {item.invoice.amount}</strong></span>
-                  <span>Paid <strong>AFN {item.paid}</strong></span>
-                  <span>Outstanding <strong>AFN {item.outstanding}</strong></span>
+                  <span>{t("Amount")}<strong>AFN {item.invoice.amount}</strong></span>
+                  <span>{t("Paid")}<strong>AFN {item.paid}</strong></span>
+                  <span>{t("Outstanding")}<strong>AFN {item.outstanding}</strong></span>
                 </div>
 
                 <div className="admin-actions">
                   {item.invoice.status === "DRAFT" ? (
-                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "issue")}>Issue</button>
+                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "issue")}>{t("Issue")}</button>
                   ) : null}
                   {!["PAID", "CANCELLED"].includes(item.invoice.status) && item.paid === 0 ? (
-                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "cancel")}>Cancel</button>
+                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "cancel")}>{t("Cancel")}</button>
                   ) : null}
                 </div>
 
@@ -468,7 +468,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                           [item.invoice.id]: { ...draft, amount: event.target.value }
                         }))
                       }
-                      placeholder="Amount"
+                      placeholder={t("Amount")}
                     />
                     <input
                       value={draft.method}
@@ -488,15 +488,13 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                           [item.invoice.id]: { ...draft, reference: event.target.value }
                         }))
                       }
-                      placeholder="Reference (optional)"
+                      placeholder={t("Reference (optional)")}
                     />
                     <button
                       className="admin-primary"
                       disabled={busy || !draft.amount || !draft.method.trim()}
                       onClick={() => void recordPayment(item.invoice.id)}
-                    >
-                      Record payment
-                    </button>
+                    >{t("Record payment")}</button>
                   </div>
                 ) : null}
 
@@ -515,9 +513,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                             <input
                               value={reversalReason[payment.id] ?? ""}
                               onChange={(event) => setReversalReason((current) => ({ ...current, [payment.id]: event.target.value }))}
-                              placeholder="Reversal reason"
+                              placeholder={t("Reversal reason")}
                             />
-                            <button disabled={busy} onClick={() => void reversePayment(payment.id)}>Reverse</button>
+                            <button disabled={busy} onClick={() => void reversePayment(payment.id)}>{t("Reverse")}</button>
                           </div>
                         ) : null}
                       </div>
@@ -527,7 +525,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               </div>
             );
           })}
-          {overview.invoices.length === 0 ? <p className="admin-copy">No fee invoices yet.</p> : null}
+          {overview.invoices.length === 0 ? <p className="admin-copy">{t("No fee invoices yet.")}</p> : null}
         </div>
       </article>
     </section>
