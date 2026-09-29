@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -360,12 +361,15 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   if (!overview || !academics) {
     return (
-      <section className="admin-panel family-section">
-        <div className="admin-section-header">
-          <div><h2>{t("Students & families")}</h2><p>{t("Loading Phase 4 data…")}</p></div>
-          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
-        </div>
-        {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      <section className="admin-panel family-section admin-loading-card">
+        <AdminLoader label={t("Loading Phase 4 data…")} />
+        <AdminSkeleton rows={5} />
+        {error ? (
+          <>
+            <div className="admin-error" role="alert">{error}</div>
+            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+          </>
+        ) : null}
       </section>
     );
   }
@@ -375,7 +379,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   );
 
   return (
-    <section className="family-section">
+    <section className="family-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
