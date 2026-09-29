@@ -179,7 +179,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const copy = pageCopy[pathname] ?? pageCopy["/admin/accounts"];
+  const copy = pageCopy[pathname] ?? pageCopy["/admin/accounts"]!;
 
   return (
     <AdminWorkspaceContext.Provider value={{ stored, locale, t, setLocale: changeLocale, showToast }}>
