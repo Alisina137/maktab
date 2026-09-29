@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 
@@ -64,6 +66,8 @@ function localDate() {
 }
 
 export function AttendancePanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const today = useMemo(localDate, []);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -136,13 +140,11 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     <section className="attendance-section">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 5 · Attendance</span>
-          <h2>Attendance oversight</h2>
+          <span className="eyebrow">{t("Phase 5 · Attendance")}</span>
+          <h2>{t("Attendance oversight")}</h2>
           <p>Review class attendance, absence/late totals, pending class submissions, and make audited corrections.</p>
         </div>
-        <button className="admin-secondary" type="button" onClick={() => void loadReport()} disabled={busy}>
-          Refresh
-        </button>
+        <button className="admin-secondary" type="button" onClick={() => void loadReport()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -157,10 +159,8 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           To
           <input type="date" value={to} onChange={(event) => setTo(event.target.value)} required />
         </label>
-        <label>
-          Class
-          <select value={classId} onChange={(event) => setClassId(event.target.value)}>
-            <option value="">All active classes</option>
+        <label>{t("Class")}<select value={classId} onChange={(event) => setClassId(event.target.value)}>
+            <option value="">{t("All active classes")}</option>
             {classes.map((item) => (
               <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
             ))}
@@ -185,7 +185,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           <article className="admin-panel academic-list-panel">
             <div className="admin-section-header">
               <div>
-                <h2>Attendance records</h2>
+                <h2>{t("Attendance records")}</h2>
                 <p>{report.rows.length} student mark{report.rows.length === 1 ? "" : "s"} from {report.from} to {report.to}</p>
               </div>
             </div>
@@ -199,7 +199,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 />
               ))}
               {report.rows.length === 0 ? (
-                <p className="admin-copy">No attendance records match these filters.</p>
+                <p className="admin-copy">{t("No attendance records match these filters.")}</p>
               ) : null}
             </div>
           </article>
