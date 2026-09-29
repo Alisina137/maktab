@@ -3,8 +3,9 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { AdminHijriDatePicker } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 
@@ -85,7 +86,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
       loadReport()
     ])
       .then(([academicData]) => setAcademics(academicData))
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load attendance."));
+      .catch((cause) => setError(adminErrorText(locale, cause, "Could not load attendance.")));
   }, [accessToken]);
 
   async function loadReport(event?: FormEvent) {
@@ -103,7 +104,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
       setReport(result);
       return result;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load attendance report.");
+      setError(adminErrorText(locale, cause, "Could not load attendance report."));
       return null;
     } finally {
       setBusy(false);
@@ -123,10 +124,10 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           body: JSON.stringify({ status, note: note.trim() || undefined })
         }
       );
-      setNotice(`Attendance corrected for ${row.studentName}. The change was written to the audit log.`);
+      setNotice(adminFormat(locale, "Attendance corrected for {name}. The change was written to the audit log.", { name: row.studentName }));
       await loadReport();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Attendance correction failed.");
+      setError(adminErrorText(locale, cause, "Attendance correction failed."));
     } finally {
       setBusy(false);
     }
@@ -173,12 +174,12 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
       <form className="admin-panel attendance-filter" onSubmit={loadReport}>
         <label>
-          From
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} required />
+          {t("From")}
+          <AdminHijriDatePicker locale={locale} value={from} onChange={setFrom} required />
         </label>
         <label>
-          To
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} required />
+          {t("To")}
+          <AdminHijriDatePicker locale={locale} value={to} onChange={setTo} required />
         </label>
         <label>{t("Class")}<select value={classId} onChange={(event) => setClassId(event.target.value)}>
             <option value="">{t("All active classes")}</option>
@@ -188,7 +189,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           </select>
         </label>
         <button className="admin-primary" type="submit" disabled={busy || from > to}>
-          Apply filters
+          {t("Apply filters")}
         </button>
       </form>
 
@@ -207,7 +208,11 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             <div className="admin-section-header">
               <div>
                 <h2>{t("Attendance records")}</h2>
-                <p>{report.rows.length} student mark{report.rows.length === 1 ? "" : "s"} from {report.from} to {report.to}</p>
+                <p>{adminFormat(locale, "{count} student mark(s) from {from} to {to}", {
+                  count: report.rows.length,
+                  from: report.from,
+                  to: report.to
+                })}</p>
               </div>
             </div>
             <div className="attendance-report-list">
@@ -263,7 +268,7 @@ function AttendanceReportItem({
       </label>
       <label>
         Correction note
-        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder="Optional reason" />
+        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder={t("Optional reason")} />
       </label>
       <button
         type="button"
