@@ -107,6 +107,7 @@ function AppContent() {
   const [errorKind, setErrorKind] = useState<AppErrorKind | null>(null);
   const [errorMinimized, setErrorMinimized] = useState(false);
   const [retryingConnection, setRetryingConnection] = useState(false);
+  const [errorExitRequested, setErrorExitRequested] = useState(false);
   const [connectionRecovered, setConnectionRecovered] = useState(false);
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -221,7 +222,7 @@ function AppContent() {
   }, [session?.accessToken, session?.mustChangePassword]);
 
   useEffect(() => {
-    if (errorKind !== "network" || retryingConnection) return;
+    if (errorKind !== "network" || retryingConnection || errorExitRequested) return;
     let checking = false;
     const interval = setInterval(() => {
       if (checking) return;
@@ -231,21 +232,14 @@ function AppContent() {
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [errorKind, retryingConnection, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
-
-  useEffect(() => {
-    if (!connectionRecovered) return;
-    const timeout = setTimeout(() => {
-      setConnectionRecovered(false);
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [connectionRecovered]);
+  }, [errorKind, retryingConnection, errorExitRequested, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
 
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
     setErrorKey(key);
     setErrorKind(key ? kind : null);
     if (key) {
       setConnectionRecovered(false);
+      setErrorExitRequested(false);
       setErrorMinimized(false);
     }
   }
@@ -253,6 +247,18 @@ function AppContent() {
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
     const failure = appErrorFromCause(cause, fallback);
     setAppError(failure.key, failure.kind);
+  }
+
+  function finishConnectionRecovery() {
+    setErrorKey(null);
+    setErrorKind(null);
+    setErrorMinimized(false);
+    setErrorExitRequested(false);
+    setConnectionRecovered(true);
+
+    if (screen === "school") {
+      void loadSchools();
+    }
   }
 
   async function retryServiceConnection(manual = true) {
@@ -263,14 +269,12 @@ function AppContent() {
 
     try {
       await api.health();
-      setErrorKey(null);
-      setErrorKind(null);
-      setErrorMinimized(false);
-      setConnectionRecovered(true);
       setReconnectEpoch((current) => current + 1);
 
-      if (screen === "school") {
-        await loadSchools();
+      if (errorKey) {
+        setErrorExitRequested(true);
+      } else {
+        finishConnectionRecovery();
       }
       return true;
     } catch {
@@ -1229,6 +1233,7 @@ function AppContent() {
       {connectionRecovered ? (
         <ConnectionSuccessPopup
           locale={locale}
+          reduceMotion={reduceMotion}
           onDismiss={() => setConnectionRecovered(false)}
         />
       ) : errorKey ? (
@@ -1238,7 +1243,10 @@ function AppContent() {
           kind={errorKind ?? "general"}
           minimized={errorMinimized}
           retrying={retryingConnection}
+          exitRequested={errorExitRequested}
+          reduceMotion={reduceMotion}
           onDismiss={() => setAppError(null)}
+          onExited={finishConnectionRecovery}
           onMinimize={() => setErrorMinimized(true)}
           onExpand={() => setErrorMinimized(false)}
           onRetry={() => void retryServiceConnection(true)}
@@ -1262,7 +1270,10 @@ function ErrorPopup({
   kind,
   minimized,
   retrying,
+  exitRequested,
+  reduceMotion,
   onDismiss,
+  onExited,
   onMinimize,
   onExpand,
   onRetry
@@ -1272,24 +1283,87 @@ function ErrorPopup({
   kind: AppErrorKind;
   minimized: boolean;
   retrying: boolean;
+  exitRequested: boolean;
+  reduceMotion: boolean;
   onDismiss: () => void;
+  onExited: () => void;
   onMinimize: () => void;
   onExpand: () => void;
   onRetry: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
+  const slideProgress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   const titleKey =
     kind === "network" ? "common.connectionProblemTitle" : "common.errorTitle";
   const messageKey =
     kind === "network" && retrying ? "common.checkingConnection" : errorKey;
 
+  useEffect(() => {
+    if (reduceMotion) {
+      slideProgress.setValue(1);
+      return;
+    }
+
+    slideProgress.setValue(0);
+    Animated.timing(slideProgress, {
+      toValue: 1,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    }).start();
+
+    return () => slideProgress.stopAnimation();
+  }, [reduceMotion, slideProgress]);
+
+  useEffect(() => {
+    if (!exitRequested) return;
+    animateOut(onExited);
+  }, [exitRequested]);
+
+  function animateOut(after: () => void) {
+    if (reduceMotion) {
+      after();
+      return;
+    }
+
+    Animated.timing(slideProgress, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true
+    }).start(() => after());
+  }
+
+  const animatedStyle = {
+    opacity: slideProgress,
+    transform: [
+      {
+        translateY: slideProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-54, 0]
+        })
+      },
+      {
+        scale: slideProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.98, 1]
+        })
+      }
+    ]
+  };
+
   if (minimized) {
     return (
       <View pointerEvents="box-none" style={styles.errorPopupLayer}>
-        <View
+        <Animated.View
           accessibilityLiveRegion="assertive"
           accessibilityRole="alert"
-          style={[styles.errorPopup, styles.errorPopupMinimized, rtl && styles.errorPopupRtl]}
+          style={[
+            styles.errorPopup,
+            styles.errorPopupMinimized,
+            rtl && styles.errorPopupRtl,
+            animatedStyle
+          ]}
         >
           <View style={styles.errorPopupIconCompact}>
             <Ionicons
@@ -1312,17 +1386,17 @@ function ErrorPopup({
           >
             <Ionicons name="chevron-down-outline" size={19} color={tokens.color.textMuted} />
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     );
   }
 
   return (
     <View pointerEvents="box-none" style={styles.errorPopupLayer}>
-      <View
+      <Animated.View
         accessibilityLiveRegion="assertive"
         accessibilityRole="alert"
-        style={[styles.errorPopup, rtl && styles.errorPopupRtl]}
+        style={[styles.errorPopup, rtl && styles.errorPopupRtl, animatedStyle]}
       >
         <View style={styles.errorPopupIcon}>
           <Ionicons
@@ -1361,7 +1435,7 @@ function ErrorPopup({
             ) : (
               <Pressable
                 accessibilityRole="button"
-                onPress={onDismiss}
+                onPress={() => animateOut(onDismiss)}
                 style={({ pressed }) => [styles.errorPopupSecondary, pressed && styles.pressed]}
               >
                 <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.dismiss")}</Text>
@@ -1383,26 +1457,89 @@ function ErrorPopup({
             </Pressable>
           </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
 function ConnectionSuccessPopup({
   locale,
+  reduceMotion,
   onDismiss
 }: {
   locale: SupportedLocale;
+  reduceMotion: boolean;
   onDismiss: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
+  const slideProgress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) {
+      slideProgress.setValue(1);
+    } else {
+      slideProgress.setValue(0);
+      Animated.timing(slideProgress, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }).start();
+    }
+
+    const timeout = setTimeout(() => {
+      animateOut(onDismiss);
+    }, 5000);
+
+    return () => {
+      clearTimeout(timeout);
+      slideProgress.stopAnimation();
+    };
+  }, [reduceMotion, slideProgress]);
+
+  function animateOut(after: () => void) {
+    if (reduceMotion) {
+      after();
+      return;
+    }
+
+    Animated.timing(slideProgress, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true
+    }).start(() => after());
+  }
+
+  const animatedStyle = {
+    opacity: slideProgress,
+    transform: [
+      {
+        translateY: slideProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-54, 0]
+        })
+      },
+      {
+        scale: slideProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.98, 1]
+        })
+      }
+    ]
+  };
 
   return (
     <View pointerEvents="box-none" style={styles.errorPopupLayer}>
-      <View
+      <Animated.View
         accessibilityLiveRegion="polite"
         accessibilityRole="alert"
-        style={[styles.errorPopup, styles.successPopup, rtl && styles.errorPopupRtl]}
+        style={[
+          styles.errorPopup,
+          styles.successPopup,
+          rtl && styles.errorPopupRtl,
+          animatedStyle
+        ]}
       >
         <View style={[styles.errorPopupIcon, styles.successPopupIcon]}>
           <Ionicons name="checkmark-circle-outline" size={23} color={tokens.color.success} />
@@ -1417,14 +1554,14 @@ function ConnectionSuccessPopup({
           <View style={[styles.errorPopupActions, rtl && styles.errorPopupActionsRtl]}>
             <Pressable
               accessibilityRole="button"
-              onPress={onDismiss}
+              onPress={() => animateOut(onDismiss)}
               style={({ pressed }) => [styles.errorPopupSecondary, pressed && styles.pressed]}
             >
               <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.dismiss")}</Text>
             </Pressable>
           </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
