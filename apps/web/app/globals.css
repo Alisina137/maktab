@@ -12,6 +12,9 @@ body {
   background: var(--ml-color-canvas);
   color: var(--ml-color-text);
   font-family: var(--ml-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -2283,5 +2286,36 @@ button,
   .admin-profile-details > div {
     grid-template-columns: 1fr;
     gap: 5px;
+  }
+}
+
+
+/* Multilingual typography polish */
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] .admin-auth-copy h1,
+html[dir="rtl"] .admin-school-identity h1,
+html[dir="rtl"] .admin-route-heading h2 {
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] body {
+  font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic', 'Noto Sans', Tahoma, Arial, sans-serif;
+}
+
+.admin-error,
+.admin-success {
+  animation: admin-inline-feedback-in .18s ease-out both;
+}
+
+@keyframes admin-inline-feedback-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
