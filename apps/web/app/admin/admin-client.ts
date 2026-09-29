@@ -1,5 +1,7 @@
 "use client";
 
+import { adminText, type AdminLocale } from "./admin-i18n";
+
 export type School = {
   id: string;
   code: string;
@@ -94,8 +96,13 @@ export async function adminApi<T>(path: string, init?: RequestInit): Promise<T> 
   return body as T;
 }
 
-export function friendlyAdminError(cause: unknown, fallback = "Please try again.") {
-  if (!(cause instanceof AdminApiError)) return fallback;
+export function friendlyAdminError(
+  cause: unknown,
+  fallback = "Please try again.",
+  locale: AdminLocale = "en"
+) {
+  const fallbackText = adminText(locale, fallback);
+  if (!(cause instanceof AdminApiError)) return fallbackText;
 
   const messages: Record<string, string> = {
     session_invalid: "Your administrator session has expired. Please sign in again.",
@@ -111,7 +118,10 @@ export function friendlyAdminError(cause: unknown, fallback = "Please try again.
     invalid_response: "The school service returned an unreadable response. Please try again."
   };
 
-  return cause.code ? messages[cause.code] ?? cause.message : cause.message;
+  const english = cause.code ? messages[cause.code] ?? cause.message : cause.message;
+  if (locale === "en") return english || fallback;
+  const translated = adminText(locale, english);
+  return translated !== english ? translated : fallbackText;
 }
 
 export function saveAdminSession(value: StoredAdminSession) {
