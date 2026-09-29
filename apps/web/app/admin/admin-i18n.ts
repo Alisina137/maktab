@@ -550,6 +550,10 @@ const fa: Record<string, string> = {
   "Add timetable periods above and they will appear here automatically.": "ساعت‌های درسی را از بخش بالا اضافه کنید تا به‌صورت خودکار اینجا نمایش داده شوند.",
   "period(s)": "ساعت درسی",
   "No class scheduled": "کلاسی برنامه‌ریزی نشده است",
+  "No teachers available": "هیچ استادی موجود نیست",
+  "No classes available": "هیچ صنفی موجود نیست",
+  "Create teacher profiles to view teacher timetables.": "برای دیدن تقسیم اوقات استادان، ابتدا پروفایل استادان را ایجاد کنید.",
+  "Create classes to view class timetables.": "برای دیدن تقسیم اوقات صنف‌ها، ابتدا صنف‌ها را ایجاد کنید.",
 };
 
 const ps: Record<string, string> = {
@@ -1093,6 +1097,10 @@ const ps: Record<string, string> = {
   "Add timetable periods above and they will appear here automatically.": "د پورته برخې څخه د مهالویش ساعتونه زیات کړئ، دلته به په اوتومات ډول ښکاره شي.",
   "period(s)": "درسي ساعتونه",
   "No class scheduled": "هیڅ ټولګی نه دی مهالویش شوی",
+  "No teachers available": "هیڅ ښوونکی نشته",
+  "No classes available": "هیڅ ټولګی نشته",
+  "Create teacher profiles to view teacher timetables.": "د ښوونکو مهالویشونو د لیدلو لپاره لومړی د ښوونکو پروفایلونه جوړ کړئ.",
+  "Create classes to view class timetables.": "د ټولګیو مهالویشونو د لیدلو لپاره لومړی ټولګي جوړ کړئ.",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
