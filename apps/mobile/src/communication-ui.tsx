@@ -12,7 +12,8 @@ import { tokens } from "@maktablink/design-tokens";
 import {
   getDirection,
   translate,
-  type SupportedLocale
+  type SupportedLocale,
+  type TranslationKey
 } from "@maktablink/localization";
 import {
   api,
@@ -20,6 +21,7 @@ import {
   type FeeInvoiceViewPayload,
   type ParentNotification
 } from "./api";
+import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -33,7 +35,7 @@ type Props = {
   supervisedClasses?: Array<{ classId: string; className: string; classCode: string }>;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
-  onError: (message: string | null) => void;
+  onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
   onNotice: (message: string | null) => void;
 };
 
@@ -87,7 +89,8 @@ export function CommunicationPanel({
       }
       await Promise.all(tasks);
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -95,7 +98,7 @@ export function CommunicationPanel({
 
   async function postAnnouncement() {
     if (!classId || !title.trim() || !content.trim()) {
-      onError(translate(locale, "communication.completeAnnouncement"));
+      onError("communication.completeAnnouncement");
       return;
     }
     setBusy(true);
@@ -112,7 +115,8 @@ export function CommunicationPanel({
       onNotice(translate(locale, "communication.announcementSent"));
       await load();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }

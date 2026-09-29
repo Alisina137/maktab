@@ -324,11 +324,15 @@ function apiBaseUrl(): string {
   return host ? `http://${host}:4000` : "http://127.0.0.1:4000";
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  options: { cache?: boolean } = {}
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   const method = (init?.method ?? "GET").toUpperCase();
-  const cacheable = method === "GET";
+  const cacheable = method === "GET" && options.cache !== false;
 
   try {
     const baseUrl = apiBaseUrl();
@@ -360,11 +364,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       try {
         body = JSON.parse(text);
       } catch {
-        const contentType = response.headers.get("content-type") ?? "unknown content type";
-        throw new ApiRequestError(
-          `API returned a non-JSON response (${contentType}) from ${baseUrl}.`,
-          { status: response.status }
-        );
+        throw new ApiRequestError("MaktabLink service unavailable.", {
+          status: response.status,
+          code: "api_unavailable",
+          network: true
+        });
       }
     }
 
@@ -388,6 +392,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  health() {
+    return request<{ status: string }>("/health", undefined, { cache: false });
+  },
+
   async schools(query = "") {
     const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
     return request<{ schools: SchoolOption[] }>(`/v1/public/schools${suffix}`);

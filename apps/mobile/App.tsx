@@ -37,6 +37,7 @@ import {
 import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
+import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
   setReadCacheFallbackListener,
   setReadCacheScope
@@ -102,7 +103,9 @@ function AppContent() {
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
+  const [errorKind, setErrorKind] = useState<AppErrorKind | null>(null);
+  const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
@@ -201,18 +204,49 @@ function AppContent() {
       void loadParentNotifications(session.accessToken);
     }
     if (session.user.role === "TEACHER") void loadTeacherToday(session.accessToken);
-  }, [screen, session?.accessToken, session?.user.role, session?.mustChangePassword]);
+  }, [screen, session?.accessToken, session?.user.role, session?.mustChangePassword, reconnectEpoch]);
 
   useEffect(() => {
     if (screen === "home" && session?.user.role === "PARENT" && selectedChildId) {
       void loadParentAttendance(session.accessToken, selectedChildId);
     }
-  }, [screen, session?.accessToken, session?.user.role, selectedChildId]);
+  }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
   useEffect(() => {
     if (!session || session.mustChangePassword) return;
     void registerPushForSession(session.accessToken);
   }, [session?.accessToken, session?.mustChangePassword]);
+
+  useEffect(() => {
+    if (errorKind !== "network") return;
+    const interval = setInterval(() => {
+      void retryServiceConnection();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [errorKind, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
+
+  function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
+    setErrorKey(key);
+    setErrorKind(key ? kind : null);
+  }
+
+  function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
+    const failure = appErrorFromCause(cause, fallback);
+    setAppError(failure.key, failure.kind);
+  }
+
+  async function retryServiceConnection() {
+    try {
+      await api.health();
+      setAppError(null);
+      setNotice(translate(locale, "common.connectionRestored"));
+      setReconnectEpoch((current) => current + 1);
+      if (screen === "school") void loadSchools();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async function restore() {
     try {
@@ -237,7 +271,7 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
-          setError(translate(locale, "common.serviceUnavailable"));
+          setAppError("common.serviceUnavailable");
           setScreen("login");
           return;
         }
@@ -256,7 +290,7 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
-          setError(translate(locale, "common.serviceUnavailable"));
+          setAppError("common.serviceUnavailable");
           setScreen("login");
           return;
         }
@@ -269,24 +303,14 @@ function AppContent() {
     }
   }
 
-  function errorMessage(cause: unknown, fallback: TranslationKey = "common.networkError") {
-    if (cause instanceof ApiRequestError) {
-      if (cause.code === "school_service_unavailable") return translate(locale, "common.serviceUnavailable");
-      if (cause.code === "session_invalid" || cause.code === "refresh_invalid") return translate(locale, "common.sessionExpired");
-      if (cause.network) return translate(locale, "common.networkError");
-      return cause.message;
-    }
-    return cause instanceof Error ? cause.message : translate(locale, fallback);
-  }
-
   async function loadSchools() {
     setBusy(true);
-    setError(null);
+    setAppError(null);
     try {
       const result = await api.schools(query);
       setSchools(result.schools);
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     } finally {
       setBusy(false);
     }
@@ -294,7 +318,7 @@ function AppContent() {
 
   async function loadParentHome(accessToken: string) {
     setBusy(true);
-    setError(null);
+    setAppError(null);
     try {
       const result = await api.parentHome(accessToken);
       setParentHome(result);
@@ -304,7 +328,7 @@ function AppContent() {
           : result.children[0]?.student.id ?? ""
       );
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     } finally {
       setBusy(false);
     }
@@ -316,7 +340,7 @@ function AppContent() {
       setParentToday(result.today);
       setParentAttendance(result.days);
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     }
   }
 
@@ -325,17 +349,17 @@ function AppContent() {
       const result = await api.parentNotifications(accessToken);
       setParentNotifications(result.notifications);
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     }
   }
 
   async function loadTeacherToday(accessToken: string) {
     setBusy(true);
-    setError(null);
+    setAppError(null);
     try {
       setTeacherToday(await api.teacherToday(accessToken));
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     } finally {
       setBusy(false);
     }
@@ -344,7 +368,7 @@ function AppContent() {
   async function openAttendance(classId: string, date: string) {
     if (!session) return;
     setBusy(true);
-    setError(null);
+    setAppError(null);
     setNotice(null);
     try {
       const sheet = await api.teacherAttendance(session.accessToken, classId, date);
@@ -358,7 +382,7 @@ function AppContent() {
       );
       setScreen("teacher-attendance");
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     } finally {
       setBusy(false);
     }
@@ -371,12 +395,12 @@ function AppContent() {
       status: attendanceDraft[item.student.id]
     }));
     if (entries.some((entry) => !entry.status)) {
-      setError(translate(locale, "attendance.markEveryone"));
+      setAppError("attendance.markEveryone");
       return;
     }
 
     setBusy(true);
-    setError(null);
+    setAppError(null);
     setNotice(null);
     try {
       const result = await api.submitDailyAttendance(session.accessToken, {
@@ -388,7 +412,7 @@ function AppContent() {
       setNotice(result.changed ? translate(locale, "attendance.saved") : translate(locale, "attendance.noChanges"));
       await loadTeacherToday(session.accessToken);
     } catch (cause) {
-      setError(errorMessage(cause));
+      showCause(cause);
     } finally {
       setBusy(false);
     }
@@ -409,7 +433,7 @@ function AppContent() {
   async function signIn() {
     if (!school || !role) return;
     setBusy(true);
-    setError(null);
+    setAppError(null);
     try {
       const next = await api.login({
         schoolId: school.id,
@@ -423,7 +447,7 @@ function AppContent() {
       setPassword("");
       setScreen(next.mustChangePassword ? "change-password" : "home");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Login failed.");
+      showCause(cause, "auth.loginFailed");
     } finally {
       setBusy(false);
     }
@@ -432,11 +456,11 @@ function AppContent() {
   async function changePassword() {
     if (!session) return;
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setAppError("passwordChange.mismatch");
       return;
     }
     setBusy(true);
-    setError(null);
+    setAppError(null);
     try {
       const next = await api.changeTemporaryPassword(session.accessToken, newPassword);
       setSession(next);
@@ -448,7 +472,7 @@ function AppContent() {
       setConfirmPassword("");
       setScreen("home");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Password change failed.");
+      showCause(cause, "passwordChange.failed");
     } finally {
       setBusy(false);
     }
@@ -485,7 +509,7 @@ function AppContent() {
 
   function chooseRole(value: MobileRole) {
     setRole(value);
-    setError(null);
+    setAppError(null);
     setScreen("school");
   }
 
@@ -871,22 +895,24 @@ function AppContent() {
                 </View>
 
                 <LearnerLearningPanel
+                  key={`parent-learning-${reconnectEpoch}-${selectedChild.student.id}`}
                   accessToken={session.accessToken}
                   studentId={selectedChild.student.id}
                   mode="PARENT"
                   locale={locale}
                   textDirection={textDirection}
-                  onError={setError}
+                  onError={setAppError}
                   onNotice={setNotice}
                 />
 
                 <CommunicationPanel
+                  key={`parent-communication-${reconnectEpoch}-${selectedChild.student.id}`}
                   accessToken={session.accessToken}
                   mode="PARENT"
                   studentId={selectedChild.student.id}
                   locale={locale}
                   textDirection={textDirection}
-                  onError={setError}
+                  onError={setAppError}
                   onNotice={setNotice}
                 />
 
@@ -1004,20 +1030,22 @@ function AppContent() {
             </View>
 
             <TeacherLearningPanel
+              key={`teacher-learning-${reconnectEpoch}`}
               accessToken={session.accessToken}
               locale={locale}
               textDirection={textDirection}
-              onError={setError}
+              onError={setAppError}
               onNotice={setNotice}
             />
 
             <CommunicationPanel
+              key={`teacher-communication-${reconnectEpoch}`}
               accessToken={session.accessToken}
               mode="TEACHER"
               supervisedClasses={teacherToday?.supervisedClasses ?? []}
               locale={locale}
               textDirection={textDirection}
-              onError={setError}
+              onError={setAppError}
               onNotice={setNotice}
             />
 
@@ -1039,20 +1067,22 @@ function AppContent() {
               </View>
             </View>
             <LearnerLearningPanel
+              key={`student-learning-${reconnectEpoch}`}
               accessToken={session.accessToken}
               mode="STUDENT"
               locale={locale}
               textDirection={textDirection}
-              onError={setError}
+              onError={setAppError}
               onNotice={setNotice}
             />
 
             <CommunicationPanel
+              key={`student-communication-${reconnectEpoch}`}
               accessToken={session.accessToken}
               mode="STUDENT"
               locale={locale}
               textDirection={textDirection}
-              onError={setError}
+              onError={setAppError}
               onNotice={setNotice}
             />
             <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
@@ -1067,7 +1097,7 @@ function AppContent() {
               locale={locale}
               onPress={() => {
                 setNotice(null);
-                setError(null);
+                setAppError(null);
                 setScreen("home");
               }}
             />
@@ -1157,15 +1187,19 @@ function AppContent() {
             <Text style={[styles.successNoticeText, textDirection]}>{notice}</Text>
           </View>
         ) : null}
-        {error ? (
-          <View style={styles.errorCard} accessibilityLiveRegion="assertive">
-            <Ionicons name="alert-circle-outline" size={20} color={tokens.color.danger} />
-            <Text style={[styles.errorText, textDirection]}>{error}</Text>
-          </View>
-        ) : null}
         {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} color={tokens.color.brand} /> : null}
         </Animated.View>
       </ScrollView>
+
+      {errorKey ? (
+        <ErrorPopup
+          locale={locale}
+          errorKey={errorKey}
+          kind={errorKind ?? "general"}
+          onDismiss={() => setAppError(null)}
+          onRetry={() => void retryServiceConnection()}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1175,6 +1209,69 @@ export default function App() {
     <SafeAreaProvider>
       <AppContent />
     </SafeAreaProvider>
+  );
+}
+
+function ErrorPopup({
+  locale,
+  errorKey,
+  kind,
+  onDismiss,
+  onRetry
+}: {
+  locale: SupportedLocale;
+  errorKey: TranslationKey;
+  kind: AppErrorKind;
+  onDismiss: () => void;
+  onRetry: () => void;
+}) {
+  const rtl = getDirection(locale) === "rtl";
+  const titleKey =
+    kind === "network" ? "common.connectionProblemTitle" : "common.errorTitle";
+
+  return (
+    <View pointerEvents="box-none" style={styles.errorPopupLayer}>
+      <View
+        accessibilityLiveRegion="assertive"
+        accessibilityRole="alert"
+        style={[styles.errorPopup, rtl && styles.errorPopupRtl]}
+      >
+        <View style={styles.errorPopupIcon}>
+          <Ionicons
+            name={kind === "network" ? "cloud-offline-outline" : "information-circle-outline"}
+            size={22}
+            color={kind === "network" ? tokens.color.warning : tokens.color.danger}
+          />
+        </View>
+        <View style={styles.errorPopupCopy}>
+          <Text style={[styles.errorPopupTitle, rtl && styles.errorPopupTextRtl]}>
+            {translate(locale, titleKey)}
+          </Text>
+          <Text style={[styles.errorPopupMessage, rtl && styles.errorPopupTextRtl]}>
+            {translate(locale, errorKey)}
+          </Text>
+          <View style={[styles.errorPopupActions, rtl && styles.errorPopupActionsRtl]}>
+            {kind === "network" ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onRetry}
+                style={({ pressed }) => [styles.errorPopupPrimary, pressed && styles.pressed]}
+              >
+                <Text style={styles.errorPopupPrimaryText}>{translate(locale, "action.retry")}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDismiss}
+                style={({ pressed }) => [styles.errorPopupSecondary, pressed && styles.pressed]}
+              >
+                <Text style={styles.errorPopupSecondaryText}>{translate(locale, "action.dismiss")}</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -1517,17 +1614,64 @@ const styles = StyleSheet.create({
   emptyCard: { padding: 18, borderRadius: 17, backgroundColor: "#eef3fa" },
   successMark: { width: 58, height: 58, borderRadius: 18, backgroundColor: "#e8f5ee", alignItems: "center", justifyContent: "center" },
   successMarkText: { color: tokens.color.success, fontSize: 28, fontWeight: "900" },
-  errorCard: {
+  errorPopupLayer: {
+    position: "absolute",
+    top: 12,
+    left: 16,
+    right: 16,
+    zIndex: 50,
+    alignItems: "center"
+  },
+  errorPopup: {
+    width: "100%",
+    maxWidth: 520,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 9,
-    backgroundColor: "#fff1f0",
+    gap: 12,
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "#ffd9d4",
-    borderRadius: 14,
-    padding: 13
+    borderColor: "#e3e9f2",
+    borderRadius: 18,
+    padding: 15,
+    shadowColor: "#172033",
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8
   },
-  errorText: { flex: 1, color: tokens.color.danger, lineHeight: 21, fontSize: 13.5 },
+  errorPopupRtl: { flexDirection: "row-reverse" },
+  errorPopupIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff7e8"
+  },
+  errorPopupCopy: { flex: 1, gap: 5 },
+  errorPopupTitle: { color: tokens.color.text, fontSize: 15.5, fontWeight: "900" },
+  errorPopupMessage: { color: tokens.color.textMuted, fontSize: 13.5, lineHeight: 20 },
+  errorPopupTextRtl: { textAlign: "right", writingDirection: "rtl" },
+  errorPopupActions: { flexDirection: "row", marginTop: 7, gap: 8 },
+  errorPopupActionsRtl: { flexDirection: "row-reverse" },
+  errorPopupPrimary: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.color.brand
+  },
+  errorPopupPrimaryText: { color: "#fff", fontWeight: "900", fontSize: 12.5 },
+  errorPopupSecondary: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf1f7"
+  },
+  errorPopupSecondaryText: { color: tokens.color.text, fontWeight: "800", fontSize: 12.5 },
   loader: { marginTop: 8 },
   rowRtl: { flexDirection: "row-reverse" },
   flexCopy: { flex: 1, gap: 3 },

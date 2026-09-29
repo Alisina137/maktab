@@ -12,7 +12,8 @@ import { tokens } from "@maktablink/design-tokens";
 import {
   getDirection,
   translate,
-  type SupportedLocale
+  type SupportedLocale,
+  type TranslationKey
 } from "@maktablink/localization";
 import {
   api,
@@ -21,6 +22,7 @@ import {
   type LearnerAcademicPayload,
   type TeacherLearningPayload
 } from "./api";
+import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -31,7 +33,7 @@ type CommonProps = {
   accessToken: string;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
-  onError: (message: string | null) => void;
+  onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
   onNotice: (message: string | null) => void;
 };
 
@@ -47,11 +49,10 @@ function localDateParts(value: string) {
 
 function dueAtFromFields(date: string, time: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    throw new Error("Use YYYY-MM-DD for date and HH:mm for time.");
+    return null;
   }
   const value = new Date(`${date}T${time}:00`);
-  if (Number.isNaN(value.getTime())) throw new Error("Invalid homework due date.");
-  return value.toISOString();
+  return Number.isNaN(value.getTime()) ? null : value.toISOString();
 }
 
 export function TeacherLearningPanel(props: CommonProps) {
@@ -81,7 +82,8 @@ export function TeacherLearningPanel(props: CommonProps) {
       setView(result);
       setAssignmentId((current) => current || result.assignments[0]?.assignmentId || "");
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -114,14 +116,19 @@ export function TeacherLearningPanel(props: CommonProps) {
 
   async function saveHomework() {
     if (!assignmentId || !homeworkTitle.trim() || !homeworkContent.trim()) {
-      onError(translate(locale, "learning.completeHomework"));
+      onError("learning.completeHomework");
       return;
     }
+    const dueAt = dueAtFromFields(dueDate, dueTime);
+    if (!dueAt) {
+      onError("learning.invalidDueDate");
+      return;
+    }
+
     setBusy(true);
     onError(null);
     onNotice(null);
     try {
-      const dueAt = dueAtFromFields(dueDate, dueTime);
       if (editingHomeworkId) {
         await api.updateHomework(accessToken, editingHomeworkId, {
           title: homeworkTitle.trim(),
@@ -147,7 +154,8 @@ export function TeacherLearningPanel(props: CommonProps) {
       setAttachmentUrl("");
       await load();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -171,7 +179,8 @@ export function TeacherLearningPanel(props: CommonProps) {
       );
       await load();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -195,7 +204,8 @@ export function TeacherLearningPanel(props: CommonProps) {
         )
       );
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -211,7 +221,7 @@ export function TeacherLearningPanel(props: CommonProps) {
         remark: remarkDraft[item.student.id]?.trim() || undefined
       }));
     if (entries.length === 0 || entries.some((entry) => !Number.isInteger(entry.score))) {
-      onError(translate(locale, "learning.validScores"));
+      onError("learning.validScores");
       return;
     }
 
@@ -224,7 +234,8 @@ export function TeacherLearningPanel(props: CommonProps) {
       onNotice(translate(locale, "learning.marksSaved"));
       await load();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -469,7 +480,8 @@ export function LearnerLearningPanel({
           : await api.studentHome(accessToken);
       setView(result);
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : translate(locale, "common.networkError"));
+      const failure = appErrorFromCause(cause);
+      onError(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }

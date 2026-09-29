@@ -29,8 +29,16 @@ export type TranslationKey =
   | "field.username"
   | "field.password"
   | "auth.signIn"
+  | "auth.loginFailed"
+  | "auth.invalidCredentials"
+  | "auth.roleMismatch"
+  | "auth.accountSuspended"
+  | "auth.accountUnavailable"
+  | "auth.rateLimited"
   | "passwordChange.title"
   | "passwordChange.hint"
+  | "passwordChange.mismatch"
+  | "passwordChange.failed"
   | "field.newPassword"
   | "field.confirmPassword"
   | "action.save"
@@ -38,6 +46,7 @@ export type TranslationKey =
   | "action.retry"
   | "action.showPassword"
   | "action.hidePassword"
+  | "action.dismiss"
   | "home.title"
   | "home.phase2"
   | "home.pending"
@@ -50,7 +59,13 @@ export type TranslationKey =
   | "parent.academicYear"
   | "auth.logout"
   | "common.loading"
+  | "common.errorTitle"
+  | "common.connectionProblemTitle"
   | "common.networkError"
+  | "common.apiUnavailable"
+  | "common.connectionRestored"
+  | "common.validationError"
+  | "common.requestFailed"
   | "common.cachedOffline"
   | "common.serviceUnavailable"
   | "common.sessionExpired"
@@ -103,6 +118,7 @@ export type TranslationKey =
   | "learning.noAssignments"
   | "learning.noHomework"
   | "learning.completeHomework"
+  | "learning.invalidDueDate"
   | "learning.homeworkSaved"
   | "learning.homeworkPublished"
   | "learning.homeworkUpdated"
@@ -165,8 +181,16 @@ const en: Record<TranslationKey, string> = {
   "field.username": "Username",
   "field.password": "Password",
   "auth.signIn": "Sign in",
+  "auth.loginFailed": "Sign in could not be completed. Please try again.",
+  "auth.invalidCredentials": "The username or password is not correct. Please check your details and try again.",
+  "auth.roleMismatch": "This account does not match the role you selected. Please go back and choose the correct role.",
+  "auth.accountSuspended": "This account is temporarily suspended. Please contact your school administration.",
+  "auth.accountUnavailable": "This account is no longer active. Please contact your school administration.",
+  "auth.rateLimited": "There have been too many sign-in attempts. Please wait a few minutes and try again.",
   "passwordChange.title": "Create your private password",
   "passwordChange.hint": "Your temporary password can only get you this far. Choose a new password that your school cannot see.",
+  "passwordChange.mismatch": "The two passwords do not match. Please enter the same password in both fields.",
+  "passwordChange.failed": "Your password could not be changed. Please try again.",
   "field.newPassword": "New password",
   "field.confirmPassword": "Confirm password",
   "action.save": "Save",
@@ -174,6 +198,7 @@ const en: Record<TranslationKey, string> = {
   "action.retry": "Retry",
   "action.showPassword": "Show",
   "action.hidePassword": "Hide",
+  "action.dismiss": "Close",
   "home.title": "Account ready",
   "home.phase2": "Your school account is authenticated. Academic features will appear in the next phases.",
   "home.pending": "Your school account is authenticated. Features for this role will appear in the relevant implementation phase.",
@@ -186,6 +211,12 @@ const en: Record<TranslationKey, string> = {
   "parent.academicYear": "Academic year",
   "auth.logout": "Log out",
   "common.loading": "Loading…",
+  "common.errorTitle": "Something needs your attention",
+  "common.connectionProblemTitle": "Connection interrupted",
+  "common.apiUnavailable": "MaktabLink cannot reach the school service right now. The app will reconnect automatically when the service is available again.",
+  "common.connectionRestored": "Connection restored. Your information is being refreshed.",
+  "common.validationError": "Some of the information entered is not valid. Please review it and try again.",
+  "common.requestFailed": "This action could not be completed. Please try again.",
   "teacher.todayTitle": "Today",
   "teacher.supervisedClass": "My supervised class",
   "teacher.schedule": "Today's schedule",
@@ -235,6 +266,7 @@ const en: Record<TranslationKey, string> = {
   "learning.noAssignments": "No active subject/class assignments.",
   "learning.noHomework": "No homework created yet.",
   "learning.completeHomework": "Complete the assignment, title, instructions, due date and time.",
+  "learning.invalidDueDate": "Enter the date as YYYY-MM-DD and the time as HH:mm.",
   "learning.homeworkSaved": "Homework draft saved.",
   "learning.homeworkPublished": "Homework published to the class.",
   "learning.homeworkUpdated": "Homework status updated.",
@@ -269,7 +301,7 @@ const en: Record<TranslationKey, string> = {
   "fees.outstanding": "Outstanding",
   "fees.due": "Due",
   "fees.none": "No issued fees for this student.",
-  "common.networkError": "Could not connect to the MaktabLink API. Make sure the API is running and your phone can reach this computer.",
+  "common.networkError": "MaktabLink cannot reach the school service right now. Please check your connection and try again.",
   "common.cachedOffline": "Internet is unavailable. You are viewing securely saved information from this device.",
   "common.serviceUnavailable": "Your school's MaktabLink service is currently unavailable. Please contact the school administration.",
   "common.sessionExpired": "Your session has expired. Sign in again when a connection is available.",
@@ -302,8 +334,16 @@ const dari: Record<TranslationKey, string> = {
   "field.username": "نام کاربری",
   "field.password": "رمز عبور",
   "auth.signIn": "ورود",
+  "auth.loginFailed": "ورود انجام نشد. لطفاً دوباره کوشش کنید.",
+  "auth.invalidCredentials": "نام کاربری یا رمز عبور درست نیست. لطفاً معلومات خود را بررسی کرده و دوباره کوشش کنید.",
+  "auth.roleMismatch": "این حساب مربوط به نقشی که انتخاب کرده‌اید نیست. لطفاً برگردید و نقش درست را انتخاب کنید.",
+  "auth.accountSuspended": "این حساب موقتاً تعلیق شده است. لطفاً با اداره مکتب تماس بگیرید.",
+  "auth.accountUnavailable": "این حساب دیگر فعال نیست. لطفاً با اداره مکتب تماس بگیرید.",
+  "auth.rateLimited": "تلاش‌های ورود بیش از حد بوده است. لطفاً چند دقیقه صبر کرده و دوباره کوشش کنید.",
   "passwordChange.title": "رمز خصوصی خود را بسازید",
   "passwordChange.hint": "رمز موقت فقط برای اولین ورود است. رمزی انتخاب کنید که مکتب آن را نمی‌بیند.",
+  "passwordChange.mismatch": "دو رمز عبور یکسان نیستند. لطفاً در هر دو بخش یک رمز را وارد کنید.",
+  "passwordChange.failed": "رمز عبور تغییر نکرد. لطفاً دوباره کوشش کنید.",
   "field.newPassword": "رمز جدید",
   "field.confirmPassword": "تکرار رمز",
   "action.save": "ذخیره",
@@ -311,6 +351,7 @@ const dari: Record<TranslationKey, string> = {
   "action.retry": "تلاش دوباره",
   "action.showPassword": "نمایش",
   "action.hidePassword": "پنهان",
+  "action.dismiss": "بستن",
   "home.title": "حساب آماده است",
   "home.phase2": "حساب مکتب شما تأیید شد. امکانات درسی در مراحل بعدی اضافه می‌شوند.",
   "home.pending": "حساب مکتب شما تأیید شده است. امکانات این نقش در مرحله مربوط آن اضافه می‌شوند.",
@@ -323,6 +364,12 @@ const dari: Record<TranslationKey, string> = {
   "parent.academicYear": "سال تعلیمی",
   "auth.logout": "خروج",
   "common.loading": "در حال بارگذاری…",
+  "common.errorTitle": "یک مورد نیاز به توجه شما دارد",
+  "common.connectionProblemTitle": "ارتباط موقتاً قطع شده است",
+  "common.apiUnavailable": "برنامه فعلاً به خدمات مکتب در MaktabLink دسترسی ندارد. پس از فعال شدن دوبارهٔ سرویس، برنامه به‌صورت خودکار وصل می‌شود.",
+  "common.connectionRestored": "ارتباط دوباره برقرار شد. معلومات شما در حال تازه‌شدن است.",
+  "common.validationError": "بعضی از معلومات واردشده درست نیست. لطفاً آن‌ها را بررسی کرده و دوباره کوشش کنید.",
+  "common.requestFailed": "این کار انجام نشد. لطفاً دوباره کوشش کنید.",
   "teacher.todayTitle": "امروز",
   "teacher.supervisedClass": "صنف تحت نظارت من",
   "teacher.schedule": "برنامه امروز",
@@ -372,6 +419,7 @@ const dari: Record<TranslationKey, string> = {
   "learning.noAssignments": "هیچ مضمون/صنف فعال به شما سپرده نشده است.",
   "learning.noHomework": "هنوز وظیفه‌ای ساخته نشده است.",
   "learning.completeHomework": "مضمون، عنوان، دستورالعمل، تاریخ و زمان تحویل را تکمیل کنید.",
+  "learning.invalidDueDate": "تاریخ را به شکل YYYY-MM-DD و زمان را به شکل HH:mm وارد کنید.",
   "learning.homeworkSaved": "پیش‌نویس وظیفه ذخیره شد.",
   "learning.homeworkPublished": "وظیفه برای صنف نشر شد.",
   "learning.homeworkUpdated": "وضعیت وظیفه به‌روزرسانی شد.",
@@ -406,7 +454,7 @@ const dari: Record<TranslationKey, string> = {
   "fees.outstanding": "باقی‌مانده",
   "fees.due": "موعد",
   "fees.none": "برای این شاگرد فیس صادرشده‌ای وجود ندارد.",
-  "common.networkError": "ارتباط با API برقرار نشد. مطمئن شوید API روشن است و موبایل به این کمپیوتر دسترسی دارد.",
+  "common.networkError": "برنامه فعلاً به خدمات مکتب در MaktabLink دسترسی ندارد. لطفاً اتصال خود را بررسی کرده و دوباره کوشش کنید.",
   "common.cachedOffline": "اینترنت در دسترس نیست. معلومات امن ذخیره‌شده در این دستگاه را مشاهده می‌کنید.",
   "common.serviceUnavailable": "خدمت MaktabLink مکتب شما فعلاً در دسترس نیست. لطفاً با اداره مکتب تماس بگیرید.",
   "common.sessionExpired": "نشست شما پایان یافته است. وقتی اینترنت در دسترس شد دوباره وارد شوید.",
@@ -439,8 +487,16 @@ const pashto: Record<TranslationKey, string> = {
   "field.username": "کارن نوم",
   "field.password": "پټنوم",
   "auth.signIn": "ننوتل",
+  "auth.loginFailed": "ننوتل بشپړ نه شول. مهرباني وکړئ بیا هڅه وکړئ.",
+  "auth.invalidCredentials": "کارن نوم یا پټنوم سم نه دی. مهرباني وکړئ معلومات وګورئ او بیا هڅه وکړئ.",
+  "auth.roleMismatch": "دا حساب له هغه رول سره سمون نه لري چې تاسو ټاکلی دی. مهرباني وکړئ شاته لاړ شئ او سم رول وټاکئ.",
+  "auth.accountSuspended": "دا حساب لنډمهاله ځنډول شوی دی. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
+  "auth.accountUnavailable": "دا حساب نور فعال نه دی. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
+  "auth.rateLimited": "د ننوتلو هڅې ډېرې شوې دي. مهرباني وکړئ څو دقیقې وروسته بیا هڅه وکړئ.",
   "passwordChange.title": "خپل شخصي پټنوم جوړ کړئ",
   "passwordChange.hint": "لنډمهاله پټنوم یوازې د لومړي ځل لپاره دی. داسې نوی پټنوم وټاکئ چې ښوونځی یې نه ویني.",
+  "passwordChange.mismatch": "دواړه پټنومونه یو شان نه دي. مهرباني وکړئ په دواړو ځایونو کې یو شان پټنوم ولیکئ.",
+  "passwordChange.failed": "پټنوم بدل نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
   "field.newPassword": "نوی پټنوم",
   "field.confirmPassword": "پټنوم بیا ولیکئ",
   "action.save": "ساتل",
@@ -448,6 +504,7 @@ const pashto: Record<TranslationKey, string> = {
   "action.retry": "بیا هڅه",
   "action.showPassword": "ښودل",
   "action.hidePassword": "پټول",
+  "action.dismiss": "تړل",
   "home.title": "حساب چمتو دی",
   "home.phase2": "ستاسو د ښوونځي حساب تایید شو. درسي ځانګړتیاوې به په راتلونکو پړاوونو کې اضافه شي.",
   "home.pending": "ستاسو د ښوونځي حساب تایید شوی دی. د دې رول ځانګړتیاوې به په اړوند پړاو کې اضافه شي.",
@@ -460,6 +517,12 @@ const pashto: Record<TranslationKey, string> = {
   "parent.academicYear": "تعلیمي کال",
   "auth.logout": "وتل",
   "common.loading": "بارېږي…",
+  "common.errorTitle": "یو څه ستاسو پاملرنې ته اړتیا لري",
+  "common.connectionProblemTitle": "اړیکه لنډمهاله پرې شوې",
+  "common.apiUnavailable": "MaktabLink اوس د ښوونځي خدمت ته لاسرسی نه لري. کله چې خدمت بېرته فعال شي، اپ به په اوتومات ډول بیا ونښلي.",
+  "common.connectionRestored": "اړیکه بېرته جوړه شوه. ستاسو معلومات تازه کېږي.",
+  "common.validationError": "ځینې داخل شوي معلومات سم نه دي. مهرباني وکړئ یې وګورئ او بیا هڅه وکړئ.",
+  "common.requestFailed": "دا کار بشپړ نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
   "teacher.todayTitle": "نن",
   "teacher.supervisedClass": "زما تر څار لاندې ټولګی",
   "teacher.schedule": "د نن ورځې مهالویش",
@@ -509,6 +572,7 @@ const pashto: Record<TranslationKey, string> = {
   "learning.noAssignments": "فعال مضمون/ټولګي دنده نشته.",
   "learning.noHomework": "تر اوسه کورنۍ دنده نه ده جوړه شوې.",
   "learning.completeHomework": "دنده، سرلیک، لارښوونې، نېټه او وخت بشپړ کړئ.",
+  "learning.invalidDueDate": "نېټه د YYYY-MM-DD او وخت د HH:mm په بڼه ولیکئ.",
   "learning.homeworkSaved": "د کورنۍ دندې مسوده وساتل شوه.",
   "learning.homeworkPublished": "کورنۍ دنده ټولګي ته خپره شوه.",
   "learning.homeworkUpdated": "د کورنۍ دندې حالت تازه شو.",
@@ -543,7 +607,7 @@ const pashto: Record<TranslationKey, string> = {
   "fees.outstanding": "پاتې",
   "fees.due": "موعد",
   "fees.none": "د دې زده کوونکي لپاره صادر شوی فیس نشته.",
-  "common.networkError": "له MaktabLink API سره اړیکه ونه شوه. ډاډ ترلاسه کړئ چې API چلېږي او موبایل دې کمپیوټر ته لاسرسی لري.",
+  "common.networkError": "MaktabLink اوس د ښوونځي خدمت ته لاسرسی نه لري. مهرباني وکړئ خپله اړیکه وګورئ او بیا هڅه وکړئ.",
   "common.cachedOffline": "انټرنېټ نشته. تاسو په دې وسیله کې خوندي شوي معلومات ګورئ.",
   "common.serviceUnavailable": "ستاسو د ښوونځي MaktabLink خدمت اوس شتون نه لري. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
   "common.sessionExpired": "ستاسو ناسته پای ته رسېدلې ده. کله چې انټرنېټ موجود شي بیا ننوځئ.",
