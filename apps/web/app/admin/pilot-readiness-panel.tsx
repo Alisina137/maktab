@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAdminWorkspace } from "./admin-workspace";
+import { adminText } from "./admin-i18n";
 
 type Subscription = {
   planCode: string;
@@ -78,6 +80,8 @@ async function downloadAuthenticated(accessToken: string, path: string, fallback
 }
 
 export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
+  const { locale } = useAdminWorkspace();
+  const t = (english: string) => adminText(locale, english);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [audit, setAudit] = useState<AuditLog[]>([]);
@@ -136,15 +140,13 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
     <section className="pilot-section" aria-labelledby="pilot-readiness-title">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">Phase 8 · Pilot Readiness</span>
-          <h2 id="pilot-readiness-title">Pilot operations</h2>
+          <span className="eyebrow">{t("Phase 8 · Pilot Readiness")}</span>
+          <h2 id="pilot-readiness-title">{t("Pilot operations")}</h2>
           <p>
             Review onboarding checks, subscription access, audit history, safe school export, and import templates.
           </p>
         </div>
-        <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>
-          Refresh
-        </button>
+        <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -153,7 +155,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
       {subscription ? (
         <article className="admin-panel pilot-subscription">
           <div>
-            <span className="eyebrow">School subscription</span>
+            <span className="eyebrow">{t("School subscription")}</span>
             <h3>{subscription.planCode}</h3>
             <p>
               <strong>{subscription.status}</strong> · {subscription.billingCycle} · {subscription.priceAfn.toLocaleString()} AFN
@@ -172,18 +174,18 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
       {readiness ? (
         <>
           <div className="academic-summary-grid pilot-summary-grid" aria-label="Pilot data summary">
-            <Summary label="Students" value={readiness.counts.students} />
-            <Summary label="Parents" value={readiness.counts.parents} />
-            <Summary label="Teachers" value={readiness.counts.teachers} />
-            <Summary label="Classes" value={readiness.counts.classes} />
-            <Summary label="Subjects" value={readiness.counts.subjects} />
-            <Summary label="Assignments" value={readiness.counts.teacherAssignments} />
+            <Summary label={t("Students")} value={readiness.counts.students} />
+            <Summary label={t("Parents")} value={readiness.counts.parents} />
+            <Summary label={t("Teachers")} value={readiness.counts.teachers} />
+            <Summary label={t("Classes")} value={readiness.counts.classes} />
+            <Summary label={t("Subjects")} value={readiness.counts.subjects} />
+            <Summary label={t("Assignments")} value={readiness.counts.teacherAssignments} />
           </div>
 
           <article className="admin-panel">
             <div className="admin-section-header">
               <div>
-                <h3>Onboarding checklist</h3>
+                <h3>{t("Onboarding checklist")}</h3>
                 <p>{readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch."}</p>
               </div>
               <span className={readiness.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
@@ -208,7 +210,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
 
       <div className="admin-grid">
         <article className="admin-panel">
-          <h3>School data export</h3>
+          <h3>{t("School data export")}</h3>
           <p className="admin-copy">
             Download a school-scoped JSON export. Password hashes and authentication sessions are excluded.
           </p>
@@ -217,13 +219,11 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             type="button"
             disabled={busy}
             onClick={() => void download("/v1/admin/pilot/export", "maktablink-school-export.json", "School export downloaded.")}
-          >
-            Download core export
-          </button>
+          >{t("Download core export")}</button>
         </article>
 
         <article className="admin-panel">
-          <h3>Import templates</h3>
+          <h3>{t("Import templates")}</h3>
           <p className="admin-copy">Use the exact pilot CSV headers before upload and validation.</p>
           <div className="admin-actions pilot-template-actions">
             {(["PARENT", "STUDENT", "TEACHER"] as const).map((entity) => (
@@ -250,7 +250,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
       <article className="admin-panel">
         <div className="admin-section-header">
           <div>
-            <h3>Audit review</h3>
+            <h3>{t("Audit review")}</h3>
             <p>Sensitive changes are recorded here for school review.</p>
           </div>
           <div className="admin-actions">
@@ -259,17 +259,13 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
               className="admin-secondary"
               disabled={busy || auditOffset === 0}
               onClick={() => void load(Math.max(0, auditOffset - 20))}
-            >
-              Newer
-            </button>
+            >{t("Newer")}</button>
             <button
               type="button"
               className="admin-secondary"
               disabled={busy || !auditHasMore}
               onClick={() => void load(auditOffset + 20)}
-            >
-              Older
-            </button>
+            >{t("Older")}</button>
           </div>
         </div>
 
@@ -283,7 +279,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
               <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
             </div>
           ))}
-          {audit.length === 0 ? <p className="admin-copy">No audit events on this page.</p> : null}
+          {audit.length === 0 ? <p className="admin-copy">{t("No audit events on this page.")}</p> : null}
         </div>
       </article>
     </section>
