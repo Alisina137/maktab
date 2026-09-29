@@ -33,7 +33,8 @@ async function createTestApp() {
     "0007_phase7_communication_fees.sql",
     "0008_phase8_pilot_readiness.sql",
     "0009_school_image.sql",
-    "0010_admin_profiles.sql"
+    "0010_admin_profiles.sql",
+    "0011_admin_contact_profile.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -1862,15 +1863,183 @@ test("school administrator can read and update their own profile", async (t) => 
     method: "PATCH",
     url: "/v1/admin/profile",
     headers: auth,
-    payload: { fullName: "School Administrator", phone: "0700000000" }
+    payload: {
+      fullName: "School Administrator",
+      jobTitle: "Principal",
+      imageUrl: "https://example.com/admin.jpg",
+      email: "admin@example.com",
+      whatsapp: "+93700000000",
+      phone: "0700000000",
+      officeLocation: "Main office",
+      officeHours: "08:00-14:00",
+      bio: "School administration contact."
+    }
   });
   assert.equal(updated.statusCode, 200);
-  assert.deepEqual(updated.json<{ profile: { fullName: string; phone: string | null } }>().profile, {
+  assert.deepEqual(updated.json<{
+    profile: {
+      fullName: string;
+      jobTitle: string | null;
+      imageUrl: string | null;
+      email: string | null;
+      whatsapp: string | null;
+      phone: string | null;
+      officeLocation: string | null;
+      officeHours: string | null;
+      bio: string | null;
+    };
+  }>().profile, {
     fullName: "School Administrator",
-    phone: "0700000000"
+    jobTitle: "Principal",
+    imageUrl: "https://example.com/admin.jpg",
+    email: "admin@example.com",
+    whatsapp: "+93700000000",
+    phone: "0700000000",
+    officeLocation: "Main office",
+    officeHours: "08:00-14:00",
+    bio: "School administration contact."
   });
 
   const readBack = await app.inject({ method: "GET", url: "/v1/admin/profile", headers: auth });
   assert.equal(readBack.statusCode, 200);
   assert.equal(readBack.json<{ profile: { fullName: string } }>().profile.fullName, "School Administrator");
+});
+
+
+test("school users can read the public administrator contact card", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ADMIN-CONTACT");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+
+  const profile = await app.inject({
+    method: "PATCH",
+    url: "/v1/admin/profile",
+    headers: admin,
+    payload: {
+      fullName: "Contact Administrator",
+      jobTitle: "School Principal",
+      imageUrl: "https://example.com/principal.jpg",
+      email: "principal@example.com",
+      whatsapp: "+93700111222",
+      phone: "0700111222",
+      officeLocation: "Administration office",
+      officeHours: "08:00-14:00",
+      bio: "Contact the school administration for support."
+    }
+  });
+  assert.equal(profile.statusCode, 200);
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: admin,
+    payload: { username: "contact.parent", fullName: "Contact Parent" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parent = parentResponse.json<{ temporaryPassword: string }>();
+  const parentToken = await activateRoleLogin(
+    app,
+    schoolId,
+    "PARENT",
+    "contact.parent",
+    parent.temporaryPassword,
+    "ContactParent2026!"
+  );
+
+  const contact = await app.inject({
+    method: "GET",
+    url: "/v1/school/admin-contact",
+    headers: { authorization: `Bearer ${parentToken}` }
+  });
+  assert.equal(contact.statusCode, 200);
+  const body = contact.json<{ contact: { email: string | null; whatsapp: string | null; fullName: string } | null }>();
+  assert.ok(body.contact);
+  assert.equal(body.contact.fullName, "Contact Administrator");
+  assert.equal(body.contact.email, "principal@example.com");
+  assert.equal(body.contact.whatsapp, "+93700111222");
+});
+
+test("administrator can change their own password without using directory reset", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ADMIN-PASSWORD");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-password",
+    headers: { authorization: `Bearer ${adminToken}` },
+    payload: {
+      currentPassword: "AdminSecure2026!",
+      newPassword: "AdminChanged2026!"
+    }
+  });
+  assert.equal(changed.statusCode, 200);
+  assert.equal(changed.json<{ mustChangePassword: boolean }>().mustChangePassword, false);
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "SCHOOL_ADMIN",
+      username: "admin",
+      password: "AdminChanged2026!"
+    }
+  });
+  assert.equal(login.statusCode, 200);
+});
+
+test("security account actions remain available while subscription writes are blocked", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "SECURITY-ACTIONS");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminToken}` };
+
+  const teacher = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "security.teacher", role: "TEACHER" }
+  });
+  assert.equal(teacher.statusCode, 201);
+  const teacherId = teacher.json<{ user: { id: string } }>().user.id;
+
+  const suspendedSubscription = await app.inject({
+    method: "PATCH",
+    url: `/v1/platform/schools/${schoolId}/subscription`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "SUSPENDED" }
+  });
+  assert.equal(suspendedSubscription.statusCode, 200);
+
+  const reset = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${teacherId}/reset-password`,
+    headers: auth
+  });
+  assert.equal(reset.statusCode, 200);
+  assert.ok(reset.json<{ temporaryPassword: string }>().temporaryPassword);
+
+  const suspend = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${teacherId}/suspend`,
+    headers: auth
+  });
+  assert.equal(suspend.statusCode, 200);
+  assert.equal(suspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
 });
