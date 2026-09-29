@@ -16,7 +16,9 @@ import {
   clearAdminSession,
   friendlyAdminError,
   loadAdminSession,
+  saveAdminSession,
   type AdminToastState,
+  type Session,
   type StoredAdminSession
 } from "./admin-client";
 import { ADMIN_ERROR_DURATION_MS, ADMIN_SUCCESS_DURATION_MS } from "./admin-feedback";
@@ -37,6 +39,7 @@ type AdminWorkspaceContextValue = {
   t: (english: string) => string;
   setLocale: (locale: AdminLocale) => void;
   showToast: (toast: AdminToastState) => void;
+  updateSession: (session: Session) => void;
 };
 
 const AdminWorkspaceContext = createContext<AdminWorkspaceContextValue | null>(null);
@@ -149,6 +152,13 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     );
   }
 
+  function updateSession(session: Session) {
+    if (!stored) return;
+    const next = { ...stored, session };
+    setStored(next);
+    saveAdminSession(next);
+  }
+
   function changeLocale(next: AdminLocale) {
     setLocaleState(next);
     saveAdminLocale(next);
@@ -187,7 +197,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   const copy = pageCopy[pathname] ?? pageCopy["/admin/accounts"]!;
 
   return (
-    <AdminWorkspaceContext.Provider value={{ stored, locale, t, setLocale: changeLocale, showToast }}>
+    <AdminWorkspaceContext.Provider value={{ stored, locale, t, setLocale: changeLocale, showToast, updateSession }}>
       <main className="admin-shell admin-shell-premium admin-workspace" dir={adminDirection(locale)}>
         <header className="admin-premium-header">
           <div className="admin-premium-brand-row">
