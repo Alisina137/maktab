@@ -502,6 +502,15 @@ const fa: Record<string, string> = {
   "Row {row}": "سطر {row}",
   "Validation issue": "مشکل در بررسی معلومات",
   "INVITED": "دعوت‌شده",
+  "Creates a PARENT identity and profile together and generates a one-time temporary password.": "حساب و پروفایل والد را هم‌زمان ایجاد کرده و یک رمز موقت یک‌بارمصرف می‌سازد.",
+  "Link the student to one existing parent account. The relationship is singular, not many-to-many.": "شاگرد را فقط به یک حساب والد موجود وصل کنید. این رابطه یک‌به‌یک است، نه چندبه‌چند.",
+  "Creates a school-issued STUDENT account and links it to exactly one existing student record.": "یک حساب شاگرد صادرشده توسط مکتب ایجاد کرده و آن را فقط به یک رکورد شاگرد وصل می‌کند.",
+  "Student without login": "شاگرد بدون حساب ورود",
+  "{count} school-controlled family account(s)": "{count} حساب خانواده تحت مدیریت مکتب",
+  "{count} child(ren)": "{count} فرزند",
+  "No phone": "بدون شماره تلفن",
+  "last login {date}": "آخرین ورود {date}",
+  "never logged in": "هنوز وارد نشده",
 };
 
 const ps: Record<string, string> = {
@@ -997,6 +1006,15 @@ const ps: Record<string, string> = {
   "Row {row}": "کرښه {row}",
   "Validation issue": "د معلوماتو د تایید ستونزه",
   "INVITED": "بلل شوی",
+  "Creates a PARENT identity and profile together and generates a one-time temporary password.": "د والد حساب او پروفایل یوځای جوړوي او یو ځل کارېدونکی لنډمهاله پټنوم رامنځته کوي.",
+  "Link the student to one existing parent account. The relationship is singular, not many-to-many.": "زده‌کوونکی یوازې له یوه موجود والد حساب سره وتړئ. دا اړیکه یوه-ته-یوه ده، نه څو-ته-څو.",
+  "Creates a school-issued STUDENT account and links it to exactly one existing student record.": "د ښوونځي له خوا د زده‌کوونکي حساب جوړوي او یوازې له یوه زده‌کوونکي ریکارډ سره یې تړي.",
+  "Student without login": "زده‌کوونکی بې له ننوتلو حسابه",
+  "{count} school-controlled family account(s)": "{count} د ښوونځي تر کنټرول لاندې کورنۍ حسابونه",
+  "{count} child(ren)": "{count} ماشومان",
+  "No phone": "ټیلیفون نشته",
+  "last login {date}": "وروستی ننوتل {date}",
+  "never logged in": "تر اوسه نه دی ننوتلی",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
