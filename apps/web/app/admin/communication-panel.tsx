@@ -9,7 +9,7 @@ import {
   formatAdminHijriDateTime
 } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminErrorText, adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
 type AnnouncementScope = "SCHOOL" | "CLASS" | "ROLE";
 type AudienceRole = "TEACHER" | "PARENT" | "STUDENT";
