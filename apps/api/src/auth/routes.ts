@@ -5,7 +5,7 @@ import {
   refreshSessionSchema
 } from "@maktablink/contracts";
 import type { AccountStore, AuthenticatedSessionContext } from "@maktablink/database";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { LoginRateLimiter } from "./rate-limit.js";
 import { hashPassword, hashSessionToken, verifyPassword } from "./security.js";
 import {
@@ -16,6 +16,16 @@ import {
   rotateSession,
   safeUser
 } from "./session.js";
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(256),
+  newPassword: z
+    .string()
+    .min(10)
+    .max(128)
+    .regex(/[A-Za-z]/, "Password must include a letter.")
+    .regex(/\d/, "Password must include a number.")
+});
 
 function subscriptionUnavailable(context: Pick<AuthenticatedSessionContext, "subscription">) {
   return context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED";
@@ -117,6 +127,55 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
         schoolId: user.schoolId,
         actorUserId: user.id,
         action: "user.temporary_password_changed",
+        entityType: "user",
+        entityId: user.id
+      });
+
+      const session = await issueSession(store, user);
+      return {
+        ...session,
+        user: safeUser(user),
+        mustChangePassword: false
+      };
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      }
+      throw error;
+    }
+  });
+
+  app.post("/v1/auth/change-password", async (request, reply) => {
+    try {
+      const context = await requireAccess(request, reply, store);
+      if (!context) return;
+
+      const input = changePasswordSchema.parse(request.body);
+      if (!(await verifyPassword(input.currentPassword, context.user.passwordHash))) {
+        return reply.code(401).send({
+          error: "current_password_invalid",
+          message: "The current password is incorrect."
+        });
+      }
+      if (input.currentPassword === input.newPassword) {
+        return reply.code(400).send({
+          error: "password_unchanged",
+          message: "Choose a new password that is different from the current password."
+        });
+      }
+
+      const passwordHash = await hashPassword(input.newPassword);
+      const user = await store.activateUserWithPassword(
+        context.user.schoolId,
+        context.user.id,
+        passwordHash
+      );
+      if (!user) return reply.code(404).send({ error: "not_found", message: "Account not found." });
+
+      await store.writeAudit({
+        schoolId: user.schoolId,
+        actorUserId: user.id,
+        action: "user.password_changed",
         entityType: "user",
         entityId: user.id
       });
