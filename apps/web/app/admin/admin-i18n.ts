@@ -555,6 +555,11 @@ const fa: Record<string, string> = {
   "Create teacher profiles to view teacher timetables.": "برای دیدن تقسیم اوقات استادان، ابتدا پروفایل استادان را ایجاد کنید.",
   "Create classes to view class timetables.": "برای دیدن تقسیم اوقات صنف‌ها، ابتدا صنف‌ها را ایجاد کنید.",
   "The request could not be processed. Please try again.": "درخواست قابل پردازش نبود. لطفاً دوباره امتحان کنید.",
+  "Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.": "حساب‌های مکتب را از اینجا ایجاد کنید. پروفایل والد همراه با حساب ورود ساخته می‌شود و حساب شاگرد به رکورد موجود شاگرد وصل می‌گردد.",
+  "Student record": "رکورد شاگرد",
+  "No students without login": "هیچ شاگردی بدون حساب ورود موجود نیست",
+  "Create the student record in Families first, then return here to generate the login.": "ابتدا رکورد شاگرد را در بخش خانواده‌ها ایجاد کنید، سپس برای ساخت حساب ورود به اینجا برگردید.",
+  "Select a student record before creating the student login.": "پیش از ایجاد حساب شاگرد، یک رکورد شاگرد را انتخاب کنید.",
 };
 
 const ps: Record<string, string> = {
@@ -1103,6 +1108,11 @@ const ps: Record<string, string> = {
   "Create teacher profiles to view teacher timetables.": "د ښوونکو مهالویشونو د لیدلو لپاره لومړی د ښوونکو پروفایلونه جوړ کړئ.",
   "Create classes to view class timetables.": "د ټولګیو مهالویشونو د لیدلو لپاره لومړی ټولګي جوړ کړئ.",
   "The request could not be processed. Please try again.": "غوښتنه پروسس نه شوه. لطفاً بیا هڅه وکړئ.",
+  "Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.": "د ښوونځي حسابونه دلته جوړ کړئ. د والد پروفایل له ننوتلو حساب سره یوځای جوړېږي او د زده‌کوونکي حساب له موجود زده‌کوونکي ریکارډ سره تړل کېږي.",
+  "Student record": "د زده‌کوونکي ریکارډ",
+  "No students without login": "هیڅ زده‌کوونکی د ننوتلو له حساب پرته نشته",
+  "Create the student record in Families first, then return here to generate the login.": "لومړی د کورنیو په برخه کې د زده‌کوونکي ریکارډ جوړ کړئ، بیا د ننوتلو حساب د جوړولو لپاره دلته راشئ.",
+  "Select a student record before creating the student login.": "د زده‌کوونکي د ننوتلو حساب له جوړولو مخکې یو زده‌کوونکی وټاکئ.",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
