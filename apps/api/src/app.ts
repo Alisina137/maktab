@@ -92,9 +92,13 @@ export function buildApp(options: BuildAppOptions) {
   registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
 
   app.setErrorHandler((error, request, reply) => {
+    const maybeStatusCode =
+      typeof error === "object" && error !== null && "statusCode" in error
+        ? (error as { statusCode?: unknown }).statusCode
+        : undefined;
     const statusCode =
-      typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 500
-        ? error.statusCode
+      typeof maybeStatusCode === "number" && maybeStatusCode >= 400 && maybeStatusCode < 500
+        ? maybeStatusCode
         : 500;
 
     app.log.error({
