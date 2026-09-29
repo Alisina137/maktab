@@ -165,7 +165,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
         showToast({
           kind: "error",
           title: t("Sign out"),
-          message: friendlyAdminError(cause, "The local admin session will still be cleared.")
+          message: friendlyAdminError(cause, "The local admin session will still be cleared.", locale)
         });
       }
     }
