@@ -2704,3 +2704,229 @@ html[dir="rtl"] body {
     height: 56px;
   }
 }
+
+
+/* Solar Hijri admin date picker */
+.admin-hijri-picker {
+  position: relative;
+  width: 100%;
+}
+
+.admin-hijri-trigger {
+  width: 100%;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #fff;
+  color: #718096;
+  text-align: start;
+  box-shadow: none;
+}
+
+.admin-hijri-trigger:hover:not(:disabled) {
+  border-color: #b7c9ec;
+  background: #fbfcff;
+}
+
+.admin-hijri-trigger-selected {
+  color: var(--ml-color-text);
+  border-color: #cdd9ec;
+}
+
+.admin-hijri-trigger > span:first-child {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eef3ff;
+  color: #2b5fc5;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.admin-hijri-trigger strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-hijri-chevron {
+  color: #8a96a8;
+  font-size: 16px;
+}
+
+.admin-hijri-popover {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: 60;
+  width: min(330px, calc(100vw - 36px));
+  padding: 14px;
+  border: 1px solid #dfe6f0;
+  border-radius: 18px;
+  background: rgba(255,255,255,.985);
+  box-shadow: 0 24px 60px rgba(30, 52, 96, .18);
+  backdrop-filter: blur(18px);
+  animation: admin-hijri-popover-in .2s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.admin-hijri-calendar-header {
+  display: grid;
+  grid-template-columns: 36px minmax(0,1fr) 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-hijri-calendar-header strong {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.admin-hijri-calendar-header button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e1e7f0;
+  border-radius: 10px;
+  background: #f8faff;
+  color: #45608f;
+  font-size: 20px;
+}
+
+.admin-hijri-calendar-header button:hover {
+  background: #edf3ff;
+  border-color: #c9d7f1;
+}
+
+.admin-hijri-weekdays,
+.admin-hijri-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0,1fr));
+  gap: 4px;
+}
+
+.admin-hijri-weekdays {
+  margin-bottom: 5px;
+}
+
+.admin-hijri-weekdays span {
+  display: grid;
+  min-height: 27px;
+  place-items: center;
+  color: #8793a7;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.admin-hijri-day {
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.admin-hijri-day:hover {
+  background: #edf3ff;
+  color: #2354b5;
+}
+
+.admin-hijri-day-active,
+.admin-hijri-day-active:hover {
+  background: linear-gradient(145deg, #2b63d4, #174bb9);
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(32, 82, 184, .22);
+}
+
+.admin-hijri-time {
+  display: grid;
+  grid-template-columns: auto minmax(120px,1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #edf0f5;
+}
+
+.admin-hijri-time span {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-hijri-time input {
+  min-height: 40px;
+  border: 1px solid #dfe5ee;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ml-color-text);
+}
+
+.admin-hijri-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #edf0f5;
+}
+
+.admin-hijri-actions .admin-primary,
+.admin-hijri-actions .admin-secondary {
+  min-height: 36px;
+  padding-inline: 11px;
+}
+
+.admin-negaran-end {
+  display: grid;
+  grid-template-columns: minmax(170px,1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 280px;
+}
+
+@keyframes admin-hijri-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-hijri-popover {
+    width: min(310px, calc(100vw - 28px));
+  }
+
+  .admin-negaran-end {
+    grid-template-columns: 1fr;
+    min-width: 220px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-hijri-popover {
+    animation: none;
+  }
+}
