@@ -178,7 +178,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           method: "POST",
           body: JSON.stringify({ status })
         });
-        setNotice(adminFormat(locale, "Exam moved to {status}.", { status }));
+        setNotice(adminFormat(locale, "Exam moved to {status}.", { status: t(status) }));
       }
       await load();
     } catch (cause) {
@@ -250,14 +250,14 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
         </article>
 
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Add exam subject")}</h2><p>A class/subject can be added only when a teacher assignment already exists for it.</p></div>
+          <div><h2>{t("Add exam subject")}</h2><p>{t("A class/subject can be added only when a teacher assignment already exists for it.")}</p></div>
           <form className="admin-form" onSubmit={addExamSubject}>
             <label>
-              Exam
+              {t("Exam")}
               <select name="examId" required value={examId} onChange={(event) => { setExamId(event.target.value); setExamClassId(""); }}>
                 <option value="">{t("Select exam")}</option>
                 {learning.exams.filter((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED").map((exam) => (
-                  <option key={exam.id} value={exam.id}>{exam.name} · {exam.status}</option>
+                  <option key={exam.id} value={exam.id}>{exam.name} · {t(exam.status)}</option>
                 ))}
               </select>
             </label>
@@ -294,9 +294,9 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
               <div className="academic-row" key={exam.id}>
                 <div>
                   <strong>{exam.name}</strong>
-                  <span>{exam.type} · {exam.status} · {subjectCount} subject setup(s)</span>
+                  <span>{exam.type} · {t(exam.status)} · {subjectCount} {t("subject setup(s)")}</span>
                   {learning.examSubjects.filter((item) => item.examSubject.examId === exam.id).map((item) => (
-                    <span key={item.examSubject.id}>{item.className} · {item.subjectName} · max {item.examSubject.maxScore}</span>
+                    <span key={item.examSubject.id}>{item.className} · {item.subjectName} · {t("Maximum")} {item.examSubject.maxScore}</span>
                   ))}
                 </div>
                 {action ? (
