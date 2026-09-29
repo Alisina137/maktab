@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText } from "./admin-i18n";
 
@@ -129,15 +130,15 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
 
   if (!overview) {
     return (
-      <section className="admin-panel academic-section">
-        <div className="admin-section-header">
-          <div>
-            <h2>{t("Academic structure")}</h2>
-            <p>{t("Loading Phase 3 data…")}</p>
-          </div>
-          <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
-        </div>
-        {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      <section className="admin-panel academic-section admin-loading-card">
+        <AdminLoader label={t("Loading Phase 3 data…")} />
+        <AdminSkeleton rows={5} />
+        {error ? (
+          <>
+            <div className="admin-error" role="alert">{error}</div>
+            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+          </>
+        ) : null}
       </section>
     );
   }
@@ -146,7 +147,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
   const profiledTeacherIds = new Set(overview.teachers.map((teacher) => teacher.userId));
 
   return (
-    <section className="academic-section">
+    <section className="academic-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
