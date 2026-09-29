@@ -315,3 +315,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The day column is sticky and the table scrolls horizontally on narrower screens.
 - Persian/Dari and Pashto labels were added for the new timetable controls and empty states.
 - CI verified typecheck, tests, and production build after the timetable refinement.
+
+
+## Post-implementation refinement — Selectable teacher/class timetable
+
+- The Academics timetable now uses a master-detail selector instead of rendering every timetable simultaneously.
+- In **Teacher timetables**, the admin sees the teacher list and selecting one teacher shows only that teacher's weekly timetable.
+- In **Class timetables**, the admin sees the class list and selecting one class shows only that class's weekly timetable.
+- Selector items display the teacher/class name, code, and scheduled-period count, with a clear active state.
+- On narrower screens the selector becomes a horizontal scroll list above the timetable.
+- Friday remains excluded from both selector views and timetable creation.
+- CI verified typecheck, tests, and production build after this refinement.
