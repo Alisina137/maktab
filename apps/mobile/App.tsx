@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -63,6 +65,15 @@ const roleHintKey: Record<MobileRole, "role.parentHint" | "role.teacherHint" | "
   STUDENT: "role.studentHint"
 };
 
+const loginGreetingKey: Record<
+  MobileRole,
+  "login.greetingParent" | "login.greetingTeacher" | "login.greetingStudent"
+> = {
+  PARENT: "login.greetingParent",
+  TEACHER: "login.greetingTeacher",
+  STUDENT: "login.greetingStudent"
+};
+
 const roleIcon: Record<MobileRole, keyof typeof Ionicons.glyphMap> = {
   PARENT: "people-outline",
   TEACHER: "school-outline",
@@ -84,6 +95,7 @@ function AppContent() {
   const [role, setRole] = useState<MobileRole | null>(null);
   const [school, setSchool] = useState<SchoolOption | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -111,6 +123,8 @@ function AppContent() {
   const [connectionRecovered, setConnectionRecovered] = useState(false);
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const schoolSearchRequestId = useRef(0);
+  const onboardingScrollRef = useRef<ScrollView>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
   const childOpacity = useRef(new Animated.Value(1)).current;
@@ -149,10 +163,27 @@ function AppContent() {
   }, [session?.user.id, school?.id]);
 
   useEffect(() => {
-    if (screen === "school") void loadSchools();
-  }, [screen]);
+    if (screen !== "school") {
+      schoolSearchRequestId.current += 1;
+      setSchoolsLoading(false);
+      return;
+    }
+
+    const delay = query.trim() ? 250 : 0;
+    const timeout = setTimeout(() => {
+      void loadSchools(query);
+    }, delay);
+
+    return () => {
+      clearTimeout(timeout);
+      schoolSearchRequestId.current += 1;
+    };
+  }, [screen, query]);
 
   useEffect(() => {
+    screenOpacity.stopAnimation();
+    screenTranslate.stopAnimation();
+
     if (reduceMotion) {
       screenOpacity.setValue(1);
       screenTranslate.setValue(0);
@@ -257,7 +288,7 @@ function AppContent() {
     setConnectionRecovered(true);
 
     if (screen === "school") {
-      void loadSchools();
+      void loadSchools(query);
     }
   }
 
@@ -342,17 +373,33 @@ function AppContent() {
     }
   }
 
-  async function loadSchools() {
-    setBusy(true);
+  async function loadSchools(searchQuery = query) {
+    const requestId = ++schoolSearchRequestId.current;
+    setSchoolsLoading(true);
     setAppError(null);
+
     try {
-      const result = await api.schools(query);
+      const result = await api.schools(searchQuery);
+      if (requestId !== schoolSearchRequestId.current) return;
       setSchools(result.schools);
     } catch (cause) {
+      if (requestId !== schoolSearchRequestId.current) return;
       showCause(cause);
     } finally {
-      setBusy(false);
+      if (requestId === schoolSearchRequestId.current) {
+        setSchoolsLoading(false);
+      }
     }
+  }
+
+  function revealOnboardingInput(area: "school" | "login") {
+    setTimeout(() => {
+      if (area === "login") {
+        onboardingScrollRef.current?.scrollToEnd({ animated: true });
+        return;
+      }
+      onboardingScrollRef.current?.scrollTo({ y: 150, animated: true });
+    }, 120);
   }
 
   async function loadParentHome(accessToken: string) {
@@ -575,8 +622,15 @@ function AppContent() {
     <SafeAreaView style={styles.safeArea}>
       <View pointerEvents="none" style={styles.backgroundAccentTop} />
       <View pointerEvents="none" style={styles.backgroundAccentBottom} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      >
       <ScrollView
+        ref={onboardingScrollRef}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -666,7 +720,14 @@ function AppContent() {
 
         {screen === "school" && (
           <View style={[styles.section, styles.onboardingCard]}>
-            <BackButton locale={locale} onPress={() => setScreen("role")} />
+            <BackButton
+              locale={locale}
+              onPress={() => {
+                schoolSearchRequestId.current += 1;
+                setSchoolsLoading(false);
+                setScreen("role");
+              }}
+            />
             <View style={styles.heroIcon}>
               <Ionicons name="business-outline" size={24} color={tokens.color.brandStrong} />
             </View>
@@ -677,20 +738,22 @@ function AppContent() {
                 accessibilityLabel={translate(locale, "school.search")}
                 value={query}
                 onChangeText={setQuery}
-                onSubmitEditing={() => void loadSchools()}
-                placeholder={translate(locale, "school.search")}
+                onFocus={() => revealOnboardingInput("school")}
+                onSubmitEditing={() => void loadSchools(query)}
+                placeholder={translate(locale, "school.searchHint")}
+                returnKeyType="search"
                 style={[styles.input, styles.searchInput, textDirection]}
               />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={translate(locale, "school.search")}
                 style={({ pressed }) => [styles.smallPrimaryButton, pressed && styles.buttonPressed]}
-                onPress={() => void loadSchools()}
+                onPress={() => void loadSchools(query)}
               >
                 <Ionicons name="search-outline" size={21} color="#fff" />
               </Pressable>
             </View>
-            {busy ? <ActivityIndicator /> : null}
+            {schoolsLoading ? <ActivityIndicator /> : null}
             <View style={styles.stack}>
               {schools.map((item) => (
                 <Pressable
@@ -722,7 +785,7 @@ function AppContent() {
                   />
                 </Pressable>
               ))}
-              {!busy && schools.length === 0 ? (
+              {!schoolsLoading && schools.length === 0 ? (
                 <Text style={[styles.muted, textDirection]}>{translate(locale, "school.noResults")}</Text>
               ) : null}
             </View>
@@ -741,12 +804,13 @@ function AppContent() {
             </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "login.title")}</Text>
             <Text style={[styles.subtitle, textDirection]}>
-              {translate(locale, roleKey[role])} · {translate(locale, "login.hint")}
+              {translate(locale, loginGreetingKey[role])}
             </Text>
             <TextInput
               autoCapitalize="none"
               value={username}
               onChangeText={setUsername}
+              onFocus={() => revealOnboardingInput("login")}
               placeholder={translate(locale, "field.username")}
               style={[styles.input, textDirection]}
             />
@@ -755,6 +819,7 @@ function AppContent() {
                 secureTextEntry={!passwordVisible}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={() => revealOnboardingInput("login")}
                 placeholder={translate(locale, "field.password")}
                 style={[styles.passwordInput, textDirection]}
               />
@@ -1229,6 +1294,7 @@ function AppContent() {
         {busy && screen !== "role" ? <ActivityIndicator style={styles.loader} color={tokens.color.brand} /> : null}
         </Animated.View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {connectionRecovered ? (
         <ConnectionSuccessPopup
@@ -1631,6 +1697,7 @@ function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: (
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f6f8fc" },
+  keyboardAvoiding: { flex: 1 },
   backgroundAccentTop: {
     position: "absolute",
     width: 240,

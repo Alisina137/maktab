@@ -58,3 +58,31 @@ test("two schools keep settings isolated by school id", async (t) => {
   assert.equal(contextB?.settings.dateSystem, "solar-hijri");
   assert.notEqual(contextA?.school.id, contextB?.school.id);
 });
+
+
+test("public school search matches name, code, city, and province", async (t) => {
+  const { client, store } = await createTestStore();
+  t.after(async () => client.close());
+
+  const kabul = await store.createSchool({
+    code: "KBL-DEMO-01",
+    name: "MaktabLink Demo School",
+    slug: "maktablink-demo-school",
+    province: "Kabul",
+    city: "Kabul City",
+    defaultLanguage: "fa-AF"
+  });
+  const herat = await store.createSchool({
+    code: "HRT-NOOR-02",
+    name: "Noor Academy",
+    slug: "noor-academy",
+    province: "Herat",
+    city: "Herat City",
+    defaultLanguage: "ps-AF"
+  });
+
+  assert.deepEqual((await store.listPublicSchools("demo")).map((item) => item.id), [kabul.school.id]);
+  assert.deepEqual((await store.listPublicSchools("KBL-DEMO")).map((item) => item.id), [kabul.school.id]);
+  assert.deepEqual((await store.listPublicSchools("Kabul City")).map((item) => item.id), [kabul.school.id]);
+  assert.deepEqual((await store.listPublicSchools("Herat")).map((item) => item.id), [herat.school.id]);
+});

@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.maktablink.app"
+      "package": "com.maktablink.app",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
       "expo-notifications"

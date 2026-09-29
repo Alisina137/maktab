@@ -23,9 +23,13 @@ export type TranslationKey =
   | "school.choose"
   | "school.chooseHint"
   | "school.search"
+  | "school.searchHint"
   | "school.noResults"
   | "login.title"
   | "login.hint"
+  | "login.greetingParent"
+  | "login.greetingTeacher"
+  | "login.greetingStudent"
   | "field.username"
   | "field.password"
   | "auth.signIn"
@@ -180,9 +184,13 @@ const en: Record<TranslationKey, string> = {
   "school.choose": "Choose your school",
   "school.chooseHint": "Search for the school that issued your username and temporary password.",
   "school.search": "Search schools",
+  "school.searchHint": "Search by school name, city, province, or code",
   "school.noResults": "No active schools found.",
   "login.title": "Sign in",
   "login.hint": "Use the username and password provided by your school.",
+  "login.greetingParent": "Dear Parent, welcome. Please sign in with the username and password provided by your school.",
+  "login.greetingTeacher": "Dear Teacher, welcome. Please sign in with the username and password provided by your school.",
+  "login.greetingStudent": "Dear Student, welcome. Please sign in with the username and password provided by your school.",
   "field.username": "Username",
   "field.password": "Password",
   "auth.signIn": "Sign in",
@@ -338,9 +346,13 @@ const dari: Record<TranslationKey, string> = {
   "school.choose": "مکتب خود را انتخاب کنید",
   "school.chooseHint": "مکتبی را جستجو کنید که نام کاربری و رمز موقت را برای شما داده است.",
   "school.search": "جستجوی مکاتب",
+  "school.searchHint": "جستجو با نام مکتب، شهر، ولایت یا کود مکتب",
   "school.noResults": "هیچ مکتب فعال یافت نشد.",
   "login.title": "ورود",
   "login.hint": "از نام کاربری و رمز عبوری که مکتب داده است استفاده کنید.",
+  "login.greetingParent": "والدین گرامی، خوش آمدید. لطفاً با نام کاربری و رمز عبوری که مکتب برای شما فراهم کرده است وارد شوید.",
+  "login.greetingTeacher": "استاد گرامی، خوش آمدید. لطفاً با نام کاربری و رمز عبوری که مکتب برای شما فراهم کرده است وارد شوید.",
+  "login.greetingStudent": "شاگرد عزیز، خوش آمدید. لطفاً با نام کاربری و رمز عبوری که مکتب برای شما فراهم کرده است وارد شوید.",
   "field.username": "نام کاربری",
   "field.password": "رمز عبور",
   "auth.signIn": "ورود",
@@ -496,9 +508,13 @@ const pashto: Record<TranslationKey, string> = {
   "school.choose": "خپل ښوونځی وټاکئ",
   "school.chooseHint": "هغه ښوونځی ولټوئ چې کارن نوم او لنډمهاله پټنوم یې درکړی دی.",
   "school.search": "ښوونځي ولټوئ",
+  "school.searchHint": "د ښوونځي په نوم، ښار، ولایت یا کوډ ولټوئ",
   "school.noResults": "فعال ښوونځی ونه موندل شو.",
   "login.title": "ننوتل",
   "login.hint": "د خپل ښوونځي له خوا ورکړل شوی کارن نوم او پټنوم وکاروئ.",
+  "login.greetingParent": "ګرانو مور او پلار، ښه راغلاست. مهرباني وکړئ د ښوونځي له خوا درکړل شوي کارن نوم او پټنوم سره ننوځئ.",
+  "login.greetingTeacher": "قدرمن ښوونکي، ښه راغلاست. مهرباني وکړئ د ښوونځي له خوا درکړل شوي کارن نوم او پټنوم سره ننوځئ.",
+  "login.greetingStudent": "ګرانه زده کوونکي، ښه راغلاست. مهرباني وکړئ د ښوونځي له خوا درکړل شوي کارن نوم او پټنوم سره ننوځئ.",
   "field.username": "کارن نوم",
   "field.password": "پټنوم",
   "auth.signIn": "ننوتل",
