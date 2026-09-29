@@ -20,6 +20,7 @@ import {
   type StoredAdminSession
 } from "./admin-client";
 import { ADMIN_ERROR_DURATION_MS, ADMIN_SUCCESS_DURATION_MS } from "./admin-feedback";
+import { AdminLoader } from "./admin-loader";
 import {
   ADMIN_DEFAULT_LOCALE,
   adminDirection,
@@ -176,7 +177,9 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   if (!ready || !stored) {
     return (
       <main className="admin-shell admin-shell-premium admin-route-loading" dir={adminDirection(locale)}>
-        <div className="admin-panel">{t("Loading…")}</div>
+        <section className="admin-panel admin-route-loading-panel">
+          <AdminLoader label={t("Loading…")} />
+        </section>
       </main>
     );
   }
