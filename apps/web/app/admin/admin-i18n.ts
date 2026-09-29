@@ -554,6 +554,7 @@ const fa: Record<string, string> = {
   "No classes available": "هیچ صنفی موجود نیست",
   "Create teacher profiles to view teacher timetables.": "برای دیدن تقسیم اوقات استادان، ابتدا پروفایل استادان را ایجاد کنید.",
   "Create classes to view class timetables.": "برای دیدن تقسیم اوقات صنف‌ها، ابتدا صنف‌ها را ایجاد کنید.",
+  "The request could not be processed. Please try again.": "درخواست قابل پردازش نبود. لطفاً دوباره امتحان کنید.",
 };
 
 const ps: Record<string, string> = {
@@ -1101,6 +1102,7 @@ const ps: Record<string, string> = {
   "No classes available": "هیڅ ټولګی نشته",
   "Create teacher profiles to view teacher timetables.": "د ښوونکو مهالویشونو د لیدلو لپاره لومړی د ښوونکو پروفایلونه جوړ کړئ.",
   "Create classes to view class timetables.": "د ټولګیو مهالویشونو د لیدلو لپاره لومړی ټولګي جوړ کړئ.",
+  "The request could not be processed. Please try again.": "غوښتنه پروسس نه شوه. لطفاً بیا هڅه وکړئ.",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
