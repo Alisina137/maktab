@@ -289,3 +289,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Existing stored Gregorian dates are formatted back to Solar Hijri for relevant admin displays such as academic years, attendance, invoices, subscription dates, audit timestamps, and family last-login metadata.
 - The Solar Hijri picker supports Persian/Dari, Pashto, and English labels, RTL/LTR layout, month navigation, optional time selection, today/clear actions, responsive styling, and reduced-motion preferences.
 - CI verified typecheck, tests, and production build after the localization/calendar refinement.
+
+
+## Post-implementation refinement — Administrator contact profile and account security actions
+
+- Added migration `0011_admin_contact_profile.sql` to expand `admin_profiles` with public school-contact fields: `jobTitle`, `imageUrl`, `email`, `whatsapp`, `officeLocation`, `officeHours`, and `bio`, while preserving `fullName` and `phone`.
+- The admin Profile page now supports editing those fields, previews the public contact card, and keeps private account/session fields separate.
+- The project currently has no media-upload/storage service; administrator photos therefore use an HTTPS image URL with an initial/avatar fallback.
+- Added authenticated `GET /v1/school/admin-contact` so Parent, Teacher, and Student clients can retrieve school-scoped public administrator contact details without exposing administrator credentials.
+- Parent, Teacher, and Student mobile home screens now show the shared administrator contact card with Email, WhatsApp, and Call actions when configured.
+- Added authenticated `POST /v1/auth/change-password` for the currently signed-in administrator. The admin directory still blocks self-suspend/self-reset for safety and clearly labels the current administrator row.
+- Reset password, Suspend, and Reactivate for other accounts are treated as security operations and remain available even while subscription operational writes are blocked.
+- Added regression coverage for richer admin-profile round trips, public contact visibility to a parent account, administrator self-password changes, and reset/suspend actions under a suspended subscription.
+- CI verified typecheck, tests, and production build after this refinement.
