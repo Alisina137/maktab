@@ -3,6 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
+  adminProfiles,
   auditLogs,
   authSessions,
   parentProfiles,
@@ -68,6 +69,12 @@ export interface AccountStore {
   createUser(input: CreateAccountInput): Promise<User>;
   listUsers(schoolId: string): Promise<User[]>;
   listUserDirectory(schoolId: string): Promise<UserDirectoryEntry[]>;
+  getAdminProfile(schoolId: string, userId: string): Promise<{ fullName: string; phone: string | null } | null>;
+  upsertAdminProfile(
+    schoolId: string,
+    userId: string,
+    input: { fullName: string; phone?: string | null }
+  ): Promise<{ fullName: string; phone: string | null }>;
   resetPasswordAsAdmin(schoolId: string, userId: string, passwordHash: string, actorUserId: string): Promise<User | null>;
   setUserStatusAsAdmin(
     schoolId: string,
@@ -193,6 +200,37 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
                 ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
                 : { fullName: null, phone: null, code: null }
       }));
+    },
+
+    async getAdminProfile(schoolId, userId) {
+      const rows = await db
+        .select({ fullName: adminProfiles.fullName, phone: adminProfiles.phone })
+        .from(adminProfiles)
+        .where(and(eq(adminProfiles.schoolId, schoolId), eq(adminProfiles.userId, userId)))
+        .limit(1);
+      return rows[0] ?? null;
+    },
+
+    async upsertAdminProfile(schoolId, userId, input) {
+      const [profile] = await db
+        .insert(adminProfiles)
+        .values({
+          userId,
+          schoolId,
+          fullName: input.fullName,
+          phone: input.phone ?? null
+        })
+        .onConflictDoUpdate({
+          target: adminProfiles.userId,
+          set: {
+            fullName: input.fullName,
+            phone: input.phone ?? null,
+            updatedAt: new Date()
+          }
+        })
+        .returning({ fullName: adminProfiles.fullName, phone: adminProfiles.phone });
+      if (!profile) throw new Error("Admin profile upsert did not return a row.");
+      return profile;
     },
 
     async resetPasswordAsAdmin(schoolId, userId, passwordHash, actorUserId) {
