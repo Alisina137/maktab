@@ -9,10 +9,24 @@ import { requireAccess } from "../auth/routes.js";
 import { generateTemporaryPassword, hashPassword } from "../auth/security.js";
 import { safeUser } from "../auth/session.js";
 
+const adminProfileImageSchema = z
+  .string()
+  .trim()
+  .max(700_000)
+  .refine((value) => {
+    if (/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }, "Profile image must be a web image URL or an uploaded JPG, PNG, or WebP image.");
+
 const adminProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
   jobTitle: z.string().trim().max(120).nullable().optional(),
-  imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+  imageUrl: adminProfileImageSchema.nullable().optional(),
   email: z.string().trim().email().max(254).nullable().optional(),
   whatsapp: z.string().trim().max(32).nullable().optional(),
   phone: z.string().trim().max(32).nullable().optional(),

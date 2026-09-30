@@ -3120,6 +3120,49 @@ html[dir="rtl"] body {
   font-weight: 600;
 }
 
+.admin-profile-image-field {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-profile-image-field > label {
+  display: grid;
+  gap: 7px;
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-profile-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-profile-upload-button {
+  display: inline-flex !important;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.admin-profile-upload-button input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-profile-image-error {
+  margin: -2px 0 0;
+  color: var(--ml-color-danger);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .admin-contact-preview {
   display: grid;
   justify-items: center;

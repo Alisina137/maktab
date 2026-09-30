@@ -2261,6 +2261,45 @@ test("school administrator can read and update their own profile", async (t) => 
   const readBack = await app.inject({ method: "GET", url: "/v1/admin/profile", headers: auth });
   assert.equal(readBack.statusCode, 200);
   assert.equal(readBack.json<{ profile: { fullName: string } }>().profile.fullName, "School Administrator");
+
+  const uploadedImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const uploaded = await app.inject({
+    method: "PATCH",
+    url: "/v1/admin/profile",
+    headers: auth,
+    payload: {
+      fullName: "School Administrator",
+      jobTitle: "Principal",
+      imageUrl: uploadedImage,
+      email: "admin@example.com",
+      whatsapp: "+93700000000",
+      phone: "0700000000",
+      officeLocation: "Main office",
+      officeHours: "08:00-14:00",
+      bio: "School administration contact."
+    }
+  });
+  assert.equal(uploaded.statusCode, 200);
+  assert.equal(uploaded.json<{ profile: { imageUrl: string | null } }>().profile.imageUrl, uploadedImage);
+
+  const uploadedReadBack = await app.inject({ method: "GET", url: "/v1/admin/profile", headers: auth });
+  assert.equal(uploadedReadBack.statusCode, 200);
+  assert.equal(
+    uploadedReadBack.json<{ profile: { imageUrl: string | null } }>().profile.imageUrl,
+    uploadedImage
+  );
+
+  const unsafeImage = await app.inject({
+    method: "PATCH",
+    url: "/v1/admin/profile",
+    headers: auth,
+    payload: {
+      fullName: "School Administrator",
+      imageUrl: "javascript:alert(1)"
+    }
+  });
+  assert.equal(unsafeImage.statusCode, 400);
+  assert.equal(unsafeImage.json<{ error: string }>().error, "validation_error");
 });
 
 

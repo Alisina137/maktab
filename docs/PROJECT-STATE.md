@@ -528,3 +528,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Editing a record from the list automatically switches the tablet/mobile view back to the form pane.
 - Additional module content, such as the weekly timetable browser, remains below the form/list responsive area.
 
+## Admin profile image upload and preview fix
+
+- Fixed the administrator contact-card preview so an image that previously failed to load is retried after profile load/save instead of remaining permanently stuck on the fallback initial.
+- Admin → Profile now supports choosing a JPG, PNG, or WebP image directly from the local PC in addition to entering a web image URL.
+- Local images are resized client-side to a maximum 512px dimension, converted to a compact JPEG, and capped before being persisted in the existing admin profile image field.
+- No third-party media service is required; the prepared image data is stored with the administrator profile and therefore survives refresh/login and is available to the existing school admin-contact API.
+- The backend profile validator now accepts HTTP(S) image URLs or restricted image data URLs only; unsafe URL schemes are rejected.
+- Added image removal, upload progress/feedback, preview failure feedback, Dari/Persian and Pashto copy, and API regression coverage for persisted local-image data plus unsafe-scheme rejection.
+- No database migration is required because the existing `admin_profiles.image_url` column is already a text field.
+

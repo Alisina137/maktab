@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type Session } from "../../admin-client";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { AdminPasswordInput } from "../../admin-password-input";
@@ -33,6 +33,65 @@ function whatsappHref(value: string) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
+const ADMIN_PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const ADMIN_PROFILE_IMAGE_MAX_DIMENSION = 512;
+const ADMIN_PROFILE_IMAGE_MAX_DATA_URL_LENGTH = 700_000;
+const ADMIN_PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+async function prepareAdminProfileImage(file: File): Promise<string> {
+  if (!ADMIN_PROFILE_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Choose a JPG, PNG, or WebP image.");
+  }
+  if (file.size > ADMIN_PROFILE_IMAGE_MAX_BYTES) {
+    throw new Error("The profile image must be 5 MB or smaller.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("MaktabLink could not read that image file."));
+      image.src = objectUrl;
+    });
+
+    if (!image.naturalWidth || !image.naturalHeight) {
+      throw new Error("MaktabLink could not read that image file.");
+    }
+
+    const scale = Math.min(
+      1,
+      ADMIN_PROFILE_IMAGE_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight)
+    );
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("MaktabLink could not prepare that image.");
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    let quality = 0.84;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+    while (dataUrl.length > ADMIN_PROFILE_IMAGE_MAX_DATA_URL_LENGTH && quality > 0.46) {
+      quality -= 0.08;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+
+    if (dataUrl.length > ADMIN_PROFILE_IMAGE_MAX_DATA_URL_LENGTH) {
+      throw new Error("The prepared profile image is still too large. Choose a smaller image.");
+    }
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function AdminProfilePage() {
   const { stored, locale, t, showToast, updateSession } = useAdminWorkspace();
   const [fullName, setFullName] = useState("");
@@ -45,6 +104,7 @@ export default function AdminProfilePage() {
   const [officeHours, setOfficeHours] = useState("");
   const [bio, setBio] = useState("");
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageProcessing, setImageProcessing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -69,6 +129,7 @@ export default function AdminProfilePage() {
       setFullName(result.profile.fullName);
       setJobTitle(result.profile.jobTitle ?? "");
       setImageUrl(result.profile.imageUrl ?? "");
+      setImageFailed(false);
       setEmail(result.profile.email ?? "");
       setWhatsapp(result.profile.whatsapp ?? "");
       setPhone(result.profile.phone ?? "");
@@ -110,6 +171,7 @@ export default function AdminProfilePage() {
       setFullName(result.profile.fullName);
       setJobTitle(result.profile.jobTitle ?? "");
       setImageUrl(result.profile.imageUrl ?? "");
+      setImageFailed(false);
       setEmail(result.profile.email ?? "");
       setWhatsapp(result.profile.whatsapp ?? "");
       setPhone(result.profile.phone ?? "");
@@ -131,6 +193,37 @@ export default function AdminProfilePage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function chooseProfileImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setImageProcessing(true);
+    try {
+      const prepared = await prepareAdminProfileImage(file);
+      setImageUrl(prepared);
+      setImageFailed(false);
+      showToast({
+        kind: "success",
+        title: t("Profile image ready"),
+        message: t("The image is ready in the preview. Save changes to keep it.")
+      });
+    } catch (cause) {
+      showToast({
+        kind: "error",
+        title: t("Profile image was not selected"),
+        message: cause instanceof Error ? t(cause.message) : t("Please choose another image.")
+      });
+    } finally {
+      setImageProcessing(false);
+    }
+  }
+
+  function removeProfileImage() {
+    setImageUrl("");
+    setImageFailed(false);
   }
 
   async function changePassword(event: FormEvent) {
@@ -210,17 +303,42 @@ export default function AdminProfilePage() {
                   {t("Position / title")}
                   <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} maxLength={120} placeholder={t("Principal, administrator…")} />
                 </label>
-                <label className="admin-profile-wide">
-                  {t("Profile image URL")}
-                  <input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    type="url"
-                    maxLength={2048}
-                    placeholder="https://..."
-                  />
-                  <span className="admin-field-hint">{t("Use an HTTPS image URL. A school media upload service is not configured in this project yet.")}</span>
-                </label>
+                <div className="admin-profile-wide admin-profile-image-field">
+                  <label>
+                    {t("Profile image URL")}
+                    <input
+                      value={imageUrl.startsWith("data:image/") ? "" : imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value);
+                        setImageFailed(false);
+                      }}
+                      type="url"
+                      maxLength={2048}
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <div className="admin-profile-image-actions">
+                    <label className="admin-secondary admin-profile-upload-button">
+                      {t(imageProcessing ? "Preparing image…" : "Choose image from PC")}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => void chooseProfileImage(event)}
+                        disabled={imageProcessing || busy}
+                      />
+                    </label>
+                    {imageUrl ? (
+                      <button className="admin-secondary" type="button" onClick={removeProfileImage} disabled={busy || imageProcessing}>
+                        {t("Remove image")}
+                      </button>
+                    ) : null}
+                  </div>
+                  <span className="admin-field-hint">
+                    {imageUrl.startsWith("data:image/")
+                      ? t("Image selected from this PC. Save changes to store it with the administrator profile.")
+                      : t("Paste a direct web image URL or choose a JPG, PNG, or WebP file from this PC. Maximum file size: 5 MB.")}
+                  </span>
+                </div>
                 <label>
                   {t("Public email")}
                   <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={254} placeholder="admin@school.af" />
@@ -259,11 +377,20 @@ export default function AdminProfilePage() {
             <span className="admin-kicker">{t("Contact card preview")}</span>
             <div className="admin-contact-avatar">
               {imageUrl && !imageFailed ? (
-                <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
+                <img
+                  key={imageUrl}
+                  src={imageUrl}
+                  alt=""
+                  onLoad={() => setImageFailed(false)}
+                  onError={() => setImageFailed(true)}
+                />
               ) : (
                 <span aria-hidden="true">{contactPreview.fullName.slice(0, 1).toUpperCase()}</span>
               )}
             </div>
+            {imageFailed && imageUrl ? (
+              <p className="admin-profile-image-error">{t("The saved image could not be loaded. Check the image URL or choose an image from your PC.")}</p>
+            ) : null}
             <h3>{contactPreview.fullName}</h3>
             {contactPreview.jobTitle ? <p className="admin-contact-title">{contactPreview.jobTitle}</p> : null}
             {contactPreview.bio ? <p className="admin-contact-bio">{contactPreview.bio}</p> : null}
