@@ -592,3 +592,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Sign out now lives inside the administrator Profile page, under Account information.
 - The shared sign-out flow is exposed through the workspace context so logout still revokes the refresh session, clears the local admin session, and returns to the admin login page.
 
+## Admin header language selector simplification
+
+- Simplified the authenticated admin header language dropdown after the previous styling was visually too heavy.
+- Reduced the control height and minimum width slightly.
+- Reduced the option text to 12px with normal 400 font weight.
+- Removed the decorative shadow and kept only a light border, plain white background, modest padding, and a subtle focus ring.
+- The change remains isolated to the header language selector; the Academic Year selector is unchanged.
