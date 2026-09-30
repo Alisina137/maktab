@@ -57,7 +57,13 @@ function formValue(form: FormData, key: string): string {
 }
 
 export function AcademicPanel({ accessToken }: { accessToken: string }) {
-  const { locale, showToast } = useAdminWorkspace();
+  const {
+    locale,
+    showToast,
+    selectedAcademicYearId,
+    selectedAcademicYear,
+    refreshAcademicYears
+  } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -116,6 +122,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         message: t(success)
       });
       await load(true);
+      await refreshAcademicYears();
       return true;
     } catch (cause) {
       showToast({
@@ -160,6 +167,21 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
 
   const teacherAccounts = users.filter((user) => user.role === "TEACHER" && user.status !== "ARCHIVED");
   const profiledTeacherIds = new Set(overview.teachers.map((teacher) => teacher.userId));
+  const effectiveYearId =
+    selectedAcademicYearId ||
+    overview.academicYears.find((year) => year.status === "ACTIVE")?.id ||
+    overview.academicYears.at(-1)?.id ||
+    "";
+  const effectiveYear =
+    selectedAcademicYear ??
+    overview.academicYears.find((year) => year.id === effectiveYearId) ??
+    null;
+  const selectedClasses = overview.classes.filter((item) => item.academicYearId === effectiveYearId);
+  const selectedAssignments = overview.assignments.filter((item) => item.academicYearId === effectiveYearId);
+  const selectedNegaranAssignments = overview.negaranAssignments.filter((item) => item.academicYearId === effectiveYearId);
+  const selectedTimetable = overview.timetable.filter((item) => item.academicYearId === effectiveYearId);
+  const selectedYearMutable = effectiveYear?.status === "DRAFT" || effectiveYear?.status === "ACTIVE";
+  const selectedYearHistorical = effectiveYear?.status === "CLOSED" || effectiveYear?.status === "ARCHIVED";
   const currentAcademicYears = overview.academicYears.filter((year) => year.status !== "ARCHIVED");
   const archivedAcademicYears = overview.academicYears.filter((year) => year.status === "ARCHIVED");
 
@@ -176,12 +198,19 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-summary-grid">
         <Summary label={t("Academic years")} value={overview.academicYears.length} />
-        <Summary label={t("Classes")} value={overview.classes.length} />
+        <Summary label={t("Classes")} value={selectedClasses.length} />
         <Summary label={t("Subjects")} value={overview.subjects.length} />
         <Summary label={t("Teachers")} value={overview.teachers.length} />
-        <Summary label={t("Assignments")} value={overview.assignments.length} />
-        <Summary label={t("Timetable periods")} value={overview.timetable.length} />
+        <Summary label={t("Assignments")} value={selectedAssignments.length} />
+        <Summary label={t("Timetable periods")} value={selectedTimetable.length} />
       </div>
+
+      {selectedYearHistorical ? (
+        <div className="admin-panel admin-copy" role="status">
+          <strong>{effectiveYear?.name}</strong> · {t("Historical academic year · read-only")}
+          <div>{t("Year-bound academic structure is shown for reference. Switch to a draft or active year to make operational changes.")}</div>
+        </div>
+      ) : null}
 
       <div className="academic-form-grid">
         <AcademicForm title={t("Academic year")} hint={t("Dates are stored canonically; the school calendar presentation can remain Solar Hijri.")}>
@@ -228,11 +257,11 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             code: formValue(form, "code"),
             name: formValue(form, "name")
           }), "Class section", "Class created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${t(year.status)}`])} />
+            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
             <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
             <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
             <label>{t("Name")}<input name="name" placeholder={t("Grade 7 A")} required /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create class")}</button>
+            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Create class")}</button>
           </form>
         </AcademicForm>
 
@@ -262,11 +291,11 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             subjectId: formValue(form, "subjectId"),
             teacherUserId: formValue(form, "teacherUserId")
           }), "Teacher assignment", "Teacher assignment created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
+            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <button className="admin-primary" disabled={busy}>{t("Assign teacher")}</button>
+            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Assign teacher")}</button>
           </form>
         </AcademicForm>
 
@@ -278,12 +307,12 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             startDate: formValue(form, "startDate"),
             ...(formValue(form, "endDate") ? { endDate: formValue(form, "endDate") } : {})
           }), "Negaran assignment", "Negaran assigned.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
+            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
             <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
             <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" /></label>
-            <button className="admin-primary" disabled={busy}>{t("Assign Negaran")}</button>
+            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Assign Negaran")}</button>
           </form>
         </AcademicForm>
 
@@ -297,14 +326,14 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             startsAt: formValue(form, "startsAt"),
             endsAt: formValue(form, "endsAt")
           }), "Timetable period", "Timetable period created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
-            <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
+            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
+            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
             <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} />
             <label>{t("Starts")}<input name="startsAt" type="time" required /></label>
             <label>{t("Ends")}<input name="endsAt" type="time" required /></label>
-            <button className="admin-primary" disabled={busy}>{t("Add period")}</button>
+            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Add period")}</button>
           </form>
         </AcademicForm>
       </div>
@@ -402,7 +431,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       <div className="academic-data-grid">
         <DataList
           title={t("Teacher assignments")}
-          rows={overview.assignments.map((item) => ({
+          rows={selectedAssignments.map((item) => ({
             id: item.id,
             title: teacherMap.get(item.teacherUserId)?.fullName ?? item.teacherUserId,
             detail: `${subjectMap.get(item.subjectId)?.name ?? t("Subject")} · ${classMap.get(item.classId)?.name ?? t("Class")} · ${yearMap.get(item.academicYearId)?.name ?? t("Year")}`
@@ -410,7 +439,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         />
         <DataList
           title={t("Negaran history")}
-          rows={overview.negaranAssignments.map((item) => ({
+          rows={selectedNegaranAssignments.map((item) => ({
             id: item.id,
             title: classMap.get(item.classId)?.name ?? t("Class"),
             detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")} · ${formatAdminHijriDate(locale, item.startDate)} → ${item.endDate ? formatAdminHijriDate(locale, item.endDate) : t("Current")}`,
@@ -428,11 +457,11 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       </div>
 
       <TimetableViews
-        timetable={overview.timetable}
+        timetable={selectedTimetable}
         teachers={overview.teachers}
-        classes={overview.classes}
+        classes={selectedClasses}
         subjects={overview.subjects}
-        academicYears={overview.academicYears}
+        academicYears={effectiveYear ? [effectiveYear] : []}
         locale={locale}
       />
     </section>
@@ -453,11 +482,21 @@ function AcademicForm({ title, hint, children }: { title: string; hint: string; 
   );
 }
 
-function Select({ label, name, items }: { label: string; name: string; items: Array<[string, string]> }) {
+function Select({
+  label,
+  name,
+  items,
+  defaultValue = ""
+}: {
+  label: string;
+  name: string;
+  items: Array<[string, string]>;
+  defaultValue?: string;
+}) {
   return (
     <label>
       {label}
-      <select name={name} required defaultValue="">
+      <select name={name} required defaultValue={defaultValue} key={`${name}-${defaultValue}`}>
         <option value="" disabled>—</option>
         {items.map(([value, text]) => <option value={value} key={value}>{text}</option>)}
       </select>

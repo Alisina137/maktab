@@ -477,3 +477,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Successful deletion is audit-logged as `academic_year.deleted`.
 - Added API regression coverage proving that a year with historical data cannot be deleted, a non-archived year cannot be deleted, and an empty archived year can be permanently removed.
 
+## Testing Step 6 refinement — Shared academic-year context
+
+- Added a shared admin academic-year context for Academics, Families, Attendance, Learning, and Communication.
+- The active academic year is selected automatically when the workspace loads; admins can switch to draft, closed, or archived years from the route header.
+- Admin → Academics now scopes classes, teacher assignments, Negaran history, and timetable to the selected academic year while keeping grade levels, subjects, teacher identities, and academic-year lifecycle management school-wide.
+- Closed and archived academic years are presented as historical/read-only context for year-bound academic operations.
+- Academic lifecycle mutations refresh the shared year selector so newly created, archived, unarchived, or deleted years stay in sync.
+

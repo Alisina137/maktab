@@ -33,6 +33,14 @@ import {
   type AdminLocale
 } from "./admin-i18n";
 
+export type AdminAcademicYear = {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+};
+
 type AdminWorkspaceContextValue = {
   stored: StoredAdminSession;
   locale: AdminLocale;
@@ -40,6 +48,11 @@ type AdminWorkspaceContextValue = {
   setLocale: (locale: AdminLocale) => void;
   showToast: (toast: AdminToastState) => void;
   updateSession: (session: Session) => void;
+  academicYears: AdminAcademicYear[];
+  selectedAcademicYearId: string;
+  selectedAcademicYear: AdminAcademicYear | null;
+  setSelectedAcademicYearId: (yearId: string) => void;
+  refreshAcademicYears: () => Promise<void>;
 };
 
 const AdminWorkspaceContext = createContext<AdminWorkspaceContextValue | null>(null);
@@ -54,6 +67,14 @@ const navItems = [
   { href: "/admin/academics", label: "Academics" },
   { href: "/admin/profile", label: "Profile" }
 ] as const;
+
+const yearScopedRoutes = new Set([
+  "/admin/academics",
+  "/admin/families",
+  "/admin/attendance",
+  "/admin/learning",
+  "/admin/communication"
+]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {
   "/admin/accounts": {
@@ -96,6 +117,8 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   const [stored, setStored] = useState<StoredAdminSession | null>(null);
   const [locale, setLocaleState] = useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
   const [ready, setReady] = useState(false);
+  const [academicYears, setAcademicYears] = useState<AdminAcademicYear[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState("");
   const [toast, setToast] = useState<AdminToastState | null>(null);
   const [toastLeaving, setToastLeaving] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,6 +140,11 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     setStored(session);
     setReady(true);
   }, [router]);
+
+  useEffect(() => {
+    if (!stored) return;
+    void refreshAcademicYears();
+  }, [stored?.school.id]);
 
   useEffect(() => {
     const direction = adminDirection(locale);
@@ -159,6 +187,33 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     saveAdminSession(next);
   }
 
+  async function refreshAcademicYears() {
+    if (!stored) return;
+    const headers = new Headers();
+    headers.set("Authorization", `Bearer ${stored.session.accessToken}`);
+    try {
+      const data = await adminApi<{ academicYears: AdminAcademicYear[] }>("/v1/admin/academics", { headers });
+      setAcademicYears(data.academicYears);
+      setSelectedAcademicYearIdState((current) => {
+        if (current && data.academicYears.some((year) => year.id === current)) return current;
+        return (
+          data.academicYears.find((year) => year.status === "ACTIVE")?.id ??
+          [...data.academicYears].reverse().find((year) => year.status !== "ARCHIVED")?.id ??
+          data.academicYears.at(-1)?.id ??
+          ""
+        );
+      });
+    } catch {
+      setAcademicYears([]);
+      setSelectedAcademicYearIdState("");
+    }
+  }
+
+  function setSelectedAcademicYearId(yearId: string) {
+    if (!academicYears.some((year) => year.id === yearId)) return;
+    setSelectedAcademicYearIdState(yearId);
+  }
+
   function changeLocale(next: AdminLocale) {
     setLocaleState(next);
     saveAdminLocale(next);
@@ -195,9 +250,23 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   }
 
   const copy = pageCopy[pathname] ?? pageCopy["/admin/accounts"]!;
+  const selectedAcademicYear =
+    academicYears.find((year) => year.id === selectedAcademicYearId) ?? null;
 
   return (
-    <AdminWorkspaceContext.Provider value={{ stored, locale, t, setLocale: changeLocale, showToast, updateSession }}>
+    <AdminWorkspaceContext.Provider value={{
+      stored,
+      locale,
+      t,
+      setLocale: changeLocale,
+      showToast,
+      updateSession,
+      academicYears,
+      selectedAcademicYearId,
+      selectedAcademicYear,
+      setSelectedAcademicYearId,
+      refreshAcademicYears
+    }}>
       <main className="admin-shell admin-shell-premium admin-workspace" dir={adminDirection(locale)}>
         <header className="admin-premium-header">
           <div className="admin-premium-brand-row">
@@ -258,9 +327,26 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
         </nav>
 
         <section className="admin-route-heading">
-          <span className="admin-kicker">{t("School Administration")}</span>
-          <h2>{t(copy.title)}</h2>
-          <p>{t(copy.description)}</p>
+          <div>
+            <span className="admin-kicker">{t("School Administration")}</span>
+            <h2>{t(copy.title)}</h2>
+            <p>{t(copy.description)}</p>
+          </div>
+          {yearScopedRoutes.has(pathname) && academicYears.length > 0 ? (
+            <label className="admin-language-control admin-year-context-control">
+              <span>{t("Academic year context")}</span>
+              <select
+                value={selectedAcademicYearId}
+                onChange={(event) => setSelectedAcademicYearId(event.target.value)}
+              >
+                {academicYears.map((year) => (
+                  <option key={year.id} value={year.id}>
+                    {year.name} · {t(year.status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </section>
 
         <section className="admin-route-content">{children}</section>
