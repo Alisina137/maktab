@@ -599,3 +599,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Reduced the option text to 12px with normal 400 font weight.
 - Removed the decorative shadow and kept only a light border, plain white background, modest padding, and a subtle focus ring.
 - The change remains isolated to the header language selector; the Academic Year selector is unchanged.
+
+## MaktabLink app logo
+
+- Adopted the selected second logo direction as the official mobile app logo.
+- Removed all text from the logo artwork so the app icon is symbol-only.
+- Added the logo to the Expo mobile app as the default app icon.
+- Added the same mark as the Android adaptive icon foreground with a white adaptive background.
+- App icon changes are native assets and therefore require a new Android/iOS build; they are not delivered to an already-installed app through EAS Update alone.
+
