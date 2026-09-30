@@ -52,14 +52,20 @@ export function maskPhone(phone: string) {
   return `${"*".repeat(Math.max(4, trimmed.length - 4))}${trimmed.slice(-4)}`;
 }
 
-type WebhookEnv = {
+type DeliveryEnv = {
   PASSWORD_2FA_EMAIL_WEBHOOK_URL?: string;
   PASSWORD_2FA_SMS_WEBHOOK_URL?: string;
   PASSWORD_2FA_EMAIL_BEARER_TOKEN?: string;
   PASSWORD_2FA_SMS_BEARER_TOKEN?: string;
+  RESEND_API_KEY?: string;
+  PASSWORD_2FA_EMAIL_FROM?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
+  TWILIO_MESSAGING_SERVICE_SID?: string;
 };
 
-async function postCode(
+async function postWebhook(
   url: string,
   bearerToken: string | undefined,
   payload: Record<string, unknown>
@@ -77,13 +83,93 @@ async function postCode(
   }
 }
 
-export function createAdminPasswordVerificationDelivery(
-  env: WebhookEnv = process.env
-): AdminPasswordVerificationDelivery {
-  const emailUrl = env.PASSWORD_2FA_EMAIL_WEBHOOK_URL?.trim();
-  const smsUrl = env.PASSWORD_2FA_SMS_WEBHOOK_URL?.trim();
+async function sendResendEmail(input: {
+  apiKey: string;
+  from: string;
+  to: string;
+  code: string;
+  expiresInMinutes: number;
+}) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${input.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: input.from,
+      to: [input.to],
+      subject: "MaktabLink password verification",
+      text: `Your MaktabLink verification code is ${input.code}. It expires in ${input.expiresInMinutes} minutes. If you did not request a password change, ignore this message.`
+    })
+  });
 
-  if (!emailUrl || !smsUrl) {
+  if (!response.ok) {
+    throw new Error(`Resend verification email returned HTTP ${response.status}.`);
+  }
+}
+
+async function sendTwilioSms(input: {
+  accountSid: string;
+  authToken: string;
+  fromNumber?: string;
+  messagingServiceSid?: string;
+  to: string;
+  code: string;
+  expiresInMinutes: number;
+}) {
+  const body = new URLSearchParams({
+    To: input.to,
+    Body: `MaktabLink verification code: ${input.code}. Expires in ${input.expiresInMinutes} minutes.`
+  });
+
+  if (input.messagingServiceSid) {
+    body.set("MessagingServiceSid", input.messagingServiceSid);
+  } else if (input.fromNumber) {
+    body.set("From", input.fromNumber);
+  } else {
+    throw new Error("Twilio sender is not configured.");
+  }
+
+  const credentials = Buffer.from(`${input.accountSid}:${input.authToken}`).toString("base64");
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(input.accountSid)}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${credentials}`,
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      body
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Twilio verification SMS returned HTTP ${response.status}.`);
+  }
+}
+
+export function createAdminPasswordVerificationDelivery(
+  env: DeliveryEnv = process.env
+): AdminPasswordVerificationDelivery {
+  const emailWebhookUrl = env.PASSWORD_2FA_EMAIL_WEBHOOK_URL?.trim();
+  const smsWebhookUrl = env.PASSWORD_2FA_SMS_WEBHOOK_URL?.trim();
+  const resendApiKey = env.RESEND_API_KEY?.trim();
+  const emailFrom = env.PASSWORD_2FA_EMAIL_FROM?.trim();
+  const twilioAccountSid = env.TWILIO_ACCOUNT_SID?.trim();
+  const twilioAuthToken = env.TWILIO_AUTH_TOKEN?.trim();
+  const twilioFromNumber = env.TWILIO_FROM_NUMBER?.trim();
+  const twilioMessagingServiceSid = env.TWILIO_MESSAGING_SERVICE_SID?.trim();
+
+  const emailConfigured = Boolean(emailWebhookUrl || (resendApiKey && emailFrom));
+  const smsConfigured = Boolean(
+    smsWebhookUrl ||
+      (twilioAccountSid &&
+        twilioAuthToken &&
+        (twilioFromNumber || twilioMessagingServiceSid))
+  );
+
+  if (!emailConfigured || !smsConfigured) {
     return {
       configured: false,
       async sendEmailCode() {
@@ -97,24 +183,58 @@ export function createAdminPasswordVerificationDelivery(
 
   return {
     configured: true,
+
     async sendEmailCode({ to, code, expiresInMinutes }) {
-      await postCode(emailUrl, env.PASSWORD_2FA_EMAIL_BEARER_TOKEN, {
-        channel: "email",
-        purpose: "admin_password_change",
+      if (emailWebhookUrl) {
+        await postWebhook(
+          emailWebhookUrl,
+          env.PASSWORD_2FA_EMAIL_BEARER_TOKEN,
+          {
+            channel: "email",
+            purpose: "admin_password_change",
+            to,
+            code,
+            expiresInMinutes,
+            subject: "MaktabLink password verification"
+          }
+        );
+        return;
+      }
+
+      await sendResendEmail({
+        apiKey: resendApiKey!,
+        from: emailFrom!,
         to,
         code,
-        expiresInMinutes,
-        subject: "MaktabLink password verification"
+        expiresInMinutes
       });
     },
+
     async sendSmsCode({ to, code, expiresInMinutes }) {
-      await postCode(smsUrl, env.PASSWORD_2FA_SMS_BEARER_TOKEN, {
-        channel: "sms",
-        purpose: "admin_password_change",
+      if (smsWebhookUrl) {
+        await postWebhook(
+          smsWebhookUrl,
+          env.PASSWORD_2FA_SMS_BEARER_TOKEN,
+          {
+            channel: "sms",
+            purpose: "admin_password_change",
+            to,
+            code,
+            expiresInMinutes,
+            message: `MaktabLink verification code: ${code}. It expires in ${expiresInMinutes} minutes.`
+          }
+        );
+        return;
+      }
+
+      await sendTwilioSms({
+        accountSid: twilioAccountSid!,
+        authToken: twilioAuthToken!,
+        fromNumber: twilioFromNumber,
+        messagingServiceSid: twilioMessagingServiceSid,
         to,
         code,
-        expiresInMinutes,
-        message: `MaktabLink verification code: ${code}. It expires in ${expiresInMinutes} minutes.`
+        expiresInMinutes
       });
     }
   };

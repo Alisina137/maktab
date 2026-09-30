@@ -639,3 +639,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Concurrent refresh attempts are deduplicated so one refresh-token rotation cannot invalidate a second simultaneous refresh request.
 - A confirmed invalid/expired refresh token clears the stale local session and returns the administrator to login.
 - Temporary network failures do not erase an otherwise valid local session.
+
+### Direct email and SMS providers for administrator 2FA
+
+- The API now supports direct Resend transactional email delivery and direct Twilio SMS delivery for administrator password-change verification.
+- Existing custom email/SMS webhook delivery remains supported and takes precedence per channel when configured.
+- Email can use either `PASSWORD_2FA_EMAIL_WEBHOOK_URL` or `RESEND_API_KEY` + `PASSWORD_2FA_EMAIL_FROM`.
+- SMS can use either `PASSWORD_2FA_SMS_WEBHOOK_URL` or `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + (`TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`).
+- Both channels must be configured; the password-change verification continues to fail closed if either channel is missing.
+- Provider credentials are read only by the API process and are never sent to the web/mobile clients.
+- Added API unit coverage for missing-channel configuration, Resend + Twilio configuration, and mixed direct/webhook configuration.
