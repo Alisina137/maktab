@@ -538,3 +538,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added image removal, upload progress/feedback, preview failure feedback, Dari/Persian and Pashto copy, and API regression coverage for persisted local-image data plus unsafe-scheme rejection.
 - No database migration is required because the existing `admin_profiles.image_url` column is already a text field.
 
+## Testing Step 6 fix — explicit duplicate errors and browser DELETE support
+
+- Fixed browser-based Academic delete actions by adding `DELETE` to the API CORS allow-list. The API routes and database operations already supported DELETE, but browsers blocked the cross-origin request during preflight, which caused Academic Year and unused Grade deletion to show only the generic failure popup.
+- Academic Year and Grade duplicate checks now run explicitly before insertion/update and still retain database unique-constraint protection for races.
+- PostgreSQL error handling now recognizes stable SQLSTATE codes such as `23505` (unique violation) and `23503` (foreign-key violation), including wrapped driver errors, instead of depending only on English database error text.
+- Duplicate year feedback now explicitly says duplicate academic years are not allowed and identifies the existing-name conflict.
+- Duplicate grade feedback now explicitly says duplicate grade levels are not allowed and identifies the conflicting code/name.
+- Grade deletion blocked by existing classes now returns a domain conflict rather than leaking a database failure.
+- Added Dari/Persian and Pashto translations for the new duplicate/delete explanations and prevented generic internal server text from overriding localized admin-friendly feedback.
+- Added API regression coverage for DELETE CORS preflight, duplicate academic-year feedback, duplicate-grade feedback, unused-grade deletion, and empty archived-year deletion.
+

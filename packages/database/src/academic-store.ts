@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, or } from "drizzle-orm";
 import type {
   AcademicYearStatus,
   CreateAcademicYearInput,
@@ -117,9 +117,40 @@ export class AcademicNotFoundError extends Error {
   }
 }
 
+function databaseErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null) return null;
+  if ("code" in error && typeof (error as { code?: unknown }).code === "string") {
+    return (error as { code: string }).code;
+  }
+  if ("cause" in error) {
+    return databaseErrorCode((error as { cause?: unknown }).cause);
+  }
+  return null;
+}
+
+function databaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const causeMessage =
+      "cause" in error ? databaseErrorMessage((error as Error & { cause?: unknown }).cause) : "";
+    return [error.message, causeMessage].filter(Boolean).join(" ");
+  }
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error ?? "");
+}
+
 function isUniqueError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /unique|duplicate/i.test(message);
+  return databaseErrorCode(error) === "23505" || /unique|duplicate/i.test(databaseErrorMessage(error));
+}
+
+function isForeignKeyError(error: unknown): boolean {
+  return databaseErrorCode(error) === "23503" || /foreign key/i.test(databaseErrorMessage(error));
 }
 
 function periodsOverlap(startA: string, endA: string, startB: string, endB: string): boolean {
@@ -290,6 +321,17 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
     },
 
     async createAcademicYear(schoolId, input) {
+      const [existing] = await db
+        .select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.name, input.name)))
+        .limit(1);
+      if (existing) {
+        throw new AcademicConflictError(
+          "Duplicate academic years are not allowed. An academic year with that name already exists in this school."
+        );
+      }
+
       try {
         const [year] = await db
           .insert(academicYears)
@@ -305,7 +347,11 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (!year) throw new Error("Academic year insert did not return a row.");
         return year;
       } catch (error) {
-        if (isUniqueError(error)) throw new AcademicConflictError("An academic year with that name already exists in this school.");
+        if (isUniqueError(error)) {
+          throw new AcademicConflictError(
+            "Duplicate academic years are not allowed. An academic year with that name already exists in this school."
+          );
+        }
         throw error;
       }
     },
@@ -326,6 +372,23 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       )) {
         throw new AcademicConflictError("Academic year dates cannot exclude existing Negaran assignment dates.");
       }
+      const [duplicate] = await db
+        .select({ id: academicYears.id })
+        .from(academicYears)
+        .where(
+          and(
+            eq(academicYears.schoolId, schoolId),
+            eq(academicYears.name, input.name),
+            ne(academicYears.id, yearId)
+          )
+        )
+        .limit(1);
+      if (duplicate) {
+        throw new AcademicConflictError(
+          "Duplicate academic years are not allowed. An academic year with that name already exists in this school."
+        );
+      }
+
       try {
         const [updated] = await db
           .update(academicYears)
@@ -336,7 +399,9 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         return updated;
       } catch (error) {
         if (isUniqueError(error)) {
-          throw new AcademicConflictError("An academic year with that name already exists.");
+          throw new AcademicConflictError(
+            "Duplicate academic years are not allowed. An academic year with that name already exists in this school."
+          );
         }
         throw error;
       }
@@ -416,15 +481,40 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         );
       }
 
-      const [deleted] = await db
-        .delete(academicYears)
-        .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
-        .returning();
-      if (!deleted) throw new AcademicNotFoundError("Academic year not found.");
-      return deleted;
+      try {
+        const [deleted] = await db
+          .delete(academicYears)
+          .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Academic year not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicConflictError(
+            "This archived academic year cannot be deleted because it contains historical school data."
+          );
+        }
+        throw error;
+      }
     },
 
     async createGradeLevel(schoolId, input) {
+      const [existing] = await db
+        .select({ id: gradeLevels.id })
+        .from(gradeLevels)
+        .where(
+          and(
+            eq(gradeLevels.schoolId, schoolId),
+            or(eq(gradeLevels.code, input.code), eq(gradeLevels.name, input.name))
+          )
+        )
+        .limit(1);
+      if (existing) {
+        throw new AcademicConflictError(
+          "Duplicate grade levels are not allowed. A grade with that code or name already exists in this school."
+        );
+      }
+
       try {
         const [grade] = await db
           .insert(gradeLevels)
@@ -433,13 +523,34 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (!grade) throw new Error("Grade level insert did not return a row.");
         return grade;
       } catch (error) {
-        if (isUniqueError(error)) throw new AcademicConflictError("That grade code or name already exists in this school.");
+        if (isUniqueError(error)) {
+          throw new AcademicConflictError(
+            "Duplicate grade levels are not allowed. A grade with that code or name already exists in this school."
+          );
+        }
         throw error;
       }
     },
 
     async updateGradeLevel(schoolId, gradeId, input) {
       await getGrade(schoolId, gradeId);
+      const [duplicate] = await db
+        .select({ id: gradeLevels.id })
+        .from(gradeLevels)
+        .where(
+          and(
+            eq(gradeLevels.schoolId, schoolId),
+            ne(gradeLevels.id, gradeId),
+            or(eq(gradeLevels.code, input.code), eq(gradeLevels.name, input.name))
+          )
+        )
+        .limit(1);
+      if (duplicate) {
+        throw new AcademicConflictError(
+          "Duplicate grade levels are not allowed. A grade with that code or name already exists in this school."
+        );
+      }
+
       try {
         const [updated] = await db
           .update(gradeLevels)
@@ -449,7 +560,11 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (!updated) throw new AcademicNotFoundError("Grade level not found.");
         return updated;
       } catch (error) {
-        if (isUniqueError(error)) throw new AcademicConflictError("That grade code or name already exists.");
+        if (isUniqueError(error)) {
+          throw new AcademicConflictError(
+            "Duplicate grade levels are not allowed. A grade with that code or name already exists in this school."
+          );
+        }
         throw error;
       }
     },
@@ -464,9 +579,16 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       if (used.length > 0) {
         throw new AcademicConflictError("This grade cannot be deleted because classes use it.");
       }
-      await db.delete(gradeLevels)
-        .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)));
-      return grade;
+      try {
+        await db.delete(gradeLevels)
+          .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)));
+        return grade;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicConflictError("This grade cannot be deleted because classes use it.");
+        }
+        throw error;
+      }
     },
 
     async createClassSection(schoolId, input) {

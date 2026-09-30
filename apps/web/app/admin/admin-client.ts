@@ -133,7 +133,10 @@ export function friendlyAdminError(
     cause.message !== "The request could not be processed. Please try again."
       ? cause.message
       : null;
-  const english = specificMessage ?? mapped ?? cause.message ?? fallback;
+  const preferMappedMessage = cause.code === "internal_error" || cause.code === "invalid_response";
+  const english = preferMappedMessage
+    ? mapped ?? specificMessage ?? cause.message ?? fallback
+    : specificMessage ?? mapped ?? cause.message ?? fallback;
   if (locale === "en") return english || fallback;
   const translated = adminText(locale, english);
   return translated !== english ? translated : english || fallbackText;

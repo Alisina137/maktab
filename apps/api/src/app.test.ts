@@ -705,6 +705,106 @@ test("academic structure returns specific lifecycle and validation errors", asyn
   );
 });
 
+test("academic duplicate feedback is explicit and browser DELETE requests are allowed", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const preflight = await app.inject({
+    method: "OPTIONS",
+    url: "/v1/admin/academics/grades/example",
+    headers: {
+      origin: "http://localhost:3000",
+      "access-control-request-method": "DELETE",
+      "access-control-request-headers": "authorization"
+    }
+  });
+  assert.equal(preflight.statusCode, 204);
+  assert.ok((preflight.headers["access-control-allow-methods"] ?? "").includes("DELETE"));
+
+  const schoolId = await provisionSchool(app, "ACADEMIC-DOMAIN-ERRORS");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminToken}` };
+
+  const year = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1410 Duplicate Test", startDate: "2031-03-21", endDate: "2032-03-19" }
+  });
+  assert.equal(year.statusCode, 201);
+
+  const duplicateYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1410 Duplicate Test", startDate: "2032-03-20", endDate: "2033-03-19" }
+  });
+  assert.equal(duplicateYear.statusCode, 409);
+  assert.equal(duplicateYear.json<{ error: string }>().error, "academic_conflict");
+  assert.equal(
+    duplicateYear.json<{ message: string }>().message,
+    "Duplicate academic years are not allowed. An academic year with that name already exists in this school."
+  );
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "DUP-7", name: "Duplicate Grade Test", sortOrder: 7 }
+  });
+  assert.equal(grade.statusCode, 201);
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+
+  const duplicateGrade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "DUP-7", name: "Another Grade Name", sortOrder: 8 }
+  });
+  assert.equal(duplicateGrade.statusCode, 409);
+  assert.equal(duplicateGrade.json<{ error: string }>().error, "academic_conflict");
+  assert.equal(
+    duplicateGrade.json<{ message: string }>().message,
+    "Duplicate grade levels are not allowed. A grade with that code or name already exists in this school."
+  );
+
+  const deleteUnusedGrade = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/grades/${gradeId}`,
+    headers: auth
+  });
+  assert.equal(deleteUnusedGrade.statusCode, 200);
+
+  const emptyYearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  const activate = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activate.statusCode, 200);
+  const close = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/close`,
+    headers: auth
+  });
+  assert.equal(close.statusCode, 200);
+  const archive = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/archive`,
+    headers: auth
+  });
+  assert.equal(archive.statusCode, 200);
+  const deleteEmptyYear = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/years/${emptyYearId}`,
+    headers: auth
+  });
+  assert.equal(deleteEmptyYear.statusCode, 200);
+});
+
 test("public school search returns active minimal school records", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
