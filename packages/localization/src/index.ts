@@ -43,6 +43,15 @@ export type TranslationKey =
   | "passwordChange.hint"
   | "passwordChange.mismatch"
   | "passwordChange.failed"
+  | "passwordChange.rulesTitle"
+  | "passwordChange.ruleLength"
+  | "passwordChange.ruleLetter"
+  | "passwordChange.ruleNumber"
+  | "passwordChange.ruleSpecial"
+  | "passwordChange.tooShort"
+  | "passwordChange.missingLetter"
+  | "passwordChange.missingNumber"
+  | "passwordChange.missingSpecial"
   | "field.newPassword"
   | "field.confirmPassword"
   | "action.save"
@@ -339,6 +348,15 @@ const en: Record<TranslationKey, string> = {
   "contact.office": "Office",
   "contact.hours": "Office hours",
   "contact.noDetails": "The school has not published contact details yet.",
+  "passwordChange.rulesTitle": "Your password should include:",
+  "passwordChange.ruleLength": "At least 8 characters",
+  "passwordChange.ruleLetter": "At least one letter",
+  "passwordChange.ruleNumber": "At least one number",
+  "passwordChange.ruleSpecial": "At least one special character, such as ! @ # $ %",
+  "passwordChange.tooShort": "Your password is a little too short. Please use at least 8 characters.",
+  "passwordChange.missingLetter": "Please add at least one letter to your password.",
+  "passwordChange.missingNumber": "Please add at least one number to your password.",
+  "passwordChange.missingSpecial": "Please add at least one special character, such as ! @ # $ %.",
 };
 
 const dari: Record<TranslationKey, string> = {
@@ -509,6 +527,15 @@ const dari: Record<TranslationKey, string> = {
   "contact.office": "دفتر",
   "contact.hours": "ساعات کاری",
   "contact.noDetails": "مکتب هنوز معلومات تماس مدیریت را نشر نکرده است.",
+  "passwordChange.rulesTitle": "رمز عبور شما باید شامل این موارد باشد:",
+  "passwordChange.ruleLength": "حداقل ۸ نویسه",
+  "passwordChange.ruleLetter": "حداقل یک حرف",
+  "passwordChange.ruleNumber": "حداقل یک عدد",
+  "passwordChange.ruleSpecial": "حداقل یک نویسه ویژه، مانند ! @ # $ %",
+  "passwordChange.tooShort": "رمز عبور کمی کوتاه است. لطفاً حداقل ۸ نویسه استفاده کنید.",
+  "passwordChange.missingLetter": "لطفاً حداقل یک حرف به رمز عبور اضافه کنید.",
+  "passwordChange.missingNumber": "لطفاً حداقل یک عدد به رمز عبور اضافه کنید.",
+  "passwordChange.missingSpecial": "لطفاً حداقل یک نویسه ویژه مانند ! @ # $ % به رمز عبور اضافه کنید.",
 };
 
 const pashto: Record<TranslationKey, string> = {
@@ -679,6 +706,15 @@ const pashto: Record<TranslationKey, string> = {
   "contact.office": "دفتر",
   "contact.hours": "کاري ساعتونه",
   "contact.noDetails": "ښوونځي تر اوسه د ادارې د اړیکې معلومات نه دي خپاره کړي.",
+  "passwordChange.rulesTitle": "ستاسو پټنوم باید دا شرایط ولري:",
+  "passwordChange.ruleLength": "لږ تر لږه ۸ توري",
+  "passwordChange.ruleLetter": "لږ تر لږه یو حرف",
+  "passwordChange.ruleNumber": "لږ تر لږه یوه شمېره",
+  "passwordChange.ruleSpecial": "لږ تر لږه یو ځانګړی نښه، لکه ! @ # $ %",
+  "passwordChange.tooShort": "پټنوم لږ لنډ دی. مهرباني وکړئ لږ تر لږه ۸ توري وکاروئ.",
+  "passwordChange.missingLetter": "مهرباني وکړئ پټنوم ته لږ تر لږه یو حرف ورزیات کړئ.",
+  "passwordChange.missingNumber": "مهرباني وکړئ پټنوم ته لږ تر لږه یوه شمېره ورزیاته کړئ.",
+  "passwordChange.missingSpecial": "مهرباني وکړئ پټنوم ته لږ تر لږه یوه ځانګړې نښه لکه ! @ # $ % ورزیاته کړئ.",
 };
 
 export const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
