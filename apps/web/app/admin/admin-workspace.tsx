@@ -192,6 +192,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
 
     const root = document.querySelector<HTMLElement>(".admin-workspace");
     if (!root) return;
+    const workspaceRoot = root;
 
     const pendingButtons = new Set<HTMLButtonElement>();
     const fallbackTimers = new Map<HTMLButtonElement, ReturnType<typeof setTimeout>>();
@@ -232,13 +233,13 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
 
     function handleClick(event: MouseEvent) {
       const button = buttonFromTarget(event.target);
-      if (!button || !root.contains(button)) return;
+      if (!button || !workspaceRoot.contains(button)) return;
       markPending(button);
     }
 
     function handleSubmit(event: SubmitEvent) {
       const form = event.target;
-      if (!(form instanceof HTMLFormElement) || !root.contains(form)) return;
+      if (!(form instanceof HTMLFormElement) || !workspaceRoot.contains(form)) return;
 
       const submitter = event.submitter;
       if (submitter instanceof HTMLButtonElement) {
@@ -263,9 +264,9 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       }
     });
 
-    root.addEventListener("click", handleClick, true);
-    root.addEventListener("submit", handleSubmit, true);
-    observer.observe(root, {
+    workspaceRoot.addEventListener("click", handleClick, true);
+    workspaceRoot.addEventListener("submit", handleSubmit, true);
+    observer.observe(workspaceRoot, {
       subtree: true,
       attributes: true,
       attributeFilter: ["disabled"],
@@ -273,8 +274,8 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      root.removeEventListener("click", handleClick, true);
-      root.removeEventListener("submit", handleSubmit, true);
+      workspaceRoot.removeEventListener("click", handleClick, true);
+      workspaceRoot.removeEventListener("submit", handleSubmit, true);
       observer.disconnect();
       for (const timer of fallbackTimers.values()) clearTimeout(timer);
       for (const button of pendingButtons) {
