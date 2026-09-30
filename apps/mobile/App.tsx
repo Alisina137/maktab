@@ -93,6 +93,15 @@ const attendanceKey: Record<AttendanceStatus, TranslationKey> = {
   EXCUSED: "attendance.excused"
 };
 
+function passwordValidationError(value: string): TranslationKey | null {
+  if (value.length < 8) return "passwordChange.tooShort";
+  if (!/[A-Za-z]/.test(value)) return "passwordChange.missingLetter";
+  if (!/[0-9]/.test(value)) return "passwordChange.missingNumber";
+  if (!/[^A-Za-z0-9\s]/.test(value)) return "passwordChange.missingSpecial";
+  return null;
+}
+
+
 function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
   const [screen, setScreen] = useState<Screen>("role");
@@ -134,6 +143,13 @@ function AppContent() {
   const screenTranslate = useRef(new Animated.Value(0)).current;
   const childOpacity = useRef(new Animated.Value(1)).current;
   const childScale = useRef(new Animated.Value(1)).current;
+
+  const passwordChecks = [
+    { key: "passwordChange.ruleLength" as TranslationKey, passed: newPassword.length >= 8 },
+    { key: "passwordChange.ruleLetter" as TranslationKey, passed: /[A-Za-z]/.test(newPassword) },
+    { key: "passwordChange.ruleNumber" as TranslationKey, passed: /[0-9]/.test(newPassword) },
+    { key: "passwordChange.ruleSpecial" as TranslationKey, passed: /[^A-Za-z0-9\s]/.test(newPassword) }
+  ];
 
   const direction = getDirection(locale);
   const textDirection = useMemo(
@@ -602,10 +618,18 @@ function AppContent() {
 
   async function changePassword() {
     if (!session) return;
+
+    const validationError = passwordValidationError(newPassword);
+    if (validationError) {
+      setAppError(validationError);
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setAppError("passwordChange.mismatch");
       return;
     }
+
     setBusy(true);
     setAppError(null);
     try {
@@ -908,11 +932,44 @@ function AppContent() {
             </View>
             <Text style={[styles.title, textDirection]}>{translate(locale, "passwordChange.title")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "passwordChange.hint")}</Text>
+
+            <View style={styles.passwordRulesCard}>
+              <Text style={[styles.passwordRulesTitle, textDirection]}>
+                {translate(locale, "passwordChange.rulesTitle")}
+              </Text>
+              <View style={styles.passwordRulesList}>
+                {passwordChecks.map((rule) => (
+                  <View
+                    key={rule.key}
+                    style={[styles.passwordRuleRow, direction === "rtl" && styles.passwordRuleRowRtl]}
+                  >
+                    <Ionicons
+                      name={rule.passed ? "checkmark-circle" : "ellipse-outline"}
+                      size={18}
+                      color={rule.passed ? tokens.color.success : tokens.color.textMuted}
+                    />
+                    <Text
+                      style={[
+                        styles.passwordRuleText,
+                        rule.passed && styles.passwordRuleTextPassed,
+                        textDirection
+                      ]}
+                    >
+                      {translate(locale, rule.key)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
             <View style={[styles.passwordField, direction === "rtl" && styles.passwordFieldRtl]}>
               <TextInput
                 secureTextEntry={!newPasswordVisible}
                 value={newPassword}
-                onChangeText={setNewPassword}
+                onChangeText={(value) => {
+                  setNewPassword(value);
+                  if (errorKey?.startsWith("passwordChange.")) setAppError(null);
+                }}
                 placeholder={translate(locale, "field.newPassword")}
                 style={[styles.passwordInput, textDirection]}
               />
@@ -934,7 +991,10 @@ function AppContent() {
               <TextInput
                 secureTextEntry={!confirmPasswordVisible}
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(value) => {
+                  setConfirmPassword(value);
+                  if (errorKey?.startsWith("passwordChange.")) setAppError(null);
+                }}
                 placeholder={translate(locale, "field.confirmPassword")}
                 style={[styles.passwordInput, textDirection]}
               />
@@ -1855,6 +1915,40 @@ const styles = StyleSheet.create({
   },
   languageText: { color: tokens.color.textMuted, fontWeight: "700", fontSize: 12 },
   languageTextActive: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 12 },
+  passwordRulesCard: {
+    gap: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#dfe6f0",
+    borderRadius: 16,
+    backgroundColor: "#f8faff"
+  },
+  passwordRulesTitle: {
+    color: tokens.color.text,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  passwordRulesList: {
+    gap: 8
+  },
+  passwordRuleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  passwordRuleRowRtl: {
+    flexDirection: "row-reverse"
+  },
+  passwordRuleText: {
+    flex: 1,
+    color: tokens.color.textMuted,
+    fontSize: 12,
+    lineHeight: 18
+  },
+  passwordRuleTextPassed: {
+    color: tokens.color.success,
+    fontWeight: "700"
+  },
   progressWrap: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginVertical: 4 },
   progressDot: { width: 7, height: 7, borderRadius: 999, backgroundColor: "#d3dbe7" },
   progressDotActive: { width: 22, backgroundColor: tokens.color.brand },
