@@ -682,7 +682,6 @@ export default function AdminProfilePage() {
           ) : null}
         </div>
       </article>
-    </section>      </article>
     </section>
   );
 }
