@@ -671,3 +671,9 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Applied a restrained Admin visual polish: clearer panel elevation, stronger input focus treatment, subtle button hover feedback, improved Academic rows, and a cleaner segmented mobile/tablet pane switch.
 - Test 6 functional behavior remains unchanged; this pass is UI/feedback polish on top of the already verified academic lifecycle and validation rules.
 
+## Testing Step 6 cleanup — redundant Academic refresh control
+
+- Removed the manual Refresh button from the dedicated Academic form/list pages.
+- Academic data still refreshes automatically on initial load and after successful create, edit, delete, and academic-year lifecycle mutations.
+- Shared academic-year context refresh behavior remains unchanged.
+

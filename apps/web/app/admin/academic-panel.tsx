@@ -283,7 +283,7 @@ export function AcademicPanel({
   if (section === "years") {
     const editing = overview.academicYears.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit academic year" : "Academic year")} hint={t("Dates are stored canonically; the school calendar presentation can remain Solar Hijri.")}>
           <form
             id="academic-entity-form"
@@ -364,7 +364,7 @@ export function AcademicPanel({
   if (section === "grades") {
     const editing = overview.gradeLevels.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit grade level" : "Grade level")} hint={t("Reusable grade definition such as Grade 7.")}>
           <form
             id="academic-entity-form"
@@ -408,7 +408,7 @@ export function AcademicPanel({
   if (section === "subjects") {
     const editing = overview.subjects.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit subject" : "Subject")} hint={t("School-level subject catalog.")}>
           <form
             id="academic-entity-form"
@@ -447,7 +447,7 @@ export function AcademicPanel({
   if (section === "classes") {
     const editing = selectedClasses.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} notice={historicalNotice}>
         <AcademicForm title={t(editing ? "Edit class section" : "Class section")} hint={t("A class belongs to one academic year and grade.")}>
           <form
             id="academic-entity-form"
@@ -493,7 +493,7 @@ export function AcademicPanel({
   if (section === "teachers") {
     const editing = overview.teachers.find((item) => item.userId === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit teacher profile" : "Teacher profile")} hint={t("Attach school details to an existing TEACHER account.")}>
           <form
             id="academic-entity-form"
@@ -547,7 +547,7 @@ export function AcademicPanel({
   if (section === "assignments") {
     const editing = selectedAssignments.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} notice={historicalNotice}>
         <AcademicForm title={t(editing ? "Edit teacher assignment" : "Teacher assignment")} hint={t("Teacher → Subject → Class for one academic year.")}>
           <form
             id="academic-entity-form"
@@ -593,7 +593,7 @@ export function AcademicPanel({
   if (section === "negaran") {
     const editing = selectedNegaranAssignments.find((item) => item.id === editingId) ?? null;
     return (
-      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+      <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} notice={historicalNotice}>
         <AcademicForm title={t(editing ? "Edit Negaran assignment" : "Negaran assignment")} hint={t("One primary class supervisor may be active for a class at a time.")}>
           <form
             id="academic-entity-form"
@@ -655,7 +655,7 @@ export function AcademicPanel({
 
   const editing = selectedTimetable.find((item) => item.id === editingId) ?? null;
   return (
-    <AcademicEntityPage section="timetable" title={t(pageTitle.timetable)} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+    <AcademicEntityPage section="timetable" title={t(pageTitle.timetable)} locale={locale} busy={busy} notice={historicalNotice}>
       <AcademicForm title={t(editing ? "Edit timetable period" : "Timetable period")} hint={t("A period must match an existing teacher assignment. Class and teacher overlaps are rejected.")}>
         <form
           id="academic-entity-form"
@@ -729,7 +729,6 @@ function AcademicEntityPage({
   title,
   locale,
   busy,
-  onRefresh,
   notice,
   children
 }: {
@@ -737,7 +736,6 @@ function AcademicEntityPage({
   title: string;
   locale: AdminLocale;
   busy: boolean;
-  onRefresh: () => void;
   notice?: ReactNode;
   children: ReactNode;
 }) {
@@ -757,7 +755,6 @@ function AcademicEntityPage({
           <h2>{title}</h2>
           <p>{t("Create, review, edit, and safely delete records from this academic module.")}</p>
         </div>
-        <button className="admin-secondary" onClick={onRefresh} disabled={busy}>{t("Refresh")}</button>
       </div>
       {notice}
 
