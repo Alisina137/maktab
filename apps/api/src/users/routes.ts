@@ -88,7 +88,10 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
   });
 
   app.get("/v1/school/admin-contact", async (request, reply) => {
-    const context = await requireAccess(request, reply, store);
+    const context = await requireAccess(request, reply, store, {
+      allowSuspended: true,
+      allowSubscriptionUnavailable: true
+    });
     if (!context) return;
 
     const contact = await store.getSchoolAdminContact(context.user.schoolId);
