@@ -520,3 +520,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Timetable keeps the weekly teacher/class browser on its dedicated page.
 - Added API regression coverage proving that an unused class can be edited/deleted and a class with an academic dependency cannot be deleted.
 
+### Academic responsive form/list refinement
+
+- Dedicated Academic entity pages now use a two-pane desktop layout: the entity form and its corresponding data list render side by side.
+- The form pane and data-list pane are each capped at 500px maximum width.
+- At 1024px and below (tablet/mobile), the two panes become mutually exclusive and are controlled by two buttons: Form to create data and List of this form.
+- Editing a record from the list automatically switches the tablet/mobile view back to the form pane.
+- Additional module content, such as the weekly timetable browser, remains below the form/list responsive area.
+

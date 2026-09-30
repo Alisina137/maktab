@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Children, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { adminApi, friendlyAdminError } from "./admin-client";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
@@ -181,6 +181,7 @@ export function AcademicPanel({
   function beginEdit(id: string) {
     setEditingId(id);
     window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>('[data-academic-pane="form"]')?.click();
       document.getElementById("academic-entity-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   }
@@ -724,6 +725,12 @@ function AcademicEntityPage({
   children: ReactNode;
 }) {
   const t = (english: string) => adminText(locale, english);
+  const [activePane, setActivePane] = useState<"FORM" | "LIST">("FORM");
+  const content = Children.toArray(children);
+  const formPane = content[0] ?? null;
+  const listPane = content[1] ?? null;
+  const extraContent = content.slice(2);
+
   return (
     <section className="academic-section admin-page-enter">
       <div className="admin-section-header academic-heading">
@@ -735,7 +742,37 @@ function AcademicEntityPage({
         <button className="admin-secondary" onClick={onRefresh} disabled={busy}>{t("Refresh")}</button>
       </div>
       {notice}
-      <div className="academic-single-module">{children}</div>
+
+      <div className="academic-pane-switch" role="tablist" aria-label={t("Academic page view")}>
+        <button
+          type="button"
+          role="tab"
+          data-academic-pane="form"
+          aria-selected={activePane === "FORM"}
+          className={activePane === "FORM" ? "academic-pane-switch-button academic-pane-switch-button-active" : "academic-pane-switch-button"}
+          onClick={() => setActivePane("FORM")}
+        >
+          {t("Form to create data")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-academic-pane="list"
+          aria-selected={activePane === "LIST"}
+          className={activePane === "LIST" ? "academic-pane-switch-button academic-pane-switch-button-active" : "academic-pane-switch-button"}
+          onClick={() => setActivePane("LIST")}
+        >
+          {t("List of this form")}
+        </button>
+      </div>
+
+      <div className={"academic-single-module academic-single-module-" + activePane.toLowerCase()}>
+        <div className="academic-responsive-pane academic-responsive-pane-form">{formPane}</div>
+        <div className="academic-responsive-pane academic-responsive-pane-list">{listPane}</div>
+        {extraContent.map((item, index) => (
+          <div className="academic-module-extra" key={"academic-extra-" + index}>{item}</div>
+        ))}
+      </div>
     </section>
   );
 }
