@@ -75,7 +75,7 @@ test("the same username can exist in different schools but not twice in one scho
   );
 });
 
-test("suspending a user revokes existing sessions", async (t) => {
+test("suspending a user preserves the session for restricted contact access", async (t) => {
   const { client, db } = await createTestDatabase();
   t.after(async () => client.close());
 
@@ -107,5 +107,7 @@ test("suspending a user revokes existing sessions", async (t) => {
 
   assert.ok(await accounts.findByAccessTokenHash("a".repeat(64)));
   await accounts.setUserStatus(school.school.id, user.id, "SUSPENDED");
-  assert.equal(await accounts.findByAccessTokenHash("a".repeat(64)), null);
+  const suspendedContext = await accounts.findByAccessTokenHash("a".repeat(64));
+  assert.ok(suspendedContext);
+  assert.equal(suspendedContext.user.status, "SUSPENDED");
 });
