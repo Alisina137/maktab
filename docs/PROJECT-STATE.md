@@ -374,3 +374,20 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Corrected the admin web password guidance and HTML minimum length from 10 to 8 characters so it matches the shared password policy: 8+ characters with a letter, number, and special character.
 - Confirmed there are no remaining plain `type="password"` fields in the admin login/profile routes.
 - CI verified typecheck, tests, and production build after this refinement.
+
+
+## Step 5 refinement — Restricted suspended-account mode
+
+- Suspension now keeps the user identity and session available instead of immediately revoking all sessions.
+- Suspended users can still open/sign in to the mobile app.
+- The API now enforces restricted access server-side: normal protected school features return `account_suspended` for suspended users.
+- The only authenticated capabilities intentionally kept available to a suspended end user are session/status checks, session refresh/logout, and the school administrator contact endpoint.
+- `GET /v1/school/admin-contact` remains available while suspended so the user can reach the administrator by configured email, WhatsApp, or phone.
+- The mobile app checks account status every 3 seconds while signed in. An already-open account switches to suspended mode shortly after the admin suspends it, and reactivation restores normal access without creating a new account.
+- Any protected request that receives `account_suspended` also switches the app into suspended mode immediately.
+- Suspended mode removes Parent/Teacher/Student operational content from the render tree and shows only a suspension card, the administrator contact card, and Logout.
+- A localized suspension popup is shown when the transition into suspended mode is detected.
+- Push registration and normal role-data loading are disabled while suspended.
+- Reactivation keeps the existing session usable and reloads normal role data.
+- Added database/API regression coverage proving sessions are preserved, normal role APIs are blocked, administrator contact remains accessible, suspended login is allowed, and reactivation restores normal access.
+- CI verified typecheck, tests, and production build after this refinement.
