@@ -363,3 +363,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added Dari, Pashto, and English copy for password guidance and validation feedback.
 - Added contract and API regression tests, including rejection of a first-login password without a special character.
 - CI verified typecheck, tests, and production build after this refinement.
+
+
+## Step 5 refinement — Admin password visibility controls
+
+- Added a shared admin password input with an eye / eye-off toggle.
+- All five admin web password fields now use the shared control: login password, first-login new password, current admin password, new admin password, and confirm new password.
+- The visibility toggle is keyboard-accessible, uses localized Show/Hide labels, and never submits the surrounding form.
+- Added Persian/Dari and Pashto translations for the visibility controls.
+- Corrected the admin web password guidance and HTML minimum length from 10 to 8 characters so it matches the shared password policy: 8+ characters with a letter, number, and special character.
+- Confirmed there are no remaining plain `type="password"` fields in the admin login/profile routes.
+- CI verified typecheck, tests, and production build after this refinement.
