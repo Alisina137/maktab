@@ -68,7 +68,9 @@ export async function rotateSession(store: AccountStore, context: AuthenticatedS
 function accountUsable(context: AuthenticatedSessionContext): boolean {
   return (
     context.school.status === "ACTIVE" &&
-    (context.user.status === "ACTIVE" || context.user.status === "INVITED")
+    (context.user.status === "ACTIVE" ||
+      context.user.status === "INVITED" ||
+      context.user.status === "SUSPENDED")
   );
 }
 
