@@ -72,8 +72,7 @@ const yearScopedRoutes = new Set([
   "/admin/academics",
   "/admin/families",
   "/admin/attendance",
-  "/admin/learning",
-  "/admin/communication"
+  "/admin/learning"
 ]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {

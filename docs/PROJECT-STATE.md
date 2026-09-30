@@ -479,7 +479,7 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 
 ## Testing Step 6 refinement — Shared academic-year context
 
-- Added a shared admin academic-year context for Academics, Families, Attendance, Learning, and Communication.
+- Added a shared admin academic-year context for Academics, Families, Attendance, and Learning. Communication/fees remain school-wide because their current records are not consistently keyed to an academic year.
 - The active academic year is selected automatically when the workspace loads; admins can switch to draft, closed, or archived years from the route header.
 - Admin → Academics now scopes classes, teacher assignments, Negaran history, and timetable to the selected academic year while keeping grade levels, subjects, teacher identities, and academic-year lifecycle management school-wide.
 - Closed and archived academic years are presented as historical/read-only context for year-bound academic operations.
