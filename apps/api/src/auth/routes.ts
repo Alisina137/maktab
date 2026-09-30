@@ -36,7 +36,11 @@ function endUserBlockedBySubscription(
 async function requireAccess(
   request: FastifyRequest,
   reply: FastifyReply,
-  store: AccountStore
+  store: AccountStore,
+  options: {
+    allowSuspended?: boolean;
+    allowSubscriptionUnavailable?: boolean;
+  } = {}
 ): Promise<AuthenticatedSessionContext | null> {
   const token = bearerToken(request.headers.authorization);
   if (!token) {
@@ -48,7 +52,14 @@ async function requireAccess(
     await reply.code(401).send({ error: "session_invalid", message: "Your session has expired or is no longer valid." });
     return null;
   }
-  if (endUserBlockedBySubscription(context)) {
+  if (context.user.status === "SUSPENDED" && !options.allowSuspended) {
+    await reply.code(403).send({
+      error: "account_suspended",
+      message: "This account is suspended. Contact the school administration to reactivate it."
+    });
+    return null;
+  }
+  if (endUserBlockedBySubscription(context) && !options.allowSubscriptionUnavailable) {
     await reply.code(503).send({
       error: "school_service_unavailable",
       message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
@@ -71,9 +82,6 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
       if (!context || context.school.status !== "ACTIVE") {
         return reply.code(401).send({ error: "invalid_credentials", message: "Invalid school, username, or password." });
       }
-      if (context.user.status === "SUSPENDED") {
-        return reply.code(403).send({ error: "account_suspended", message: "This account is suspended. Contact the school administration." });
-      }
       if (context.user.status === "ARCHIVED") {
         return reply.code(403).send({ error: "account_unavailable", message: "This account is no longer active." });
       }
@@ -83,7 +91,7 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
       if (context.user.role !== input.expectedRole) {
         return reply.code(403).send({ error: "role_mismatch", message: "This account does not belong to the selected role." });
       }
-      if (endUserBlockedBySubscription(context)) {
+      if (endUserBlockedBySubscription(context) && context.user.status !== "SUSPENDED") {
         return reply.code(503).send({
           error: "school_service_unavailable",
           message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
@@ -235,7 +243,10 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
   });
 
   app.get("/v1/auth/me", async (request, reply) => {
-    const context = await requireAccess(request, reply, store);
+    const context = await requireAccess(request, reply, store, {
+      allowSuspended: true,
+      allowSubscriptionUnavailable: true
+    });
     if (!context) return;
     return {
       user: safeUser(context.user),
