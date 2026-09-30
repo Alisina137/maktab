@@ -69,7 +69,7 @@ function localDate() {
 }
 
 export function AttendancePanel({ accessToken }: { accessToken: string }) {
-  const { locale } = useAdminWorkspace();
+  const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const today = useMemo(localDate, []);
   const [from, setFrom] = useState(today);
@@ -81,15 +81,17 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
   useEffect(() => {
+    if (!selectedAcademicYearId) return;
+    setClassId("");
     void Promise.all([
       request<AcademicOverview>(accessToken, "/v1/admin/academics"),
-      loadReport()
+      loadReport(undefined, selectedAcademicYearId)
     ])
       .then(([academicData]) => setAcademics(academicData))
       .catch((cause) => setError(adminErrorText(locale, cause, "Could not load attendance.")));
-  }, [accessToken]);
+  }, [accessToken, selectedAcademicYearId]);
 
-  async function loadReport(event?: FormEvent) {
+  async function loadReport(event?: FormEvent, yearId = selectedAcademicYearId) {
     event?.preventDefault();
     setBusy(true);
     setError("");
@@ -97,6 +99,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     try {
       const query = new URLSearchParams({ from, to });
       if (classId) query.set("classId", classId);
+      if (yearId) query.set("academicYearId", yearId);
       const result = await request<AttendanceReport>(
         accessToken,
         `/v1/admin/attendance/report?${query.toString()}`
@@ -153,10 +156,9 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     );
   }
 
-  const activeYearIds = new Set(
-    academics?.academicYears.filter((year) => year.status === "ACTIVE").map((year) => year.id) ?? []
-  );
-  const classes = academics?.classes.filter((item) => activeYearIds.has(item.academicYearId)) ?? [];
+  const classes =
+    academics?.classes.filter((item) => item.academicYearId === selectedAcademicYearId) ?? [];
+  const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
 
   return (
     <section className="attendance-section admin-page-enter">
@@ -182,7 +184,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           <AdminHijriDatePicker locale={locale} value={to} onChange={setTo} required />
         </label>
         <label>{t("Class")}<select value={classId} onChange={(event) => setClassId(event.target.value)}>
-            <option value="">{t("All active classes")}</option>
+            <option value="">{t("All classes in selected year")}</option>
             {classes.map((item) => (
               <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
             ))}
@@ -222,6 +224,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                   row={row}
                   locale={locale}
                   busy={busy}
+                  readOnly={historicalReadOnly}
                   onCorrect={correct}
                 />
               ))}
@@ -240,11 +243,13 @@ function AttendanceReportItem({
   row,
   locale,
   busy,
+  readOnly,
   onCorrect
 }: {
   row: AttendanceReportRow;
   locale: "fa-AF" | "ps-AF" | "en";
   busy: boolean;
+  readOnly: boolean;
   onCorrect: (row: AttendanceReportRow, status: AttendanceStatus, note: string) => Promise<void>;
 }) {
   const t = (english: string) => adminText(locale, english);
@@ -266,18 +271,18 @@ function AttendanceReportItem({
       </div>
       <label>
         {t("Status")}
-        <select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus)}>
+        <select value={status} onChange={(event) => setStatus(event.target.value as AttendanceStatus)} disabled={readOnly}>
           {statuses.map((item) => <option key={item} value={item}>{t(item)}</option>)}
         </select>
       </label>
       <label>
         {t("Correction note")}
-        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder={t("Optional reason")} />
+        <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder={t("Optional reason")} disabled={readOnly} />
       </label>
       <button
         type="button"
         className="admin-secondary"
-        disabled={busy || !changed}
+        disabled={busy || readOnly || !changed}
         onClick={() => void onCorrect(row, status, note)}
       >
         {t("Save correction")}

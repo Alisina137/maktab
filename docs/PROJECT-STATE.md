@@ -485,3 +485,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Closed and archived academic years are presented as historical/read-only context for year-bound academic operations.
 - Academic lifecycle mutations refresh the shared year selector so newly created, archived, unarchived, or deleted years stay in sync.
 
+## Testing Step 6 refinement — Year-scoped attendance
+
+- Admin attendance reports now accept an academic-year context and return only attendance from the selected academic year.
+- The attendance class filter follows the selected academic year instead of always using the currently active year.
+- Historical attendance remains visible but correction controls are read-only unless that academic year is ACTIVE.
+- The API independently blocks correction of attendance belonging to a non-ACTIVE academic year.
+

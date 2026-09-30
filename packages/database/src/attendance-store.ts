@@ -149,7 +149,13 @@ export interface AttendanceStore {
   ): Promise<ParentAttendanceDay[]>;
   getParentNotifications(schoolId: string, parentUserId: string): Promise<Notification[]>;
   markNotificationRead(schoolId: string, parentUserId: string, notificationId: string): Promise<Notification | null>;
-  getAdminReport(schoolId: string, from: string, to: string, classId?: string): Promise<AttendanceReport>;
+  getAdminReport(
+    schoolId: string,
+    from: string,
+    to: string,
+    classId?: string,
+    academicYearId?: string
+  ): Promise<AttendanceReport>;
   correctAttendance(
     schoolId: string,
     actorUserId: string,
@@ -722,13 +728,14 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
       return updated ?? null;
     },
 
-    async getAdminReport(schoolId, from, to, classId) {
+    async getAdminReport(schoolId, from, to, classId, academicYearId) {
       const predicates = [
         eq(dailyAttendances.schoolId, schoolId),
         gte(dailyAttendances.date, from),
         lte(dailyAttendances.date, to)
       ];
       if (classId) predicates.push(eq(dailyAttendances.classId, classId));
+      if (academicYearId) predicates.push(eq(dailyAttendances.academicYearId, academicYearId));
 
       const rows = await db
         .select({
@@ -775,7 +782,9 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
             and(
               eq(academicYears.id, classSections.academicYearId),
               eq(academicYears.schoolId, classSections.schoolId),
-              eq(academicYears.status, "ACTIVE")
+              academicYearId
+                ? eq(academicYears.id, academicYearId)
+                : eq(academicYears.status, "ACTIVE")
             )
           )
           .where(
@@ -827,6 +836,21 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         )
         .limit(1);
       if (!current) throw new AttendanceNotFoundError("Attendance entry not found.");
+
+      const [year] = await db
+        .select({ status: academicYears.status })
+        .from(academicYears)
+        .where(
+          and(
+            eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, current.attendance.academicYearId)
+          )
+        )
+        .limit(1);
+      if (!year) throw new AttendanceNotFoundError("Academic year not found.");
+      if (year.status !== "ACTIVE") {
+        throw new AttendanceConflictError("Historical attendance is read-only unless its academic year is active.");
+      }
 
       const [entry] = await db
         .update(studentAttendances)

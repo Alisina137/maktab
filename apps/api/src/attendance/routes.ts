@@ -79,7 +79,8 @@ const attendanceSheetQuerySchema = z.object({
 
 const parentAttendanceQuerySchema = attendanceDateRangeSchema;
 const reportQuerySchema = attendanceDateRangeSchema.extend({
-  classId: z.string().uuid().optional()
+  classId: z.string().uuid().optional(),
+  academicYearId: z.string().uuid().optional()
 });
 
 export function registerAttendanceRoutes(
@@ -198,7 +199,7 @@ export function registerAttendanceRoutes(
     }
   );
 
-  app.get<{ Querystring: { from?: string; to?: string; classId?: string } }>(
+  app.get<{ Querystring: { from?: string; to?: string; classId?: string; academicYearId?: string } }>(
     "/v1/admin/attendance/report",
     async (request, reply) => {
       const context = await requireSchoolAdmin(request, reply, accounts);
@@ -208,7 +209,13 @@ export function registerAttendanceRoutes(
         const today = await attendance.getSchoolToday(context.user.schoolId);
         const to = query.to ?? today;
         const from = query.from ?? to;
-        return await attendance.getAdminReport(context.user.schoolId, from, to, query.classId);
+        return await attendance.getAdminReport(
+          context.user.schoolId,
+          from,
+          to,
+          query.classId,
+          query.academicYearId
+        );
       } catch (error) {
         return sendAttendanceError(reply, error);
       }
