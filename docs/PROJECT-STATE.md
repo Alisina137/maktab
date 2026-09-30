@@ -349,3 +349,17 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Fixed the Families page request helper so bodyless Reset/Suspend/Reactivate POST actions no longer send an empty JSON content type.
 - Persian/Dari and Pashto labels were added for the restored workflows and empty states.
 - CI verified typecheck, tests, and production build after the fix.
+
+
+## Step 5 refinement — First-login password guidance and validation
+
+- Updated the shared password policy to require at least 8 characters, at least one letter, at least one number, and at least one special character.
+- The first-login mobile password-change screen now shows a live localized checklist for each password rule before submission.
+- Checklist items update visually as the user satisfies each rule.
+- Submitting an invalid password now shows a specific app popup explaining exactly what needs to be fixed: too short, missing letter, missing number, or missing special character.
+- Password/confirmation mismatch continues to use the app-wide popup system with a gentle localized message.
+- Editing either password field clears password-specific popup errors so the user can immediately refine the input.
+- Backend temporary-password changes and normal authenticated password changes use the same shared password policy.
+- Added Dari, Pashto, and English copy for password guidance and validation feedback.
+- Added contract and API regression tests, including rejection of a first-login password without a special character.
+- CI verified typecheck, tests, and production build after this refinement.
