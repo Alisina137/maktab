@@ -33,6 +33,9 @@ export const tokens = {
   },
   typography: {
     family: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic', 'Noto Sans', Tahoma, Arial, sans-serif",
+    familyEnglish: "'Aptos', 'Inter', 'Segoe UI Variable Text', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif",
+    familyEnglishDisplay: "'Aptos Display', 'Aptos', 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', 'Roboto', sans-serif",
+    familyRtl: "'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic', 'Noto Sans', Tahoma, Arial, sans-serif",
     size: {
       sm: 13,
       md: 15,
@@ -67,4 +70,7 @@ export const designTokenCss = `
   --ml-radius-lg: ${tokens.radius.lg}px;
   --ml-shadow-card: ${tokens.shadow.card};
   --ml-font-family: ${tokens.typography.family};
+  --ml-font-family-en: ${tokens.typography.familyEnglish};
+  --ml-font-family-en-display: ${tokens.typography.familyEnglishDisplay};
+  --ml-font-family-rtl: ${tokens.typography.familyRtl};
 }`;
