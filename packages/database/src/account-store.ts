@@ -85,7 +85,6 @@ export interface SchoolAdminContact extends AdminContactProfile {
 
 export interface AdminPasswordVerificationContacts {
   email: string;
-  phone: string;
 }
 
 export interface CreateAdminPasswordVerificationInput {
@@ -374,21 +373,19 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
       if (!profile) return null;
 
       const email = (profile.twoFactorEmail ?? profile.email)?.trim() ?? "";
-      const phone = (profile.twoFactorPhone ?? profile.phone)?.trim() ?? "";
-      if (!email || !phone) return null;
+      if (!email) return null;
 
-      if (!profile.twoFactorEmail || !profile.twoFactorPhone) {
+      if (!profile.twoFactorEmail) {
         await db
           .update(adminProfiles)
           .set({
-            twoFactorEmail: profile.twoFactorEmail ?? email,
-            twoFactorPhone: profile.twoFactorPhone ?? phone,
+            twoFactorEmail: email,
             updatedAt: new Date()
           })
           .where(and(eq(adminProfiles.schoolId, schoolId), eq(adminProfiles.userId, userId)));
       }
 
-      return { email, phone };
+      return { email };
     },
 
     async createAdminPasswordVerification(input) {

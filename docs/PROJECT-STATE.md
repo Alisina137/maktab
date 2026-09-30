@@ -649,3 +649,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Both channels must be configured; the password-change verification continues to fail closed if either channel is missing.
 - Provider credentials are read only by the API process and are never sent to the web/mobile clients.
 - Added API unit coverage for missing-channel configuration, Resend + Twilio configuration, and mixed direct/webhook configuration.
+
+## Administrator password verification — email-only mode
+
+- Administrator self-service password changes now require the current password plus one email verification code.
+- SMS/phone verification is intentionally deferred and is no longer required to start, verify, or complete a password change.
+- An administrator only needs a saved email address; a phone number is optional.
+- The first email used for password verification remains locked in `two_factor_email` so changing the public contact card does not silently redirect security codes.
+- Existing SMS database columns and Twilio delivery support are preserved for a future second factor, but SMS codes are not delivered or validated in the active flow.
+- The existing verification table remains compatible, so this change requires no new database migration.
+- Resend or the email webhook alone is sufficient to configure password-verification delivery.
+- The Profile security UI is now: current password → email code → new password.
+- Regression coverage proves password change is blocked without verification, email-only verification succeeds without a phone number, no SMS is sent, wrong email codes are rejected, and verification tokens remain one-time use.
+

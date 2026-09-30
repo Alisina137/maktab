@@ -169,7 +169,7 @@ export function createAdminPasswordVerificationDelivery(
         (twilioFromNumber || twilioMessagingServiceSid))
   );
 
-  if (!emailConfigured || !smsConfigured) {
+  if (!emailConfigured) {
     return {
       configured: false,
       async sendEmailCode() {
@@ -211,6 +211,9 @@ export function createAdminPasswordVerificationDelivery(
     },
 
     async sendSmsCode({ to, code, expiresInMinutes }) {
+      if (!smsConfigured) {
+        throw new Error("SMS verification delivery is not configured.");
+      }
       if (smsWebhookUrl) {
         await postWebhook(
           smsWebhookUrl,

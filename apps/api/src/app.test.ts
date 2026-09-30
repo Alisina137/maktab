@@ -136,14 +136,14 @@ async function bootstrapAdmin(
   return changed.json<{ accessToken: string }>().accessToken;
 }
 
-test("school admin password change requires email and SMS verification", async (t) => {
+test("school admin password change requires email verification", async (t) => {
   const { app, client, passwordVerificationMessages } = await createTestApp();
   t.after(async () => {
     await app.close();
     await client.close();
   });
 
-  const schoolId = await provisionSchool(app, "ADMIN-2FA");
+  const schoolId = await provisionSchool(app, "ADMIN-EMAIL-2FA");
   const accessToken = await bootstrapAdmin(app, schoolId);
   const auth = { authorization: `Bearer ${accessToken}` };
 
@@ -153,8 +153,7 @@ test("school admin password change requires email and SMS verification", async (
     headers: auth,
     payload: {
       fullName: "Secure Admin",
-      email: "admin@example.com",
-      phone: "+93700123456"
+      email: "admin@example.com"
     }
   });
   assert.equal(profile.statusCode, 200);
@@ -189,30 +188,23 @@ test("school admin password change requires email and SMS verification", async (
     payload: { currentPassword: "AdminSecure2026!" }
   });
   assert.equal(started.statusCode, 200);
-  const startedBody = started.json<{
-    verificationId: string;
-    email: string;
-    phone: string;
-  }>();
+  const startedBody = started.json<{ verificationId: string; email: string }>();
   assert.ok(startedBody.email.includes("@example.com"));
-  assert.ok(startedBody.phone.endsWith("3456"));
   assert.equal(passwordVerificationMessages.email.length, 1);
-  assert.equal(passwordVerificationMessages.sms.length, 1);
+  assert.equal(passwordVerificationMessages.sms.length, 0);
   assert.equal(passwordVerificationMessages.email[0]?.to, "admin@example.com");
-  assert.equal(passwordVerificationMessages.sms[0]?.to, "+93700123456");
 
-  const wrongCodes = await app.inject({
+  const wrongCode = await app.inject({
     method: "POST",
     url: "/v1/auth/admin-password-verification/verify",
     headers: auth,
     payload: {
       verificationId: startedBody.verificationId,
-      emailCode: "000000",
-      smsCode: "000000"
+      emailCode: "000000"
     }
   });
-  assert.equal(wrongCodes.statusCode, 400);
-  assert.equal(wrongCodes.json<{ error: string }>().error, "two_factor_code_invalid");
+  assert.equal(wrongCode.statusCode, 400);
+  assert.equal(wrongCode.json<{ error: string }>().error, "two_factor_code_invalid");
 
   const verified = await app.inject({
     method: "POST",
@@ -220,8 +212,7 @@ test("school admin password change requires email and SMS verification", async (
     headers: auth,
     payload: {
       verificationId: startedBody.verificationId,
-      emailCode: passwordVerificationMessages.email[0]!.code,
-      smsCode: passwordVerificationMessages.sms[0]!.code
+      emailCode: passwordVerificationMessages.email[0]!.code
     }
   });
   assert.equal(verified.statusCode, 200);

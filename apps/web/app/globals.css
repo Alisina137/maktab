@@ -3523,6 +3523,10 @@ html[dir="rtl"] body {
   gap: 10px;
 }
 
+.admin-password-delivery-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .admin-password-delivery-card {
   display: grid;
   gap: 4px;

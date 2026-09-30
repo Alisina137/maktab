@@ -14,7 +14,6 @@ import {
   hashVerificationCode,
   hashVerificationToken,
   maskEmail,
-  maskPhone,
   safeHashEqual,
   type AdminPasswordVerificationDelivery
 } from "./admin-password-2fa.js";
@@ -39,10 +38,9 @@ const startAdminPasswordVerificationSchema = z.object({
   currentPassword: z.string().min(1).max(256)
 });
 
-const verifyAdminPasswordCodesSchema = z.object({
+const verifyAdminPasswordEmailCodeSchema = z.object({
   verificationId: z.string().uuid(),
-  emailCode: z.string().regex(/^\d{6}$/),
-  smsCode: z.string().regex(/^\d{6}$/)
+  emailCode: z.string().regex(/^\d{6}$/)
 });
 
 const ADMIN_PASSWORD_CODE_TTL_MS = 10 * 60 * 1000;
@@ -198,7 +196,7 @@ export function registerAuthRoutes(
       if (!options.passwordVerificationDelivery.configured) {
         return reply.code(503).send({
           error: "two_factor_delivery_unavailable",
-          message: "Email and SMS verification delivery is not configured for this server."
+          message: "Email verification delivery is not configured for this server."
         });
       }
 
@@ -225,13 +223,12 @@ export function registerAuthRoutes(
       if (!contacts) {
         return reply.code(409).send({
           error: "two_factor_contacts_missing",
-          message: "Add both an email address and phone number to your administrator profile before changing the password."
+          message: "Add an email address to your administrator profile before changing the password."
         });
       }
 
       const verificationId = randomUUID();
       const emailCode = generateVerificationCode();
-      const smsCode = generateVerificationCode();
       const expiresAt = new Date(Date.now() + ADMIN_PASSWORD_CODE_TTL_MS);
 
       await store.createAdminPasswordVerification({
@@ -248,24 +245,17 @@ export function registerAuthRoutes(
           options.passwordVerificationSecret,
           verificationId,
           "sms",
-          smsCode
+          "email-only-disabled"
         ),
         expiresAt
       });
 
       try {
-        await Promise.all([
-          options.passwordVerificationDelivery.sendEmailCode({
-            to: contacts.email,
-            code: emailCode,
-            expiresInMinutes: ADMIN_PASSWORD_CODE_TTL_MINUTES
-          }),
-          options.passwordVerificationDelivery.sendSmsCode({
-            to: contacts.phone,
-            code: smsCode,
-            expiresInMinutes: ADMIN_PASSWORD_CODE_TTL_MINUTES
-          })
-        ]);
+        await options.passwordVerificationDelivery.sendEmailCode({
+          to: contacts.email,
+          code: emailCode,
+          expiresInMinutes: ADMIN_PASSWORD_CODE_TTL_MINUTES
+        });
       } catch (error) {
         await store.cancelAdminPasswordVerification(
           context.user.schoolId,
@@ -280,7 +270,7 @@ export function registerAuthRoutes(
         });
         return reply.code(503).send({
           error: "two_factor_delivery_failed",
-          message: "MaktabLink could not deliver both verification codes. Try again later."
+          message: "MaktabLink could not deliver the verification email. Try again later."
         });
       }
 
@@ -292,14 +282,13 @@ export function registerAuthRoutes(
         entityId: context.user.id,
         metadata: {
           email: maskEmail(contacts.email),
-          phone: maskPhone(contacts.phone)
+          factor: "email"
         }
       });
 
       return {
         verificationId,
         email: maskEmail(contacts.email),
-        phone: maskPhone(contacts.phone),
         expiresInSeconds: ADMIN_PASSWORD_CODE_TTL_MS / 1000
       };
     } catch (error) {
@@ -321,7 +310,7 @@ export function registerAuthRoutes(
         });
       }
 
-      const input = verifyAdminPasswordCodesSchema.parse(request.body);
+      const input = verifyAdminPasswordEmailCodeSchema.parse(request.body);
       const verification = await store.findAdminPasswordVerification(
         context.user.schoolId,
         context.user.id,
@@ -336,7 +325,7 @@ export function registerAuthRoutes(
       ) {
         return reply.code(410).send({
           error: "two_factor_verification_expired",
-          message: "This verification request has expired. Request new codes."
+          message: "This verification request has expired. Request a new code."
         });
       }
 
@@ -348,7 +337,7 @@ export function registerAuthRoutes(
         );
         return reply.code(429).send({
           error: "two_factor_attempts_exceeded",
-          message: "Too many incorrect verification attempts. Request new codes."
+          message: "Too many incorrect verification attempts. Request a new code."
         });
       }
 
@@ -361,17 +350,8 @@ export function registerAuthRoutes(
           input.emailCode
         )
       );
-      const smsMatches = safeHashEqual(
-        verification.smsCodeHash,
-        hashVerificationCode(
-          options.passwordVerificationSecret,
-          verification.id,
-          "sms",
-          input.smsCode
-        )
-      );
 
-      if (!emailMatches || !smsMatches) {
+      if (!emailMatches) {
         const updated = await store.incrementAdminPasswordVerificationAttempts(
           context.user.schoolId,
           context.user.id,
@@ -390,7 +370,7 @@ export function registerAuthRoutes(
         }
         return reply.code(400).send({
           error: "two_factor_code_invalid",
-          message: "One or both verification codes are incorrect.",
+          message: "The email verification code is incorrect.",
           remainingAttempts
         });
       }
@@ -408,7 +388,8 @@ export function registerAuthRoutes(
         actorUserId: context.user.id,
         action: "admin.password_verification_completed",
         entityType: "user",
-        entityId: context.user.id
+        entityId: context.user.id,
+        metadata: { factor: "email" }
       });
 
       return {
@@ -446,7 +427,7 @@ export function registerAuthRoutes(
         if (!input.verificationToken) {
           return reply.code(403).send({
             error: "two_factor_verification_required",
-            message: "Complete email and SMS verification before changing the administrator password."
+            message: "Complete email verification before changing the administrator password."
           });
         }
         const consumed = await store.consumeAdminPasswordVerification(

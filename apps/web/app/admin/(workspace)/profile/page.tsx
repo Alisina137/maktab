@@ -123,9 +123,7 @@ export default function AdminProfilePage() {
   const [passwordVerificationId, setPasswordVerificationId] = useState("");
   const [passwordVerificationToken, setPasswordVerificationToken] = useState("");
   const [passwordEmailCode, setPasswordEmailCode] = useState("");
-  const [passwordSmsCode, setPasswordSmsCode] = useState("");
   const [passwordMaskedEmail, setPasswordMaskedEmail] = useState("");
-  const [passwordMaskedPhone, setPasswordMaskedPhone] = useState("");
   const [passwordVerificationStep, setPasswordVerificationStep] = useState<"START" | "CODES" | "VERIFIED">("START");
 
   useEffect(() => {
@@ -247,9 +245,7 @@ export default function AdminProfilePage() {
     setPasswordVerificationId("");
     setPasswordVerificationToken("");
     setPasswordEmailCode("");
-    setPasswordSmsCode("");
     setPasswordMaskedEmail("");
-    setPasswordMaskedPhone("");
     setPasswordVerificationStep("START");
   }
 
@@ -260,7 +256,6 @@ export default function AdminProfilePage() {
       const result = await adminApi<{
         verificationId: string;
         email: string;
-        phone: string;
         expiresInSeconds: number;
       }>("/v1/auth/admin-password-verification/start", {
         method: "POST",
@@ -270,15 +265,13 @@ export default function AdminProfilePage() {
 
       setPasswordVerificationId(result.verificationId);
       setPasswordMaskedEmail(result.email);
-      setPasswordMaskedPhone(result.phone);
       setPasswordEmailCode("");
-      setPasswordSmsCode("");
       setPasswordVerificationToken("");
       setPasswordVerificationStep("CODES");
       showToast({
         kind: "success",
-        title: t("Verification codes sent"),
-        message: t("Enter the code sent to your email and the code sent to your phone.")
+        title: t("Verification code sent"),
+        message: t("Enter the six-digit code sent to your email.")
       });
     } catch (cause) {
       showToast({
@@ -302,8 +295,7 @@ export default function AdminProfilePage() {
           headers: { Authorization: `Bearer ${stored.session.accessToken}` },
           body: JSON.stringify({
             verificationId: passwordVerificationId,
-            emailCode: passwordEmailCode,
-            smsCode: passwordSmsCode
+            emailCode: passwordEmailCode
           })
         }
       );
@@ -313,13 +305,13 @@ export default function AdminProfilePage() {
       showToast({
         kind: "success",
         title: t("Identity verified"),
-        message: t("Email and phone verification passed. You can now choose a new password.")
+        message: t("Email verification passed. You can now choose a new password.")
       });
     } catch (cause) {
       showToast({
         kind: "error",
         title: t("Verification failed"),
-        message: friendlyAdminError(cause, "Check both verification codes and try again.", locale)
+        message: friendlyAdminError(cause, "Check the email verification code and try again.", locale)
       });
     } finally {
       setPasswordBusy(false);
@@ -333,7 +325,7 @@ export default function AdminProfilePage() {
       showToast({
         kind: "error",
         title: t("Password was not changed"),
-        message: t("Complete email and SMS verification before changing the administrator password.")
+        message: t("Complete email verification before changing the administrator password.")
       });
       return;
     }
@@ -560,10 +552,10 @@ export default function AdminProfilePage() {
         <div>
           <span className="admin-kicker">{t("Security")}</span>
           <h3>{t("Change my password")}</h3>
-          <p>{t("Administrator password changes require your current password plus verification through both email and SMS.")}</p>
+          <p>{t("Administrator password changes require your current password plus email verification.")}</p>
           <div className="admin-password-security-note">
-            <strong>{t("Two-factor verification")}</strong>
-            <span>{t("Both verification channels must succeed before the new-password form is unlocked.")}</span>
+            <strong>{t("Email verification")}</strong>
+            <span>{t("The new-password form stays locked until the email code is verified.")}</span>
           </div>
         </div>
 
@@ -574,7 +566,7 @@ export default function AdminProfilePage() {
                 <span className="admin-password-step-number">1</span>
                 <div>
                   <strong>{t("Confirm current password")}</strong>
-                  <span>{t("We verify your current password before sending security codes.")}</span>
+                  <span>{t("We verify your current password before sending the security code.")}</span>
                 </div>
               </div>
 
@@ -591,7 +583,7 @@ export default function AdminProfilePage() {
               </label>
 
               <button className="admin-primary" disabled={passwordBusy || !currentPassword} type="submit">
-                {t("Send verification codes")}
+                {t("Send email verification code")}
               </button>
             </form>
           ) : null}
@@ -601,19 +593,15 @@ export default function AdminProfilePage() {
               <div className="admin-password-step-heading">
                 <span className="admin-password-step-number">2</span>
                 <div>
-                  <strong>{t("Verify email and phone")}</strong>
-                  <span>{t("Enter both six-digit codes. Codes expire after 10 minutes.")}</span>
+                  <strong>{t("Verify email")}</strong>
+                  <span>{t("Enter the six-digit code. The code expires after 10 minutes.")}</span>
                 </div>
               </div>
 
-              <div className="admin-password-delivery-grid">
+              <div className="admin-password-delivery-grid admin-password-delivery-grid-single">
                 <div className="admin-password-delivery-card">
                   <span>{t("Email code sent to")}</span>
                   <strong dir="ltr">{passwordMaskedEmail}</strong>
-                </div>
-                <div className="admin-password-delivery-card">
-                  <span>{t("SMS code sent to")}</span>
-                  <strong dir="ltr">{passwordMaskedPhone}</strong>
                 </div>
               </div>
 
@@ -631,30 +619,12 @@ export default function AdminProfilePage() {
                 />
               </label>
 
-              <label>
-                {t("SMS verification code")}
-                <input
-                  value={passwordSmsCode}
-                  onChange={(e) => setPasswordSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  required
-                  dir="ltr"
-                />
-              </label>
-
               <div className="admin-password-step-actions">
                 <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={resetPasswordVerification}>
                   {t("Start again")}
                 </button>
-                <button
-                  className="admin-primary"
-                  disabled={passwordBusy || passwordEmailCode.length !== 6 || passwordSmsCode.length !== 6}
-                  type="submit"
-                >
-                  {t("Verify both codes")}
+                <button className="admin-primary" disabled={passwordBusy || passwordEmailCode.length !== 6} type="submit">
+                  {t("Verify email code")}
                 </button>
               </div>
             </form>
@@ -666,7 +636,7 @@ export default function AdminProfilePage() {
                 <span className="admin-password-step-number">✓</span>
                 <div>
                   <strong>{t("Identity verified")}</strong>
-                  <span>{t("Both verification channels passed. Choose your new administrator password.")}</span>
+                  <span>{t("Email verification passed. Choose your new administrator password.")}</span>
                 </div>
               </div>
 
@@ -697,16 +667,11 @@ export default function AdminProfilePage() {
               </label>
 
               <div className="admin-password-step-actions">
-                <button
-                  className="admin-secondary"
-                  type="button"
-                  disabled={passwordBusy}
-                  onClick={() => {
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    resetPasswordVerification();
-                  }}
-                >
+                <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={() => {
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  resetPasswordVerification();
+                }}>
                   {t("Cancel verification")}
                 </button>
                 <button className="admin-primary" disabled={passwordBusy} type="submit">
@@ -717,6 +682,7 @@ export default function AdminProfilePage() {
           ) : null}
         </div>
       </article>
+    </section>      </article>
     </section>
   );
 }
