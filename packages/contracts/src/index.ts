@@ -66,6 +66,17 @@ const codeSchema = z
   .regex(/^[A-Za-z0-9._-]+$/)
   .transform((value) => value.toUpperCase());
 
+const academicCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(
+    /^[\p{L}\p{N}._ -]+$/u,
+    "Academic code may use Dari, Pashto, or English letters and numbers, plus spaces, dots, underscores, and hyphens."
+  )
+  .transform((value) => value.replace(/ +/g, " ").toUpperCase());
+
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm in 24-hour time.");
@@ -172,7 +183,7 @@ export const createAcademicYearSchema = z
 export type CreateAcademicYearInput = z.infer<typeof createAcademicYearSchema>;
 
 export const createGradeLevelSchema = z.object({
-  code: codeSchema,
+  code: academicCodeSchema,
   name: z.string().trim().min(1).max(80),
   sortOrder: z.number().int().min(0).max(100).default(0)
 });
@@ -181,13 +192,13 @@ export type CreateGradeLevelInput = z.infer<typeof createGradeLevelSchema>;
 export const createClassSectionSchema = z.object({
   academicYearId: z.string().uuid(),
   gradeLevelId: z.string().uuid(),
-  code: codeSchema,
+  code: academicCodeSchema,
   name: z.string().trim().min(1).max(80)
 });
 export type CreateClassSectionInput = z.infer<typeof createClassSectionSchema>;
 
 export const createSubjectSchema = z.object({
-  code: codeSchema,
+  code: academicCodeSchema,
   name: z.string().trim().min(1).max(120)
 });
 export type CreateSubjectInput = z.infer<typeof createSubjectSchema>;

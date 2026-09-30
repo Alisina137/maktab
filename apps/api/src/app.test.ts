@@ -481,11 +481,15 @@ test("academic structure returns specific lifecycle and validation errors", asyn
     payload: {
       academicYearId: firstYearId,
       gradeLevelId: gradeId,
-      code: "7A",
+      code: "صنف-۷-الف",
       name: "Grade 7 A"
     }
   });
   assert.equal(classResponse.statusCode, 201);
+  assert.equal(
+    classResponse.json<{ class: { code: string } }>().class.code,
+    "صنف-۷-الف"
+  );
 
   const closeFirst = await app.inject({
     method: "POST",

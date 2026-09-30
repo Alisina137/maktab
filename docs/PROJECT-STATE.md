@@ -437,3 +437,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added API regression coverage for invalid academic-year dates, one-active-year enforcement, valid class creation, and closed-year immutability.
 - Manual Testing Step 6 should restart from the beginning after pulling this change.
 
+## Testing Step 6 fix — Localized academic codes
+
+- Removed the accidental ASCII-only restriction from Step 6 academic grade, class, and subject codes.
+- Academic codes now accept Dari/Pashto/English letters, Western or localized digits, spaces, dots, underscores, and hyphens.
+- Examples such as `7A`, `۷الف`, `پایه ۷`, and `صنف-۷-الف` are valid.
+- Account usernames and non-academic operational identifiers keep their existing stricter validators; this change is intentionally scoped to academic structure.
+- Invalid academic-code punctuation now returns a human-readable localized validation message instead of exposing a raw regular expression.
+- Added contract and API regression coverage for localized academic codes.
+
