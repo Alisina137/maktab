@@ -449,9 +449,13 @@ export const api = {
   },
 
   me(accessToken: string) {
-    return request<{ user: SafeUser; mustChangePassword: boolean }>("/v1/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    return request<{ user: SafeUser; mustChangePassword: boolean }>(
+      "/v1/auth/me",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      },
+      { cache: false }
+    );
   },
 
   adminContact(accessToken: string) {
