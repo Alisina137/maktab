@@ -2307,8 +2307,24 @@ html[dir="rtl"] .admin-route-heading h2 {
   letter-spacing: 0;
 }
 
+html[lang="en"] body {
+  font-family: var(--ml-font-family-en);
+}
+
+html[lang="en"] h1,
+html[lang="en"] h2,
+html[lang="en"] h3,
+html[lang="en"] .admin-title,
+html[lang="en"] .admin-auth-copy h1,
+html[lang="en"] .admin-school-identity h1,
+html[lang="en"] .admin-route-heading h2,
+html[lang="en"] .admin-panel h2,
+html[lang="en"] .admin-panel h3 {
+  font-family: var(--ml-font-family-en-display);
+}
+
 html[dir="rtl"] body {
-  font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic', 'Noto Sans', Tahoma, Arial, sans-serif;
+  font-family: var(--ml-font-family-rtl);
 }
 
 .admin-error,
