@@ -222,7 +222,50 @@ test("school-scoped credentials, forced password change, role matching, and susp
     url: "/v1/auth/me",
     headers: { authorization: `Bearer ${parentSession.accessToken}` }
   });
-  assert.equal(meAfterSuspend.statusCode, 401);
+  assert.equal(meAfterSuspend.statusCode, 200);
+  assert.equal(meAfterSuspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+
+  const blockedHome = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+  });
+  assert.equal(blockedHome.statusCode, 403);
+  assert.equal(blockedHome.json<{ error: string }>().error, "account_suspended");
+
+  const contactWhileSuspended = await app.inject({
+    method: "GET",
+    url: "/v1/school/admin-contact",
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+  });
+  assert.equal(contactWhileSuspended.statusCode, 200);
+
+  const suspendedLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolA,
+      expectedRole: "PARENT",
+      username: "parent.one",
+      password: "ParentSecure2026!"
+    }
+  });
+  assert.equal(suspendedLogin.statusCode, 200);
+  assert.equal(suspendedLogin.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+
+  const reactivate = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${createdParent.user.id}/reactivate`,
+    headers: { authorization: `Bearer ${adminAccessToken}` }
+  });
+  assert.equal(reactivate.statusCode, 200);
+
+  const homeAfterReactivate = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+  });
+  assert.equal(homeAfterReactivate.statusCode, 200);
 });
 
 test("school admin can model teacher assignments, Negaran responsibility, and timetable", async (t) => {
