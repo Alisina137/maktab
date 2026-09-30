@@ -12,6 +12,7 @@ import {
   type Session
 } from "./admin-client";
 import { ADMIN_ERROR_DURATION_MS, ADMIN_SUCCESS_DURATION_MS } from "./admin-feedback";
+import { AdminPasswordInput } from "./admin-password-input";
 import {
   ADMIN_DEFAULT_LOCALE,
   adminDirection,
@@ -200,18 +201,19 @@ export default function AdminLoginPage() {
             <div className="admin-login-heading">
               <span className="admin-kicker">{t("Secure your account")}</span>
               <h2>{t("Choose a new password")}</h2>
-              <p>{t("Use at least 10 characters with letters and numbers.")}</p>
+              <p>{t("Use at least 8 characters with a letter, number, and special character.")}</p>
             </div>
             <form className="admin-form admin-form-premium" onSubmit={changeTemporaryPassword}>
               <label>
                 {t("New password")}
-                <input
+                <AdminPasswordInput
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
-                  type="password"
-                  minLength={10}
+                  minLength={8}
                   autoComplete="new-password"
                   required
+                  showLabel={t("Show password")}
+                  hideLabel={t("Hide password")}
                 />
               </label>
               <button className="admin-primary admin-primary-large" type="submit" disabled={busy}>
@@ -254,13 +256,14 @@ export default function AdminLoginPage() {
               </label>
               <label>
                 {t("Password")}
-                <input
+                <AdminPasswordInput
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  type="password"
                   autoComplete="current-password"
                   placeholder={t("Enter your password")}
                   required
+                  showLabel={t("Show password")}
+                  hideLabel={t("Hide password")}
                 />
               </label>
               <button className="admin-primary admin-primary-large" type="submit" disabled={busy || !schoolId}>
