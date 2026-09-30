@@ -2062,3 +2062,56 @@ test("empty JSON requests are reported as client errors instead of internal erro
   assert.equal(response.statusCode, 400);
   assert.equal(response.json<{ error: string }>().error, "invalid_request");
 });
+
+
+test("first-login password change enforces the complete password policy", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "PASSWORD-POLICY");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminAccessToken}` },
+    payload: { username: "password.parent", fullName: "Password Parent" }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const created = parentResponse.json<{ temporaryPassword: string }>();
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "password.parent",
+      password: created.temporaryPassword
+    }
+  });
+  assert.equal(login.statusCode, 200);
+  const session = login.json<{ accessToken: string; mustChangePassword: boolean }>();
+  assert.equal(session.mustChangePassword, true);
+
+  const noSpecial = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    payload: { newPassword: "Password2026" }
+  });
+  assert.equal(noSpecial.statusCode, 400);
+  assert.equal(noSpecial.json<{ error: string }>().error, "validation_error");
+
+  const valid = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${session.accessToken}` },
+    payload: { newPassword: "Pass2026!" }
+  });
+  assert.equal(valid.statusCode, 200);
+  assert.equal(valid.json<{ mustChangePassword: boolean }>().mustChangePassword, false);
+});
