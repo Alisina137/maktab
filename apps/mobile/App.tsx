@@ -101,6 +101,11 @@ function passwordValidationError(value: string): TranslationKey | null {
   return null;
 }
 
+function screenForSession(next: SessionPayload): Screen {
+  if (next.user.status === "SUSPENDED") return "home";
+  return next.mustChangePassword ? "change-password" : "home";
+}
+
 
 function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
@@ -256,25 +261,107 @@ function AppContent() {
   }, [selectedChildId, reduceMotion, childOpacity, childScale]);
 
   useEffect(() => {
-    if (screen !== "home" || !session || session.mustChangePassword) return;
+    if (screen !== "home" || !session) return;
     void loadAdminContact(session.accessToken);
+    if (session.user.status === "SUSPENDED" || session.mustChangePassword) return;
     if (session.user.role === "PARENT") {
       void loadParentHome(session.accessToken);
       void loadParentNotifications(session.accessToken);
     }
     if (session.user.role === "TEACHER") void loadTeacherToday(session.accessToken);
-  }, [screen, session?.accessToken, session?.user.role, session?.mustChangePassword, reconnectEpoch]);
+  }, [
+    screen,
+    session?.accessToken,
+    session?.user.role,
+    session?.user.status,
+    session?.mustChangePassword,
+    reconnectEpoch
+  ]);
 
   useEffect(() => {
-    if (screen === "home" && session?.user.role === "PARENT" && selectedChildId) {
+    if (
+      screen === "home" &&
+      session?.user.role === "PARENT" &&
+      session.user.status !== "SUSPENDED" &&
+      selectedChildId
+    ) {
       void loadParentAttendance(session.accessToken, selectedChildId);
     }
   }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
   useEffect(() => {
-    if (!session || session.mustChangePassword) return;
+    if (!session || session.mustChangePassword || session.user.status === "SUSPENDED") return;
     void registerPushForSession(session.accessToken);
-  }, [session?.accessToken, session?.mustChangePassword]);
+  }, [session?.accessToken, session?.mustChangePassword, session?.user.status]);
+
+  useEffect(() => {
+    if (!session || !school || screen === "role" || screen === "school" || screen === "login") return;
+
+    let checking = false;
+
+    async function syncStatus() {
+      if (checking) return;
+      checking = true;
+      try {
+        const me = await api.me(session.accessToken);
+        const wasSuspended = session.user.status === "SUSPENDED";
+        const isSuspended = me.user.status === "SUSPENDED";
+        const next: SessionPayload = {
+          ...session,
+          user: me.user,
+          mustChangePassword: me.mustChangePassword
+        };
+
+        if (
+          me.user.status !== session.user.status ||
+          me.mustChangePassword !== session.mustChangePassword
+        ) {
+          setSession(next);
+          await saveStoredSession({ auth: next, school });
+        }
+
+        if (isSuspended) {
+          setScreen("home");
+          setParentHome(null);
+          setSelectedChildId("");
+          setParentAttendance([]);
+          setParentNotifications([]);
+          setTeacherToday(null);
+          setAttendanceSheet(null);
+          setAttendanceDraft({});
+          void loadAdminContact(session.accessToken);
+          if (!wasSuspended) setAppError("auth.accountSuspended");
+        } else if (wasSuspended) {
+          setAppError(null);
+          setScreen(screenForSession(next));
+          setReconnectEpoch((current) => current + 1);
+        }
+      } catch (cause) {
+        if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
+          setSession((current) =>
+            current
+              ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
+              : current
+          );
+          setScreen("home");
+          setAppError("auth.accountSuspended");
+          void loadAdminContact(session.accessToken);
+        }
+      } finally {
+        checking = false;
+      }
+    }
+
+    void syncStatus();
+    const interval = setInterval(syncStatus, 3000);
+    return () => clearInterval(interval);
+  }, [
+    screen,
+    school?.id,
+    session?.accessToken,
+    session?.user.status,
+    session?.mustChangePassword
+  ]);
 
   useEffect(() => {
     if (errorKind !== "network" || retryingConnection || errorExitRequested) return;
@@ -300,6 +387,16 @@ function AppContent() {
   }
 
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
+    if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
+      setSession((current) =>
+        current
+          ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
+          : current
+      );
+      setScreen("home");
+      if (session?.accessToken) void loadAdminContact(session.accessToken);
+    }
+
     const failure = appErrorFromCause(cause, fallback);
     if (failure.kind === "network") setPreferCachedReads(true);
     setAppError(failure.key, failure.kind);
@@ -362,7 +459,7 @@ function AppContent() {
       // Render the stored session immediately. Cached GET data can now populate
       // the home screen without waiting for a dead API tunnel to time out.
       setSession(stored.auth);
-      setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+      setScreen(screenForSession(stored.auth));
       setBusy(false);
 
       try {
@@ -384,7 +481,7 @@ function AppContent() {
         };
         setSession(restored);
         await saveStoredSession({ auth: restored, school: stored.school });
-        setScreen(me.mustChangePassword ? "change-password" : "home");
+        setScreen(screenForSession(restored));
         setReconnectEpoch((current) => current + 1);
         return;
       } catch (cause) {
@@ -406,7 +503,7 @@ function AppContent() {
         const refreshed = await api.refresh(stored.auth.refreshToken);
         await saveStoredSession({ auth: refreshed, school: stored.school });
         setSession(refreshed);
-        setScreen(refreshed.mustChangePassword ? "change-password" : "home");
+        setScreen(screenForSession(refreshed));
         setReconnectEpoch((current) => current + 1);
       } catch (cause) {
         if (isNetworkApiError(cause)) {
@@ -414,7 +511,7 @@ function AppContent() {
           setSession(stored.auth);
           setNotice(null);
           setAppError("common.apiUnavailable", "network");
-          setScreen(stored.auth.mustChangePassword ? "change-password" : "home");
+          setScreen(screenForSession(stored.auth));
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
@@ -608,7 +705,11 @@ function AppContent() {
       setReadCacheScope(`${school.id}:${next.user.id}`);
       await saveStoredSession({ auth: next, school });
       setPassword("");
-      setScreen(next.mustChangePassword ? "change-password" : "home");
+      setScreen(screenForSession(next));
+      if (next.user.status === "SUSPENDED") {
+        setAppError("auth.accountSuspended");
+        void loadAdminContact(next.accessToken);
+      }
     } catch (cause) {
       showCause(cause, "auth.loginFailed");
     } finally {
@@ -1020,7 +1121,29 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session?.user.role === "PARENT" && (
+        {screen === "home" && session?.user.status === "SUSPENDED" && (
+          <View style={styles.section}>
+            <View style={styles.suspendedCard}>
+              <View style={styles.suspendedIcon}>
+                <Ionicons name="lock-closed-outline" size={26} color={tokens.color.warning} />
+              </View>
+              <Text style={[styles.title, textDirection]}>{translate(locale, "suspension.title")}</Text>
+              <Text style={[styles.subtitle, textDirection]}>{translate(locale, "auth.accountSuspended")}</Text>
+              <Text style={[styles.suspendedHint, textDirection]}>{translate(locale, "suspension.contactHint")}</Text>
+            </View>
+
+            <AdminContactCard contact={adminContact} locale={locale} />
+
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+              onPress={() => void logout()}
+            >
+              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {screen === "home" && session?.user.role === "PARENT" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
             <Text style={[styles.title, textDirection]}>{translate(locale, "parent.homeTitle")}</Text>
             <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.homeSubtitle")}</Text>
@@ -1188,7 +1311,7 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session?.user.role === "TEACHER" && (
+        {screen === "home" && session?.user.role === "TEACHER" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
             <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
               <View style={styles.heroIcon}>
@@ -1283,7 +1406,7 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session?.user.role === "STUDENT" && (
+        {screen === "home" && session?.user.role === "STUDENT" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
             <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
               <View style={styles.heroIcon}>
@@ -1321,7 +1444,7 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "teacher-attendance" && session?.user.role === "TEACHER" && attendanceSheet && (
+        {screen === "teacher-attendance" && session?.user.role === "TEACHER" && session.user.status !== "SUSPENDED" && attendanceSheet && (
           <View style={styles.section}>
             <BackButton
               locale={locale}
@@ -1851,6 +1974,28 @@ function PrimaryButton({ label, onPress, disabled }: { label: string; onPress: (
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f6f8fc" },
+  suspendedCard: {
+    alignItems: "center",
+    gap: 10,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#f2d59a",
+    borderRadius: 20,
+    backgroundColor: "#fff9ec"
+  },
+  suspendedIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff1c8"
+  },
+  suspendedHint: {
+    color: tokens.color.textMuted,
+    fontSize: 13,
+    lineHeight: 20
+  },
   keyboardAvoiding: { flex: 1 },
   backgroundAccentTop: {
     position: "absolute",
