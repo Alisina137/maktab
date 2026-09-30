@@ -297,27 +297,29 @@ function AppContent() {
   useEffect(() => {
     if (!session || !school || screen === "role" || screen === "school" || screen === "login") return;
 
+    const activeSession = session;
+    const activeSchool = school;
     let checking = false;
 
     async function syncStatus() {
       if (checking) return;
       checking = true;
       try {
-        const me = await api.me(session.accessToken);
-        const wasSuspended = session.user.status === "SUSPENDED";
+        const me = await api.me(activeSession.accessToken);
+        const wasSuspended = activeSession.user.status === "SUSPENDED";
         const isSuspended = me.user.status === "SUSPENDED";
         const next: SessionPayload = {
-          ...session,
+          ...activeSession,
           user: me.user,
           mustChangePassword: me.mustChangePassword
         };
 
         if (
-          me.user.status !== session.user.status ||
-          me.mustChangePassword !== session.mustChangePassword
+          me.user.status !== activeSession.user.status ||
+          me.mustChangePassword !== activeSession.mustChangePassword
         ) {
           setSession(next);
-          await saveStoredSession({ auth: next, school });
+          await saveStoredSession({ auth: next, school: activeSchool });
         }
 
         if (isSuspended) {
@@ -329,7 +331,7 @@ function AppContent() {
           setTeacherToday(null);
           setAttendanceSheet(null);
           setAttendanceDraft({});
-          void loadAdminContact(session.accessToken);
+          void loadAdminContact(activeSession.accessToken);
           if (!wasSuspended) setAppError("auth.accountSuspended");
         } else if (wasSuspended) {
           setAppError(null);
@@ -345,7 +347,7 @@ function AppContent() {
           );
           setScreen("home");
           setAppError("auth.accountSuspended");
-          void loadAdminContact(session.accessToken);
+          void loadAdminContact(activeSession.accessToken);
         }
       } finally {
         checking = false;
