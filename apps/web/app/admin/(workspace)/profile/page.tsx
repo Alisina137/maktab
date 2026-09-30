@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type Session } from "../../admin-client";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
+import { AdminPasswordInput } from "../../admin-password-input";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AdminProfile = {
@@ -303,15 +304,38 @@ export default function AdminProfilePage() {
         <form className="admin-form admin-password-form" onSubmit={changePassword}>
           <label>
             {t("Current password")}
-            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" required />
+            <AdminPasswordInput
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              showLabel={t("Show password")}
+              hideLabel={t("Hide password")}
+            />
           </label>
           <label>
             {t("New password")}
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={10} autoComplete="new-password" required />
+            <AdminPasswordInput
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={8}
+              autoComplete="new-password"
+              required
+              showLabel={t("Show password")}
+              hideLabel={t("Hide password")}
+            />
           </label>
           <label>
             {t("Confirm new password")}
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={10} autoComplete="new-password" required />
+            <AdminPasswordInput
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              minLength={8}
+              autoComplete="new-password"
+              required
+              showLabel={t("Show password")}
+              hideLabel={t("Hide password")}
+            />
           </label>
           <button className="admin-primary" disabled={passwordBusy} type="submit">
             {t(passwordBusy ? "Saving…" : "Change password")}
