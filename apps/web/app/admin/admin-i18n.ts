@@ -560,6 +560,9 @@ const fa: Record<string, string> = {
   "No students without login": "هیچ شاگردی بدون حساب ورود موجود نیست",
   "Create the student record in Families first, then return here to generate the login.": "ابتدا رکورد شاگرد را در بخش خانواده‌ها ایجاد کنید، سپس برای ساخت حساب ورود به اینجا برگردید.",
   "Select a student record before creating the student login.": "پیش از ایجاد حساب شاگرد، یک رکورد شاگرد را انتخاب کنید.",
+  "Show password": "نمایش رمز عبور",
+  "Hide password": "پنهان‌کردن رمز عبور",
+  "Use at least 8 characters with a letter, number, and special character.": "حداقل ۸ نویسه شامل یک حرف، یک عدد و یک نویسه ویژه استفاده کنید.",
 };
 
 const ps: Record<string, string> = {
@@ -1113,6 +1116,9 @@ const ps: Record<string, string> = {
   "No students without login": "هیڅ زده‌کوونکی د ننوتلو له حساب پرته نشته",
   "Create the student record in Families first, then return here to generate the login.": "لومړی د کورنیو په برخه کې د زده‌کوونکي ریکارډ جوړ کړئ، بیا د ننوتلو حساب د جوړولو لپاره دلته راشئ.",
   "Select a student record before creating the student login.": "د زده‌کوونکي د ننوتلو حساب له جوړولو مخکې یو زده‌کوونکی وټاکئ.",
+  "Show password": "پټنوم ښکاره کړئ",
+  "Hide password": "پټنوم پټ کړئ",
+  "Use at least 8 characters with a letter, number, and special character.": "لږ تر لږه ۸ توري وکاروئ چې یو حرف، یوه شمېره او یوه ځانګړې نښه ولري.",
 };
 
 export function adminText(locale: AdminLocale, english: string): string {
