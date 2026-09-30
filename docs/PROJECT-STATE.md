@@ -414,3 +414,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Cached-read fallback notifications cannot overwrite the suspension message once suspended mode is active.
 - A protected request that returns `account_suspended` now immediately persists the suspended state locally, disables cached-read preference, enters restricted home mode, and stops further generic error handling for that response.
 - CI verified typecheck, tests, and production build after the fix.
+
+## Testing Step 6 refinement — Academic lifecycle request handling
+
+- Testing Step 6 (Academic structure) is now active.
+- Fixed the Admin → Academics request helper so bodyless academic-year lifecycle actions do not send `Content-Type: application/json` without a body.
+- This prevents Fastify from rejecting **Activate**, **Close**, or **Archive** before the academic lifecycle route handler runs.
+- JSON content type is still added automatically for academic mutations that actually send a request body.
+- Existing lifecycle rules remain unchanged: `DRAFT → ACTIVE → CLOSED → ARCHIVED`, only one ACTIVE year per school, and closed/archived years remain immutable for new year-bound academic structure.
+
