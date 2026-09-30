@@ -1,11 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { adminApi, friendlyAdminError } from "./admin-client";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminText } from "./admin-i18n";
+import { adminText, type AdminLocale } from "./admin-i18n";
+
+export const academicSectionNames = [
+  "years",
+  "grades",
+  "subjects",
+  "classes",
+  "teachers",
+  "assignments",
+  "negaran",
+  "timetable"
+] as const;
+
+export type AcademicSection = (typeof academicSectionNames)[number] | "overview";
+
+export function isAcademicSection(value: string): value is Exclude<AcademicSection, "overview"> {
+  return (academicSectionNames as readonly string[]).includes(value);
+}
 
 type AcademicYear = {
   id: string;
@@ -48,7 +66,7 @@ const schoolWeekdays = ["SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", 
 
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set("Authorization", "Bearer " + accessToken);
   return adminApi<T>(path, { ...init, headers });
 }
 
@@ -56,7 +74,13 @@ function formValue(form: FormData, key: string): string {
   return String(form.get(key) ?? "").trim();
 }
 
-export function AcademicPanel({ accessToken }: { accessToken: string }) {
+export function AcademicPanel({
+  accessToken,
+  section = "overview"
+}: {
+  accessToken: string;
+  section?: AcademicSection;
+}) {
   const {
     locale,
     showToast,
@@ -69,15 +93,22 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
   const [users, setUsers] = useState<User[]>([]);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const yearMap = useMemo(() => new Map(overview?.academicYears.map((item) => [item.id, item]) ?? []), [overview]);
+  const gradeMap = useMemo(() => new Map(overview?.gradeLevels.map((item) => [item.id, item]) ?? []), [overview]);
   const classMap = useMemo(() => new Map(overview?.classes.map((item) => [item.id, item]) ?? []), [overview]);
   const subjectMap = useMemo(() => new Map(overview?.subjects.map((item) => [item.id, item]) ?? []), [overview]);
   const teacherMap = useMemo(() => new Map(overview?.teachers.map((item) => [item.userId, item]) ?? []), [overview]);
+  const userMap = useMemo(() => new Map(users.map((item) => [item.id, item])), [users]);
 
   useEffect(() => {
     void load();
   }, [accessToken]);
+
+  useEffect(() => {
+    setEditingId(null);
+  }, [section, selectedAcademicYearId]);
 
   async function load(showFailureToast = false) {
     setLoadError("");
@@ -93,11 +124,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       const message = friendlyAdminError(cause, "Could not load academic structure.", locale);
       setLoadError(message);
       if (showFailureToast) {
-        showToast({
-          kind: "error",
-          title: t("Academics"),
-          message
-        });
+        showToast({ kind: "error", title: t("Academics"), message });
       }
       return false;
     }
@@ -108,7 +135,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
     payload: Record<string, unknown> | undefined,
     context: string,
     success: string,
-    method: "POST" | "DELETE" = "POST"
+    method: "POST" | "PATCH" | "DELETE" = "POST"
   ): Promise<boolean> {
     setBusy(true);
     try {
@@ -116,11 +143,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         method,
         ...(payload ? { body: JSON.stringify(payload) } : {})
       });
-      showToast({
-        kind: "success",
-        title: t(context),
-        message: t(success)
-      });
+      showToast({ kind: "success", title: t(context), message: t(success) });
       await load(true);
       await refreshAcademicYears();
       return true;
@@ -139,15 +162,27 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
   async function submit(
     event: FormEvent<HTMLFormElement>,
     path: string,
-    toPayload: (form: FormData) => Record<string, unknown>,
+    payload: Record<string, unknown>,
     context: string,
-    success: string
+    success: string,
+    method: "POST" | "PATCH"
   ) {
     event.preventDefault();
-    const element = event.currentTarget;
-    const data = new FormData(element);
-    const succeeded = await mutate(path, toPayload(data), context, success);
-    if (succeeded) element.reset();
+    const succeeded = await mutate(path, payload, context, success, method);
+    if (succeeded) setEditingId(null);
+  }
+
+  async function remove(path: string, context: string, success: string, message = "Delete this record permanently?") {
+    if (!window.confirm(t(message))) return;
+    const succeeded = await mutate(path, undefined, context, success, "DELETE");
+    if (succeeded) setEditingId(null);
+  }
+
+  function beginEdit(id: string) {
+    setEditingId(id);
+    window.setTimeout(() => {
+      document.getElementById("academic-entity-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   }
 
   if (!overview) {
@@ -182,299 +217,532 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
   const selectedTimetable = overview.timetable.filter((item) => item.academicYearId === effectiveYearId);
   const selectedYearMutable = effectiveYear?.status === "DRAFT" || effectiveYear?.status === "ACTIVE";
   const selectedYearHistorical = effectiveYear?.status === "CLOSED" || effectiveYear?.status === "ARCHIVED";
-  const currentAcademicYears = overview.academicYears.filter((year) => year.status !== "ARCHIVED");
-  const archivedAcademicYears = overview.academicYears.filter((year) => year.status === "ARCHIVED");
 
-  return (
-    <section className="academic-section admin-page-enter">
-      <div className="admin-section-header academic-heading">
-        <div>
-          <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
-          <h2>{t("Model the school year")}</h2>
-          <p>{t("Academic years, grades, classes, subjects, teachers, assignments, Negaran responsibility, and conflict-safe timetables.")}</p>
-        </div>
-        <button className="admin-secondary" onClick={() => void load(true)} disabled={busy}>{t("Refresh")}</button>
-      </div>
+  if (section === "overview") {
+    const modules = [
+      { key: "years", title: "Academic years", description: "Create years and manage Draft, Active, Closed, and Archived lifecycle.", count: overview.academicYears.length },
+      { key: "grades", title: "Grade levels", description: "Manage the reusable school grade catalog.", count: overview.gradeLevels.length },
+      { key: "subjects", title: "Subjects", description: "Manage the reusable school subject catalog.", count: overview.subjects.length },
+      { key: "classes", title: "Classes", description: "Create and manage classes for the selected academic year.", count: selectedClasses.length },
+      { key: "teachers", title: "Teacher profiles", description: "Attach academic teacher profiles to teacher accounts.", count: overview.teachers.length },
+      { key: "assignments", title: "Teacher assignments", description: "Assign teachers to subjects and classes in the selected year.", count: selectedAssignments.length },
+      { key: "negaran", title: "Negaran assignments", description: "Manage class-supervisor responsibility and history.", count: selectedNegaranAssignments.length },
+      { key: "timetable", title: "Timetable periods", description: "Create periods and review weekly teacher/class timetables.", count: selectedTimetable.length }
+    ] as const;
 
-      <div className="academic-summary-grid">
-        <Summary label={t("Academic years")} value={overview.academicYears.length} />
-        <Summary label={t("Classes")} value={selectedClasses.length} />
-        <Summary label={t("Subjects")} value={overview.subjects.length} />
-        <Summary label={t("Teachers")} value={overview.teachers.length} />
-        <Summary label={t("Assignments")} value={selectedAssignments.length} />
-        <Summary label={t("Timetable periods")} value={selectedTimetable.length} />
-      </div>
-
-      {selectedYearHistorical ? (
-        <div className="admin-panel admin-copy" role="status">
-          <strong>{effectiveYear?.name}</strong> · {t("Historical academic year · read-only")}
-          <div>{t("Year-bound academic structure is shown for reference. Switch to a draft or active year to make operational changes.")}</div>
-        </div>
-      ) : null}
-
-      <div className="academic-form-grid">
-        <AcademicForm title={t("Academic year")} hint={t("Dates are stored canonically; the school calendar presentation can remain Solar Hijri.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/years", (form) => ({
-            name: formValue(form, "name"),
-            startDate: formValue(form, "startDate"),
-            endDate: formValue(form, "endDate")
-          }), "Academic year", "Academic year created.")}>
-            <label>{t("Name")}<input name="name" placeholder="1405" required /></label>
-            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
-            <label>{t("End date")}<AdminHijriDatePicker locale={locale} name="endDate" required /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create year")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Grade level")} hint={t("Reusable grade definition such as Grade 7.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/grades", (form) => ({
-            code: formValue(form, "code"),
-            name: formValue(form, "name"),
-            sortOrder: Number(formValue(form, "sortOrder") || "0")
-          }), "Grade level", "Grade level created.")}>
-            <label>{t("Code")}<input name="code" placeholder="G7" required /></label>
-            <label>{t("Name")}<input name="name" placeholder={t("Grade 7")} required /></label>
-            <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue="7" required /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create grade")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Subject")} hint={t("School-level subject catalog.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/subjects", (form) => ({
-            code: formValue(form, "code"),
-            name: formValue(form, "name")
-          }), "Subject", "Subject created.")}>
-            <label>{t("Code")}<input name="code" placeholder="MATH" required /></label>
-            <label>{t("Name")}<input name="name" placeholder={t("Mathematics")} required /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create subject")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Class section")} hint={t("A class belongs to one academic year and grade.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/classes", (form) => ({
-            academicYearId: formValue(form, "academicYearId"),
-            gradeLevelId: formValue(form, "gradeLevelId"),
-            code: formValue(form, "code"),
-            name: formValue(form, "name")
-          }), "Class section", "Class created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
-            <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
-            <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
-            <label>{t("Name")}<input name="name" placeholder={t("Grade 7 A")} required /></label>
-            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Create class")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Teacher profile")} hint={t("Attach school details to an existing TEACHER account.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/teachers", (form) => ({
-            userId: formValue(form, "userId"),
-            employeeCode: formValue(form, "employeeCode"),
-            fullName: formValue(form, "fullName"),
-            phone: formValue(form, "phone") || undefined
-          }), "Teacher profile", "Teacher profile created.")}>
-            <Select
-              name="userId"
-              label={t("Teacher account")}
-              items={teacherAccounts.filter((user) => !profiledTeacherIds.has(user.id)).map((user) => [user.id, user.username])}
-            />
-            <label>{t("Employee code")}<input name="employeeCode" placeholder="T-001" required /></label>
-            <label>{t("Full name")}<input name="fullName" placeholder={t("Teacher full name")} required /></label>
-            <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create teacher profile")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Teacher assignment")} hint={t("Teacher → Subject → Class for one academic year.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/assignments", (form) => ({
-            academicYearId: formValue(form, "academicYearId"),
-            classId: formValue(form, "classId"),
-            subjectId: formValue(form, "subjectId"),
-            teacherUserId: formValue(form, "teacherUserId")
-          }), "Teacher assignment", "Teacher assignment created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
-            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
-            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Assign teacher")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Negaran assignment")} hint={t("One primary class supervisor may be active for a class at a time.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/negaran", (form) => ({
-            academicYearId: formValue(form, "academicYearId"),
-            classId: formValue(form, "classId"),
-            teacherUserId: formValue(form, "teacherUserId"),
-            startDate: formValue(form, "startDate"),
-            ...(formValue(form, "endDate") ? { endDate: formValue(form, "endDate") } : {})
-          }), "Negaran assignment", "Negaran assigned.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
-            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
-            <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" /></label>
-            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Assign Negaran")}</button>
-          </form>
-        </AcademicForm>
-
-        <AcademicForm title={t("Timetable period")} hint={t("A period must match an existing teacher assignment. Class and teacher overlaps are rejected.")}>
-          <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/timetable", (form) => ({
-            academicYearId: formValue(form, "academicYearId"),
-            classId: formValue(form, "classId"),
-            subjectId: formValue(form, "subjectId"),
-            teacherUserId: formValue(form, "teacherUserId"),
-            weekday: formValue(form, "weekday"),
-            startsAt: formValue(form, "startsAt"),
-            endsAt: formValue(form, "endsAt")
-          }), "Timetable period", "Timetable period created.")}>
-            <Select name="academicYearId" label={t("Academic year")} items={effectiveYear && selectedYearMutable ? [[effectiveYear.id, `${effectiveYear.name} · ${t(effectiveYear.status)}`]] : []} defaultValue={selectedYearMutable ? effectiveYearId : ""} />
-            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} />
-            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
-            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
-            <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} />
-            <label>{t("Starts")}<input name="startsAt" type="time" required /></label>
-            <label>{t("Ends")}<input name="endsAt" type="time" required /></label>
-            <button className="admin-primary" disabled={busy || !selectedYearMutable}>{t("Add period")}</button>
-          </form>
-        </AcademicForm>
-      </div>
-
-      <article className="admin-panel academic-list-panel">
-        <div className="admin-section-header">
+    return (
+      <section className="academic-section admin-page-enter">
+        <div className="admin-section-header academic-heading">
           <div>
-            <h2>{t("Academic years")}</h2>
-            <p>{t("Lifecycle: DRAFT → ACTIVE ↔ CLOSED ↔ ARCHIVED. Multiple drafts are allowed; only one year can be active.")}</p>
+            <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
+            <h2>{t("Academic modules")}</h2>
+            <p>{t("Open one academic module at a time. Each page contains one form and the records created by that form.")}</p>
           </div>
+          <button className="admin-secondary" onClick={() => void load(true)} disabled={busy}>{t("Refresh")}</button>
         </div>
-        <div className="academic-rows">
-          {currentAcademicYears.map((year) => (
-            <div className="academic-row" key={year.id}>
-              <div>
-                <strong>{year.name}</strong>
-                <span>{formatAdminHijriDate(locale, year.startDate)} → {formatAdminHijriDate(locale, year.endDate)} · {t(year.status)}</span>
+
+        <div className="academic-form-grid academic-module-grid">
+          {modules.map((module) => (
+            <Link className="admin-panel academic-form-card academic-module-card" href={"/admin/academics/" + module.key} key={module.key}>
+              <div className="academic-module-card-heading">
+                <h2>{t(module.title)}</h2>
+                <strong>{module.count}</strong>
               </div>
-              <div className="admin-actions">
-                {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Activate academic year", "Academic year activated.")}>{t("Activate")}</button> : null}
-                {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Close academic year", "Academic year closed.")}>{t("Close")}</button> : null}
-                {year.status === "CLOSED" ? (
+              <p>{t(module.description)}</p>
+              <span className="academic-module-open">{t("Open module")} →</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const pageTitle: Record<Exclude<AcademicSection, "overview">, string> = {
+    years: "Academic years",
+    grades: "Grade levels",
+    subjects: "Subjects",
+    classes: "Classes",
+    teachers: "Teacher profiles",
+    assignments: "Teacher assignments",
+    negaran: "Negaran assignments",
+    timetable: "Timetable periods"
+  };
+
+  const historicalNotice = ["classes", "assignments", "negaran", "timetable"].includes(section) && selectedYearHistorical ? (
+    <div className="admin-panel admin-copy" role="status">
+      <strong>{effectiveYear?.name}</strong> · {t("Historical academic year · read-only")}
+      <div>{t("Year-bound academic structure is shown for reference. Switch to a draft or active year to make operational changes.")}</div>
+    </div>
+  ) : null;
+
+  if (section === "years") {
+    const editing = overview.academicYears.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+        <AcademicForm title={t(editing ? "Edit academic year" : "Academic year")} hint={t("Dates are stored canonically; the school calendar presentation can remain Solar Hijri.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-year"}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              const payload = {
+                name: formValue(form, "name"),
+                startDate: formValue(form, "startDate"),
+                endDate: formValue(form, "endDate")
+              };
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/years/" + editing.id : "/v1/admin/academics/years",
+                payload,
+                editing ? "Edit academic year" : "Academic year",
+                editing ? "Academic year updated." : "Academic year created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder="1405" required /></label>
+            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" defaultValue={editing?.startDate ?? ""} required /></label>
+            <label>{t("End date")}<AdminHijriDatePicker locale={locale} name="endDate" defaultValue={editing?.endDate ?? ""} required /></label>
+            <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create year")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+
+        <EntityList
+          title={t("Academic years")}
+          rows={overview.academicYears.map((year) => ({
+            id: year.id,
+            title: year.name,
+            detail: formatAdminHijriDate(locale, year.startDate) + " → " + formatAdminHijriDate(locale, year.endDate) + " · " + t(year.status),
+            action: (
+              <>
+                {year.status === "DRAFT" ? (
                   <>
-                    <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Reactivate academic year", "Academic year reactivated.")}>{t("Reactivate")}</button>
-                    <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Archive academic year", "Academic year archived.")}>{t("Archive")}</button>
+                    <button disabled={busy} onClick={() => beginEdit(year.id)}>{t("Edit")}</button>
+                    <button disabled={busy} onClick={() => void mutate("/v1/admin/academics/years/" + year.id + "/activate", undefined, "Activate academic year", "Academic year activated.")}>{t("Activate")}</button>
                   </>
                 ) : null}
-              </div>
-            </div>
-          ))}
-          {currentAcademicYears.length === 0 ? <p className="admin-copy">{t("No current academic years.")}</p> : null}
-        </div>
-      </article>
-
-      <article className="admin-panel academic-list-panel">
-        <div className="admin-section-header">
-          <div>
-            <h2>{t("Archived academic years")}</h2>
-            <p>{t("Archived years stay inactive and read-only until you unarchive them. Their classes, assignments, Negaran history, timetable, students, and other linked records remain stored.")}</p>
-          </div>
-        </div>
-        <div className="academic-rows">
-          {archivedAcademicYears.map((year) => {
-            const classCount = overview.classes.filter((item) => item.academicYearId === year.id).length;
-            const assignmentCount = overview.assignments.filter((item) => item.academicYearId === year.id).length;
-            const negaranCount = overview.negaranAssignments.filter((item) => item.academicYearId === year.id).length;
-            const timetableCount = overview.timetable.filter((item) => item.academicYearId === year.id).length;
-            return (
-              <div className="academic-row" key={year.id}>
-                <div>
-                  <strong>{year.name}</strong>
-                  <span>
-                    {formatAdminHijriDate(locale, year.startDate)} → {formatAdminHijriDate(locale, year.endDate)} · {t("ARCHIVED")}
-                  </span>
-                  <span>
-                    {t("Classes")}: {classCount} · {t("Assignments")}: {assignmentCount} · {t("Negaran history")}: {negaranCount} · {t("Timetable periods")}: {timetableCount}
-                  </span>
-                </div>
-                <div className="admin-actions">
-                  <button
-                    disabled={busy}
-                    onClick={() => void mutate(
-                      `/v1/admin/academics/years/${year.id}/unarchive`,
-                      undefined,
-                      "Unarchive academic year",
-                      "Academic year unarchived."
-                    )}
-                  >
-                    {t("Unarchive")}
-                  </button>
-                  <button
-                    className="admin-danger"
-                    disabled={busy}
-                    onClick={() => {
-                      if (!window.confirm(t("Delete this archived academic year permanently? This is allowed only when it has no linked school data."))) return;
-                      void mutate(
-                        `/v1/admin/academics/years/${year.id}`,
-                        undefined,
+                {year.status === "ACTIVE" ? (
+                  <button disabled={busy} onClick={() => void mutate("/v1/admin/academics/years/" + year.id + "/close", undefined, "Close academic year", "Academic year closed.")}>{t("Close")}</button>
+                ) : null}
+                {year.status === "CLOSED" ? (
+                  <>
+                    <button disabled={busy} onClick={() => void mutate("/v1/admin/academics/years/" + year.id + "/activate", undefined, "Reactivate academic year", "Academic year reactivated.")}>{t("Reactivate")}</button>
+                    <button disabled={busy} onClick={() => void mutate("/v1/admin/academics/years/" + year.id + "/archive", undefined, "Archive academic year", "Academic year archived.")}>{t("Archive")}</button>
+                  </>
+                ) : null}
+                {year.status === "ARCHIVED" ? (
+                  <>
+                    <button disabled={busy} onClick={() => void mutate("/v1/admin/academics/years/" + year.id + "/unarchive", undefined, "Unarchive academic year", "Academic year unarchived.")}>{t("Unarchive")}</button>
+                    <button
+                      className="admin-danger"
+                      disabled={busy}
+                      onClick={() => void remove(
+                        "/v1/admin/academics/years/" + year.id,
                         "Delete academic year",
                         "Academic year deleted permanently.",
-                        "DELETE"
-                      );
-                    }}
-                  >
-                    {t("Delete")}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          {archivedAcademicYears.length === 0 ? <p className="admin-copy">{t("No archived academic years yet.")}</p> : null}
-        </div>
-      </article>
+                        "Delete this archived academic year permanently? This is allowed only when it has no linked school data."
+                      )}
+                    >
+                      {t("Delete")}
+                    </button>
+                  </>
+                ) : null}
+              </>
+            )
+          }))}
+        />
+      </AcademicEntityPage>
+    );
+  }
 
-      <div className="academic-data-grid">
-        <DataList
+  if (section === "grades") {
+    const editing = overview.gradeLevels.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+        <AcademicForm title={t(editing ? "Edit grade level" : "Grade level")} hint={t("Reusable grade definition such as Grade 7.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-grade"}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/grades/" + editing.id : "/v1/admin/academics/grades",
+                {
+                  code: formValue(form, "code"),
+                  name: formValue(form, "name"),
+                  sortOrder: Number(formValue(form, "sortOrder") || "0")
+                },
+                editing ? "Edit grade level" : "Grade level",
+                editing ? "Grade level updated." : "Grade level created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <label>{t("Code")}<input name="code" defaultValue={editing?.code ?? ""} placeholder="G7" required /></label>
+            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder={t("Grade 7")} required /></label>
+            <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue={editing?.sortOrder ?? 7} required /></label>
+            <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create grade")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
+          title={t("Grade levels")}
+          rows={overview.gradeLevels.map((grade) => ({
+            id: grade.id,
+            title: grade.name,
+            detail: grade.code + " · " + t("Sort order") + " " + grade.sortOrder,
+            action: <CrudActions t={t} busy={busy} onEdit={() => beginEdit(grade.id)} onDelete={() => void remove("/v1/admin/academics/grades/" + grade.id, "Delete grade level", "Grade level deleted.")} />
+          }))}
+        />
+      </AcademicEntityPage>
+    );
+  }
+
+  if (section === "subjects") {
+    const editing = overview.subjects.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+        <AcademicForm title={t(editing ? "Edit subject" : "Subject")} hint={t("School-level subject catalog.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-subject"}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/subjects/" + editing.id : "/v1/admin/academics/subjects",
+                { code: formValue(form, "code"), name: formValue(form, "name") },
+                editing ? "Edit subject" : "Subject",
+                editing ? "Subject updated." : "Subject created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <label>{t("Code")}<input name="code" defaultValue={editing?.code ?? ""} placeholder="MATH" required /></label>
+            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder={t("Mathematics")} required /></label>
+            <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create subject")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
+          title={t("Subjects")}
+          rows={overview.subjects.map((subject) => ({
+            id: subject.id,
+            title: subject.name,
+            detail: subject.code,
+            action: <CrudActions t={t} busy={busy} onEdit={() => beginEdit(subject.id)} onDelete={() => void remove("/v1/admin/academics/subjects/" + subject.id, "Delete subject", "Subject deleted.")} />
+          }))}
+        />
+      </AcademicEntityPage>
+    );
+  }
+
+  if (section === "classes") {
+    const editing = selectedClasses.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+        <AcademicForm title={t(editing ? "Edit class section" : "Class section")} hint={t("A class belongs to one academic year and grade.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-class-" + effectiveYearId}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/classes/" + editing.id : "/v1/admin/academics/classes",
+                {
+                  academicYearId: effectiveYearId,
+                  gradeLevelId: formValue(form, "gradeLevelId"),
+                  code: formValue(form, "code"),
+                  name: formValue(form, "name")
+                },
+                editing ? "Edit class section" : "Class section",
+                editing ? "Class updated." : "Class created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <ReadOnlyYear year={effectiveYear} locale={locale} />
+            <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} defaultValue={editing?.gradeLevelId ?? ""} disabled={!selectedYearMutable} />
+            <label>{t("Code")}<input name="code" defaultValue={editing?.code ?? ""} placeholder="7A" required disabled={!selectedYearMutable} /></label>
+            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder={t("Grade 7 A")} required disabled={!selectedYearMutable} /></label>
+            <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Create class")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
+          title={t("Classes")}
+          rows={selectedClasses.map((item) => ({
+            id: item.id,
+            title: item.name,
+            detail: item.code + " · " + (gradeMap.get(item.gradeLevelId)?.name ?? t("Grade")),
+            action: selectedYearMutable ? <CrudActions t={t} busy={busy} onEdit={() => beginEdit(item.id)} onDelete={() => void remove("/v1/admin/academics/classes/" + item.id, "Delete class section", "Class deleted.")} /> : undefined
+          }))}
+        />
+      </AcademicEntityPage>
+    );
+  }
+
+  if (section === "teachers") {
+    const editing = overview.teachers.find((item) => item.userId === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)}>
+        <AcademicForm title={t(editing ? "Edit teacher profile" : "Teacher profile")} hint={t("Attach school details to an existing TEACHER account.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.userId ?? "new-teacher"}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              const profile = {
+                employeeCode: formValue(form, "employeeCode"),
+                fullName: formValue(form, "fullName"),
+                phone: formValue(form, "phone") || undefined
+              };
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/teachers/" + editing.userId : "/v1/admin/academics/teachers",
+                editing ? profile : { userId: formValue(form, "userId"), ...profile },
+                editing ? "Edit teacher profile" : "Teacher profile",
+                editing ? "Teacher profile updated." : "Teacher profile created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            {editing ? (
+              <label>{t("Teacher account")}<input value={userMap.get(editing.userId)?.username ?? editing.userId} disabled readOnly /></label>
+            ) : (
+              <Select
+                name="userId"
+                label={t("Teacher account")}
+                items={teacherAccounts.filter((user) => !profiledTeacherIds.has(user.id)).map((user) => [user.id, user.username])}
+              />
+            )}
+            <label>{t("Employee code")}<input name="employeeCode" defaultValue={editing?.employeeCode ?? ""} placeholder="T-001" required /></label>
+            <label>{t("Full name")}<input name="fullName" defaultValue={editing?.fullName ?? ""} placeholder={t("Teacher full name")} required /></label>
+            <label>{t("Phone")}<input name="phone" defaultValue={editing?.phone ?? ""} placeholder="07xxxxxxxx" /></label>
+            <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create teacher profile")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
+          title={t("Teacher profiles")}
+          rows={overview.teachers.map((teacher) => ({
+            id: teacher.userId,
+            title: teacher.fullName,
+            detail: teacher.employeeCode + (teacher.phone ? " · " + teacher.phone : ""),
+            action: <CrudActions t={t} busy={busy} onEdit={() => beginEdit(teacher.userId)} onDelete={() => void remove("/v1/admin/academics/teachers/" + teacher.userId, "Delete teacher profile", "Teacher profile deleted.")} />
+          }))}
+        />
+      </AcademicEntityPage>
+    );
+  }
+
+  if (section === "assignments") {
+    const editing = selectedAssignments.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+        <AcademicForm title={t(editing ? "Edit teacher assignment" : "Teacher assignment")} hint={t("Teacher → Subject → Class for one academic year.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-assignment-" + effectiveYearId}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/assignments/" + editing.id : "/v1/admin/academics/assignments",
+                {
+                  academicYearId: effectiveYearId,
+                  classId: formValue(form, "classId"),
+                  subjectId: formValue(form, "subjectId"),
+                  teacherUserId: formValue(form, "teacherUserId")
+                },
+                editing ? "Edit teacher assignment" : "Teacher assignment",
+                editing ? "Teacher assignment updated." : "Teacher assignment created.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <ReadOnlyYear year={effectiveYear} locale={locale} />
+            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
+            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} defaultValue={editing?.subjectId ?? ""} disabled={!selectedYearMutable} />
+            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
+            <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Assign teacher")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
           title={t("Teacher assignments")}
           rows={selectedAssignments.map((item) => ({
             id: item.id,
             title: teacherMap.get(item.teacherUserId)?.fullName ?? item.teacherUserId,
-            detail: `${subjectMap.get(item.subjectId)?.name ?? t("Subject")} · ${classMap.get(item.classId)?.name ?? t("Class")} · ${yearMap.get(item.academicYearId)?.name ?? t("Year")}`
+            detail: (subjectMap.get(item.subjectId)?.name ?? t("Subject")) + " · " + (classMap.get(item.classId)?.name ?? t("Class")),
+            action: selectedYearMutable ? <CrudActions t={t} busy={busy} onEdit={() => beginEdit(item.id)} onDelete={() => void remove("/v1/admin/academics/assignments/" + item.id, "Delete teacher assignment", "Teacher assignment deleted.")} /> : undefined
           }))}
         />
-        <DataList
+      </AcademicEntityPage>
+    );
+  }
+
+  if (section === "negaran") {
+    const editing = selectedNegaranAssignments.find((item) => item.id === editingId) ?? null;
+    return (
+      <AcademicEntityPage title={t(pageTitle[section])} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+        <AcademicForm title={t(editing ? "Edit Negaran assignment" : "Negaran assignment")} hint={t("One primary class supervisor may be active for a class at a time.")}>
+          <form
+            id="academic-entity-form"
+            className="admin-form"
+            key={editing?.id ?? "new-negaran-" + effectiveYearId}
+            onSubmit={(event) => {
+              const form = new FormData(event.currentTarget);
+              const endDate = formValue(form, "endDate");
+              void submit(
+                event,
+                editing ? "/v1/admin/academics/negaran/" + editing.id : "/v1/admin/academics/negaran",
+                {
+                  academicYearId: effectiveYearId,
+                  classId: formValue(form, "classId"),
+                  teacherUserId: formValue(form, "teacherUserId"),
+                  startDate: formValue(form, "startDate"),
+                  ...(endDate ? { endDate } : {})
+                },
+                editing ? "Edit Negaran assignment" : "Negaran assignment",
+                editing ? "Negaran assignment updated." : "Negaran assigned.",
+                editing ? "PATCH" : "POST"
+              );
+            }}
+          >
+            <ReadOnlyYear year={effectiveYear} locale={locale} />
+            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
+            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
+            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" defaultValue={editing?.startDate ?? ""} required disabled={!selectedYearMutable} /></label>
+            <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" defaultValue={editing?.endDate ?? ""} disabled={!selectedYearMutable} /></label>
+            <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Assign Negaran")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+          </form>
+        </AcademicForm>
+        <EntityList
           title={t("Negaran history")}
           rows={selectedNegaranAssignments.map((item) => ({
             id: item.id,
             title: classMap.get(item.classId)?.name ?? t("Class"),
-            detail: `${teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")} · ${formatAdminHijriDate(locale, item.startDate)} → ${item.endDate ? formatAdminHijriDate(locale, item.endDate) : t("Current")}`,
-            action: item.endDate ? undefined : (
-              <NegaranEndAction
-                locale={locale}
-                busy={busy}
-                onEnd={(endDate) =>
-                  mutate(`/v1/admin/academics/negaran/${item.id}/end`, { endDate }, "End Negaran assignment", "Negaran assignment ended.")
-                }
-              />
-            )
+            detail: (teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")) + " · " + formatAdminHijriDate(locale, item.startDate) + " → " + (item.endDate ? formatAdminHijriDate(locale, item.endDate) : t("Current")),
+            action: selectedYearMutable ? (
+              <>
+                <button disabled={busy} onClick={() => beginEdit(item.id)}>{t("Edit")}</button>
+                {effectiveYear?.status === "DRAFT" ? (
+                  <button className="admin-danger" disabled={busy} onClick={() => void remove("/v1/admin/academics/negaran/" + item.id, "Delete Negaran assignment", "Negaran assignment deleted.")}>{t("Delete")}</button>
+                ) : null}
+                {!item.endDate && effectiveYear?.status === "ACTIVE" ? (
+                  <NegaranEndAction
+                    locale={locale}
+                    busy={busy}
+                    onEnd={(endDate) => mutate("/v1/admin/academics/negaran/" + item.id + "/end", { endDate }, "End Negaran assignment", "Negaran assignment ended.")}
+                  />
+                ) : null}
+              </>
+            ) : undefined
           }))}
         />
-      </div>
+      </AcademicEntityPage>
+    );
+  }
+
+  const editing = selectedTimetable.find((item) => item.id === editingId) ?? null;
+  return (
+    <AcademicEntityPage title={t(pageTitle.timetable)} locale={locale} busy={busy} onRefresh={() => void load(true)} notice={historicalNotice}>
+      <AcademicForm title={t(editing ? "Edit timetable period" : "Timetable period")} hint={t("A period must match an existing teacher assignment. Class and teacher overlaps are rejected.")}>
+        <form
+          id="academic-entity-form"
+          className="admin-form"
+          key={editing?.id ?? "new-period-" + effectiveYearId}
+          onSubmit={(event) => {
+            const form = new FormData(event.currentTarget);
+            void submit(
+              event,
+              editing ? "/v1/admin/academics/timetable/" + editing.id : "/v1/admin/academics/timetable",
+              {
+                academicYearId: effectiveYearId,
+                classId: formValue(form, "classId"),
+                subjectId: formValue(form, "subjectId"),
+                teacherUserId: formValue(form, "teacherUserId"),
+                weekday: formValue(form, "weekday"),
+                startsAt: formValue(form, "startsAt"),
+                endsAt: formValue(form, "endsAt")
+              },
+              editing ? "Edit timetable period" : "Timetable period",
+              editing ? "Timetable period updated." : "Timetable period created.",
+              editing ? "PATCH" : "POST"
+            );
+          }}
+        >
+          <ReadOnlyYear year={effectiveYear} locale={locale} />
+          <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
+          <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} defaultValue={editing?.subjectId ?? ""} disabled={!selectedYearMutable} />
+          <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
+          <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} defaultValue={editing?.weekday ?? ""} disabled={!selectedYearMutable} />
+          <label>{t("Starts")}<input name="startsAt" type="time" defaultValue={editing?.startsAt ?? ""} required disabled={!selectedYearMutable} /></label>
+          <label>{t("Ends")}<input name="endsAt" type="time" defaultValue={editing?.endsAt ?? ""} required disabled={!selectedYearMutable} /></label>
+          <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Add period")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
+        </form>
+      </AcademicForm>
+
+      <EntityList
+        title={t("Timetable periods")}
+        rows={selectedTimetable.map((item) => ({
+          id: item.id,
+          title: (classMap.get(item.classId)?.name ?? t("Class")) + " · " + (subjectMap.get(item.subjectId)?.name ?? t("Subject")),
+          detail: (teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")) + " · " + t(item.weekday) + " · " + item.startsAt + "–" + item.endsAt,
+          action: selectedYearMutable ? <CrudActions t={t} busy={busy} onEdit={() => beginEdit(item.id)} onDelete={() => void remove("/v1/admin/academics/timetable/" + item.id, "Delete timetable period", "Timetable period deleted.")} /> : undefined
+        }))}
+      />
 
       <TimetableViews
         timetable={selectedTimetable}
         teachers={overview.teachers}
         classes={selectedClasses}
         subjects={overview.subjects}
-        academicYears={effectiveYear ? [effectiveYear] : []}
         locale={locale}
       />
+    </AcademicEntityPage>
+  );
+}
+
+function AcademicEntityPage({
+  title,
+  locale,
+  busy,
+  onRefresh,
+  notice,
+  children
+}: {
+  title: string;
+  locale: AdminLocale;
+  busy: boolean;
+  onRefresh: () => void;
+  notice?: ReactNode;
+  children: ReactNode;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  return (
+    <section className="academic-section admin-page-enter">
+      <div className="admin-section-header academic-heading">
+        <div>
+          <Link className="admin-kicker academic-back-link" href="/admin/academics">← {t("Back to Academics")}</Link>
+          <h2>{title}</h2>
+          <p>{t("Create, review, edit, and safely delete records from this academic module.")}</p>
+        </div>
+        <button className="admin-secondary" onClick={onRefresh} disabled={busy}>{t("Refresh")}</button>
+      </div>
+      {notice}
+      <div className="academic-single-module">{children}</div>
     </section>
   );
 }
 
-function Summary({ label, value }: { label: string; value: number }) {
-  return <div className="academic-summary"><strong>{value}</strong><span>{label}</span></div>;
-}
-
-function AcademicForm({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+function AcademicForm({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <article className="admin-panel academic-form-card">
+    <article className="admin-panel academic-form-card academic-single-form">
       <h2>{title}</h2>
       <p>{hint}</p>
       {children}
@@ -482,21 +750,65 @@ function AcademicForm({ title, hint, children }: { title: string; hint: string; 
   );
 }
 
+function FormActions({
+  editing,
+  busy,
+  createLabel,
+  saveLabel,
+  cancelLabel,
+  onCancel
+}: {
+  editing: boolean;
+  busy: boolean;
+  createLabel: string;
+  saveLabel: string;
+  cancelLabel: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="admin-actions">
+      <button className="admin-primary" disabled={busy}>{editing ? saveLabel : createLabel}</button>
+      {editing ? <button className="admin-secondary" type="button" onClick={onCancel} disabled={busy}>{cancelLabel}</button> : null}
+    </div>
+  );
+}
+
+function CrudActions({
+  t,
+  busy,
+  onEdit,
+  onDelete
+}: {
+  t: (value: string) => string;
+  busy: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <button disabled={busy} onClick={onEdit}>{t("Edit")}</button>
+      <button className="admin-danger" disabled={busy} onClick={onDelete}>{t("Delete")}</button>
+    </>
+  );
+}
+
 function Select({
   label,
   name,
   items,
-  defaultValue = ""
+  defaultValue = "",
+  disabled = false
 }: {
   label: string;
   name: string;
   items: Array<[string, string]>;
   defaultValue?: string;
+  disabled?: boolean;
 }) {
   return (
     <label>
       {label}
-      <select name={name} required defaultValue={defaultValue} key={`${name}-${defaultValue}`}>
+      <select name={name} required defaultValue={defaultValue} key={name + "-" + defaultValue} disabled={disabled}>
         <option value="" disabled>—</option>
         {items.map(([value, text]) => <option value={value} key={value}>{text}</option>)}
       </select>
@@ -504,16 +816,31 @@ function Select({
   );
 }
 
-function DataList({
+function ReadOnlyYear({ year, locale }: { year: AcademicYear | null; locale: AdminLocale }) {
+  const t = (english: string) => adminText(locale, english);
+  return (
+    <label>
+      {t("Academic year")}
+      <input value={year ? year.name + " · " + t(year.status) : "—"} disabled readOnly />
+    </label>
+  );
+}
+
+function EntityList({
   title,
   rows
 }: {
   title: string;
-  rows: Array<{ id: string; title: string; detail: string; action?: React.ReactNode }>;
+  rows: Array<{ id: string; title: string; detail: string; action?: ReactNode }>;
 }) {
   return (
     <article className="admin-panel academic-list-panel">
-      <h2>{title}</h2>
+      <div className="admin-section-header">
+        <div>
+          <h2>{title}</h2>
+          <p>{rows.length} record(s)</p>
+        </div>
+      </div>
       <div className="academic-rows">
         {rows.map((row) => (
           <div className="academic-row" key={row.id}>
@@ -527,44 +854,37 @@ function DataList({
   );
 }
 
-
 function NegaranEndAction({
   locale,
   busy,
   onEnd
 }: {
-  locale: "fa-AF" | "ps-AF" | "en";
+  locale: AdminLocale;
   busy: boolean;
   onEnd: (endDate: string) => Promise<unknown>;
 }) {
   const t = (english: string) => adminText(locale, english);
   const [endDate, setEndDate] = useState("");
-
   return (
     <div className="admin-negaran-end">
       <AdminHijriDatePicker locale={locale} value={endDate} onChange={setEndDate} />
-      <button disabled={busy || !endDate} onClick={() => void onEnd(endDate)}>
-        {t("End assignment")}
-      </button>
+      <button disabled={busy || !endDate} onClick={() => void onEnd(endDate)}>{t("End assignment")}</button>
     </div>
   );
 }
-
 
 function TimetableViews({
   timetable,
   teachers,
   classes,
   subjects,
-  academicYears,
   locale
 }: {
   timetable: TimetablePeriod[];
   teachers: Teacher[];
   classes: ClassSection[];
   subjects: Subject[];
-  academicYears: AcademicYear[];
-  locale: "fa-AF" | "ps-AF" | "en";
+  locale: AdminLocale;
 }) {
   const t = (english: string) => adminText(locale, english);
   const [view, setView] = useState<"TEACHER" | "CLASS">("TEACHER");
@@ -574,90 +894,50 @@ function TimetableViews({
   const classMap = useMemo(() => new Map(classes.map((item) => [item.id, item])), [classes]);
   const teacherMap = useMemo(() => new Map(teachers.map((item) => [item.userId, item])), [teachers]);
   const subjectMap = useMemo(() => new Map(subjects.map((item) => [item.id, item])), [subjects]);
-  const yearMap = useMemo(() => new Map(academicYears.map((item) => [item.id, item])), [academicYears]);
-
-  const visiblePeriods = useMemo(
-    () => timetable.filter((period) => period.weekday !== "FRIDAY"),
-    [timetable]
-  );
+  const visiblePeriods = useMemo(() => timetable.filter((period) => period.weekday !== "FRIDAY"), [timetable]);
 
   const timeSlots = useMemo(() => {
     const slots = new Map<string, { key: string; startsAt: string; endsAt: string }>();
     for (const period of visiblePeriods) {
-      const key = `${period.startsAt}-${period.endsAt}`;
-      if (!slots.has(key)) {
-        slots.set(key, { key, startsAt: period.startsAt, endsAt: period.endsAt });
-      }
+      const key = period.startsAt + "-" + period.endsAt;
+      if (!slots.has(key)) slots.set(key, { key, startsAt: period.startsAt, endsAt: period.endsAt });
     }
-    return [...slots.values()].sort((left, right) =>
-      left.startsAt.localeCompare(right.startsAt) || left.endsAt.localeCompare(right.endsAt)
-    );
+    return [...slots.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.endsAt.localeCompare(b.endsAt));
   }, [visiblePeriods]);
 
   const teacherGroups = useMemo(
-    () =>
-      teachers
-        .map((teacher) => ({
-          id: teacher.userId,
-          title: teacher.fullName,
-          subtitle: teacher.employeeCode,
-          periods: visiblePeriods.filter((period) => period.teacherUserId === teacher.userId)
-        }))
-        .sort((left, right) => left.title.localeCompare(right.title)),
+    () => teachers.map((teacher) => ({
+      id: teacher.userId,
+      title: teacher.fullName,
+      subtitle: teacher.employeeCode,
+      periods: visiblePeriods.filter((period) => period.teacherUserId === teacher.userId)
+    })).sort((a, b) => a.title.localeCompare(b.title)),
     [teachers, visiblePeriods]
   );
 
   const classGroups = useMemo(
-    () =>
-      classes
-        .map((classSection) => ({
-          id: classSection.id,
-          title: classSection.name,
-          subtitle: classSection.code,
-          periods: visiblePeriods.filter((period) => period.classId === classSection.id)
-        }))
-        .sort((left, right) => left.title.localeCompare(right.title)),
+    () => classes.map((item) => ({
+      id: item.id,
+      title: item.name,
+      subtitle: item.code,
+      periods: visiblePeriods.filter((period) => period.classId === item.id)
+    })).sort((a, b) => a.title.localeCompare(b.title)),
     [classes, visiblePeriods]
   );
 
   useEffect(() => {
-    if (teacherGroups.length === 0) {
-      setSelectedTeacherId("");
-      return;
-    }
-    if (!teacherGroups.some((group) => group.id === selectedTeacherId)) {
-      setSelectedTeacherId(teacherGroups[0]?.id ?? "");
-    }
+    if (teacherGroups.length === 0) setSelectedTeacherId("");
+    else if (!teacherGroups.some((item) => item.id === selectedTeacherId)) setSelectedTeacherId(teacherGroups[0]?.id ?? "");
   }, [teacherGroups, selectedTeacherId]);
 
   useEffect(() => {
-    if (classGroups.length === 0) {
-      setSelectedClassId("");
-      return;
-    }
-    if (!classGroups.some((group) => group.id === selectedClassId)) {
-      setSelectedClassId(classGroups[0]?.id ?? "");
-    }
+    if (classGroups.length === 0) setSelectedClassId("");
+    else if (!classGroups.some((item) => item.id === selectedClassId)) setSelectedClassId(classGroups[0]?.id ?? "");
   }, [classGroups, selectedClassId]);
 
   const groups = view === "TEACHER" ? teacherGroups : classGroups;
   const selectedId = view === "TEACHER" ? selectedTeacherId : selectedClassId;
-  const selectedGroup = groups.find((group) => group.id === selectedId) ?? groups[0] ?? null;
-
-  function changeView(next: "TEACHER" | "CLASS") {
-    setView(next);
-    if (next === "TEACHER" && !selectedTeacherId && teacherGroups[0]) {
-      setSelectedTeacherId(teacherGroups[0].id);
-    }
-    if (next === "CLASS" && !selectedClassId && classGroups[0]) {
-      setSelectedClassId(classGroups[0].id);
-    }
-  }
-
-  function selectGroup(id: string) {
-    if (view === "TEACHER") setSelectedTeacherId(id);
-    else setSelectedClassId(id);
-  }
+  const selectedGroup = groups.find((item) => item.id === selectedId) ?? groups[0] ?? null;
 
   return (
     <article className="admin-panel academic-list-panel academic-timetable-panel">
@@ -667,24 +947,8 @@ function TimetableViews({
           <p>{t("Weekly timetable from Saturday through Thursday. Friday is not shown.")}</p>
         </div>
         <div className="academic-timetable-toggle" role="tablist" aria-label={t("Timetable view")}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "TEACHER"}
-            className={view === "TEACHER" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
-            onClick={() => changeView("TEACHER")}
-          >
-            {t("Teacher timetables")}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "CLASS"}
-            className={view === "CLASS" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"}
-            onClick={() => changeView("CLASS")}
-          >
-            {t("Class timetables")}
-          </button>
+          <button type="button" role="tab" aria-selected={view === "TEACHER"} className={view === "TEACHER" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"} onClick={() => setView("TEACHER")}>{t("Teacher timetables")}</button>
+          <button type="button" role="tab" aria-selected={view === "CLASS"} className={view === "CLASS" ? "academic-timetable-tab academic-timetable-tab-active" : "academic-timetable-tab"} onClick={() => setView("CLASS")}>{t("Class timetables")}</button>
         </div>
       </div>
 
@@ -693,64 +957,39 @@ function TimetableViews({
           <strong>{t("No timetable periods yet")}</strong>
           <span>{t("Add timetable periods above and they will appear here automatically.")}</span>
         </div>
-      ) : groups.length === 0 || !selectedGroup ? (
-        <div className="admin-empty-state academic-timetable-empty">
-          <strong>{t(view === "TEACHER" ? "No teachers available" : "No classes available")}</strong>
-          <span>{t(view === "TEACHER" ? "Create teacher profiles to view teacher timetables." : "Create classes to view class timetables.")}</span>
-        </div>
+      ) : !selectedGroup ? (
+        <div className="admin-empty-state academic-timetable-empty"><strong>—</strong></div>
       ) : (
         <div className="academic-timetable-browser">
-          <aside className="academic-timetable-selector" aria-label={t(view === "TEACHER" ? "Teachers" : "Classes")}>
-            <div className="academic-timetable-selector-heading">
-              <strong>{t(view === "TEACHER" ? "Teachers" : "Classes")}</strong>
-              <span>{groups.length}</span>
-            </div>
+          <aside className="academic-timetable-selector">
+            <div className="academic-timetable-selector-heading"><strong>{t(view === "TEACHER" ? "Teachers" : "Classes")}</strong><span>{groups.length}</span></div>
             <div className="academic-timetable-selector-list">
               {groups.map((group) => (
                 <button
                   type="button"
                   key={group.id}
-                  className={group.id === selectedGroup.id
-                    ? "academic-timetable-person academic-timetable-person-active"
-                    : "academic-timetable-person"}
-                  onClick={() => selectGroup(group.id)}
-                  aria-pressed={group.id === selectedGroup.id}
+                  className={group.id === selectedGroup.id ? "academic-timetable-person academic-timetable-person-active" : "academic-timetable-person"}
+                  onClick={() => view === "TEACHER" ? setSelectedTeacherId(group.id) : setSelectedClassId(group.id)}
                 >
-                  <span className="academic-timetable-person-avatar" aria-hidden="true">
-                    {group.title.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="academic-timetable-person-copy">
-                    <strong>{group.title}</strong>
-                    <small>{group.subtitle}</small>
-                  </span>
+                  <span className="academic-timetable-person-avatar">{group.title.slice(0, 1).toUpperCase()}</span>
+                  <span className="academic-timetable-person-copy"><strong>{group.title}</strong><small>{group.subtitle}</small></span>
                   <span className="academic-timetable-person-count">{group.periods.length}</span>
                 </button>
               ))}
             </div>
           </aside>
 
-          <section className="academic-timetable-card" key={selectedGroup.id}>
+          <section className="academic-timetable-card">
             <div className="academic-timetable-card-heading">
-              <div>
-                <strong>{selectedGroup.title}</strong>
-                <span>{selectedGroup.subtitle}</span>
-              </div>
-              <span className="academic-timetable-count">
-                {selectedGroup.periods.length} {t("period(s)")}
-              </span>
+              <div><strong>{selectedGroup.title}</strong><span>{selectedGroup.subtitle}</span></div>
+              <span className="academic-timetable-count">{selectedGroup.periods.length} {t("period(s)")}</span>
             </div>
-
             <div className="academic-timetable-scroll">
               <table className="academic-week-grid">
                 <thead>
                   <tr>
                     <th className="academic-week-day-column">{t("Day")}</th>
-                    {timeSlots.map((slot) => (
-                      <th key={slot.key}>
-                        <span>{slot.startsAt}</span>
-                        <small>{slot.endsAt}</small>
-                      </th>
-                    ))}
+                    {timeSlots.map((slot) => <th key={slot.key}><span>{slot.startsAt}</span><small>{slot.endsAt}</small></th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -758,34 +997,19 @@ function TimetableViews({
                     <tr key={day}>
                       <th className="academic-week-day-column" scope="row">{t(day)}</th>
                       {timeSlots.map((slot) => {
-                        const periods = selectedGroup.periods.filter(
-                          (period) =>
-                            period.weekday === day &&
-                            period.startsAt === slot.startsAt &&
-                            period.endsAt === slot.endsAt
-                        );
-
+                        const periods = selectedGroup.periods.filter((period) => period.weekday === day && period.startsAt === slot.startsAt && period.endsAt === slot.endsAt);
                         return (
                           <td key={slot.key}>
-                            {periods.length > 0 ? (
+                            {periods.length ? (
                               <div className="academic-timetable-cell-stack">
                                 {periods.map((period) => (
                                   <div className="academic-timetable-cell" key={period.id}>
                                     <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
-                                    <span>
-                                      {view === "TEACHER"
-                                        ? classMap.get(period.classId)?.name ?? t("Class")
-                                        : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}
-                                    </span>
-                                    {periods.length > 1 ? (
-                                      <small>{yearMap.get(period.academicYearId)?.name ?? ""}</small>
-                                    ) : null}
+                                    <span>{view === "TEACHER" ? classMap.get(period.classId)?.name ?? t("Class") : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}</span>
                                   </div>
                                 ))}
                               </div>
-                            ) : (
-                              <span className="academic-timetable-free" aria-label={t("No class scheduled")}>—</span>
-                            )}
+                            ) : <span className="academic-timetable-free">—</span>}
                           </td>
                         );
                       })}
