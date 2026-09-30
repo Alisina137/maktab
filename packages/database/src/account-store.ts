@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
+  adminPasswordVerifications,
   adminProfiles,
   auditLogs,
   authSessions,
@@ -12,6 +13,7 @@ import {
   subscriptions,
   teacherProfiles,
   users,
+  type AdminPasswordVerification,
   type AuthSession,
   type School,
   type Subscription,
@@ -81,6 +83,20 @@ export interface SchoolAdminContact extends AdminContactProfile {
   username: string;
 }
 
+export interface AdminPasswordVerificationContacts {
+  email: string;
+  phone: string;
+}
+
+export interface CreateAdminPasswordVerificationInput {
+  id: string;
+  schoolId: string;
+  userId: string;
+  emailCodeHash: string;
+  smsCodeHash: string;
+  expiresAt: Date;
+}
+
 export interface AccountStore {
   createUser(input: CreateAccountInput): Promise<User>;
   listUsers(schoolId: string): Promise<User[]>;
@@ -92,6 +108,39 @@ export interface AccountStore {
     userId: string,
     input: AdminContactProfile
   ): Promise<AdminContactProfile>;
+  getAdminPasswordVerificationContacts(
+    schoolId: string,
+    userId: string
+  ): Promise<AdminPasswordVerificationContacts | null>;
+  createAdminPasswordVerification(
+    input: CreateAdminPasswordVerificationInput
+  ): Promise<AdminPasswordVerification>;
+  findAdminPasswordVerification(
+    schoolId: string,
+    userId: string,
+    verificationId: string
+  ): Promise<AdminPasswordVerification | null>;
+  incrementAdminPasswordVerificationAttempts(
+    schoolId: string,
+    userId: string,
+    verificationId: string
+  ): Promise<AdminPasswordVerification | null>;
+  markAdminPasswordVerificationVerified(
+    schoolId: string,
+    userId: string,
+    verificationId: string,
+    verificationTokenHash: string
+  ): Promise<AdminPasswordVerification | null>;
+  consumeAdminPasswordVerification(
+    schoolId: string,
+    userId: string,
+    verificationTokenHash: string
+  ): Promise<AdminPasswordVerification | null>;
+  cancelAdminPasswordVerification(
+    schoolId: string,
+    userId: string,
+    verificationId: string
+  ): Promise<void>;
   resetPasswordAsAdmin(schoolId: string, userId: string, passwordHash: string, actorUserId: string): Promise<User | null>;
   setUserStatusAsAdmin(
     schoolId: string,
@@ -307,6 +356,151 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         });
       if (!profile) throw new Error("Admin profile upsert did not return a row.");
       return profile;
+    },
+
+    async getAdminPasswordVerificationContacts(schoolId, userId) {
+      const rows = await db
+        .select({
+          email: adminProfiles.email,
+          phone: adminProfiles.phone,
+          twoFactorEmail: adminProfiles.twoFactorEmail,
+          twoFactorPhone: adminProfiles.twoFactorPhone
+        })
+        .from(adminProfiles)
+        .where(and(eq(adminProfiles.schoolId, schoolId), eq(adminProfiles.userId, userId)))
+        .limit(1);
+
+      const profile = rows[0];
+      if (!profile) return null;
+
+      const email = (profile.twoFactorEmail ?? profile.email)?.trim() ?? "";
+      const phone = (profile.twoFactorPhone ?? profile.phone)?.trim() ?? "";
+      if (!email || !phone) return null;
+
+      if (!profile.twoFactorEmail || !profile.twoFactorPhone) {
+        await db
+          .update(adminProfiles)
+          .set({
+            twoFactorEmail: profile.twoFactorEmail ?? email,
+            twoFactorPhone: profile.twoFactorPhone ?? phone,
+            updatedAt: new Date()
+          })
+          .where(and(eq(adminProfiles.schoolId, schoolId), eq(adminProfiles.userId, userId)));
+      }
+
+      return { email, phone };
+    },
+
+    async createAdminPasswordVerification(input) {
+      const now = new Date();
+      await db
+        .update(adminPasswordVerifications)
+        .set({ consumedAt: now })
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, input.schoolId),
+            eq(adminPasswordVerifications.userId, input.userId),
+            isNull(adminPasswordVerifications.consumedAt)
+          )
+        );
+
+      const [verification] = await db
+        .insert(adminPasswordVerifications)
+        .values({
+          id: input.id,
+          schoolId: input.schoolId,
+          userId: input.userId,
+          emailCodeHash: input.emailCodeHash,
+          smsCodeHash: input.smsCodeHash,
+          expiresAt: input.expiresAt
+        })
+        .returning();
+      if (!verification) throw new Error("Admin password verification insert did not return a row.");
+      return verification;
+    },
+
+    async findAdminPasswordVerification(schoolId, userId, verificationId) {
+      const rows = await db
+        .select()
+        .from(adminPasswordVerifications)
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            eq(adminPasswordVerifications.id, verificationId)
+          )
+        )
+        .limit(1);
+      return rows[0] ?? null;
+    },
+
+    async incrementAdminPasswordVerificationAttempts(schoolId, userId, verificationId) {
+      const current = await this.findAdminPasswordVerification(schoolId, userId, verificationId);
+      if (!current) return null;
+      const [updated] = await db
+        .update(adminPasswordVerifications)
+        .set({ attempts: current.attempts + 1 })
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            eq(adminPasswordVerifications.id, verificationId),
+            isNull(adminPasswordVerifications.consumedAt)
+          )
+        )
+        .returning();
+      return updated ?? null;
+    },
+
+    async markAdminPasswordVerificationVerified(schoolId, userId, verificationId, verificationTokenHash) {
+      const [updated] = await db
+        .update(adminPasswordVerifications)
+        .set({
+          verificationTokenHash,
+          verifiedAt: new Date()
+        })
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            eq(adminPasswordVerifications.id, verificationId),
+            isNull(adminPasswordVerifications.consumedAt)
+          )
+        )
+        .returning();
+      return updated ?? null;
+    },
+
+    async consumeAdminPasswordVerification(schoolId, userId, verificationTokenHash) {
+      const [updated] = await db
+        .update(adminPasswordVerifications)
+        .set({ consumedAt: new Date() })
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            eq(adminPasswordVerifications.verificationTokenHash, verificationTokenHash),
+            isNotNull(adminPasswordVerifications.verifiedAt),
+            isNull(adminPasswordVerifications.consumedAt),
+            gt(adminPasswordVerifications.expiresAt, new Date())
+          )
+        )
+        .returning();
+      return updated ?? null;
+    },
+
+    async cancelAdminPasswordVerification(schoolId, userId, verificationId) {
+      await db
+        .update(adminPasswordVerifications)
+        .set({ consumedAt: new Date() })
+        .where(
+          and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            eq(adminPasswordVerifications.id, verificationId),
+            isNull(adminPasswordVerifications.consumedAt)
+          )
+        );
     },
 
     async resetPasswordAsAdmin(schoolId, userId, passwordHash, actorUserId) {

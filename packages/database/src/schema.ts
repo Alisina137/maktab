@@ -139,6 +139,31 @@ export const authSessions = pgTable(
   ]
 );
 
+export const adminPasswordVerifications = pgTable(
+  "admin_password_verifications",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emailCodeHash: varchar("email_code_hash", { length: 64 }).notNull(),
+    smsCodeHash: varchar("sms_code_hash", { length: 64 }).notNull(),
+    verificationTokenHash: varchar("verification_token_hash", { length: 64 }),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    index("admin_password_verifications_user_idx").on(table.schoolId, table.userId),
+    uniqueIndex("admin_password_verifications_token_unique").on(table.verificationTokenHash)
+  ]
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -268,8 +293,10 @@ export const adminProfiles = pgTable(
     jobTitle: varchar("job_title", { length: 120 }),
     imageUrl: text("image_url"),
     email: varchar("email", { length: 254 }),
+    twoFactorEmail: varchar("two_factor_email", { length: 254 }),
     whatsapp: varchar("whatsapp", { length: 32 }),
     phone: varchar("phone", { length: 32 }),
+    twoFactorPhone: varchar("two_factor_phone", { length: 32 }),
     officeLocation: varchar("office_location", { length: 200 }),
     officeHours: varchar("office_hours", { length: 160 }),
     bio: text("bio"),
@@ -771,6 +798,7 @@ export const databaseSchema = {
   schoolSettings,
   users,
   authSessions,
+  adminPasswordVerifications,
   auditLogs,
   academicYears,
   gradeLevels,
@@ -804,6 +832,7 @@ export type SchoolSettings = typeof schoolSettings.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type AuthSession = typeof authSessions.$inferSelect;
+export type AdminPasswordVerification = typeof adminPasswordVerifications.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type AcademicYear = typeof academicYears.$inferSelect;
 export type GradeLevel = typeof gradeLevels.$inferSelect;
