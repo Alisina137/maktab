@@ -72,7 +72,11 @@ const yearScopedRoutes = new Set([
   "/admin/academics",
   "/admin/families",
   "/admin/attendance",
-  "/admin/learning"
+  "/admin/learning",
+  "/admin/academics/classes",
+  "/admin/academics/assignments",
+  "/admin/academics/negaran",
+  "/admin/academics/timetable"
 ]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {
@@ -103,6 +107,38 @@ const pageCopy: Record<string, { title: string; description: string }> = {
   "/admin/academics": {
     title: "Academics",
     description: "Manage academic years, grades, classes, subjects, teachers, assignments, Negaran, and timetable."
+  },
+  "/admin/academics/years": {
+    title: "Academic years",
+    description: "Create academic years and manage lifecycle, archive, unarchive, and safe deletion."
+  },
+  "/admin/academics/grades": {
+    title: "Grade levels",
+    description: "Create, edit, and safely delete reusable grade definitions."
+  },
+  "/admin/academics/subjects": {
+    title: "Subjects",
+    description: "Create, edit, and safely delete the school subject catalog."
+  },
+  "/admin/academics/classes": {
+    title: "Classes",
+    description: "Create and manage class sections for the selected academic year."
+  },
+  "/admin/academics/teachers": {
+    title: "Teacher profiles",
+    description: "Create and maintain academic profiles attached to teacher accounts."
+  },
+  "/admin/academics/assignments": {
+    title: "Teacher assignments",
+    description: "Manage teacher, subject, and class assignments for the selected academic year."
+  },
+  "/admin/academics/negaran": {
+    title: "Negaran assignments",
+    description: "Manage class-supervisor assignments and their date history."
+  },
+  "/admin/academics/timetable": {
+    title: "Timetable periods",
+    description: "Create and maintain timetable periods and weekly teacher/class views."
   },
   "/admin/profile": {
     title: "Administrator profile",
@@ -311,7 +347,9 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
 
         <nav className="admin-route-nav" aria-label="Administration sections">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (item.href === "/admin/academics" && pathname.startsWith("/admin/academics/"));
             return (
               <Link
                 key={item.href}
