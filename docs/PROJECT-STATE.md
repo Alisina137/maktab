@@ -453,8 +453,18 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Only one ACTIVE academic year is allowed per school.
 - A CLOSED year now has two admin choices: Reactivate or Archive.
 - Reactivation uses the existing one-active-year guard, so it is rejected while another academic year is ACTIVE.
-- ARCHIVED remains terminal/read-only.
+- ARCHIVED years remain inactive/read-only while archived and can now be unarchived back to CLOSED.
 - Archiving does not delete data. It changes only the academic-year status; classes, teacher assignments, Negaran history, timetable data, students, and other linked records remain stored in PostgreSQL.
 - Admin → Academics now separates archived academic years into a visible archive section with historical record counts.
 - Added regression coverage for blocked reactivation when another year is active, successful reactivation after the active year is closed, terminal archiving, and preservation of archived class data.
+
+## Testing Step 6 refinement — Unarchive academic years
+
+- Added an explicit `POST /v1/admin/academics/years/:yearId/unarchive` lifecycle action.
+- Academic-year lifecycle is now `DRAFT → ACTIVE ↔ CLOSED ↔ ARCHIVED`.
+- Unarchive always moves an ARCHIVED year to CLOSED; it never makes the year ACTIVE automatically.
+- The unarchived year immediately returns to the normal Academic Years list, where the admin can choose Reactivate or Archive again.
+- Archived-year rows now include an Unarchive button with localized Dari/Persian and Pashto feedback.
+- Historical academic data remains unchanged during archive/unarchive transitions.
+- Added regression coverage for ARCHIVED → CLOSED, reactivation after unarchive, and archiving the same year again.
 

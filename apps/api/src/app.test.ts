@@ -591,6 +591,46 @@ test("academic structure returns specific lifecycle and validation errors", asyn
     ),
     true
   );
+
+  const unarchiveFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/unarchive`,
+    headers: auth
+  });
+  assert.equal(unarchiveFirst.statusCode, 200);
+  assert.equal(
+    unarchiveFirst.json<{ academicYear: { status: string } }>().academicYear.status,
+    "CLOSED"
+  );
+
+  const reactivateAfterUnarchive = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(reactivateAfterUnarchive.statusCode, 200);
+  assert.equal(
+    reactivateAfterUnarchive.json<{ academicYear: { status: string } }>().academicYear.status,
+    "ACTIVE"
+  );
+
+  const closeAfterUnarchive = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/close`,
+    headers: auth
+  });
+  assert.equal(closeAfterUnarchive.statusCode, 200);
+
+  const rearchiveFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/archive`,
+    headers: auth
+  });
+  assert.equal(rearchiveFirst.statusCode, 200);
+  assert.equal(
+    rearchiveFirst.json<{ academicYear: { status: string } }>().academicYear.status,
+    "ARCHIVED"
+  );
 });
 
 test("public school search returns active minimal school records", async (t) => {

@@ -312,7 +312,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h2>{t("Academic years")}</h2>
-            <p>{t("Lifecycle: DRAFT → ACTIVE ↔ CLOSED → ARCHIVED. Multiple drafts are allowed; only one year can be active.")}</p>
+            <p>{t("Lifecycle: DRAFT → ACTIVE ↔ CLOSED ↔ ARCHIVED. Multiple drafts are allowed; only one year can be active.")}</p>
           </div>
         </div>
         <div className="academic-rows">
@@ -342,7 +342,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h2>{t("Archived academic years")}</h2>
-            <p>{t("Archived years are read-only. Their classes, assignments, Negaran history, timetable, students, and other linked records remain stored.")}</p>
+            <p>{t("Archived years stay inactive and read-only until you unarchive them. Their classes, assignments, Negaran history, timetable, students, and other linked records remain stored.")}</p>
           </div>
         </div>
         <div className="academic-rows">
@@ -361,6 +361,19 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
                   <span>
                     {t("Classes")}: {classCount} · {t("Assignments")}: {assignmentCount} · {t("Negaran history")}: {negaranCount} · {t("Timetable periods")}: {timetableCount}
                   </span>
+                </div>
+                <div className="admin-actions">
+                  <button
+                    disabled={busy}
+                    onClick={() => void mutate(
+                      `/v1/admin/academics/years/${year.id}/unarchive`,
+                      undefined,
+                      "Unarchive academic year",
+                      "Academic year unarchived."
+                    )}
+                  >
+                    {t("Unarchive")}
+                  </button>
                 </div>
               </div>
             );

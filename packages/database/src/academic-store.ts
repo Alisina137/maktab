@@ -257,7 +257,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         DRAFT: ["ACTIVE"],
         ACTIVE: ["CLOSED"],
         CLOSED: ["ACTIVE", "ARCHIVED"],
-        ARCHIVED: []
+        ARCHIVED: ["CLOSED"]
       };
       if (!allowed[year.status].includes(status)) {
         throw new AcademicConflictError(`Academic year cannot move from ${year.status} to ${status}.`);

@@ -76,7 +76,8 @@ export function registerAcademicRoutes(
   const statusRoutes: Array<{ path: string; status: AcademicYearStatus; action: string }> = [
     { path: "activate", status: "ACTIVE", action: "academic_year.activated" },
     { path: "close", status: "CLOSED", action: "academic_year.closed" },
-    { path: "archive", status: "ARCHIVED", action: "academic_year.archived" }
+    { path: "archive", status: "ARCHIVED", action: "academic_year.archived" },
+    { path: "unarchive", status: "CLOSED", action: "academic_year.unarchived" }
   ];
 
   for (const route of statusRoutes) {
