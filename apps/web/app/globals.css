@@ -3435,6 +3435,125 @@ html[dir="rtl"] body {
   justify-self: start;
 }
 
+.admin-password-2fa-card {
+  align-items: stretch;
+}
+
+.admin-password-security-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #dbe5f5;
+  border-radius: 14px;
+  background: #f7faff;
+}
+
+.admin-password-security-note strong {
+  color: #244f9e;
+  font-size: 12px;
+}
+
+.admin-password-security-note span {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.admin-password-2fa-flow,
+.admin-password-step {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-password-step {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.admin-password-step-heading,
+.admin-password-delivery-grid,
+.admin-password-step-actions {
+  grid-column: 1 / -1;
+}
+
+.admin-password-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.admin-password-step-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-password-step-heading strong {
+  color: var(--ml-color-text);
+  font-size: 14px;
+}
+
+.admin-password-step-heading span:not(.admin-password-step-number) {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.admin-password-step-number {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eaf1ff;
+  color: #2458ba;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-password-step-verified .admin-password-step-number {
+  background: #e8f7ee;
+  color: #15803d;
+}
+
+.admin-password-delivery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-password-delivery-card {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid #e1e7f0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.admin-password-delivery-card span {
+  color: var(--ml-color-text-muted);
+  font-size: 10px;
+}
+
+.admin-password-delivery-card strong {
+  color: var(--ml-color-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-password-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.admin-password-step-actions button {
+  grid-column: auto;
+  justify-self: auto;
+}
+
 .admin-current-account-badge {
   display: inline-flex;
   align-items: center;
@@ -3450,12 +3569,20 @@ html[dir="rtl"] body {
 @media (max-width: 900px) {
   .admin-profile-form-grid,
   .admin-password-card,
-  .admin-password-form {
+  .admin-password-form,
+  .admin-password-step,
+  .admin-password-delivery-grid {
     grid-template-columns: 1fr;
   }
 
   .admin-profile-wide,
   .admin-password-form button {
+    grid-column: auto;
+  }
+
+  .admin-password-step-heading,
+  .admin-password-delivery-grid,
+  .admin-password-step-actions {
     grid-column: auto;
   }
 }

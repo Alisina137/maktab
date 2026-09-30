@@ -120,6 +120,13 @@ export default function AdminProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordVerificationId, setPasswordVerificationId] = useState("");
+  const [passwordVerificationToken, setPasswordVerificationToken] = useState("");
+  const [passwordEmailCode, setPasswordEmailCode] = useState("");
+  const [passwordSmsCode, setPasswordSmsCode] = useState("");
+  const [passwordMaskedEmail, setPasswordMaskedEmail] = useState("");
+  const [passwordMaskedPhone, setPasswordMaskedPhone] = useState("");
+  const [passwordVerificationStep, setPasswordVerificationStep] = useState<"START" | "CODES" | "VERIFIED">("START");
 
   useEffect(() => {
     void load();
@@ -236,8 +243,101 @@ export default function AdminProfilePage() {
     setImageFailed(false);
   }
 
+  function resetPasswordVerification() {
+    setPasswordVerificationId("");
+    setPasswordVerificationToken("");
+    setPasswordEmailCode("");
+    setPasswordSmsCode("");
+    setPasswordMaskedEmail("");
+    setPasswordMaskedPhone("");
+    setPasswordVerificationStep("START");
+  }
+
+  async function startPasswordVerification(event: FormEvent) {
+    event.preventDefault();
+    setPasswordBusy(true);
+    try {
+      const result = await adminApi<{
+        verificationId: string;
+        email: string;
+        phone: string;
+        expiresInSeconds: number;
+      }>("/v1/auth/admin-password-verification/start", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+        body: JSON.stringify({ currentPassword })
+      });
+
+      setPasswordVerificationId(result.verificationId);
+      setPasswordMaskedEmail(result.email);
+      setPasswordMaskedPhone(result.phone);
+      setPasswordEmailCode("");
+      setPasswordSmsCode("");
+      setPasswordVerificationToken("");
+      setPasswordVerificationStep("CODES");
+      showToast({
+        kind: "success",
+        title: t("Verification codes sent"),
+        message: t("Enter the code sent to your email and the code sent to your phone.")
+      });
+    } catch (cause) {
+      showToast({
+        kind: "error",
+        title: t("Verification could not start"),
+        message: friendlyAdminError(cause, "Please try again.", locale)
+      });
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
+  async function verifyPasswordCodes(event: FormEvent) {
+    event.preventDefault();
+    setPasswordBusy(true);
+    try {
+      const result = await adminApi<{ verificationToken: string; expiresAt: string }>(
+        "/v1/auth/admin-password-verification/verify",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+          body: JSON.stringify({
+            verificationId: passwordVerificationId,
+            emailCode: passwordEmailCode,
+            smsCode: passwordSmsCode
+          })
+        }
+      );
+
+      setPasswordVerificationToken(result.verificationToken);
+      setPasswordVerificationStep("VERIFIED");
+      showToast({
+        kind: "success",
+        title: t("Identity verified"),
+        message: t("Email and phone verification passed. You can now choose a new password.")
+      });
+    } catch (cause) {
+      showToast({
+        kind: "error",
+        title: t("Verification failed"),
+        message: friendlyAdminError(cause, "Check both verification codes and try again.", locale)
+      });
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   async function changePassword(event: FormEvent) {
     event.preventDefault();
+
+    if (!passwordVerificationToken) {
+      showToast({
+        kind: "error",
+        title: t("Password was not changed"),
+        message: t("Complete email and SMS verification before changing the administrator password.")
+      });
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       showToast({
         kind: "error",
@@ -252,12 +352,17 @@ export default function AdminProfilePage() {
       const result = await adminApi<Session>("/v1/auth/change-password", {
         method: "POST",
         headers: { Authorization: `Bearer ${stored.session.accessToken}` },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          verificationToken: passwordVerificationToken
+        })
       });
       updateSession(result);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      resetPasswordVerification();
       showToast({
         kind: "success",
         title: t("Password changed"),
@@ -451,52 +556,166 @@ export default function AdminProfilePage() {
         </aside>
       </div>
 
-      <article className="admin-panel admin-password-card">
+      <article className="admin-panel admin-password-card admin-password-2fa-card">
         <div>
           <span className="admin-kicker">{t("Security")}</span>
           <h3>{t("Change my password")}</h3>
-          <p>{t("Use this form for your own administrator password. Directory reset is intentionally disabled for the account you are currently using.")}</p>
+          <p>{t("Administrator password changes require your current password plus verification through both email and SMS.")}</p>
+          <div className="admin-password-security-note">
+            <strong>{t("Two-factor verification")}</strong>
+            <span>{t("Both verification channels must succeed before the new-password form is unlocked.")}</span>
+          </div>
         </div>
-        <form className="admin-form admin-password-form" onSubmit={changePassword}>
-          <label>
-            {t("Current password")}
-            <AdminPasswordInput
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              showLabel={t("Show password")}
-              hideLabel={t("Hide password")}
-            />
-          </label>
-          <label>
-            {t("New password")}
-            <AdminPasswordInput
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-              autoComplete="new-password"
-              required
-              showLabel={t("Show password")}
-              hideLabel={t("Hide password")}
-            />
-          </label>
-          <label>
-            {t("Confirm new password")}
-            <AdminPasswordInput
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              minLength={8}
-              autoComplete="new-password"
-              required
-              showLabel={t("Show password")}
-              hideLabel={t("Hide password")}
-            />
-          </label>
-          <button className="admin-primary" disabled={passwordBusy} type="submit">
-            {t(passwordBusy ? "Saving…" : "Change password")}
-          </button>
-        </form>
+
+        <div className="admin-password-2fa-flow">
+          {passwordVerificationStep === "START" ? (
+            <form className="admin-form admin-password-form admin-password-step" onSubmit={startPasswordVerification}>
+              <div className="admin-password-step-heading">
+                <span className="admin-password-step-number">1</span>
+                <div>
+                  <strong>{t("Confirm current password")}</strong>
+                  <span>{t("We verify your current password before sending security codes.")}</span>
+                </div>
+              </div>
+
+              <label>
+                {t("Current password")}
+                <AdminPasswordInput
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  showLabel={t("Show password")}
+                  hideLabel={t("Hide password")}
+                />
+              </label>
+
+              <button className="admin-primary" disabled={passwordBusy || !currentPassword} type="submit">
+                {t("Send verification codes")}
+              </button>
+            </form>
+          ) : null}
+
+          {passwordVerificationStep === "CODES" ? (
+            <form className="admin-form admin-password-form admin-password-step" onSubmit={verifyPasswordCodes}>
+              <div className="admin-password-step-heading">
+                <span className="admin-password-step-number">2</span>
+                <div>
+                  <strong>{t("Verify email and phone")}</strong>
+                  <span>{t("Enter both six-digit codes. Codes expire after 10 minutes.")}</span>
+                </div>
+              </div>
+
+              <div className="admin-password-delivery-grid">
+                <div className="admin-password-delivery-card">
+                  <span>{t("Email code sent to")}</span>
+                  <strong dir="ltr">{passwordMaskedEmail}</strong>
+                </div>
+                <div className="admin-password-delivery-card">
+                  <span>{t("SMS code sent to")}</span>
+                  <strong dir="ltr">{passwordMaskedPhone}</strong>
+                </div>
+              </div>
+
+              <label>
+                {t("Email verification code")}
+                <input
+                  value={passwordEmailCode}
+                  onChange={(e) => setPasswordEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  required
+                  dir="ltr"
+                />
+              </label>
+
+              <label>
+                {t("SMS verification code")}
+                <input
+                  value={passwordSmsCode}
+                  onChange={(e) => setPasswordSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  required
+                  dir="ltr"
+                />
+              </label>
+
+              <div className="admin-password-step-actions">
+                <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={resetPasswordVerification}>
+                  {t("Start again")}
+                </button>
+                <button
+                  className="admin-primary"
+                  disabled={passwordBusy || passwordEmailCode.length !== 6 || passwordSmsCode.length !== 6}
+                  type="submit"
+                >
+                  {t("Verify both codes")}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {passwordVerificationStep === "VERIFIED" ? (
+            <form className="admin-form admin-password-form admin-password-step" onSubmit={changePassword}>
+              <div className="admin-password-step-heading admin-password-step-verified">
+                <span className="admin-password-step-number">✓</span>
+                <div>
+                  <strong>{t("Identity verified")}</strong>
+                  <span>{t("Both verification channels passed. Choose your new administrator password.")}</span>
+                </div>
+              </div>
+
+              <label>
+                {t("New password")}
+                <AdminPasswordInput
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  required
+                  showLabel={t("Show password")}
+                  hideLabel={t("Hide password")}
+                />
+              </label>
+
+              <label>
+                {t("Confirm new password")}
+                <AdminPasswordInput
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                  required
+                  showLabel={t("Show password")}
+                  hideLabel={t("Hide password")}
+                />
+              </label>
+
+              <div className="admin-password-step-actions">
+                <button
+                  className="admin-secondary"
+                  type="button"
+                  disabled={passwordBusy}
+                  onClick={() => {
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    resetPasswordVerification();
+                  }}
+                >
+                  {t("Cancel verification")}
+                </button>
+                <button className="admin-primary" disabled={passwordBusy} type="submit">
+                  {t("Change password")}
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </div>
       </article>
     </section>
   );

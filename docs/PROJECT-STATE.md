@@ -621,3 +621,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Delivery uses configurable email and SMS webhooks. Both channels must be configured and both deliveries must succeed; production fails closed when delivery is unavailable.
 - Added regression coverage for current-password verification, dual code delivery, invalid code rejection, required two-factor proof, successful password change, and one-time token reuse rejection.
 
+### Admin profile 2FA UI
+
+- Admin → Profile password change is now a three-step security flow: confirm current password, verify separate email/SMS one-time codes, then choose the new password.
+- New-password fields remain hidden until both verification codes succeed.
+- The UI displays only masked verification destinations and never receives the generated codes from the API.
+- Restart/cancel controls clear local verification state without weakening the backend one-time-token requirement.
+- Dari/Persian and Pashto translations were added for verification states, delivery/configuration failures, expiry, rate limits, and invalid-code feedback.
+
