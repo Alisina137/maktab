@@ -500,3 +500,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Parent accounts and student login identities remain school-wide and are not duplicated per academic year.
 - Adding a student enrollment follows the selected DRAFT/ACTIVE year; CLOSED/ARCHIVED year views do not allow new enrollment.
 
+## Testing Step 6 refinement — Year-scoped exams and results
+
+- Learning now follows the shared selected academic year for exam cycles, exam subject setup, and published result history.
+- Published grade overview rows carry their academic-year id so historical results can be filtered without changing or duplicating records.
+- Exam lifecycle actions and published-grade corrections are disabled in historical CLOSED/ARCHIVED year views.
+- New exam creation remains restricted by the backend to the ACTIVE academic year.
+

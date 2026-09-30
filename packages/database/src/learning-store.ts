@@ -94,6 +94,7 @@ export interface AdminLearningOverview {
   }>;
   publishedGrades: Array<{
     grade: GradeRecord;
+    academicYearId: string;
     examName: string;
     subjectName: string;
     className: string;
@@ -625,6 +626,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         db
           .select({
             grade: gradeRecords,
+            academicYearId: exams.academicYearId,
             examName: exams.name,
             subjectName: subjects.name,
             className: classSections.name,

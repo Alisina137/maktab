@@ -31,6 +31,7 @@ type PublishedGrade = {
     score: number;
     remark: string | null;
   };
+  academicYearId: string;
   examName: string;
   subjectName: string;
   className: string;
@@ -75,7 +76,7 @@ async function request<T>(accessToken: string, path: string, init?: RequestInit)
 }
 
 export function LearningPanel({ accessToken }: { accessToken: string }) {
-  const { locale } = useAdminWorkspace();
+  const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const [learning, setLearning] = useState<LearningOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
@@ -188,8 +189,17 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
-  const selectedExam = learning?.exams.find((exam) => exam.id === examId) ?? null;
-  const activeYears = academics?.academicYears.filter((year) => year.status === "ACTIVE") ?? [];
+  const yearExams =
+    learning?.exams.filter((exam) => exam.academicYearId === selectedAcademicYearId) ?? [];
+  const yearExamIds = new Set(yearExams.map((exam) => exam.id));
+  const yearExamSubjects =
+    learning?.examSubjects.filter((item) => yearExamIds.has(item.examSubject.examId)) ?? [];
+  const yearPublishedGrades =
+    learning?.publishedGrades.filter((item) => item.academicYearId === selectedAcademicYearId) ?? [];
+  const selectedExam = yearExams.find((exam) => exam.id === examId) ?? null;
+  const activeYears =
+    selectedAcademicYear?.status === "ACTIVE" ? [selectedAcademicYear] : [];
+  const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
   const examClasses = selectedExam
     ? academics?.classes.filter((item) => item.academicYearId === selectedExam.academicYearId) ?? []
     : [];
@@ -202,6 +212,18 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     );
   }, [selectedExam, examClassId, academics]);
   const examSubjects = academics?.subjects.filter((subject) => assignedSubjectIds.has(subject.id)) ?? [];
+
+  useEffect(() => {
+    if (!learning) return;
+    setExamClassId("");
+    setExamId(
+      learning.exams.find(
+        (exam) =>
+          exam.academicYearId === selectedAcademicYearId &&
+          (exam.status === "DRAFT" || exam.status === "SCHEDULED")
+      )?.id ?? ""
+    );
+  }, [selectedAcademicYearId, learning]);
 
   if (!learning || !academics) {
     return (
@@ -256,7 +278,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
               {t("Exam")}
               <select name="examId" required value={examId} onChange={(event) => { setExamId(event.target.value); setExamClassId(""); }}>
                 <option value="">{t("Select exam")}</option>
-                {learning.exams.filter((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED").map((exam) => (
+                {yearExams.filter((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED").map((exam) => (
                   <option key={exam.id} value={exam.id}>{exam.name} · {t(exam.status)}</option>
                 ))}
               </select>
@@ -282,8 +304,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           <div><h2>{t("Exam lifecycle")}</h2><p>{t("Draft → Scheduled → In progress → Results ready → Published → Archived")}</p></div>
         </div>
         <div className="academic-rows">
-          {learning.exams.map((exam) => {
-            const subjectCount = learning.examSubjects.filter((item) => item.examSubject.examId === exam.id).length;
+          {yearExams.map((exam) => {
+            const subjectCount = yearExamSubjects.filter((item) => item.examSubject.examId === exam.id).length;
             const action =
               exam.status === "DRAFT" ? "Schedule" :
               exam.status === "SCHEDULED" ? "Start exam" :
@@ -295,19 +317,19 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                 <div>
                   <strong>{exam.name}</strong>
                   <span>{exam.type} · {t(exam.status)} · {subjectCount} {t("subject setup(s)")}</span>
-                  {learning.examSubjects.filter((item) => item.examSubject.examId === exam.id).map((item) => (
+                  {yearExamSubjects.filter((item) => item.examSubject.examId === exam.id).map((item) => (
                     <span key={item.examSubject.id}>{item.className} · {item.subjectName} · {t("Maximum")} {item.examSubject.maxScore}</span>
                   ))}
                 </div>
                 {action ? (
                   <div className="admin-actions">
-                    <button disabled={busy} onClick={() => void examAction(exam)}>{t(action)}</button>
+                    <button disabled={busy || historicalReadOnly} onClick={() => void examAction(exam)}>{t(action)}</button>
                   </div>
                 ) : null}
               </div>
             );
           })}
-          {learning.exams.length === 0 ? <p className="admin-copy">{t("No exams yet.")}</p> : null}
+          {yearExams.length === 0 ? <p className="admin-copy">{t("No exams in the selected academic year.")}</p> : null}
         </div>
       </article>
 
@@ -316,10 +338,21 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           <div><h2>{t("Published result corrections")}</h2><p>{t("Published marks cannot be deleted. Corrections require a reason and create audit history.")}</p></div>
         </div>
         <div className="learning-grade-list">
-          {learning.publishedGrades.map((item) => (
-            <PublishedGradeRow key={item.grade.id} item={item} accessToken={accessToken} locale={locale} busy={busy} onBusy={setBusy} onError={setError} onNotice={setNotice} onReload={load} />
+          {yearPublishedGrades.map((item) => (
+            <PublishedGradeRow
+              key={item.grade.id}
+              item={item}
+              accessToken={accessToken}
+              locale={locale}
+              busy={busy}
+              readOnly={historicalReadOnly}
+              onBusy={setBusy}
+              onError={setError}
+              onNotice={setNotice}
+              onReload={load}
+            />
           ))}
-          {learning.publishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades yet.")}</p> : null}
+          {yearPublishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades in the selected academic year.")}</p> : null}
         </div>
       </article>
     </section>
@@ -331,6 +364,7 @@ function PublishedGradeRow({
   accessToken,
   locale,
   busy,
+  readOnly,
   onBusy,
   onError,
   onNotice,
@@ -340,6 +374,7 @@ function PublishedGradeRow({
   accessToken: string;
   locale: AdminLocale;
   busy: boolean;
+  readOnly: boolean;
   onBusy: (value: boolean) => void;
   onError: (value: string) => void;
   onNotice: (value: string) => void;
@@ -384,10 +419,10 @@ function PublishedGradeRow({
         <strong>{item.studentName}</strong>
         <span>{item.studentCode} · {item.examName} · {item.className} · {item.subjectName}</span>
       </div>
-      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} value={score} onChange={(event) => setScore(event.target.value)} /></label>
-      <label>{t("Remark")}<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} /></label>
-      <label>{t("Correction reason")}<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required /></label>
-      <button className="admin-secondary" type="button" disabled={busy || !reason.trim() || Number(score) < 0 || Number(score) > item.maxScore} onClick={() => void save()}>
+      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} value={score} onChange={(event) => setScore(event.target.value)} disabled={readOnly} /></label>
+      <label>{t("Remark")}<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} disabled={readOnly} /></label>
+      <label>{t("Correction reason")}<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required disabled={readOnly} /></label>
+      <button className="admin-secondary" type="button" disabled={busy || readOnly || !reason.trim() || Number(score) < 0 || Number(score) > item.maxScore} onClick={() => void save()}>
         {t("Save correction")}
       </button>
     </div>
