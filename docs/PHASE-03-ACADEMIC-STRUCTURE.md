@@ -95,3 +95,21 @@ Phase 4 remains outside this phase:
 - bulk student/family import
 
 Attendance remains Phase 5.
+
+### Admin academic module pages
+
+The school-admin Academic workspace is separated by entity instead of placing all academic forms on one screen:
+
+- Academic Years
+- Grade Levels
+- Subjects
+- Classes
+- Teacher Profiles
+- Teacher Assignments
+- Negaran Assignments
+- Timetable Periods
+
+Each module page contains one create/edit form and the current records for that entity. Edit and Delete actions are explicit and audited. Deletes are non-cascading at the application layer: if another academic or historical record depends on the entity, deletion is rejected with a conflict instead of erasing dependent history.
+
+Classes, Teacher Assignments, Negaran Assignments, and Timetable Periods follow the selected academic-year context. CLOSED and ARCHIVED years are historical/read-only. Grade levels, subjects, and teacher profiles remain school-wide definitions.
+

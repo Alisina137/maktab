@@ -2473,3 +2473,154 @@ test("first-login password change enforces the complete password policy", async 
   assert.equal(valid.statusCode, 200);
   assert.equal(valid.json<{ mustChangePassword: boolean }>().mustChangePassword, false);
 });
+
+test("academic entity CRUD edits classes and protects dependent class history", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ACADEMIC-CRUD");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1409", startDate: "2030-03-21", endDate: "2031-03-20" }
+  });
+  assert.equal(yearResponse.statusCode, 201);
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  assert.equal(
+    (await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: auth })).statusCode,
+    200
+  );
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G11", name: "Grade 11", sortOrder: 11 }
+  });
+  assert.equal(gradeResponse.statusCode, 201);
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const disposableClass = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      gradeLevelId: gradeId,
+      code: "11A",
+      name: "Grade 11 A"
+    }
+  });
+  assert.equal(disposableClass.statusCode, 201);
+  const disposableClassId = disposableClass.json<{ class: { id: string } }>().class.id;
+
+  const editedClass = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/academics/classes/${disposableClassId}`,
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      gradeLevelId: gradeId,
+      code: "11-A",
+      name: "Grade 11 - A"
+    }
+  });
+  assert.equal(editedClass.statusCode, 200);
+  assert.equal(editedClass.json<{ class: { code: string; name: string } }>().class.code, "11-A");
+  assert.equal(editedClass.json<{ class: { code: string; name: string } }>().class.name, "Grade 11 - A");
+
+  const deletedClass = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/classes/${disposableClassId}`,
+    headers: auth
+  });
+  assert.equal(deletedClass.statusCode, 200);
+
+  const protectedClass = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      gradeLevelId: gradeId,
+      code: "11B",
+      name: "Grade 11 B"
+    }
+  });
+  assert.equal(protectedClass.statusCode, 201);
+  const protectedClassId = protectedClass.json<{ class: { id: string } }>().class.id;
+
+  const subjectResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: auth,
+    payload: { code: "PHY11", name: "Physics 11" }
+  });
+  assert.equal(subjectResponse.statusCode, 201);
+  const subjectId = subjectResponse.json<{ subject: { id: string } }>().subject.id;
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "teacher.crud", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const teacherUserId = teacherAccount.json<{ user: { id: string } }>().user.id;
+
+  const teacherProfile = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: auth,
+    payload: {
+      userId: teacherUserId,
+      employeeCode: "T-CRUD",
+      fullName: "CRUD Teacher"
+    }
+  });
+  assert.equal(teacherProfile.statusCode, 201);
+
+  const assignment = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      classId: protectedClassId,
+      subjectId,
+      teacherUserId
+    }
+  });
+  assert.equal(assignment.statusCode, 201);
+
+  const blockedDelete = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/classes/${protectedClassId}`,
+    headers: auth
+  });
+  assert.equal(blockedDelete.statusCode, 409);
+  assert.equal(
+    blockedDelete.json<{ message: string }>().message,
+    "This class cannot be deleted because school records depend on it."
+  );
+
+  const overview = await app.inject({
+    method: "GET",
+    url: "/v1/admin/academics",
+    headers: auth
+  });
+  assert.equal(overview.statusCode, 200);
+  const overviewBody = overview.json<{
+    classes: Array<{ id: string; code: string }>;
+  }>();
+  assert.equal(overviewBody.classes.some((item) => item.id === disposableClassId), false);
+  assert.equal(overviewBody.classes.some((item) => item.id === protectedClassId), true);
+});
+

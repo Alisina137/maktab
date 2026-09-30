@@ -507,3 +507,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Exam lifecycle actions and published-grade corrections are disabled in historical CLOSED/ARCHIVED year views.
 - New exam creation remains restricted by the backend to the ACTIVE academic year.
 
+## Testing Step 6 refinement — Dedicated Academic CRUD pages
+
+- Admin → Academics is now an academic-module landing page rather than one crowded page containing every Phase 3 form.
+- Added dedicated routes for Academic Years, Grade Levels, Subjects, Classes, Teacher Profiles, Teacher Assignments, Negaran Assignments, and Timetable Periods.
+- Each route shows exactly one entity form plus the records created for that entity.
+- Each list supports real Edit/Delete operations where domain integrity permits them; the actions are backed by audited API routes and protected database-store operations.
+- Year-bound pages (Classes, Teacher Assignments, Negaran Assignments, Timetable Periods) follow the shared selected academic-year context. CLOSED/ARCHIVED years remain read-only.
+- Academic Years retain Activate, Close, Reactivate, Archive, Unarchive, and safe permanent-delete lifecycle actions. Only DRAFT academic years may have their name/date metadata edited.
+- Grade, subject, teacher-profile, class, assignment, Negaran, and timetable deletion is dependency-aware. Records that already support students, attendance, homework, exams, timetable, announcements, or other academic history are rejected rather than cascaded away.
+- Negaran deletion is limited to DRAFT years; an active Negaran assignment is ended instead so responsibility history is preserved.
+- Timetable keeps the weekly teacher/class browser on its dedicated page.
+- Added API regression coverage proving that an unused class can be edited/deleted and a class with an academic dependency cannot be deleted.
+
