@@ -9,6 +9,14 @@ import {
   createTeacherProfileSchema,
   createTimetablePeriodSchema,
   endNegaranAssignmentSchema,
+  updateAcademicYearSchema,
+  updateClassSectionSchema,
+  updateGradeLevelSchema,
+  updateNegaranAssignmentSchema,
+  updateSubjectSchema,
+  updateTeacherAssignmentSchema,
+  updateTeacherProfileSchema,
+  updateTimetablePeriodSchema,
   type AcademicYearStatus
 } from "@maktablink/contracts";
 import {
@@ -72,6 +80,29 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.patch<{ Params: { yearId: string } }>(
+    "/v1/admin/academics/years/:yearId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateAcademicYearSchema.parse(request.body);
+        const year = await academics.updateAcademicYear(context.user.schoolId, request.params.yearId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "academic_year.updated",
+          entityType: "academic_year",
+          entityId: year.id,
+          metadata: { name: year.name, startDate: year.startDate, endDate: year.endDate }
+        });
+        return { academicYear: year };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   const statusRoutes: Array<{ path: string; status: AcademicYearStatus; action: string }> = [
     { path: "activate", status: "ACTIVE", action: "academic_year.activated" },
@@ -152,6 +183,51 @@ export function registerAcademicRoutes(
     }
   });
 
+  app.patch<{ Params: { gradeId: string } }>(
+    "/v1/admin/academics/grades/:gradeId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateGradeLevelSchema.parse(request.body);
+        const grade = await academics.updateGradeLevel(context.user.schoolId, request.params.gradeId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "grade_level.updated",
+          entityType: "grade_level",
+          entityId: grade.id,
+          metadata: { code: grade.code, name: grade.name, sortOrder: grade.sortOrder }
+        });
+        return { grade };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { gradeId: string } }>(
+    "/v1/admin/academics/grades/:gradeId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const grade = await academics.deleteGradeLevel(context.user.schoolId, request.params.gradeId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "grade_level.deleted",
+          entityType: "grade_level",
+          entityId: grade.id,
+          metadata: { code: grade.code, name: grade.name }
+        });
+        return { grade };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/admin/academics/classes", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
@@ -171,6 +247,56 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.patch<{ Params: { classId: string } }>(
+    "/v1/admin/academics/classes/:classId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateClassSectionSchema.parse(request.body);
+        const classSection = await academics.updateClassSection(context.user.schoolId, request.params.classId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "class_section.updated",
+          entityType: "class_section",
+          entityId: classSection.id,
+          metadata: {
+            code: classSection.code,
+            name: classSection.name,
+            gradeLevelId: classSection.gradeLevelId,
+            academicYearId: classSection.academicYearId
+          }
+        });
+        return { class: classSection };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { classId: string } }>(
+    "/v1/admin/academics/classes/:classId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const classSection = await academics.deleteClassSection(context.user.schoolId, request.params.classId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "class_section.deleted",
+          entityType: "class_section",
+          entityId: classSection.id,
+          metadata: { code: classSection.code, academicYearId: classSection.academicYearId }
+        });
+        return { class: classSection };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   app.post("/v1/admin/academics/subjects", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
@@ -192,6 +318,51 @@ export function registerAcademicRoutes(
     }
   });
 
+  app.patch<{ Params: { subjectId: string } }>(
+    "/v1/admin/academics/subjects/:subjectId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateSubjectSchema.parse(request.body);
+        const subject = await academics.updateSubject(context.user.schoolId, request.params.subjectId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "subject.updated",
+          entityType: "subject",
+          entityId: subject.id,
+          metadata: { code: subject.code, name: subject.name }
+        });
+        return { subject };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { subjectId: string } }>(
+    "/v1/admin/academics/subjects/:subjectId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const subject = await academics.deleteSubject(context.user.schoolId, request.params.subjectId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "subject.deleted",
+          entityType: "subject",
+          entityId: subject.id,
+          metadata: { code: subject.code, name: subject.name }
+        });
+        return { subject };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/admin/academics/teachers", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
@@ -211,6 +382,51 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.patch<{ Params: { teacherUserId: string } }>(
+    "/v1/admin/academics/teachers/:teacherUserId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateTeacherProfileSchema.parse(request.body);
+        const teacher = await academics.updateTeacherProfile(context.user.schoolId, request.params.teacherUserId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "teacher_profile.updated",
+          entityType: "teacher_profile",
+          entityId: teacher.userId,
+          metadata: { employeeCode: teacher.employeeCode, fullName: teacher.fullName }
+        });
+        return { teacher };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { teacherUserId: string } }>(
+    "/v1/admin/academics/teachers/:teacherUserId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const teacher = await academics.deleteTeacherProfile(context.user.schoolId, request.params.teacherUserId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "teacher_profile.deleted",
+          entityType: "teacher_profile",
+          entityId: teacher.userId,
+          metadata: { employeeCode: teacher.employeeCode, fullName: teacher.fullName }
+        });
+        return { teacher };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   app.post("/v1/admin/academics/assignments", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
@@ -237,6 +453,61 @@ export function registerAcademicRoutes(
     }
   });
 
+  app.patch<{ Params: { assignmentId: string } }>(
+    "/v1/admin/academics/assignments/:assignmentId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateTeacherAssignmentSchema.parse(request.body);
+        const assignment = await academics.updateTeacherAssignment(context.user.schoolId, request.params.assignmentId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "teacher_assignment.updated",
+          entityType: "teacher_assignment",
+          entityId: assignment.id,
+          metadata: {
+            teacherUserId: assignment.teacherUserId,
+            subjectId: assignment.subjectId,
+            classId: assignment.classId,
+            academicYearId: assignment.academicYearId
+          }
+        });
+        return { assignment };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { assignmentId: string } }>(
+    "/v1/admin/academics/assignments/:assignmentId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const assignment = await academics.deleteTeacherAssignment(context.user.schoolId, request.params.assignmentId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "teacher_assignment.deleted",
+          entityType: "teacher_assignment",
+          entityId: assignment.id,
+          metadata: {
+            teacherUserId: assignment.teacherUserId,
+            subjectId: assignment.subjectId,
+            classId: assignment.classId,
+            academicYearId: assignment.academicYearId
+          }
+        });
+        return { assignment };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/admin/academics/negaran", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
@@ -260,6 +531,60 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.patch<{ Params: { assignmentId: string } }>(
+    "/v1/admin/academics/negaran/:assignmentId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateNegaranAssignmentSchema.parse(request.body);
+        const assignment = await academics.updateNegaranAssignment(context.user.schoolId, request.params.assignmentId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "negaran_assignment.updated",
+          entityType: "negaran_assignment",
+          entityId: assignment.id,
+          metadata: {
+            teacherUserId: assignment.teacherUserId,
+            classId: assignment.classId,
+            startDate: assignment.startDate,
+            endDate: assignment.endDate
+          }
+        });
+        return { assignment };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { assignmentId: string } }>(
+    "/v1/admin/academics/negaran/:assignmentId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const assignment = await academics.deleteNegaranAssignment(context.user.schoolId, request.params.assignmentId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "negaran_assignment.deleted",
+          entityType: "negaran_assignment",
+          entityId: assignment.id,
+          metadata: {
+            teacherUserId: assignment.teacherUserId,
+            classId: assignment.classId,
+            academicYearId: assignment.academicYearId
+          }
+        });
+        return { assignment };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   app.post<{ Params: { assignmentId: string } }>(
     "/v1/admin/academics/negaran/:assignmentId/end",
@@ -314,6 +639,63 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.patch<{ Params: { periodId: string } }>(
+    "/v1/admin/academics/timetable/:periodId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateTimetablePeriodSchema.parse(request.body);
+        const period = await academics.updateTimetablePeriod(context.user.schoolId, request.params.periodId, input);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "timetable_period.updated",
+          entityType: "timetable_period",
+          entityId: period.id,
+          metadata: {
+            classId: period.classId,
+            subjectId: period.subjectId,
+            teacherUserId: period.teacherUserId,
+            weekday: period.weekday,
+            startsAt: period.startsAt,
+            endsAt: period.endsAt
+          }
+        });
+        return { period };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
+  app.delete<{ Params: { periodId: string } }>(
+    "/v1/admin/academics/timetable/:periodId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const period = await academics.deleteTimetablePeriod(context.user.schoolId, request.params.periodId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "timetable_period.deleted",
+          entityType: "timetable_period",
+          entityId: period.id,
+          metadata: {
+            classId: period.classId,
+            subjectId: period.subjectId,
+            teacherUserId: period.teacherUserId,
+            weekday: period.weekday
+          }
+        });
+        return { period };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   app.get("/v1/teacher/academics", async (request, reply) => {
     const context = await requireAccess(request, reply, accounts);
