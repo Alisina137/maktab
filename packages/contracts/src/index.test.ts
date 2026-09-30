@@ -19,8 +19,10 @@ test("school usernames are normalized within tenant context", () => {
   assert.equal(result.username, "parent.one");
 });
 
-test("password policy requires a reasonable minimum plus letters and numbers", () => {
-  assert.equal(passwordSchema.safeParse("onlyletters").success, false);
-  assert.equal(passwordSchema.safeParse("1234567890").success, false);
-  assert.equal(passwordSchema.safeParse("Maktab2026!").success, true);
+test("password policy requires 8+ characters, a letter, a number, and a special character", () => {
+  assert.equal(passwordSchema.safeParse("Short1!").success, false);
+  assert.equal(passwordSchema.safeParse("12345678!").success, false);
+  assert.equal(passwordSchema.safeParse("MaktabPass!").success, false);
+  assert.equal(passwordSchema.safeParse("Maktab2026").success, false);
+  assert.equal(passwordSchema.safeParse("Maktab1!").success, true);
 });
