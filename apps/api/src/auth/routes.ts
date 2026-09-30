@@ -205,7 +205,7 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
       if (!context) {
         return reply.code(401).send({ error: "refresh_invalid", message: "Refresh session is expired or invalid." });
       }
-      if (endUserBlockedBySubscription(context)) {
+      if (endUserBlockedBySubscription(context) && context.user.status !== "SUSPENDED") {
         return reply.code(503).send({
           error: "school_service_unavailable",
           message: "This school's MaktabLink service is currently unavailable. Contact the school administration."
