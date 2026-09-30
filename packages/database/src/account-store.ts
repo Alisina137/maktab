@@ -340,7 +340,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async setUserStatusAsAdmin(schoolId, userId, status, actorUserId, auditAction) {
       return db.transaction(async (tx) => {
-        if (status === "SUSPENDED" || status === "ARCHIVED") {
+        if (status === "ARCHIVED") {
           await tx
             .update(authSessions)
             .set({ revokedAt: new Date() })
@@ -435,7 +435,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async setUserStatus(schoolId, userId, status) {
       return db.transaction(async (tx) => {
-        if (status === "SUSPENDED" || status === "ARCHIVED") {
+        if (status === "ARCHIVED") {
           await tx
             .update(authSessions)
             .set({ revokedAt: new Date() })
