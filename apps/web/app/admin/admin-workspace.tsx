@@ -41,6 +41,11 @@ export type AdminAcademicYear = {
   status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
 };
 
+export type AdminHeaderProfile = {
+  fullName: string;
+  imageUrl: string | null;
+};
+
 type AdminWorkspaceContextValue = {
   stored: StoredAdminSession;
   locale: AdminLocale;
@@ -48,6 +53,9 @@ type AdminWorkspaceContextValue = {
   setLocale: (locale: AdminLocale) => void;
   showToast: (toast: AdminToastState) => void;
   updateSession: (session: Session) => void;
+  adminProfile: AdminHeaderProfile;
+  refreshAdminProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
   academicYears: AdminAcademicYear[];
   selectedAcademicYearId: string;
   selectedAcademicYear: AdminAcademicYear | null;
@@ -64,8 +72,7 @@ const navItems = [
   { href: "/admin/learning", label: "Learning" },
   { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/families", label: "Families" },
-  { href: "/admin/academics", label: "Academics" },
-  { href: "/admin/profile", label: "Profile" }
+  { href: "/admin/academics", label: "Academics" }
 ] as const;
 
 const yearScopedRoutes = new Set([
@@ -152,6 +159,10 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   const [stored, setStored] = useState<StoredAdminSession | null>(null);
   const [locale, setLocaleState] = useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
   const [ready, setReady] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<AdminHeaderProfile>({
+    fullName: "",
+    imageUrl: null
+  });
   const [academicYears, setAcademicYears] = useState<AdminAcademicYear[]>([]);
   const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState("");
   const [toast, setToast] = useState<AdminToastState | null>(null);
@@ -179,6 +190,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!stored) return;
     void refreshAcademicYears();
+    void refreshAdminProfile();
   }, [stored?.school.id]);
 
   useEffect(() => {
@@ -322,6 +334,24 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     saveAdminSession(next);
   }
 
+  async function refreshAdminProfile() {
+    if (!stored) return;
+    try {
+      const data = await adminApi<{ profile: AdminHeaderProfile }>("/v1/admin/profile", {
+        headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+      });
+      setAdminProfile({
+        fullName: data.profile.fullName?.trim() || stored.session.user.username,
+        imageUrl: data.profile.imageUrl ?? null
+      });
+    } catch {
+      setAdminProfile({
+        fullName: stored.session.user.username,
+        imageUrl: null
+      });
+    }
+  }
+
   async function refreshAcademicYears() {
     if (!stored) return;
     const headers = new Headers();
@@ -396,6 +426,12 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       setLocale: changeLocale,
       showToast,
       updateSession,
+      adminProfile: {
+        fullName: adminProfile.fullName || stored.session.user.username,
+        imageUrl: adminProfile.imageUrl
+      },
+      refreshAdminProfile,
+      signOut,
       academicYears,
       selectedAcademicYearId,
       selectedAcademicYear,
@@ -425,10 +461,17 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
                   ))}
                 </select>
               </div>
-              <Link className="admin-profile-link" href="/admin/profile">
-                {t("Profile")}
+              <Link
+                className="admin-header-profile-link"
+                href="/admin/profile"
+                aria-label={t("Administrator profile")}
+              >
+                <AdminHeaderAvatar
+                  fullName={adminProfile.fullName || stored.session.user.username}
+                  imageUrl={adminProfile.imageUrl}
+                />
+                <span>{firstName(adminProfile.fullName || stored.session.user.username)}</span>
               </Link>
-              <button className="admin-secondary" onClick={() => void signOut()}>{t("Sign out")}</button>
             </div>
           </div>
 
@@ -527,6 +570,41 @@ function AdminToast({
       </div>
       <button type="button" onClick={onDismiss} aria-label="Dismiss message">×</button>
     </div>
+  );
+}
+
+function firstName(value: string) {
+  return value.trim().split(/\s+/)[0] || value;
+}
+
+function AdminHeaderAvatar({
+  fullName,
+  imageUrl
+}: {
+  fullName: string;
+  imageUrl: string | null;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageUrl]);
+
+  if (imageUrl && !failed) {
+    return (
+      <img
+        className="admin-header-profile-avatar"
+        src={imageUrl}
+        alt=""
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span className="admin-header-profile-avatar admin-header-profile-avatar-fallback" aria-hidden="true">
+      {fullName.slice(0, 1).toUpperCase()}
+    </span>
   );
 }
 

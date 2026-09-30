@@ -581,3 +581,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Increased the selector touch height and horizontal padding, added a small outer margin/gap, and refined border, hover, focus, and subtle elevation states.
 - Responsive sizing keeps the control compact beside Profile and Sign out without changing the Academic Year selector.
 
+## Admin navigation and profile-access refinement
+
+- Removed Profile from the main routed admin navigation so the route list focuses only on operational administration sections.
+- Removed the standalone Sign out button from the global admin header.
+- Replaced the header Profile text link with a compact clickable administrator identity chip containing the saved profile image and the administrator's first name.
+- The header avatar falls back to the administrator's initial if no profile image exists or the saved image cannot load.
+- The workspace now loads the authenticated administrator profile summary centrally and refreshes it after profile edits, so saved name/image changes are reflected in the header without requiring a new login.
+- Clicking the avatar/name chip opens the admin profile page.
+- Sign out now lives inside the administrator Profile page, under Account information.
+- The shared sign-out flow is exposed through the workspace context so logout still revokes the refresh session, clears the local admin session, and returns to the admin login page.
+

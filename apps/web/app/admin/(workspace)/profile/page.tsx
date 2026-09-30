@@ -93,7 +93,15 @@ async function prepareAdminProfileImage(file: File): Promise<string> {
 }
 
 export default function AdminProfilePage() {
-  const { stored, locale, t, showToast, updateSession } = useAdminWorkspace();
+  const {
+    stored,
+    locale,
+    t,
+    showToast,
+    updateSession,
+    refreshAdminProfile,
+    signOut
+  } = useAdminWorkspace();
   const [fullName, setFullName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -107,6 +115,7 @@ export default function AdminProfilePage() {
   const [imageProcessing, setImageProcessing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -178,6 +187,7 @@ export default function AdminProfilePage() {
       setOfficeLocation(result.profile.officeLocation ?? "");
       setOfficeHours(result.profile.officeHours ?? "");
       setBio(result.profile.bio ?? "");
+      await refreshAdminProfile();
 
       showToast({
         kind: "success",
@@ -261,6 +271,15 @@ export default function AdminProfilePage() {
       });
     } finally {
       setPasswordBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
     }
   }
 
@@ -418,6 +437,16 @@ export default function AdminProfilePage() {
               <div><dt>{t("School")}</dt><dd>{stored.school.name}</dd></div>
               <div><dt>{t("School code")}</dt><dd>{stored.school.code}</dd></div>
             </dl>
+            <div className="admin-profile-signout">
+              <button
+                className="admin-secondary admin-profile-signout-button"
+                type="button"
+                disabled={signingOut}
+                onClick={() => void handleSignOut()}
+              >
+                {t("Sign out")}
+              </button>
+            </div>
           </article>
         </aside>
       </div>
