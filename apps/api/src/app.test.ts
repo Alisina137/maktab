@@ -17,6 +17,7 @@ import {
   type FoundationDatabase
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
+import type { AdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
 
 const provisioningKey = "phase-3-test-provisioning-key";
 
@@ -34,7 +35,8 @@ async function createTestApp() {
     "0008_phase8_pilot_readiness.sql",
     "0009_school_image.sql",
     "0010_admin_profiles.sql",
-    "0011_admin_contact_profile.sql"
+    "0011_admin_contact_profile.sql",
+    "0012_admin_password_2fa.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -49,6 +51,19 @@ async function createTestApp() {
       return { ok: true, providerMessageId: "test-push-id" };
     }
   };
+  const passwordVerificationMessages = {
+    email: [] as Array<{ to: string; code: string }>,
+    sms: [] as Array<{ to: string; code: string }>
+  };
+  const passwordVerificationDelivery: AdminPasswordVerificationDelivery = {
+    configured: true,
+    async sendEmailCode({ to, code }) {
+      passwordVerificationMessages.email.push({ to, code });
+    },
+    async sendSmsCode({ to, code }) {
+      passwordVerificationMessages.sms.push({ to, code });
+    }
+  };
   const app = buildApp({
     schoolStore: createSchoolStore(db),
     accountStore: createAccountStore(db),
@@ -59,9 +74,11 @@ async function createTestApp() {
     communicationStore: createCommunicationStore(db),
     pilotStore: createPilotStore(db),
     pushProvider,
+    passwordVerificationDelivery,
+    passwordVerificationSecret: "test-password-verification-secret-2026",
     provisioningKey
   });
-  return { app, client };
+  return { app, client, passwordVerificationMessages };
 }
 
 async function provisionSchool(app: Awaited<ReturnType<typeof createTestApp>>["app"], code: string) {
@@ -118,6 +135,125 @@ async function bootstrapAdmin(
   assert.equal(changed.statusCode, 200);
   return changed.json<{ accessToken: string }>().accessToken;
 }
+
+test("school admin password change requires email and SMS verification", async (t) => {
+  const { app, client, passwordVerificationMessages } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ADMIN-2FA");
+  const accessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${accessToken}` };
+
+  const profile = await app.inject({
+    method: "PATCH",
+    url: "/v1/admin/profile",
+    headers: auth,
+    payload: {
+      fullName: "Secure Admin",
+      email: "admin@example.com",
+      phone: "+93700123456"
+    }
+  });
+  assert.equal(profile.statusCode, 200);
+
+  const blockedWithoutVerification = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-password",
+    headers: auth,
+    payload: {
+      currentPassword: "AdminSecure2026!",
+      newPassword: "AdminMoreSecure2026!"
+    }
+  });
+  assert.equal(blockedWithoutVerification.statusCode, 403);
+  assert.equal(
+    blockedWithoutVerification.json<{ error: string }>().error,
+    "two_factor_verification_required"
+  );
+
+  const wrongCurrentPassword = await app.inject({
+    method: "POST",
+    url: "/v1/auth/admin-password-verification/start",
+    headers: auth,
+    payload: { currentPassword: "wrong-password" }
+  });
+  assert.equal(wrongCurrentPassword.statusCode, 401);
+
+  const started = await app.inject({
+    method: "POST",
+    url: "/v1/auth/admin-password-verification/start",
+    headers: auth,
+    payload: { currentPassword: "AdminSecure2026!" }
+  });
+  assert.equal(started.statusCode, 200);
+  const startedBody = started.json<{
+    verificationId: string;
+    email: string;
+    phone: string;
+  }>();
+  assert.ok(startedBody.email.includes("@example.com"));
+  assert.ok(startedBody.phone.endsWith("3456"));
+  assert.equal(passwordVerificationMessages.email.length, 1);
+  assert.equal(passwordVerificationMessages.sms.length, 1);
+  assert.equal(passwordVerificationMessages.email[0]?.to, "admin@example.com");
+  assert.equal(passwordVerificationMessages.sms[0]?.to, "+93700123456");
+
+  const wrongCodes = await app.inject({
+    method: "POST",
+    url: "/v1/auth/admin-password-verification/verify",
+    headers: auth,
+    payload: {
+      verificationId: startedBody.verificationId,
+      emailCode: "000000",
+      smsCode: "000000"
+    }
+  });
+  assert.equal(wrongCodes.statusCode, 400);
+  assert.equal(wrongCodes.json<{ error: string }>().error, "two_factor_code_invalid");
+
+  const verified = await app.inject({
+    method: "POST",
+    url: "/v1/auth/admin-password-verification/verify",
+    headers: auth,
+    payload: {
+      verificationId: startedBody.verificationId,
+      emailCode: passwordVerificationMessages.email[0]!.code,
+      smsCode: passwordVerificationMessages.sms[0]!.code
+    }
+  });
+  assert.equal(verified.statusCode, 200);
+  const verificationToken = verified.json<{ verificationToken: string }>().verificationToken;
+  assert.ok(verificationToken.length >= 32);
+
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-password",
+    headers: auth,
+    payload: {
+      currentPassword: "AdminSecure2026!",
+      newPassword: "AdminMoreSecure2026!",
+      verificationToken
+    }
+  });
+  assert.equal(changed.statusCode, 200);
+  const newAccessToken = changed.json<{ accessToken: string }>().accessToken;
+
+  const reused = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-password",
+    headers: { authorization: `Bearer ${newAccessToken}` },
+    payload: {
+      currentPassword: "AdminMoreSecure2026!",
+      newPassword: "AdminEvenMoreSecure2026!",
+      verificationToken
+    }
+  });
+  assert.equal(reused.statusCode, 403);
+  assert.equal(reused.json<{ error: string }>().error, "two_factor_verification_required");
+});
 
 test("platform routes reject a missing provisioning key", async (t) => {
   const { app, client } = await createTestApp();

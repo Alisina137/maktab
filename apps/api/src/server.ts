@@ -13,6 +13,7 @@ import {
   createSchoolStore
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
+import { createAdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
 
 loadEnv({
   path: fileURLToPath(new URL("../../../.env", import.meta.url))
@@ -42,6 +43,8 @@ const app = buildApp({
   communicationStore: createCommunicationStore(database.db),
   pilotStore: createPilotStore(database.db),
   pushProvider: createExpoPushProvider(),
+  passwordVerificationDelivery: createAdminPasswordVerificationDelivery(),
+  passwordVerificationSecret: process.env.PASSWORD_2FA_SECRET ?? provisioningKey,
   provisioningKey,
   webOrigin,
   logger: process.env.NODE_ENV === "production" || process.env.API_STRUCTURED_LOGS === "true"

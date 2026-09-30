@@ -5,6 +5,7 @@ import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
 import { registerAuthRoutes } from "./auth/routes.js";
+import type { AdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
 import { registerFamilyRoutes } from "./families/routes.js";
 import { registerCommunicationRoutes } from "./communication/routes.js";
 import { registerLearningRoutes } from "./learning/routes.js";
@@ -24,6 +25,8 @@ export interface BuildAppOptions {
   communicationStore: CommunicationStore;
   pilotStore: PilotStore;
   pushProvider: PushProvider;
+  passwordVerificationDelivery: AdminPasswordVerificationDelivery;
+  passwordVerificationSecret: string;
   provisioningKey: string;
   webOrigin?: string;
   logger?: boolean;
@@ -75,7 +78,10 @@ export function buildApp(options: BuildAppOptions) {
 
   const loginLimiter = new LoginRateLimiter();
   registerPublicRoutes(app, options.schoolStore);
-  registerAuthRoutes(app, options.accountStore, loginLimiter);
+  registerAuthRoutes(app, options.accountStore, loginLimiter, {
+    passwordVerificationDelivery: options.passwordVerificationDelivery,
+    passwordVerificationSecret: options.passwordVerificationSecret
+  });
   registerUserRoutes(app, options.accountStore);
   registerAcademicRoutes(app, options.accountStore, options.academicStore);
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);

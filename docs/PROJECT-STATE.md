@@ -608,3 +608,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added the same mark as the Android adaptive icon foreground with a white adaptive background.
 - App icon changes are native assets and therefore require a new Android/iOS build; they are not delivered to an already-installed app through EAS Update alone.
 
+## Administrator password two-factor verification
+
+- Normal self-service password changes for a signed-in school administrator now require two independent one-time codes: one delivered to the administrator's locked email verification contact and one delivered to the locked phone verification contact.
+- The current password is checked before any verification codes are sent.
+- Email and SMS codes are separate random six-digit values, expire after 10 minutes, are stored only as HMAC hashes, and allow at most five verification attempts.
+- Verification returns a random one-time token. The password-change endpoint consumes that token atomically and rejects missing, expired, reused, or invalid tokens.
+- Starting a new verification invalidates older unconsumed challenges for the same administrator.
+- Verification-code requests are rate limited.
+- The administrator's first successful verification setup locks the current profile email and phone into separate two-factor contact fields so changing the public contact card does not silently redirect password-change verification.
+- First-login temporary-password replacement remains unchanged so a newly provisioned administrator can establish a permanent password before setting contact channels.
+- Delivery uses configurable email and SMS webhooks. Both channels must be configured and both deliveries must succeed; production fails closed when delivery is unavailable.
+- Added regression coverage for current-password verification, dual code delivery, invalid code rejection, required two-factor proof, successful password change, and one-time token reuse rejection.
+

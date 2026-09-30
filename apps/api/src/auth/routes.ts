@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   changeTemporaryPasswordSchema,
@@ -7,6 +8,16 @@ import {
 } from "@maktablink/contracts";
 import type { AccountStore, AuthenticatedSessionContext } from "@maktablink/database";
 import { z, ZodError } from "zod";
+import {
+  generateVerificationCode,
+  generateVerificationToken,
+  hashVerificationCode,
+  hashVerificationToken,
+  maskEmail,
+  maskPhone,
+  safeHashEqual,
+  type AdminPasswordVerificationDelivery
+} from "./admin-password-2fa.js";
 import { LoginRateLimiter } from "./rate-limit.js";
 import { hashPassword, hashSessionToken, verifyPassword } from "./security.js";
 import {
@@ -20,8 +31,23 @@ import {
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(256),
-  newPassword: passwordSchema
+  newPassword: passwordSchema,
+  verificationToken: z.string().min(32).max(256).optional()
 });
+
+const startAdminPasswordVerificationSchema = z.object({
+  currentPassword: z.string().min(1).max(256)
+});
+
+const verifyAdminPasswordCodesSchema = z.object({
+  verificationId: z.string().uuid(),
+  emailCode: z.string().regex(/^\d{6}$/),
+  smsCode: z.string().regex(/^\d{6}$/)
+});
+
+const ADMIN_PASSWORD_CODE_TTL_MS = 10 * 60 * 1000;
+const ADMIN_PASSWORD_CODE_TTL_MINUTES = 10;
+const ADMIN_PASSWORD_MAX_ATTEMPTS = 5;
 
 function subscriptionUnavailable(context: Pick<AuthenticatedSessionContext, "subscription">) {
   return context.subscription.status === "SUSPENDED" || context.subscription.status === "CANCELLED";
@@ -69,7 +95,16 @@ async function requireAccess(
   return context;
 }
 
-export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, limiter: LoginRateLimiter) {
+export function registerAuthRoutes(
+  app: FastifyInstance,
+  store: AccountStore,
+  limiter: LoginRateLimiter,
+  options: {
+    passwordVerificationDelivery: AdminPasswordVerificationDelivery;
+    passwordVerificationSecret: string;
+  }
+) {
+  const verificationLimiter = new LoginRateLimiter(3, 10 * 60 * 1000);
   app.post("/v1/auth/login", async (request, reply) => {
     try {
       const input = loginInputSchema.parse(request.body);
@@ -149,6 +184,245 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
     }
   });
 
+  app.post("/v1/auth/admin-password-verification/start", async (request, reply) => {
+    try {
+      const context = await requireAccess(request, reply, store);
+      if (!context) return;
+      if (context.user.role !== "SCHOOL_ADMIN") {
+        return reply.code(403).send({
+          error: "forbidden",
+          message: "Administrator access is required for this verification."
+        });
+      }
+
+      if (!options.passwordVerificationDelivery.configured) {
+        return reply.code(503).send({
+          error: "two_factor_delivery_unavailable",
+          message: "Email and SMS verification delivery is not configured for this server."
+        });
+      }
+
+      const input = startAdminPasswordVerificationSchema.parse(request.body);
+      if (!(await verifyPassword(input.currentPassword, context.user.passwordHash))) {
+        return reply.code(401).send({
+          error: "current_password_invalid",
+          message: "The current password is incorrect."
+        });
+      }
+
+      const rateKey = `${context.user.schoolId}:${context.user.id}:${request.ip}`;
+      if (!verificationLimiter.consume(rateKey)) {
+        return reply.code(429).send({
+          error: "two_factor_rate_limited",
+          message: "Too many verification-code requests. Try again later."
+        });
+      }
+
+      const contacts = await store.getAdminPasswordVerificationContacts(
+        context.user.schoolId,
+        context.user.id
+      );
+      if (!contacts) {
+        return reply.code(409).send({
+          error: "two_factor_contacts_missing",
+          message: "Add both an email address and phone number to your administrator profile before changing the password."
+        });
+      }
+
+      const verificationId = randomUUID();
+      const emailCode = generateVerificationCode();
+      const smsCode = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + ADMIN_PASSWORD_CODE_TTL_MS);
+
+      await store.createAdminPasswordVerification({
+        id: verificationId,
+        schoolId: context.user.schoolId,
+        userId: context.user.id,
+        emailCodeHash: hashVerificationCode(
+          options.passwordVerificationSecret,
+          verificationId,
+          "email",
+          emailCode
+        ),
+        smsCodeHash: hashVerificationCode(
+          options.passwordVerificationSecret,
+          verificationId,
+          "sms",
+          smsCode
+        ),
+        expiresAt
+      });
+
+      try {
+        await Promise.all([
+          options.passwordVerificationDelivery.sendEmailCode({
+            to: contacts.email,
+            code: emailCode,
+            expiresInMinutes: ADMIN_PASSWORD_CODE_TTL_MINUTES
+          }),
+          options.passwordVerificationDelivery.sendSmsCode({
+            to: contacts.phone,
+            code: smsCode,
+            expiresInMinutes: ADMIN_PASSWORD_CODE_TTL_MINUTES
+          })
+        ]);
+      } catch (error) {
+        await store.cancelAdminPasswordVerification(
+          context.user.schoolId,
+          context.user.id,
+          verificationId
+        );
+        request.log.error({
+          event: "admin_password_verification_delivery_failed",
+          userId: context.user.id,
+          schoolId: context.user.schoolId,
+          error
+        });
+        return reply.code(503).send({
+          error: "two_factor_delivery_failed",
+          message: "MaktabLink could not deliver both verification codes. Try again later."
+        });
+      }
+
+      await store.writeAudit({
+        schoolId: context.user.schoolId,
+        actorUserId: context.user.id,
+        action: "admin.password_verification_started",
+        entityType: "user",
+        entityId: context.user.id,
+        metadata: {
+          email: maskEmail(contacts.email),
+          phone: maskPhone(contacts.phone)
+        }
+      });
+
+      return {
+        verificationId,
+        email: maskEmail(contacts.email),
+        phone: maskPhone(contacts.phone),
+        expiresInSeconds: ADMIN_PASSWORD_CODE_TTL_MS / 1000
+      };
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      }
+      throw error;
+    }
+  });
+
+  app.post("/v1/auth/admin-password-verification/verify", async (request, reply) => {
+    try {
+      const context = await requireAccess(request, reply, store);
+      if (!context) return;
+      if (context.user.role !== "SCHOOL_ADMIN") {
+        return reply.code(403).send({
+          error: "forbidden",
+          message: "Administrator access is required for this verification."
+        });
+      }
+
+      const input = verifyAdminPasswordCodesSchema.parse(request.body);
+      const verification = await store.findAdminPasswordVerification(
+        context.user.schoolId,
+        context.user.id,
+        input.verificationId
+      );
+
+      if (
+        !verification ||
+        verification.consumedAt ||
+        verification.verifiedAt ||
+        verification.expiresAt.getTime() <= Date.now()
+      ) {
+        return reply.code(410).send({
+          error: "two_factor_verification_expired",
+          message: "This verification request has expired. Request new codes."
+        });
+      }
+
+      if (verification.attempts >= ADMIN_PASSWORD_MAX_ATTEMPTS) {
+        await store.cancelAdminPasswordVerification(
+          context.user.schoolId,
+          context.user.id,
+          input.verificationId
+        );
+        return reply.code(429).send({
+          error: "two_factor_attempts_exceeded",
+          message: "Too many incorrect verification attempts. Request new codes."
+        });
+      }
+
+      const emailMatches = safeHashEqual(
+        verification.emailCodeHash,
+        hashVerificationCode(
+          options.passwordVerificationSecret,
+          verification.id,
+          "email",
+          input.emailCode
+        )
+      );
+      const smsMatches = safeHashEqual(
+        verification.smsCodeHash,
+        hashVerificationCode(
+          options.passwordVerificationSecret,
+          verification.id,
+          "sms",
+          input.smsCode
+        )
+      );
+
+      if (!emailMatches || !smsMatches) {
+        const updated = await store.incrementAdminPasswordVerificationAttempts(
+          context.user.schoolId,
+          context.user.id,
+          input.verificationId
+        );
+        const remainingAttempts = Math.max(
+          0,
+          ADMIN_PASSWORD_MAX_ATTEMPTS - (updated?.attempts ?? ADMIN_PASSWORD_MAX_ATTEMPTS)
+        );
+        if (remainingAttempts === 0) {
+          await store.cancelAdminPasswordVerification(
+            context.user.schoolId,
+            context.user.id,
+            input.verificationId
+          );
+        }
+        return reply.code(400).send({
+          error: "two_factor_code_invalid",
+          message: "One or both verification codes are incorrect.",
+          remainingAttempts
+        });
+      }
+
+      const verificationToken = generateVerificationToken();
+      await store.markAdminPasswordVerificationVerified(
+        context.user.schoolId,
+        context.user.id,
+        input.verificationId,
+        hashVerificationToken(options.passwordVerificationSecret, verificationToken)
+      );
+
+      await store.writeAudit({
+        schoolId: context.user.schoolId,
+        actorUserId: context.user.id,
+        action: "admin.password_verification_completed",
+        entityType: "user",
+        entityId: context.user.id
+      });
+
+      return {
+        verificationToken,
+        expiresAt: verification.expiresAt.toISOString()
+      };
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      }
+      throw error;
+    }
+  });
+
   app.post("/v1/auth/change-password", async (request, reply) => {
     try {
       const context = await requireAccess(request, reply, store);
@@ -166,6 +440,26 @@ export function registerAuthRoutes(app: FastifyInstance, store: AccountStore, li
           error: "password_unchanged",
           message: "Choose a new password that is different from the current password."
         });
+      }
+
+      if (context.user.role === "SCHOOL_ADMIN") {
+        if (!input.verificationToken) {
+          return reply.code(403).send({
+            error: "two_factor_verification_required",
+            message: "Complete email and SMS verification before changing the administrator password."
+          });
+        }
+        const consumed = await store.consumeAdminPasswordVerification(
+          context.user.schoolId,
+          context.user.id,
+          hashVerificationToken(options.passwordVerificationSecret, input.verificationToken)
+        );
+        if (!consumed) {
+          return reply.code(403).send({
+            error: "two_factor_verification_required",
+            message: "The two-factor verification is missing, expired, or already used."
+          });
+        }
       }
 
       const passwordHash = await hashPassword(input.newPassword);
