@@ -254,6 +254,30 @@ export const createTimetablePeriodSchema = z
   });
 export type CreateTimetablePeriodInput = z.infer<typeof createTimetablePeriodSchema>;
 
+export const updateAcademicYearSchema = createAcademicYearSchema;
+export type UpdateAcademicYearInput = CreateAcademicYearInput;
+
+export const updateGradeLevelSchema = createGradeLevelSchema;
+export type UpdateGradeLevelInput = CreateGradeLevelInput;
+
+export const updateClassSectionSchema = createClassSectionSchema;
+export type UpdateClassSectionInput = CreateClassSectionInput;
+
+export const updateSubjectSchema = createSubjectSchema;
+export type UpdateSubjectInput = CreateSubjectInput;
+
+export const updateTeacherProfileSchema = createTeacherProfileSchema.omit({ userId: true });
+export type UpdateTeacherProfileInput = z.infer<typeof updateTeacherProfileSchema>;
+
+export const updateTeacherAssignmentSchema = createTeacherAssignmentSchema;
+export type UpdateTeacherAssignmentInput = CreateTeacherAssignmentInput;
+
+export const updateNegaranAssignmentSchema = createNegaranAssignmentSchema;
+export type UpdateNegaranAssignmentInput = CreateNegaranAssignmentInput;
+
+export const updateTimetablePeriodSchema = createTimetablePeriodSchema;
+export type UpdateTimetablePeriodInput = CreateTimetablePeriodInput;
+
 
 export const createParentAccountSchema = z.object({
   username: usernameSchema,

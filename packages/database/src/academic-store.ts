@@ -10,13 +10,23 @@ import type {
   CreateTeacherAssignmentInput,
   CreateTeacherProfileInput,
   CreateTimetablePeriodInput,
-  EndNegaranAssignmentInput
+  EndNegaranAssignmentInput,
+  UpdateAcademicYearInput,
+  UpdateClassSectionInput,
+  UpdateGradeLevelInput,
+  UpdateNegaranAssignmentInput,
+  UpdateSubjectInput,
+  UpdateTeacherAssignmentInput,
+  UpdateTeacherProfileInput,
+  UpdateTimetablePeriodInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
+  announcements,
   classSections,
   dailyAttendances,
+  examSubjects,
   exams,
   gradeLevels,
   homeworks,
@@ -59,16 +69,31 @@ export interface AcademicStore {
   getOverview(schoolId: string): Promise<AcademicOverview>;
   getTeacherView(schoolId: string, teacherUserId: string): Promise<TeacherAcademicView>;
   createAcademicYear(schoolId: string, input: CreateAcademicYearInput): Promise<AcademicYear>;
+  updateAcademicYear(schoolId: string, yearId: string, input: UpdateAcademicYearInput): Promise<AcademicYear>;
   setAcademicYearStatus(schoolId: string, yearId: string, status: AcademicYearStatus): Promise<AcademicYear>;
   deleteAcademicYear(schoolId: string, yearId: string): Promise<AcademicYear>;
   createGradeLevel(schoolId: string, input: CreateGradeLevelInput): Promise<GradeLevel>;
+  updateGradeLevel(schoolId: string, gradeId: string, input: UpdateGradeLevelInput): Promise<GradeLevel>;
+  deleteGradeLevel(schoolId: string, gradeId: string): Promise<GradeLevel>;
   createClassSection(schoolId: string, input: CreateClassSectionInput): Promise<ClassSection>;
+  updateClassSection(schoolId: string, classId: string, input: UpdateClassSectionInput): Promise<ClassSection>;
+  deleteClassSection(schoolId: string, classId: string): Promise<ClassSection>;
   createSubject(schoolId: string, input: CreateSubjectInput): Promise<Subject>;
+  updateSubject(schoolId: string, subjectId: string, input: UpdateSubjectInput): Promise<Subject>;
+  deleteSubject(schoolId: string, subjectId: string): Promise<Subject>;
   createTeacherProfile(schoolId: string, input: CreateTeacherProfileInput): Promise<TeacherProfile>;
+  updateTeacherProfile(schoolId: string, teacherUserId: string, input: UpdateTeacherProfileInput): Promise<TeacherProfile>;
+  deleteTeacherProfile(schoolId: string, teacherUserId: string): Promise<TeacherProfile>;
   createTeacherAssignment(schoolId: string, input: CreateTeacherAssignmentInput): Promise<TeacherAssignment>;
+  updateTeacherAssignment(schoolId: string, assignmentId: string, input: UpdateTeacherAssignmentInput): Promise<TeacherAssignment>;
+  deleteTeacherAssignment(schoolId: string, assignmentId: string): Promise<TeacherAssignment>;
   createNegaranAssignment(schoolId: string, input: CreateNegaranAssignmentInput): Promise<NegaranAssignment>;
+  updateNegaranAssignment(schoolId: string, assignmentId: string, input: UpdateNegaranAssignmentInput): Promise<NegaranAssignment>;
+  deleteNegaranAssignment(schoolId: string, assignmentId: string): Promise<NegaranAssignment>;
   endNegaranAssignment(schoolId: string, assignmentId: string, input: EndNegaranAssignmentInput): Promise<NegaranAssignment>;
   createTimetablePeriod(schoolId: string, input: CreateTimetablePeriodInput): Promise<TimetablePeriod>;
+  updateTimetablePeriod(schoolId: string, periodId: string, input: UpdateTimetablePeriodInput): Promise<TimetablePeriod>;
+  deleteTimetablePeriod(schoolId: string, periodId: string): Promise<TimetablePeriod>;
 }
 
 export class AcademicConflictError extends Error {
@@ -162,6 +187,36 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
     return teacher;
   }
 
+  async function getAssignment(schoolId: string, assignmentId: string): Promise<TeacherAssignment> {
+    const [assignment] = await db
+      .select()
+      .from(teacherAssignments)
+      .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.id, assignmentId)))
+      .limit(1);
+    if (!assignment) throw new AcademicNotFoundError("Teacher assignment not found.");
+    return assignment;
+  }
+
+  async function getNegaran(schoolId: string, assignmentId: string): Promise<NegaranAssignment> {
+    const [assignment] = await db
+      .select()
+      .from(negaranAssignments)
+      .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+      .limit(1);
+    if (!assignment) throw new AcademicNotFoundError("Negaran assignment not found.");
+    return assignment;
+  }
+
+  async function getTimetablePeriod(schoolId: string, periodId: string): Promise<TimetablePeriod> {
+    const [period] = await db
+      .select()
+      .from(timetablePeriods)
+      .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)))
+      .limit(1);
+    if (!period) throw new AcademicNotFoundError("Timetable period not found.");
+    return period;
+  }
+
   function requireMutableYear(year: AcademicYear): void {
     if (year.status === "CLOSED" || year.status === "ARCHIVED") {
       throw new AcademicConflictError("Closed or archived academic years cannot receive new academic structure.");
@@ -251,6 +306,38 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         return year;
       } catch (error) {
         if (isUniqueError(error)) throw new AcademicConflictError("An academic year with that name already exists in this school.");
+        throw error;
+      }
+    },
+
+    async updateAcademicYear(schoolId, yearId, input) {
+      const current = await getYear(schoolId, yearId);
+      if (current.status !== "DRAFT") {
+        throw new AcademicConflictError("Only draft academic years can be edited.");
+      }
+      const negarans = await db
+        .select({ startDate: negaranAssignments.startDate, endDate: negaranAssignments.endDate })
+        .from(negaranAssignments)
+        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.academicYearId, yearId)));
+      if (negarans.some((item) =>
+        item.startDate < input.startDate ||
+        item.startDate > input.endDate ||
+        (item.endDate !== null && item.endDate > input.endDate)
+      )) {
+        throw new AcademicConflictError("Academic year dates cannot exclude existing Negaran assignment dates.");
+      }
+      try {
+        const [updated] = await db
+          .update(academicYears)
+          .set({ ...input, updatedAt: new Date() })
+          .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Academic year not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) {
+          throw new AcademicConflictError("An academic year with that name already exists.");
+        }
         throw error;
       }
     },
@@ -351,6 +438,37 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       }
     },
 
+    async updateGradeLevel(schoolId, gradeId, input) {
+      await getGrade(schoolId, gradeId);
+      try {
+        const [updated] = await db
+          .update(gradeLevels)
+          .set({ ...input, updatedAt: new Date() })
+          .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Grade level not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) throw new AcademicConflictError("That grade code or name already exists.");
+        throw error;
+      }
+    },
+
+    async deleteGradeLevel(schoolId, gradeId) {
+      const grade = await getGrade(schoolId, gradeId);
+      const used = await db
+        .select({ id: classSections.id })
+        .from(classSections)
+        .where(and(eq(classSections.schoolId, schoolId), eq(classSections.gradeLevelId, gradeId)))
+        .limit(1);
+      if (used.length > 0) {
+        throw new AcademicConflictError("This grade cannot be deleted because classes use it.");
+      }
+      await db.delete(gradeLevels)
+        .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)));
+      return grade;
+    },
+
     async createClassSection(schoolId, input) {
       const [year] = await Promise.all([
         getYear(schoolId, input.academicYearId),
@@ -371,6 +489,56 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       }
     },
 
+    async updateClassSection(schoolId, classId, input) {
+      const current = await getClass(schoolId, classId);
+      const year = await getYear(schoolId, current.academicYearId);
+      requireMutableYear(year);
+      if (input.academicYearId !== current.academicYearId) {
+        throw new AcademicConflictError("A class cannot be moved to another academic year.");
+      }
+      await getGrade(schoolId, input.gradeLevelId);
+      try {
+        const [updated] = await db
+          .update(classSections)
+          .set({
+            gradeLevelId: input.gradeLevelId,
+            code: input.code,
+            name: input.name,
+            updatedAt: new Date()
+          })
+          .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Class not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) throw new AcademicConflictError("That class code already exists in the academic year.");
+        throw error;
+      }
+    },
+
+    async deleteClassSection(schoolId, classId) {
+      const classSection = await getClass(schoolId, classId);
+      const year = await getYear(schoolId, classSection.academicYearId);
+      requireMutableYear(year);
+      const refs = await Promise.all([
+        db.select({ id: students.id }).from(students).where(and(eq(students.schoolId, schoolId), eq(students.classId, classId))).limit(1),
+        db.select({ id: studentClassHistory.id }).from(studentClassHistory).where(and(eq(studentClassHistory.schoolId, schoolId), eq(studentClassHistory.classId, classId))).limit(1),
+        db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.classId, classId))).limit(1),
+        db.select({ id: negaranAssignments.id }).from(negaranAssignments).where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.classId, classId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.classId, classId))).limit(1),
+        db.select({ id: dailyAttendances.id }).from(dailyAttendances).where(and(eq(dailyAttendances.schoolId, schoolId), eq(dailyAttendances.classId, classId))).limit(1),
+        db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.classId, classId))).limit(1),
+        db.select({ id: examSubjects.id }).from(examSubjects).where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.classId, classId))).limit(1),
+        db.select({ id: announcements.id }).from(announcements).where(and(eq(announcements.schoolId, schoolId), eq(announcements.classId, classId))).limit(1)
+      ]);
+      if (refs.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError("This class cannot be deleted because school records depend on it.");
+      }
+      await db.delete(classSections)
+        .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId)));
+      return classSection;
+    },
+
     async createSubject(schoolId, input) {
       try {
         const [subject] = await db
@@ -383,6 +551,38 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (isUniqueError(error)) throw new AcademicConflictError("That subject code or name already exists in this school.");
         throw error;
       }
+    },
+
+    async updateSubject(schoolId, subjectId, input) {
+      await getSubject(schoolId, subjectId);
+      try {
+        const [updated] = await db
+          .update(subjects)
+          .set({ ...input, updatedAt: new Date() })
+          .where(and(eq(subjects.schoolId, schoolId), eq(subjects.id, subjectId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Subject not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) throw new AcademicConflictError("That subject code or name already exists.");
+        throw error;
+      }
+    },
+
+    async deleteSubject(schoolId, subjectId) {
+      const subject = await getSubject(schoolId, subjectId);
+      const refs = await Promise.all([
+        db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.subjectId, subjectId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.subjectId, subjectId))).limit(1),
+        db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.subjectId, subjectId))).limit(1),
+        db.select({ id: examSubjects.id }).from(examSubjects).where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.subjectId, subjectId))).limit(1)
+      ]);
+      if (refs.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError("This subject cannot be deleted because academic records depend on it.");
+      }
+      await db.delete(subjects)
+        .where(and(eq(subjects.schoolId, schoolId), eq(subjects.id, subjectId)));
+      return subject;
     },
 
     async createTeacherProfile(schoolId, input) {
@@ -418,6 +618,43 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       }
     },
 
+    async updateTeacherProfile(schoolId, teacherUserId, input) {
+      await getTeacher(schoolId, teacherUserId);
+      try {
+        const [updated] = await db
+          .update(teacherProfiles)
+          .set({
+            employeeCode: input.employeeCode,
+            fullName: input.fullName,
+            phone: input.phone ?? null,
+            updatedAt: new Date()
+          })
+          .where(and(eq(teacherProfiles.schoolId, schoolId), eq(teacherProfiles.userId, teacherUserId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Teacher profile not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) throw new AcademicConflictError("That teacher employee code already exists.");
+        throw error;
+      }
+    },
+
+    async deleteTeacherProfile(schoolId, teacherUserId) {
+      const teacher = await getTeacher(schoolId, teacherUserId);
+      const refs = await Promise.all([
+        db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.teacherUserId, teacherUserId))).limit(1),
+        db.select({ id: negaranAssignments.id }).from(negaranAssignments).where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.teacherUserId, teacherUserId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.teacherUserId, teacherUserId))).limit(1),
+        db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.teacherUserId, teacherUserId))).limit(1)
+      ]);
+      if (refs.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError("This teacher profile cannot be deleted because academic records depend on it.");
+      }
+      await db.delete(teacherProfiles)
+        .where(and(eq(teacherProfiles.schoolId, schoolId), eq(teacherProfiles.userId, teacherUserId)));
+      return teacher;
+    },
+
     async createTeacherAssignment(schoolId, input) {
       await Promise.all([
         validateClassYear(schoolId, input.academicYearId, input.classId),
@@ -436,6 +673,71 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (isUniqueError(error)) throw new AcademicConflictError("This teacher is already assigned to that subject and class.");
         throw error;
       }
+    },
+
+    async updateTeacherAssignment(schoolId, assignmentId, input) {
+      const current = await getAssignment(schoolId, assignmentId);
+      const year = await getYear(schoolId, current.academicYearId);
+      requireMutableYear(year);
+      if (input.academicYearId !== current.academicYearId) {
+        throw new AcademicConflictError("A teacher assignment cannot be moved to another academic year.");
+      }
+      const refs = await Promise.all([
+        db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.assignmentId, assignmentId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(
+          eq(timetablePeriods.schoolId, schoolId),
+          eq(timetablePeriods.academicYearId, current.academicYearId),
+          eq(timetablePeriods.teacherUserId, current.teacherUserId),
+          eq(timetablePeriods.subjectId, current.subjectId),
+          eq(timetablePeriods.classId, current.classId)
+        )).limit(1)
+      ]);
+      if (refs.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError("Remove dependent homework or timetable periods before editing this teacher assignment.");
+      }
+      await Promise.all([
+        validateClassYear(schoolId, input.academicYearId, input.classId),
+        getSubject(schoolId, input.subjectId),
+        getTeacher(schoolId, input.teacherUserId)
+      ]);
+      try {
+        const [updated] = await db
+          .update(teacherAssignments)
+          .set({
+            classId: input.classId,
+            subjectId: input.subjectId,
+            teacherUserId: input.teacherUserId
+          })
+          .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.id, assignmentId)))
+          .returning();
+        if (!updated) throw new AcademicNotFoundError("Teacher assignment not found.");
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error)) throw new AcademicConflictError("That teacher assignment already exists.");
+        throw error;
+      }
+    },
+
+    async deleteTeacherAssignment(schoolId, assignmentId) {
+      const assignment = await getAssignment(schoolId, assignmentId);
+      const year = await getYear(schoolId, assignment.academicYearId);
+      requireMutableYear(year);
+      const refs = await Promise.all([
+        db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.assignmentId, assignmentId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(
+          eq(timetablePeriods.schoolId, schoolId),
+          eq(timetablePeriods.academicYearId, assignment.academicYearId),
+          eq(timetablePeriods.teacherUserId, assignment.teacherUserId),
+          eq(timetablePeriods.subjectId, assignment.subjectId),
+          eq(timetablePeriods.classId, assignment.classId)
+        )).limit(1)
+      ]);
+      if (refs.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError("This teacher assignment cannot be deleted because homework or timetable records depend on it.");
+      }
+      await db.delete(teacherAssignments)
+        .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.id, assignmentId)));
+      return assignment;
     },
 
     async createNegaranAssignment(schoolId, input) {
@@ -476,6 +778,62 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         })
         .returning();
       if (!assignment) throw new Error("Negaran assignment insert did not return a row.");
+      return assignment;
+    },
+
+    async updateNegaranAssignment(schoolId, assignmentId, input) {
+      const current = await getNegaran(schoolId, assignmentId);
+      const year = await getYear(schoolId, current.academicYearId);
+      requireMutableYear(year);
+      if (input.academicYearId !== current.academicYearId) {
+        throw new AcademicConflictError("A Negaran assignment cannot be moved to another academic year.");
+      }
+      await Promise.all([
+        validateClassYear(schoolId, input.academicYearId, input.classId),
+        getTeacher(schoolId, input.teacherUserId)
+      ]);
+      if (
+        input.startDate < year.startDate ||
+        input.startDate > year.endDate ||
+        (input.endDate && (input.endDate < input.startDate || input.endDate > year.endDate))
+      ) {
+        throw new AcademicValidationError("Negaran assignment dates must fall inside the academic year.");
+      }
+      const overlaps = await db
+        .select({ id: negaranAssignments.id, startDate: negaranAssignments.startDate, endDate: negaranAssignments.endDate })
+        .from(negaranAssignments)
+        .where(and(
+          eq(negaranAssignments.schoolId, schoolId),
+          eq(negaranAssignments.academicYearId, input.academicYearId),
+          eq(negaranAssignments.classId, input.classId),
+          ne(negaranAssignments.id, assignmentId)
+        ));
+      if (overlaps.some((row) => dateRangesOverlap(input.startDate, input.endDate ?? null, row.startDate, row.endDate))) {
+        throw new AcademicConflictError("This class already has an overlapping Negaran assignment.");
+      }
+      const [updated] = await db
+        .update(negaranAssignments)
+        .set({
+          classId: input.classId,
+          teacherUserId: input.teacherUserId,
+          startDate: input.startDate,
+          endDate: input.endDate ?? null,
+          updatedAt: new Date()
+        })
+        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+        .returning();
+      if (!updated) throw new AcademicNotFoundError("Negaran assignment not found.");
+      return updated;
+    },
+
+    async deleteNegaranAssignment(schoolId, assignmentId) {
+      const assignment = await getNegaran(schoolId, assignmentId);
+      const year = await getYear(schoolId, assignment.academicYearId);
+      if (year.status !== "DRAFT") {
+        throw new AcademicConflictError("Only draft-year Negaran assignments can be deleted. End the assignment instead.");
+      }
+      await db.delete(negaranAssignments)
+        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)));
       return assignment;
     },
 
@@ -555,6 +913,75 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         .values({ id: randomUUID(), schoolId, ...input })
         .returning();
       if (!period) throw new Error("Timetable period insert did not return a row.");
+      return period;
+    },
+
+    async updateTimetablePeriod(schoolId, periodId, input) {
+      const current = await getTimetablePeriod(schoolId, periodId);
+      const year = await getYear(schoolId, current.academicYearId);
+      requireMutableYear(year);
+      if (input.academicYearId !== current.academicYearId) {
+        throw new AcademicConflictError("A timetable period cannot be moved to another academic year.");
+      }
+      await Promise.all([
+        validateClassYear(schoolId, input.academicYearId, input.classId),
+        getSubject(schoolId, input.subjectId),
+        getTeacher(schoolId, input.teacherUserId)
+      ]);
+      const [assignment] = await db
+        .select({ id: teacherAssignments.id })
+        .from(teacherAssignments)
+        .where(and(
+          eq(teacherAssignments.schoolId, schoolId),
+          eq(teacherAssignments.academicYearId, input.academicYearId),
+          eq(teacherAssignments.classId, input.classId),
+          eq(teacherAssignments.subjectId, input.subjectId),
+          eq(teacherAssignments.teacherUserId, input.teacherUserId)
+        ))
+        .limit(1);
+      if (!assignment) {
+        throw new AcademicValidationError("Timetable period requires an existing matching teacher assignment.");
+      }
+      const conflicts = await db
+        .select()
+        .from(timetablePeriods)
+        .where(and(
+          eq(timetablePeriods.schoolId, schoolId),
+          eq(timetablePeriods.academicYearId, input.academicYearId),
+          eq(timetablePeriods.weekday, input.weekday),
+          ne(timetablePeriods.id, periodId)
+        ));
+      for (const row of conflicts) {
+        if (!periodsOverlap(input.startsAt, input.endsAt, row.startsAt, row.endsAt)) continue;
+        if (row.classId === input.classId) {
+          throw new AcademicConflictError("The class already has another timetable period at that time.");
+        }
+        if (row.teacherUserId === input.teacherUserId) {
+          throw new AcademicConflictError("The teacher already has another timetable period at that time.");
+        }
+      }
+      const [updated] = await db
+        .update(timetablePeriods)
+        .set({
+          classId: input.classId,
+          subjectId: input.subjectId,
+          teacherUserId: input.teacherUserId,
+          weekday: input.weekday,
+          startsAt: input.startsAt,
+          endsAt: input.endsAt
+        })
+        .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)))
+        .returning();
+      if (!updated) throw new AcademicNotFoundError("Timetable period not found.");
+      return updated;
+    },
+
+    async deleteTimetablePeriod(schoolId, periodId) {
+      const period = await getTimetablePeriod(schoolId, periodId);
+      const year = await getYear(schoolId, period.academicYearId);
+      requireMutableYear(year);
+      await db.delete(timetablePeriods)
+        .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)));
       return period;
     }
   };
