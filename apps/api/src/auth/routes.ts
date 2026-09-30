@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   changeTemporaryPasswordSchema,
   loginInputSchema,
+  passwordSchema,
   refreshSessionSchema
 } from "@maktablink/contracts";
 import type { AccountStore, AuthenticatedSessionContext } from "@maktablink/database";
@@ -19,12 +20,7 @@ import {
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(256),
-  newPassword: z
-    .string()
-    .min(10)
-    .max(128)
-    .regex(/[A-Za-z]/, "Password must include a letter.")
-    .regex(/\d/, "Password must include a number.")
+  newPassword: passwordSchema
 });
 
 function subscriptionUnavailable(context: Pick<AuthenticatedSessionContext, "subscription">) {
