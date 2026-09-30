@@ -37,6 +37,8 @@ export type TranslationKey =
   | "auth.invalidCredentials"
   | "auth.roleMismatch"
   | "auth.accountSuspended"
+  | "suspension.title"
+  | "suspension.contactHint"
   | "auth.accountUnavailable"
   | "auth.rateLimited"
   | "passwordChange.title"
@@ -357,6 +359,8 @@ const en: Record<TranslationKey, string> = {
   "passwordChange.missingLetter": "Please add at least one letter to your password.",
   "passwordChange.missingNumber": "Please add at least one number to your password.",
   "passwordChange.missingSpecial": "Please add at least one special character, such as ! @ # $ %.",
+  "suspension.title": "Account suspended",
+  "suspension.contactHint": "Your school features are temporarily inactive. Contact the school administration below to reactivate your account.",
 };
 
 const dari: Record<TranslationKey, string> = {
@@ -536,6 +540,8 @@ const dari: Record<TranslationKey, string> = {
   "passwordChange.missingLetter": "لطفاً حداقل یک حرف به رمز عبور اضافه کنید.",
   "passwordChange.missingNumber": "لطفاً حداقل یک عدد به رمز عبور اضافه کنید.",
   "passwordChange.missingSpecial": "لطفاً حداقل یک نویسه ویژه مانند ! @ # $ % به رمز عبور اضافه کنید.",
+  "suspension.title": "حساب تعلیق شده است",
+  "suspension.contactHint": "امکانات مکتب شما موقتاً غیرفعال است. برای فعال‌سازی دوباره حساب، از راه‌های زیر با مدیریت مکتب تماس بگیرید.",
 };
 
 const pashto: Record<TranslationKey, string> = {
@@ -715,6 +721,8 @@ const pashto: Record<TranslationKey, string> = {
   "passwordChange.missingLetter": "مهرباني وکړئ پټنوم ته لږ تر لږه یو حرف ورزیات کړئ.",
   "passwordChange.missingNumber": "مهرباني وکړئ پټنوم ته لږ تر لږه یوه شمېره ورزیاته کړئ.",
   "passwordChange.missingSpecial": "مهرباني وکړئ پټنوم ته لږ تر لږه یوه ځانګړې نښه لکه ! @ # $ % ورزیاته کړئ.",
+  "suspension.title": "حساب ځنډول شوی دی",
+  "suspension.contactHint": "ستاسو د ښوونځي ځانګړتیاوې لنډمهاله غیرفعاله دي. د حساب د بیا فعالولو لپاره لاندې د ښوونځي له ادارې سره اړیکه ونیسئ.",
 };
 
 export const messages: Record<SupportedLocale, Record<TranslationKey, string>> = {
