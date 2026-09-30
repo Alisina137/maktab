@@ -142,6 +142,7 @@ function AppContent() {
   const [connectionRecovered, setConnectionRecovered] = useState(false);
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const errorKindRef = useRef<AppErrorKind | null>(null);
   const schoolSearchRequestId = useRef(0);
   const onboardingScrollRef = useRef<ScrollView>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
@@ -379,8 +380,10 @@ function AppContent() {
   }, [errorKind, retryingConnection, errorExitRequested, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
 
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
+    const nextKind = key ? kind : null;
+    errorKindRef.current = nextKind;
     setErrorKey(key);
-    setErrorKind(key ? kind : null);
+    setErrorKind(nextKind);
     if (key) {
       setConnectionRecovered(false);
       setErrorExitRequested(false);
@@ -406,6 +409,7 @@ function AppContent() {
 
   function finishConnectionRecovery() {
     setPreferCachedReads(false);
+    errorKindRef.current = null;
     setErrorKey(null);
     setErrorKind(null);
     setErrorMinimized(false);
@@ -425,13 +429,48 @@ function AppContent() {
 
     try {
       await api.health();
+
+      if (session?.accessToken) {
+        try {
+          const me = await api.me(session.accessToken);
+          if (me.user.status === "SUSPENDED") {
+            const next: SessionPayload = {
+              ...session,
+              user: me.user,
+              mustChangePassword: me.mustChangePassword
+            };
+            setSession(next);
+            if (school) await saveStoredSession({ auth: next, school });
+            setScreen("home");
+            setParentHome(null);
+            setSelectedChildId("");
+            setParentAttendance([]);
+            setParentNotifications([]);
+            setTeacherToday(null);
+            setAttendanceSheet(null);
+            setAttendanceDraft({});
+            setPreferCachedReads(false);
+            setAppError("auth.accountSuspended");
+            void loadAdminContact(session.accessToken);
+            return true;
+          }
+        } catch (cause) {
+          if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
+            setPreferCachedReads(false);
+            setAppError("auth.accountSuspended");
+            return true;
+          }
+          if (isNetworkApiError(cause)) throw cause;
+        }
+      }
+
       setReconnectEpoch((current) => current + 1);
 
-      if (errorKey) {
-        setErrorExitRequested(true);
-      } else {
-        finishConnectionRecovery();
-      }
+      // A health check that started for a network error must not dismiss a
+      // newer account-state or validation popup that appeared while it ran.
+      if (errorKindRef.current !== "network") return true;
+
+      setErrorExitRequested(true);
       return true;
     } catch {
       setPreferCachedReads(true);
