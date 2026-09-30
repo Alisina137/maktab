@@ -178,12 +178,19 @@ function AppContent() {
 
   useEffect(() => {
     setReadCacheFallbackListener(() => {
+      if (session?.user.status === "SUSPENDED") {
+        setPreferCachedReads(false);
+        setNotice(null);
+        setAppError("auth.accountSuspended");
+        return;
+      }
+
       setPreferCachedReads(true);
       setNotice(null);
       setAppError("common.apiUnavailable", "network");
     });
     return () => setReadCacheFallbackListener(null);
-  }, [locale]);
+  }, [locale, session?.user.status]);
 
   useEffect(() => {
     setReadCacheScope(
@@ -393,13 +400,20 @@ function AppContent() {
 
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
     if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-      setSession((current) =>
-        current
-          ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
-          : current
-      );
+      const current = session;
+      if (current) {
+        const suspended: SessionPayload = {
+          ...current,
+          user: { ...current.user, status: "SUSPENDED" }
+        };
+        setSession(suspended);
+        if (school) void saveStoredSession({ auth: suspended, school });
+        void loadAdminContact(current.accessToken);
+      }
+      setPreferCachedReads(false);
       setScreen("home");
-      if (session?.accessToken) void loadAdminContact(session.accessToken);
+      setAppError("auth.accountSuspended");
+      return;
     }
 
     const failure = appErrorFromCause(cause, fallback);
