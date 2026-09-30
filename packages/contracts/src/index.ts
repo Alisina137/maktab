@@ -72,11 +72,11 @@ const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm in 2
 
 export const passwordSchema = z
   .string()
-  .min(10)
-  .max(128)
-  .refine((value) => /[A-Za-z]/.test(value) && /[0-9]/.test(value), {
-    message: "Password must include at least one letter and one number."
-  });
+  .min(8, "Password must be at least 8 characters.")
+  .max(128, "Password must be at most 128 characters.")
+  .regex(/[A-Za-z]/, "Password must include at least one letter.")
+  .regex(/[0-9]/, "Password must include at least one number.")
+  .regex(/[^A-Za-z0-9\s]/, "Password must include at least one special character.");
 
 export const createSchoolInputSchema = z.object({
   code: z.string().trim().min(2).max(32).regex(/^[A-Za-z0-9-]+$/).transform((value) => value.toUpperCase()),
