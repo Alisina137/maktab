@@ -631,6 +631,78 @@ test("academic structure returns specific lifecycle and validation errors", asyn
     rearchiveFirst.json<{ academicYear: { status: string } }>().academicYear.status,
     "ARCHIVED"
   );
+
+  const blockedDeleteWithHistory = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/years/${firstYearId}`,
+    headers: auth
+  });
+  assert.equal(blockedDeleteWithHistory.statusCode, 409);
+  assert.equal(
+    blockedDeleteWithHistory.json<{ message: string }>().message,
+    "This archived academic year cannot be deleted because it contains historical school data."
+  );
+
+  const blockedDeleteClosed = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/years/${secondYearId}`,
+    headers: auth
+  });
+  assert.equal(blockedDeleteClosed.statusCode, 409);
+  assert.equal(
+    blockedDeleteClosed.json<{ message: string }>().message,
+    "Only archived academic years can be deleted."
+  );
+
+  const emptyYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1408", startDate: "2029-03-21", endDate: "2030-03-20" }
+  });
+  assert.equal(emptyYear.statusCode, 201);
+  const emptyYearId = emptyYear.json<{ academicYear: { id: string } }>().academicYear.id;
+
+  const activateEmpty = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activateEmpty.statusCode, 200);
+
+  const closeEmpty = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/close`,
+    headers: auth
+  });
+  assert.equal(closeEmpty.statusCode, 200);
+
+  const archiveEmpty = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${emptyYearId}/archive`,
+    headers: auth
+  });
+  assert.equal(archiveEmpty.statusCode, 200);
+
+  const deleteEmpty = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/years/${emptyYearId}`,
+    headers: auth
+  });
+  assert.equal(deleteEmpty.statusCode, 200);
+
+  const overviewAfterDelete = await app.inject({
+    method: "GET",
+    url: "/v1/admin/academics",
+    headers: auth
+  });
+  assert.equal(overviewAfterDelete.statusCode, 200);
+  assert.equal(
+    overviewAfterDelete
+      .json<{ academicYears: Array<{ id: string }> }>()
+      .academicYears.some((year) => year.id === emptyYearId),
+    false
+  );
 });
 
 test("public school search returns active minimal school records", async (t) => {

@@ -42,14 +42,14 @@ DRAFT
 
 Multiple DRAFT years are allowed. Only one year may be ACTIVE per school.
 
-A CLOSED year may either be reactivated (when no other year is ACTIVE) or archived. An ARCHIVED year remains inactive/read-only until it is unarchived, which returns it to CLOSED. Archiving changes lifecycle state only; linked historical records remain stored and accessible.
+A CLOSED year may either be reactivated (when no other year is ACTIVE) or archived. An ARCHIVED year remains inactive/read-only until it is unarchived, which returns it to CLOSED. Archiving changes lifecycle state only; linked historical records remain stored and accessible. An archived year may be permanently deleted only when no school data references it; deletion is blocked for years containing historical records.
 
 ## Admin workflow
 
 The school-admin web workspace supports:
 
 1. create academic year
-2. activate/close/reactivate/archive/unarchive academic year
+2. activate/close/reactivate/archive/unarchive academic year, and permanently delete an empty archived year
 3. create grade levels
 4. create subjects
 5. create class sections

@@ -101,12 +101,13 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
     path: string,
     payload: Record<string, unknown> | undefined,
     context: string,
-    success: string
+    success: string,
+    method: "POST" | "DELETE" = "POST"
   ): Promise<boolean> {
     setBusy(true);
     try {
       await request(accessToken, path, {
-        method: "POST",
+        method,
         ...(payload ? { body: JSON.stringify(payload) } : {})
       });
       showToast({
@@ -373,6 +374,22 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
                     )}
                   >
                     {t("Unarchive")}
+                  </button>
+                  <button
+                    className="admin-danger"
+                    disabled={busy}
+                    onClick={() => {
+                      if (!window.confirm(t("Delete this archived academic year permanently? This is allowed only when it has no linked school data."))) return;
+                      void mutate(
+                        `/v1/admin/academics/years/${year.id}`,
+                        undefined,
+                        "Delete academic year",
+                        "Academic year deleted permanently.",
+                        "DELETE"
+                      );
+                    }}
+                  >
+                    {t("Delete")}
                   </button>
                 </div>
               </div>

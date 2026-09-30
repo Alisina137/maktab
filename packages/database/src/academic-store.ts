@@ -16,8 +16,13 @@ import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
   classSections,
+  dailyAttendances,
+  exams,
   gradeLevels,
+  homeworks,
   negaranAssignments,
+  studentClassHistory,
+  students,
   subjects,
   teacherAssignments,
   teacherProfiles,
@@ -55,6 +60,7 @@ export interface AcademicStore {
   getTeacherView(schoolId: string, teacherUserId: string): Promise<TeacherAcademicView>;
   createAcademicYear(schoolId: string, input: CreateAcademicYearInput): Promise<AcademicYear>;
   setAcademicYearStatus(schoolId: string, yearId: string, status: AcademicYearStatus): Promise<AcademicYear>;
+  deleteAcademicYear(schoolId: string, yearId: string): Promise<AcademicYear>;
   createGradeLevel(schoolId: string, input: CreateGradeLevelInput): Promise<GradeLevel>;
   createClassSection(schoolId: string, input: CreateClassSectionInput): Promise<ClassSection>;
   createSubject(schoolId: string, input: CreateSubjectInput): Promise<Subject>;
@@ -287,6 +293,48 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         .returning();
       if (!updated) throw new AcademicNotFoundError("Academic year not found.");
       return updated;
+    },
+
+    async deleteAcademicYear(schoolId, yearId) {
+      const year = await getYear(schoolId, yearId);
+      if (year.status !== "ARCHIVED") {
+        throw new AcademicConflictError("Only archived academic years can be deleted.");
+      }
+
+      const referenceChecks = [
+        db.select({ id: classSections.id }).from(classSections)
+          .where(and(eq(classSections.schoolId, schoolId), eq(classSections.academicYearId, yearId))).limit(1),
+        db.select({ id: students.id }).from(students)
+          .where(and(eq(students.schoolId, schoolId), eq(students.academicYearId, yearId))).limit(1),
+        db.select({ id: studentClassHistory.id }).from(studentClassHistory)
+          .where(and(eq(studentClassHistory.schoolId, schoolId), eq(studentClassHistory.academicYearId, yearId))).limit(1),
+        db.select({ id: teacherAssignments.id }).from(teacherAssignments)
+          .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.academicYearId, yearId))).limit(1),
+        db.select({ id: negaranAssignments.id }).from(negaranAssignments)
+          .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.academicYearId, yearId))).limit(1),
+        db.select({ id: timetablePeriods.id }).from(timetablePeriods)
+          .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.academicYearId, yearId))).limit(1),
+        db.select({ id: dailyAttendances.id }).from(dailyAttendances)
+          .where(and(eq(dailyAttendances.schoolId, schoolId), eq(dailyAttendances.academicYearId, yearId))).limit(1),
+        db.select({ id: homeworks.id }).from(homeworks)
+          .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.academicYearId, yearId))).limit(1),
+        db.select({ id: exams.id }).from(exams)
+          .where(and(eq(exams.schoolId, schoolId), eq(exams.academicYearId, yearId))).limit(1)
+      ];
+
+      const references = await Promise.all(referenceChecks);
+      if (references.some((rows) => rows.length > 0)) {
+        throw new AcademicConflictError(
+          "This archived academic year cannot be deleted because it contains historical school data."
+        );
+      }
+
+      const [deleted] = await db
+        .delete(academicYears)
+        .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
+        .returning();
+      if (!deleted) throw new AcademicNotFoundError("Academic year not found.");
+      return deleted;
     },
 
     async createGradeLevel(schoolId, input) {

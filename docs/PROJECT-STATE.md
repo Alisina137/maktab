@@ -468,3 +468,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Historical academic data remains unchanged during archive/unarchive transitions.
 - Added regression coverage for ARCHIVED → CLOSED, reactivation after unarchive, and archiving the same year again.
 
+## Testing Step 6 refinement — Safe deletion of archived academic years
+
+- Archived academic years now show both Unarchive and Delete actions.
+- Permanent deletion is allowed only when the academic year is ARCHIVED.
+- Deletion is blocked if the year is referenced by classes, students, student-class history, teacher assignments, Negaran assignments, timetable periods, attendance, homework, or exams.
+- The archive UI asks for explicit confirmation before issuing the permanent delete.
+- Successful deletion is audit-logged as `academic_year.deleted`.
+- Added API regression coverage proving that a year with historical data cannot be deleted, a non-archived year cannot be deleted, and an empty archived year can be permanently removed.
+

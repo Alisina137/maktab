@@ -107,6 +107,31 @@ export function registerAcademicRoutes(
     );
   }
 
+  app.delete<{ Params: { yearId: string } }>(
+    "/v1/admin/academics/years/:yearId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const year = await academics.deleteAcademicYear(
+          context.user.schoolId,
+          request.params.yearId
+        );
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "academic_year.deleted",
+          entityType: "academic_year",
+          entityId: year.id,
+          metadata: { name: year.name, previousStatus: year.status }
+        });
+        return { academicYear: year };
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/admin/academics/grades", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
