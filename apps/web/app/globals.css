@@ -2294,6 +2294,40 @@ button,
 .admin-header-actions-premium {
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-header-language-control {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 2px;
+}
+
+.admin-header-language-control select {
+  min-width: 126px;
+  min-height: 42px;
+  margin: 0;
+  border: 1px solid #dfe6f0;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--ml-color-text);
+  padding-block: 0;
+  padding-inline: 14px 34px;
+  font-weight: 800;
+  line-height: 1.2;
+  box-shadow: 0 4px 12px rgba(33,54,96,.05);
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.admin-header-language-control select:hover {
+  border-color: #cbd6e6;
+  background: #fbfcfe;
+}
+
+.admin-header-language-control select:focus-visible {
+  border-color: var(--ml-color-brand);
+  box-shadow: 0 0 0 3px rgba(40,95,208,.12);
 }
 
 .admin-language-control {
@@ -2487,6 +2521,14 @@ button,
   .admin-header-actions-premium {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .admin-header-language-control {
+    flex: 0 1 auto;
+  }
+
+  .admin-header-language-control select {
+    min-width: 118px;
   }
 
   .admin-language-control {

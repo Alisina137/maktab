@@ -573,3 +573,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Reduced-motion preferences disable the decorative sheen and slow the spinner animation.
 - This applies across the authenticated admin workspace without duplicating loading markup in every create, update, delete, lifecycle, account, attendance, learning, communication, fees, and profile form.
 
+## Admin header language selector polish
+
+- Removed the visible **Language** label from the authenticated admin header to reduce visual clutter.
+- Kept the language selector accessible with a localized `aria-label`.
+- Gave the header language selector its own styling instead of reusing the shared Academic Year context control.
+- Increased the selector touch height and horizontal padding, added a small outer margin/gap, and refined border, hover, focus, and subtle elevation states.
+- Responsive sizing keeps the control compact beside Profile and Sign out without changing the Academic Year selector.
+

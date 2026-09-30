@@ -414,14 +414,17 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className="admin-header-actions admin-header-actions-premium">
-              <label className="admin-language-control">
-                <span>{t("Language")}</span>
-                <select value={locale} onChange={(event) => changeLocale(event.target.value as AdminLocale)}>
+              <div className="admin-header-language-control">
+                <select
+                  aria-label={t("Language")}
+                  value={locale}
+                  onChange={(event) => changeLocale(event.target.value as AdminLocale)}
+                >
                   {adminLocaleOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
-              </label>
+              </div>
               <Link className="admin-profile-link" href="/admin/profile">
                 {t("Profile")}
               </Link>
