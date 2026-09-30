@@ -515,6 +515,82 @@ test("academic structure returns specific lifecycle and validation errors", asyn
     classOnClosedYear.json<{ message: string }>().message,
     "Closed or archived academic years cannot receive new academic structure."
   );
+
+  const activateSecondAfterClose = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${secondYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activateSecondAfterClose.statusCode, 200);
+
+  const blockedReactivation = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(blockedReactivation.statusCode, 409);
+  assert.equal(
+    blockedReactivation.json<{ message: string }>().message,
+    "Only one academic year may be active for a school."
+  );
+
+  const closeSecond = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${secondYearId}/close`,
+    headers: auth
+  });
+  assert.equal(closeSecond.statusCode, 200);
+
+  const reactivateFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(reactivateFirst.statusCode, 200);
+  assert.equal(
+    reactivateFirst.json<{ academicYear: { status: string } }>().academicYear.status,
+    "ACTIVE"
+  );
+
+  const closeFirstAgain = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/close`,
+    headers: auth
+  });
+  assert.equal(closeFirstAgain.statusCode, 200);
+
+  const archiveFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/archive`,
+    headers: auth
+  });
+  assert.equal(archiveFirst.statusCode, 200);
+  assert.equal(
+    archiveFirst.json<{ academicYear: { status: string } }>().academicYear.status,
+    "ARCHIVED"
+  );
+
+  const overviewAfterArchive = await app.inject({
+    method: "GET",
+    url: "/v1/admin/academics",
+    headers: auth
+  });
+  assert.equal(overviewAfterArchive.statusCode, 200);
+  const archivedBody = overviewAfterArchive.json<{
+    academicYears: Array<{ id: string; status: string }>;
+    classes: Array<{ academicYearId: string; code: string }>;
+  }>();
+  assert.equal(
+    archivedBody.academicYears.find((year) => year.id === firstYearId)?.status,
+    "ARCHIVED"
+  );
+  assert.equal(
+    archivedBody.classes.some(
+      (classSection) =>
+        classSection.academicYearId === firstYearId && classSection.code === "صنف-۷-الف"
+    ),
+    true
+  );
 });
 
 test("public school search returns active minimal school records", async (t) => {

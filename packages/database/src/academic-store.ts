@@ -256,7 +256,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const allowed: Record<AcademicYearStatus, AcademicYearStatus[]> = {
         DRAFT: ["ACTIVE"],
         ACTIVE: ["CLOSED"],
-        CLOSED: ["ARCHIVED"],
+        CLOSED: ["ACTIVE", "ARCHIVED"],
         ARCHIVED: []
       };
       if (!allowed[year.status].includes(status)) {

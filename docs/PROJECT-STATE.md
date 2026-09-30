@@ -446,3 +446,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Invalid academic-code punctuation now returns a human-readable localized validation message instead of exposing a raw regular expression.
 - Added contract and API regression coverage for localized academic codes.
 
+## Testing Step 6 refinement — Reversible close and visible academic archive
+
+- Academic-year lifecycle is now `DRAFT → ACTIVE ↔ CLOSED → ARCHIVED`.
+- Multiple DRAFT years are allowed.
+- Only one ACTIVE academic year is allowed per school.
+- A CLOSED year now has two admin choices: Reactivate or Archive.
+- Reactivation uses the existing one-active-year guard, so it is rejected while another academic year is ACTIVE.
+- ARCHIVED remains terminal/read-only.
+- Archiving does not delete data. It changes only the academic-year status; classes, teacher assignments, Negaran history, timetable data, students, and other linked records remain stored in PostgreSQL.
+- Admin → Academics now separates archived academic years into a visible archive section with historical record counts.
+- Added regression coverage for blocked reactivation when another year is active, successful reactivation after the active year is closed, terminal archiving, and preservation of archived class data.
+

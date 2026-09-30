@@ -159,6 +159,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
 
   const teacherAccounts = users.filter((user) => user.role === "TEACHER" && user.status !== "ARCHIVED");
   const profiledTeacherIds = new Set(overview.teachers.map((teacher) => teacher.userId));
+  const currentAcademicYears = overview.academicYears.filter((year) => year.status !== "ARCHIVED");
+  const archivedAcademicYears = overview.academicYears.filter((year) => year.status === "ARCHIVED");
 
   return (
     <section className="academic-section admin-page-enter">
@@ -310,11 +312,11 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div>
             <h2>{t("Academic years")}</h2>
-            <p>{t("Lifecycle: DRAFT → ACTIVE → CLOSED → ARCHIVED. Only one year can be active.")}</p>
+            <p>{t("Lifecycle: DRAFT → ACTIVE ↔ CLOSED → ARCHIVED. Multiple drafts are allowed; only one year can be active.")}</p>
           </div>
         </div>
         <div className="academic-rows">
-          {overview.academicYears.map((year) => (
+          {currentAcademicYears.map((year) => (
             <div className="academic-row" key={year.id}>
               <div>
                 <strong>{year.name}</strong>
@@ -323,10 +325,47 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
               <div className="admin-actions">
                 {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Activate academic year", "Academic year activated.")}>{t("Activate")}</button> : null}
                 {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Close academic year", "Academic year closed.")}>{t("Close")}</button> : null}
-                {year.status === "CLOSED" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Archive academic year", "Academic year archived.")}>{t("Archive")}</button> : null}
+                {year.status === "CLOSED" ? (
+                  <>
+                    <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Reactivate academic year", "Academic year reactivated.")}>{t("Reactivate")}</button>
+                    <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Archive academic year", "Academic year archived.")}>{t("Archive")}</button>
+                  </>
+                ) : null}
               </div>
             </div>
           ))}
+          {currentAcademicYears.length === 0 ? <p className="admin-copy">{t("No current academic years.")}</p> : null}
+        </div>
+      </article>
+
+      <article className="admin-panel academic-list-panel">
+        <div className="admin-section-header">
+          <div>
+            <h2>{t("Archived academic years")}</h2>
+            <p>{t("Archived years are read-only. Their classes, assignments, Negaran history, timetable, students, and other linked records remain stored.")}</p>
+          </div>
+        </div>
+        <div className="academic-rows">
+          {archivedAcademicYears.map((year) => {
+            const classCount = overview.classes.filter((item) => item.academicYearId === year.id).length;
+            const assignmentCount = overview.assignments.filter((item) => item.academicYearId === year.id).length;
+            const negaranCount = overview.negaranAssignments.filter((item) => item.academicYearId === year.id).length;
+            const timetableCount = overview.timetable.filter((item) => item.academicYearId === year.id).length;
+            return (
+              <div className="academic-row" key={year.id}>
+                <div>
+                  <strong>{year.name}</strong>
+                  <span>
+                    {formatAdminHijriDate(locale, year.startDate)} → {formatAdminHijriDate(locale, year.endDate)} · {t("ARCHIVED")}
+                  </span>
+                  <span>
+                    {t("Classes")}: {classCount} · {t("Assignments")}: {assignmentCount} · {t("Negaran history")}: {negaranCount} · {t("Timetable periods")}: {timetableCount}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          {archivedAcademicYears.length === 0 ? <p className="admin-copy">{t("No archived academic years yet.")}</p> : null}
         </div>
       </article>
 

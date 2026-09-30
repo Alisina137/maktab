@@ -36,18 +36,20 @@ A school can model actual academic operations.
 ```text
 DRAFT
 → ACTIVE
-→ CLOSED
+↔ CLOSED
 → ARCHIVED
 ```
 
-Only one year may be ACTIVE per school.
+Multiple DRAFT years are allowed. Only one year may be ACTIVE per school.
+
+A CLOSED year may either be reactivated (when no other year is ACTIVE) or archived. ARCHIVED is terminal/read-only. Archiving changes lifecycle state only; linked historical records remain stored and accessible.
 
 ## Admin workflow
 
 The school-admin web workspace supports:
 
 1. create academic year
-2. activate/close/archive academic year
+2. activate/close/reactivate/archive academic year
 3. create grade levels
 4. create subjects
 5. create class sections
