@@ -816,6 +816,20 @@ test("parent account can own three students and sees all three through one login
   const body = home.json<{ children: Array<{ student: { studentCode: string } }> }>();
   assert.equal(body.children.length, 3);
   assert.deepEqual(body.children.map((item) => item.student.studentCode), ["S-001", "S-002", "S-003"]);
+
+  const familyOverview = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(familyOverview.statusCode, 200);
+  const familyOverviewBody = familyOverview.json<{
+    enrollments: Array<{ academicYear: { id: string }; student: { studentCode: string } }>;
+  }>();
+  assert.equal(
+    familyOverviewBody.enrollments.filter((item) => item.academicYear.id === yearId).length,
+    3
+  );
 });
 
 

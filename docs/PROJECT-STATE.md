@@ -492,3 +492,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Historical attendance remains visible but correction controls are read-only unless that academic year is ACTIVE.
 - The API independently blocks correction of attendance belonging to a non-ACTIVE academic year.
 
+## Testing Step 6 refinement — Year-scoped student enrollment history
+
+- Family overview now exposes enrollment history from `student_class_history`.
+- The Families student list and year-specific student counts follow the shared selected academic year.
+- A student who later moves to a newer academic year remains visible when an administrator switches back to the older year.
+- Parent accounts and student login identities remain school-wide and are not duplicated per academic year.
+- Adding a student enrollment follows the selected DRAFT/ACTIVE year; CLOSED/ARCHIVED year views do not allow new enrollment.
+

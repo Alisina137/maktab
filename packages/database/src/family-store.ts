@@ -20,6 +20,7 @@ import {
   type ClassSection,
   type ParentProfile,
   type Student,
+  type StudentClassHistory,
   type User
 } from "./schema.js";
 
@@ -35,9 +36,17 @@ export interface StudentFamilyView {
   academicYear: AcademicYear;
 }
 
+export interface StudentEnrollmentView {
+  history: StudentClassHistory;
+  student: Student;
+  classSection: ClassSection;
+  academicYear: AcademicYear;
+}
+
 export interface FamilyOverview {
   parents: ParentSummary[];
   students: StudentFamilyView[];
+  enrollments: StudentEnrollmentView[];
 }
 
 export interface ParentHome {
@@ -186,7 +195,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
   return {
     async getOverview(schoolId) {
-      const [parentRows, studentRows] = await Promise.all([
+      const [parentRows, studentRows, enrollmentRows] = await Promise.all([
         db
           .select({ profile: parentProfiles, user: users })
           .from(parentProfiles)
@@ -199,7 +208,20 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
           .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
           .where(eq(students.schoolId, schoolId))
-          .orderBy(asc(students.fullName))
+          .orderBy(asc(students.fullName)),
+        db
+          .select({
+            history: studentClassHistory,
+            student: students,
+            classSection: classSections,
+            academicYear: academicYears
+          })
+          .from(studentClassHistory)
+          .innerJoin(students, and(eq(students.id, studentClassHistory.studentId), eq(students.schoolId, studentClassHistory.schoolId)))
+          .innerJoin(classSections, and(eq(classSections.id, studentClassHistory.classId), eq(classSections.schoolId, studentClassHistory.schoolId)))
+          .innerJoin(academicYears, and(eq(academicYears.id, studentClassHistory.academicYearId), eq(academicYears.schoolId, studentClassHistory.schoolId)))
+          .where(eq(studentClassHistory.schoolId, schoolId))
+          .orderBy(asc(students.fullName), asc(studentClassHistory.startedAt))
       ]);
 
       const counts = new Map<string, number>();
@@ -212,7 +234,8 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           ...row,
           childCount: counts.get(row.profile.userId) ?? 0
         })),
-        students: studentRows
+        students: studentRows,
+        enrollments: enrollmentRows
       };
     },
 

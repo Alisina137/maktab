@@ -37,7 +37,24 @@ type StudentRow = {
   academicYear: { id: string; name: string; status: string };
 };
 
-type FamilyOverview = { parents: ParentSummary[]; students: StudentRow[] };
+type EnrollmentRow = {
+  history: {
+    id: string;
+    academicYearId: string;
+    classId: string;
+    startedAt: string;
+    endedAt: string | null;
+  };
+  student: StudentRow["student"];
+  classSection: StudentRow["classSection"];
+  academicYear: StudentRow["academicYear"];
+};
+
+type FamilyOverview = {
+  parents: ParentSummary[];
+  students: StudentRow[];
+  enrollments: EnrollmentRow[];
+};
 type AcademicOverview = {
   academicYears: Array<{ id: string; name: string; status: string }>;
   classes: Array<{ id: string; code: string; name: string; academicYearId: string }>;
@@ -114,7 +131,7 @@ function toBase64(file: File): Promise<string> {
 }
 
 export function FamilyPanel({ accessToken }: { accessToken: string }) {
-  const { locale } = useAdminWorkspace();
+  const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
@@ -140,9 +157,31 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     [academics, studentYearId]
   );
 
+  const selectedYearStudents = useMemo(() => {
+    if (!overview || !selectedAcademicYearId) return [] as EnrollmentRow[];
+    const latestByStudent = new Map<string, EnrollmentRow>();
+    for (const enrollment of overview.enrollments) {
+      if (enrollment.academicYear.id !== selectedAcademicYearId) continue;
+      const current = latestByStudent.get(enrollment.student.id);
+      if (!current || current.history.startedAt < enrollment.history.startedAt) {
+        latestByStudent.set(enrollment.student.id, enrollment);
+      }
+    }
+    return Array.from(latestByStudent.values()).sort((a, b) =>
+      a.student.fullName.localeCompare(b.student.fullName)
+    );
+  }, [overview, selectedAcademicYearId]);
+
+  const selectedYearMutable =
+    selectedAcademicYear?.status === "DRAFT" || selectedAcademicYear?.status === "ACTIVE";
+
   useEffect(() => {
     void load();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (selectedAcademicYearId) setStudentYearId(selectedAcademicYearId);
+  }, [selectedAcademicYearId]);
 
   async function load() {
     setError("");
@@ -153,7 +192,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       ]);
       setOverview(familyData);
       setAcademics(academicData);
-      setStudentYearId((current) => current || academicData.academicYears.find((year) => year.status === "ACTIVE")?.id || academicData.academicYears[0]?.id || "");
+      setStudentYearId((current) =>
+        selectedAcademicYearId ||
+        current ||
+        academicData.academicYears.find((year) => year.status === "ACTIVE")?.id ||
+        academicData.academicYears[0]?.id ||
+        ""
+      );
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not load family data."));
     }
@@ -416,8 +461,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-summary-grid family-summary-grid">
         <Summary label={t("Parents")} value={overview.parents.length} />
-        <Summary label={t("Students")} value={overview.students.length} />
-        <Summary label={t("Active students")} value={overview.students.filter((item) => item.student.status === "ACTIVE").length} />
+        <Summary label={t("Students")} value={selectedYearStudents.length} />
+        <Summary label={t("Active students")} value={selectedYearStudents.filter((item) => item.student.status === "ACTIVE").length} />
         <Summary label={t("Families with siblings")} value={overview.parents.filter((item) => item.childCount > 1).length} />
       </div>
 
@@ -450,9 +495,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             </label>
             <label>{t("Academic year")}<select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
                 <option value="">{t("Select year")}</option>
-                {academics.academicYears.filter((year) => year.status !== "CLOSED" && year.status !== "ARCHIVED").map((year) => (
-                  <option key={year.id} value={year.id}>{year.name} · {t(year.status)}</option>
-                ))}
+                {selectedAcademicYear && selectedYearMutable ? (
+                  <option value={selectedAcademicYear.id}>{selectedAcademicYear.name} · {t(selectedAcademicYear.status)}</option>
+                ) : null}
               </select>
             </label>
             <label>{t("Class")}<select name="classId" required defaultValue="" key={studentYearId}>
@@ -462,7 +507,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 ))}
               </select>
             </label>
-            <button className="admin-primary" disabled={busy || availableParents.length === 0}>{t("Add student")}</button>
+            <button className="admin-primary" disabled={busy || availableParents.length === 0 || !selectedYearMutable}>{t("Add student")}</button>
           </form>
         </article>
 
@@ -515,10 +560,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>{t("Students")}</h2><p>{adminFormat(locale, "{count} student record(s)", { count: overview.students.length })}</p></div>
+            <div><h2>{t("Students")}</h2><p>{adminFormat(locale, "{count} student record(s)", { count: selectedYearStudents.length })}</p></div>
           </div>
           <div className="academic-rows">
-            {overview.students.map((item) => {
+            {selectedYearStudents.map((item) => {
               const parent = parentMap.get(item.student.parentUserId);
               return (
                 <div className="academic-row" key={item.student.id}>
@@ -531,7 +576,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 </div>
               );
             })}
-            {overview.students.length === 0 ? <p className="admin-copy">{t("No students yet.")}</p> : null}
+            {selectedYearStudents.length === 0 ? <p className="admin-copy">{t("No students in the selected academic year.")}</p> : null}
           </div>
         </article>
       </div>
