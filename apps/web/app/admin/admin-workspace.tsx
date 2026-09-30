@@ -169,10 +169,12 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   const [toastLeaving, setToastLeaving] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionRefreshInFlight = useRef<Promise<StoredAdminSession | null> | null>(null);
 
   const t = useMemo(() => (english: string) => adminText(locale, english), [locale]);
 
   useEffect(() => {
+    let cancelled = false;
     const session = loadAdminSession();
     const preferredLocale = readAdminLocale();
     setLocaleState(preferredLocale);
@@ -183,15 +185,61 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       return;
     }
 
-    setStored(session);
-    setReady(true);
+    const accessExpiresAt = session.session.accessExpiresAt
+      ? Date.parse(session.session.accessExpiresAt)
+      : Number.NaN;
+    const shouldRefresh =
+      !Number.isFinite(accessExpiresAt) || accessExpiresAt <= Date.now() + 90_000;
+
+    if (!shouldRefresh) {
+      setStored(session);
+      setReady(true);
+      return;
+    }
+
+    void refreshStoredSession(session).then((next) => {
+      if (cancelled) return;
+      if (next) setStored(next);
+      setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
+
+  useEffect(() => {
+    if (!stored) return;
+
+    const checkAndRefresh = () => {
+      const accessExpiresAt = stored.session.accessExpiresAt
+        ? Date.parse(stored.session.accessExpiresAt)
+        : Number.NaN;
+      if (!Number.isFinite(accessExpiresAt) || accessExpiresAt <= Date.now() + 120_000) {
+        void refreshStoredSession(stored);
+      }
+    };
+
+    const interval = window.setInterval(checkAndRefresh, 60_000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") checkAndRefresh();
+    };
+
+    window.addEventListener("focus", checkAndRefresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", checkAndRefresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [stored?.session.refreshToken, stored?.session.accessExpiresAt]);
 
   useEffect(() => {
     if (!stored) return;
     void refreshAcademicYears();
     void refreshAdminProfile();
-  }, [stored?.school.id]);
+  }, [stored?.school.id, stored?.session.accessToken]);
 
   useEffect(() => {
     const direction = adminDirection(locale);
@@ -332,6 +380,41 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     const next = { ...stored, session };
     setStored(next);
     saveAdminSession(next);
+  }
+
+  async function refreshStoredSession(
+    current: StoredAdminSession
+  ): Promise<StoredAdminSession | null> {
+    if (sessionRefreshInFlight.current) return sessionRefreshInFlight.current;
+
+    const operation = (async () => {
+      try {
+        const session = await adminApi<Session>("/v1/auth/refresh", {
+          method: "POST",
+          body: JSON.stringify({ refreshToken: current.session.refreshToken })
+        });
+        const next = { ...current, session };
+        saveAdminSession(next);
+        setStored(next);
+        return next;
+      } catch (cause) {
+        if (cause instanceof Error && "code" in cause) {
+          const code = (cause as { code?: unknown }).code;
+          if (code === "refresh_invalid" || code === "session_invalid" || code === "unauthorized") {
+            clearAdminSession();
+            setStored(null);
+            router.replace("/admin");
+            return null;
+          }
+        }
+        return current;
+      } finally {
+        sessionRefreshInFlight.current = null;
+      }
+    })();
+
+    sessionRefreshInFlight.current = operation;
+    return operation;
   }
 
   async function refreshAdminProfile() {

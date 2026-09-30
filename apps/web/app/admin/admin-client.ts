@@ -27,6 +27,8 @@ export type User = {
 export type Session = {
   accessToken: string;
   refreshToken: string;
+  accessExpiresAt?: string;
+  refreshExpiresAt?: string;
   user: User;
   mustChangePassword: boolean;
 };

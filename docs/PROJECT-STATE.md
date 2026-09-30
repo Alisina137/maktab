@@ -629,3 +629,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Restart/cancel controls clear local verification state without weakening the backend one-time-token requirement.
 - Dari/Persian and Pashto translations were added for verification states, delivery/configuration failures, expiry, rate limits, and invalid-code feedback.
 
+## Admin access-token auto-refresh
+
+- Fixed the admin web session expiring after approximately 15 minutes even though a valid 30-day refresh token still existed.
+- The API keeps the short 15-minute access-token lifetime for security.
+- The admin web shell now refreshes the session before the access token expires and persists the rotated access/refresh tokens in session storage.
+- A stored admin session with a missing or nearly expired access-token timestamp is refreshed before protected admin data is loaded.
+- The shell rechecks session freshness every minute and when the browser tab/window becomes active again, covering long-lived tabs and browser sleep/throttling.
+- Concurrent refresh attempts are deduplicated so one refresh-token rotation cannot invalidate a second simultaneous refresh request.
+- A confirmed invalid/expired refresh token clears the stale local session and returns the administrator to login.
+- Temporary network failures do not erase an otherwise valid local session.
