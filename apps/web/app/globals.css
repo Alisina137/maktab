@@ -3544,3 +3544,59 @@ html[dir="rtl"] body {
     background: #879bbd;
   }
 }
+
+
+/* Admin password visibility input */
+.admin-password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-password-input-wrap input {
+  width: 100%;
+  padding-inline-end: 46px;
+}
+
+.admin-password-toggle {
+  position: absolute;
+  inset-inline-end: 7px;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #718096;
+  transform: translateY(-50%);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.admin-password-toggle:hover {
+  background: #eef3ff;
+  color: #2b5fc5;
+  transform: translateY(-50%);
+}
+
+.admin-password-toggle:focus-visible {
+  outline: 2px solid #7aa2ef;
+  outline-offset: 1px;
+}
+
+.admin-password-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.admin-password-toggle:active {
+  transform: translateY(-50%) scale(.96);
+}
