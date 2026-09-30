@@ -391,3 +391,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Reactivation keeps the existing session usable and reloads normal role data.
 - Added database/API regression coverage proving sessions are preserved, normal role APIs are blocked, administrator contact remains accessible, suspended login is allowed, and reactivation restores normal access.
 - CI verified typecheck, tests, and production build after this refinement.
+
+
+## Step 5 refinement — English typography
+
+- Added language-specific typography tokens for English and RTL languages.
+- English web/admin UI now uses a Latin-first font stack: Aptos, Inter, Segoe UI Variable, Roboto, and system fallbacks.
+- English headings use a separate display-oriented stack headed by Aptos Display / Segoe UI Variable Display.
+- Dari and Pashto continue using the existing Arabic-friendly Segoe/Noto stack.
+- The font family switches automatically with the current document language, so changing the admin language to English immediately applies the English typography.
+- No external web-font dependency was added, avoiding runtime font-download failures.
+- CI verified typecheck, tests, and production build after the typography refinement.
