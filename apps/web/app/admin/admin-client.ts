@@ -49,13 +49,21 @@ export class AdminApiError extends Error {
   code: string | null;
   status: number;
   requestId: string | null;
+  dependencies: string[];
 
-  constructor(message: string, status: number, code: string | null, requestId: string | null) {
+  constructor(
+    message: string,
+    status: number,
+    code: string | null,
+    requestId: string | null,
+    dependencies: string[] = []
+  ) {
     super(message);
     this.name = "AdminApiError";
     this.code = code;
     this.status = status;
     this.requestId = requestId;
+    this.dependencies = dependencies;
   }
 }
 
@@ -80,7 +88,8 @@ export async function adminApi<T>(path: string, init?: RequestInit): Promise<T> 
         "MaktabLink could not read the server response.",
         response.status,
         "invalid_response",
-        response.headers.get("x-request-id")
+        response.headers.get("x-request-id"),
+        []
       );
     }
   }
@@ -90,11 +99,15 @@ export async function adminApi<T>(path: string, init?: RequestInit): Promise<T> 
     const issues = Array.isArray(record?.issues) ? record.issues : [];
     const firstIssue = issues.find((issue) => issue && typeof issue === "object") as Record<string, unknown> | undefined;
     const issueMessage = typeof firstIssue?.message === "string" ? firstIssue.message : null;
+    const dependencies = Array.isArray(record?.dependencies)
+      ? record.dependencies.filter((item): item is string => typeof item === "string")
+      : [];
     throw new AdminApiError(
       typeof record?.message === "string" ? record.message : issueMessage ?? "Request failed.",
       response.status,
       typeof record?.error === "string" ? record.error : null,
-      response.headers.get("x-request-id")
+      response.headers.get("x-request-id"),
+      dependencies
     );
   }
 
@@ -108,6 +121,12 @@ export function friendlyAdminError(
 ) {
   const fallbackText = adminText(locale, fallback);
   if (!(cause instanceof AdminApiError)) return fallbackText;
+
+  if (cause.code === "academic_dependency" && cause.dependencies.length > 0) {
+    const base = adminText(locale, cause.message || "This record cannot be deleted because it is used by:");
+    const dependencies = cause.dependencies.map((item) => adminText(locale, item));
+    return `${base} ${dependencies.join(locale === "en" ? ", " : "، ")}`;
+  }
 
   const messages: Record<string, string> = {
     session_invalid: "Your administrator session has expired. Please sign in again.",

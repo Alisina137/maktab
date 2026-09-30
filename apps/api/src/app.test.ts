@@ -805,6 +805,210 @@ test("academic duplicate feedback is explicit and browser DELETE requests are al
   assert.equal(deleteEmptyYear.statusCode, 200);
 });
 
+test("academic deletion removes unlinked records, explains dependencies, and keeps the API healthy", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "SAFE-DELETE");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1411 Safe Delete", startDate: "2032-03-20", endDate: "2033-03-19" }
+  });
+  assert.equal(yearResponse.statusCode, 201);
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+
+  const unusedGrade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "UNUSED-G", name: "Unused Grade", sortOrder: 90 }
+  });
+  const unusedGradeId = unusedGrade.json<{ grade: { id: string } }>().grade.id;
+  const deleteUnusedGrade = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/grades/${unusedGradeId}`,
+    headers: auth
+  });
+  assert.equal(deleteUnusedGrade.statusCode, 200);
+
+  const usedGrade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "USED-G", name: "Used Grade", sortOrder: 91 }
+  });
+  const usedGradeId = usedGrade.json<{ grade: { id: string } }>().grade.id;
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      gradeLevelId: usedGradeId,
+      code: "SAFE-A",
+      name: "Safe Delete Class"
+    }
+  });
+  assert.equal(classResponse.statusCode, 201);
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  const blockedGrade = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/grades/${usedGradeId}`,
+    headers: auth
+  });
+  assert.equal(blockedGrade.statusCode, 409);
+  assert.equal(blockedGrade.json<{ error: string }>().error, "academic_dependency");
+  assert.deepEqual(blockedGrade.json<{ dependencies: string[] }>().dependencies, ["Classes"]);
+
+  const healthAfterBlockedDelete = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(healthAfterBlockedDelete.statusCode, 200);
+  const academicsAfterBlockedDelete = await app.inject({
+    method: "GET",
+    url: "/v1/admin/academics",
+    headers: auth
+  });
+  assert.equal(academicsAfterBlockedDelete.statusCode, 200);
+
+  const unusedSubject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: auth,
+    payload: { code: "UNUSED-S", name: "Unused Subject" }
+  });
+  const unusedSubjectId = unusedSubject.json<{ subject: { id: string } }>().subject.id;
+  const deleteUnusedSubject = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/subjects/${unusedSubjectId}`,
+    headers: auth
+  });
+  assert.equal(deleteUnusedSubject.statusCode, 200);
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "safe.delete.teacher", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const teacherId = teacherAccount.json<{ user: { id: string } }>().user.id;
+  const teacherProfile = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: auth,
+    payload: { userId: teacherId, employeeCode: "SAFE-T", fullName: "Safe Delete Teacher" }
+  });
+  assert.equal(teacherProfile.statusCode, 201);
+
+  const usedSubject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: auth,
+    payload: { code: "USED-S", name: "Used Subject" }
+  });
+  const usedSubjectId = usedSubject.json<{ subject: { id: string } }>().subject.id;
+  const assignment = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      teacherUserId: teacherId,
+      subjectId: usedSubjectId,
+      classId
+    }
+  });
+  assert.equal(assignment.statusCode, 201);
+  const assignmentId = assignment.json<{ assignment: { id: string } }>().assignment.id;
+
+  const blockedSubject = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/subjects/${usedSubjectId}`,
+    headers: auth
+  });
+  assert.equal(blockedSubject.statusCode, 409);
+  assert.deepEqual(blockedSubject.json<{ dependencies: string[] }>().dependencies, ["Teacher assignments"]);
+
+  const blockedTeacher = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/teachers/${teacherId}`,
+    headers: auth
+  });
+  assert.equal(blockedTeacher.statusCode, 409);
+  assert.deepEqual(blockedTeacher.json<{ dependencies: string[] }>().dependencies, ["Teacher assignments"]);
+
+  const deleteAssignment = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/assignments/${assignmentId}`,
+    headers: auth
+  });
+  assert.equal(deleteAssignment.statusCode, 200);
+
+  const deleteSubject = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/subjects/${usedSubjectId}`,
+    headers: auth
+  });
+  assert.equal(deleteSubject.statusCode, 200);
+
+  const deleteTeacher = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/teachers/${teacherId}`,
+    headers: auth
+  });
+  assert.equal(deleteTeacher.statusCode, 200);
+
+  const deleteClass = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/classes/${classId}`,
+    headers: auth
+  });
+  assert.equal(deleteClass.statusCode, 200);
+
+  const deleteGrade = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/grades/${usedGradeId}`,
+    headers: auth
+  });
+  assert.equal(deleteGrade.statusCode, 200);
+
+  const activate = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${yearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activate.statusCode, 200);
+  const close = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${yearId}/close`,
+    headers: auth
+  });
+  assert.equal(close.statusCode, 200);
+  const archive = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${yearId}/archive`,
+    headers: auth
+  });
+  assert.equal(archive.statusCode, 200);
+  const deleteYear = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/academics/years/${yearId}`,
+    headers: auth
+  });
+  assert.equal(deleteYear.statusCode, 200);
+
+  const finalHealth = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(finalHealth.statusCode, 200);
+});
+
 test("public school search returns active minimal school records", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {

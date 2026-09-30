@@ -549,3 +549,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added Dari/Persian and Pashto translations for the new duplicate/delete explanations and prevented generic internal server text from overriding localized admin-friendly feedback.
 - Added API regression coverage for DELETE CORS preflight, duplicate academic-year feedback, duplicate-grade feedback, unused-grade deletion, and empty archived-year deletion.
 
+## Testing Step 6 fix — dependency-aware safe deletion
+
+- Reworked Academic deletion into a dependency-aware safety model across academic years, grade levels, classes, subjects, teacher profiles, teacher assignments, Negaran assignments, and timetable periods.
+- Unlinked records now delete normally and the delete operation verifies that a row was actually removed.
+- Linked records return a controlled `academic_dependency` conflict with explicit dependency categories instead of a low-level database error or generic failure.
+- Dependency feedback identifies where the record is in use, such as Classes, Students, Student enrollment history, Teacher assignments, Negaran assignments, Timetable periods, Attendance records, Homework, Exams, Exam subjects, or Announcements.
+- Foreign-key races or dependencies missed by a pre-check are converted into the same controlled dependency response, preventing database constraint errors from escaping the Academic route.
+- Dari/Persian and Pashto translations were added for dependency-aware delete messages and dependency category names.
+- Failed DELETE actions now reconcile the Academic overview and shared academic-year context before returning control to the administrator, preventing stale UI state after a failed or partially completed request.
+- Added API regression coverage proving unused Grade and Subject deletion, dependency-aware blocking for used Grade/Subject/Teacher profile, successful cleanup after dependencies are removed, successful empty archived-year deletion, and continued API health after a blocked deletion.
+- Academic-year lifecycle safety is unchanged: permanent year deletion still requires the year to be ARCHIVED.
+

@@ -153,6 +153,10 @@ export function AcademicPanel({
         title: t(context),
         message: friendlyAdminError(cause, "Academic action failed.", locale)
       });
+      if (method === "DELETE") {
+        await load(false);
+        await refreshAcademicYears();
+      }
       return false;
     } finally {
       setBusy(false);

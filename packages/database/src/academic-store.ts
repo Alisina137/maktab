@@ -103,6 +103,16 @@ export class AcademicConflictError extends Error {
   }
 }
 
+export class AcademicDependencyError extends AcademicConflictError {
+  dependencies: string[];
+
+  constructor(message: string, dependencies: string[]) {
+    super(message);
+    this.name = "AcademicDependencyError";
+    this.dependencies = dependencies;
+  }
+}
+
 export class AcademicValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -151,6 +161,11 @@ function isUniqueError(error: unknown): boolean {
 
 function isForeignKeyError(error: unknown): boolean {
   return databaseErrorCode(error) === "23503" || /foreign key/i.test(databaseErrorMessage(error));
+}
+
+
+function dependencyNames(entries: Array<[string, unknown[]]>): string[] {
+  return entries.filter(([, rows]) => rows.length > 0).map(([name]) => name);
 }
 
 function periodsOverlap(startA: string, endA: string, startB: string, endB: string): boolean {
@@ -453,7 +468,17 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicConflictError("Only archived academic years can be deleted.");
       }
 
-      const referenceChecks = [
+      const [
+        classes,
+        currentStudents,
+        enrollmentHistory,
+        assignments,
+        negarans,
+        timetable,
+        attendance,
+        homeworkRows,
+        examRows
+      ] = await Promise.all([
         db.select({ id: classSections.id }).from(classSections)
           .where(and(eq(classSections.schoolId, schoolId), eq(classSections.academicYearId, yearId))).limit(1),
         db.select({ id: students.id }).from(students)
@@ -472,12 +497,23 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.academicYearId, yearId))).limit(1),
         db.select({ id: exams.id }).from(exams)
           .where(and(eq(exams.schoolId, schoolId), eq(exams.academicYearId, yearId))).limit(1)
-      ];
+      ]);
 
-      const references = await Promise.all(referenceChecks);
-      if (references.some((rows) => rows.length > 0)) {
-        throw new AcademicConflictError(
-          "This archived academic year cannot be deleted because it contains historical school data."
+      const dependencies = dependencyNames([
+        ["Classes", classes],
+        ["Students", currentStudents],
+        ["Student enrollment history", enrollmentHistory],
+        ["Teacher assignments", assignments],
+        ["Negaran assignments", negarans],
+        ["Timetable periods", timetable],
+        ["Attendance records", attendance],
+        ["Homework", homeworkRows],
+        ["Exams", examRows]
+      ]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This academic year cannot be deleted because it is used by:",
+          dependencies
         );
       }
 
@@ -490,8 +526,9 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         return deleted;
       } catch (error) {
         if (isForeignKeyError(error)) {
-          throw new AcademicConflictError(
-            "This archived academic year cannot be deleted because it contains historical school data."
+          throw new AcademicDependencyError(
+            "This academic year cannot be deleted because it is used by:",
+            ["Other linked school records"]
           );
         }
         throw error;
@@ -571,21 +608,33 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
 
     async deleteGradeLevel(schoolId, gradeId) {
       const grade = await getGrade(schoolId, gradeId);
-      const used = await db
+      const classes = await db
         .select({ id: classSections.id })
         .from(classSections)
         .where(and(eq(classSections.schoolId, schoolId), eq(classSections.gradeLevelId, gradeId)))
         .limit(1);
-      if (used.length > 0) {
-        throw new AcademicConflictError("This grade cannot be deleted because classes use it.");
+
+      const dependencies = dependencyNames([["Classes", classes]]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This grade cannot be deleted because it is used by:",
+          dependencies
+        );
       }
+
       try {
-        await db.delete(gradeLevels)
-          .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)));
-        return grade;
+        const [deleted] = await db
+          .delete(gradeLevels)
+          .where(and(eq(gradeLevels.schoolId, schoolId), eq(gradeLevels.id, gradeId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Grade level not found.");
+        return deleted;
       } catch (error) {
         if (isForeignKeyError(error)) {
-          throw new AcademicConflictError("This grade cannot be deleted because classes use it.");
+          throw new AcademicDependencyError(
+            "This grade cannot be deleted because it is used by:",
+            ["Classes"]
+          );
         }
         throw error;
       }
@@ -642,7 +691,18 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const classSection = await getClass(schoolId, classId);
       const year = await getYear(schoolId, classSection.academicYearId);
       requireMutableYear(year);
-      const refs = await Promise.all([
+
+      const [
+        currentStudents,
+        enrollmentHistory,
+        assignments,
+        negarans,
+        timetable,
+        attendance,
+        homeworkRows,
+        examRows,
+        announcementRows
+      ] = await Promise.all([
         db.select({ id: students.id }).from(students).where(and(eq(students.schoolId, schoolId), eq(students.classId, classId))).limit(1),
         db.select({ id: studentClassHistory.id }).from(studentClassHistory).where(and(eq(studentClassHistory.schoolId, schoolId), eq(studentClassHistory.classId, classId))).limit(1),
         db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.classId, classId))).limit(1),
@@ -653,12 +713,41 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         db.select({ id: examSubjects.id }).from(examSubjects).where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.classId, classId))).limit(1),
         db.select({ id: announcements.id }).from(announcements).where(and(eq(announcements.schoolId, schoolId), eq(announcements.classId, classId))).limit(1)
       ]);
-      if (refs.some((rows) => rows.length > 0)) {
-        throw new AcademicConflictError("This class cannot be deleted because school records depend on it.");
+
+      const dependencies = dependencyNames([
+        ["Students", currentStudents],
+        ["Student enrollment history", enrollmentHistory],
+        ["Teacher assignments", assignments],
+        ["Negaran assignments", negarans],
+        ["Timetable periods", timetable],
+        ["Attendance records", attendance],
+        ["Homework", homeworkRows],
+        ["Exam subjects", examRows],
+        ["Announcements", announcementRows]
+      ]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This class cannot be deleted because it is used by:",
+          dependencies
+        );
       }
-      await db.delete(classSections)
-        .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId)));
-      return classSection;
+
+      try {
+        const [deleted] = await db
+          .delete(classSections)
+          .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Class not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This class cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     },
 
     async createSubject(schoolId, input) {
@@ -693,18 +782,42 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
 
     async deleteSubject(schoolId, subjectId) {
       const subject = await getSubject(schoolId, subjectId);
-      const refs = await Promise.all([
+      const [assignments, timetable, homeworkRows, examRows] = await Promise.all([
         db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.subjectId, subjectId))).limit(1),
         db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.subjectId, subjectId))).limit(1),
         db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.subjectId, subjectId))).limit(1),
         db.select({ id: examSubjects.id }).from(examSubjects).where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.subjectId, subjectId))).limit(1)
       ]);
-      if (refs.some((rows) => rows.length > 0)) {
-        throw new AcademicConflictError("This subject cannot be deleted because academic records depend on it.");
+
+      const dependencies = dependencyNames([
+        ["Teacher assignments", assignments],
+        ["Timetable periods", timetable],
+        ["Homework", homeworkRows],
+        ["Exam subjects", examRows]
+      ]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This subject cannot be deleted because it is used by:",
+          dependencies
+        );
       }
-      await db.delete(subjects)
-        .where(and(eq(subjects.schoolId, schoolId), eq(subjects.id, subjectId)));
-      return subject;
+
+      try {
+        const [deleted] = await db
+          .delete(subjects)
+          .where(and(eq(subjects.schoolId, schoolId), eq(subjects.id, subjectId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Subject not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This subject cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     },
 
     async createTeacherProfile(schoolId, input) {
@@ -763,18 +876,42 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
 
     async deleteTeacherProfile(schoolId, teacherUserId) {
       const teacher = await getTeacher(schoolId, teacherUserId);
-      const refs = await Promise.all([
+      const [assignments, negarans, timetable, homeworkRows] = await Promise.all([
         db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.teacherUserId, teacherUserId))).limit(1),
         db.select({ id: negaranAssignments.id }).from(negaranAssignments).where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.teacherUserId, teacherUserId))).limit(1),
         db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.teacherUserId, teacherUserId))).limit(1),
         db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.teacherUserId, teacherUserId))).limit(1)
       ]);
-      if (refs.some((rows) => rows.length > 0)) {
-        throw new AcademicConflictError("This teacher profile cannot be deleted because academic records depend on it.");
+
+      const dependencies = dependencyNames([
+        ["Teacher assignments", assignments],
+        ["Negaran assignments", negarans],
+        ["Timetable periods", timetable],
+        ["Homework", homeworkRows]
+      ]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This teacher profile cannot be deleted because it is used by:",
+          dependencies
+        );
       }
-      await db.delete(teacherProfiles)
-        .where(and(eq(teacherProfiles.schoolId, schoolId), eq(teacherProfiles.userId, teacherUserId)));
-      return teacher;
+
+      try {
+        const [deleted] = await db
+          .delete(teacherProfiles)
+          .where(and(eq(teacherProfiles.schoolId, schoolId), eq(teacherProfiles.userId, teacherUserId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Teacher profile not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This teacher profile cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     },
 
     async createTeacherAssignment(schoolId, input) {
@@ -844,7 +981,8 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const assignment = await getAssignment(schoolId, assignmentId);
       const year = await getYear(schoolId, assignment.academicYearId);
       requireMutableYear(year);
-      const refs = await Promise.all([
+
+      const [homeworkRows, timetable] = await Promise.all([
         db.select({ id: homeworks.id }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.assignmentId, assignmentId))).limit(1),
         db.select({ id: timetablePeriods.id }).from(timetablePeriods).where(and(
           eq(timetablePeriods.schoolId, schoolId),
@@ -854,12 +992,34 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           eq(timetablePeriods.classId, assignment.classId)
         )).limit(1)
       ]);
-      if (refs.some((rows) => rows.length > 0)) {
-        throw new AcademicConflictError("This teacher assignment cannot be deleted because homework or timetable records depend on it.");
+
+      const dependencies = dependencyNames([
+        ["Homework", homeworkRows],
+        ["Timetable periods", timetable]
+      ]);
+      if (dependencies.length > 0) {
+        throw new AcademicDependencyError(
+          "This teacher assignment cannot be deleted because it is used by:",
+          dependencies
+        );
       }
-      await db.delete(teacherAssignments)
-        .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.id, assignmentId)));
-      return assignment;
+
+      try {
+        const [deleted] = await db
+          .delete(teacherAssignments)
+          .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.id, assignmentId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Teacher assignment not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This teacher assignment cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     },
 
     async createNegaranAssignment(schoolId, input) {
@@ -954,9 +1114,23 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       if (year.status !== "DRAFT") {
         throw new AcademicConflictError("Only draft-year Negaran assignments can be deleted. End the assignment instead.");
       }
-      await db.delete(negaranAssignments)
-        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)));
-      return assignment;
+
+      try {
+        const [deleted] = await db
+          .delete(negaranAssignments)
+          .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Negaran assignment not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This Negaran assignment cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     },
 
     async endNegaranAssignment(schoolId, assignmentId, input) {
@@ -1102,9 +1276,23 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const period = await getTimetablePeriod(schoolId, periodId);
       const year = await getYear(schoolId, period.academicYearId);
       requireMutableYear(year);
-      await db.delete(timetablePeriods)
-        .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)));
-      return period;
+
+      try {
+        const [deleted] = await db
+          .delete(timetablePeriods)
+          .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)))
+          .returning();
+        if (!deleted) throw new AcademicNotFoundError("Timetable period not found.");
+        return deleted;
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new AcademicDependencyError(
+            "This timetable period cannot be deleted because it is used by:",
+            ["Other linked school records"]
+          );
+        }
+        throw error;
+      }
     }
   };
 }

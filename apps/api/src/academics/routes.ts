@@ -21,6 +21,7 @@ import {
 } from "@maktablink/contracts";
 import {
   AcademicConflictError,
+  AcademicDependencyError,
   AcademicNotFoundError,
   AcademicValidationError,
   type AcademicStore,
@@ -43,6 +44,13 @@ function sendAcademicError(reply: FastifyReply, error: unknown) {
   }
   if (error instanceof AcademicNotFoundError) {
     return reply.code(404).send({ error: "not_found", message: error.message });
+  }
+  if (error instanceof AcademicDependencyError) {
+    return reply.code(409).send({
+      error: "academic_dependency",
+      message: error.message,
+      dependencies: error.dependencies
+    });
   }
   if (error instanceof AcademicConflictError) {
     return reply.code(409).send({ error: "academic_conflict", message: error.message });
