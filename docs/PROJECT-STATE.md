@@ -662,3 +662,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The Profile security UI is now: current password → email code → new password.
 - Regression coverage proves password change is blocked without verification, email-only verification succeeds without a phone number, no SMS is sent, wrong email codes are rejected, and verification tokens remain one-time use.
 
+## Testing Step 6 completion polish — responsive labels, loading buttons, admin visual refinement
+
+- User completed the remaining Academic Structure manual checks with no additional functional defects reported.
+- Tablet/mobile Academic CRUD pane switches now use entity-specific labels instead of generic form/list wording, for example **Create class** and **List of classes**.
+- The same entity-specific responsive labels are applied to Academic Years, Grade Levels, Subjects, Classes, Teacher Profiles, Teacher Assignments, Negaran Assignments, and Timetable Periods, with Dari/Persian and Pashto translations.
+- Admin async buttons retain their action text while busy and show a compact inline spinner until the operation finishes; the previous blank-looking loading button state is removed.
+- Applied a restrained Admin visual polish: clearer panel elevation, stronger input focus treatment, subtle button hover feedback, improved Academic rows, and a cleaner segmented mobile/tablet pane switch.
+- Test 6 functional behavior remains unchanged; this pass is UI/feedback polish on top of the already verified academic lifecycle and validation rules.
+

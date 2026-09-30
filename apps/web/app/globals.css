@@ -42,9 +42,8 @@ button:disabled {
   --admin-button-loader-color: var(--ml-color-brand-strong);
   position: relative;
   cursor: wait;
-  opacity: 0.82;
-  color: transparent !important;
-  text-shadow: none !important;
+  opacity: 0.88;
+  padding-inline-end: 38px;
   transition:
     opacity 150ms ease,
     filter 150ms ease,
@@ -63,10 +62,11 @@ button:disabled {
 .admin-workspace button[data-admin-pending="true"]:disabled::after {
   content: "";
   position: absolute;
-  inset: 50% auto auto 50%;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
+  top: 50%;
+  inset-inline-end: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
   border: 2px solid color-mix(in srgb, var(--admin-button-loader-color) 28%, transparent);
   border-top-color: var(--admin-button-loader-color);
   border-right-color: var(--admin-button-loader-color);
@@ -300,6 +300,40 @@ footer {
   font-weight: 700;
 }
 
+.admin-workspace .admin-panel {
+  border-color: color-mix(in srgb, var(--ml-color-border) 84%, var(--ml-color-brand) 16%);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--ml-color-text) 5%, transparent),
+    0 12px 30px color-mix(in srgb, var(--ml-color-text) 6%, transparent);
+}
+
+.admin-workspace :where(.admin-primary, .admin-secondary, .admin-actions button) {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.admin-workspace :where(.admin-primary, .admin-secondary, .admin-actions button):not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--ml-color-text) 9%, transparent);
+}
+
+.admin-workspace .admin-form :where(input, select, textarea) {
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.admin-workspace .admin-form :where(input, select, textarea):focus {
+  border-color: var(--ml-color-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ml-color-brand) 14%, transparent);
+  outline: none;
+}
+
 .admin-error {
   border: 1px solid #f3c6c1;
   border-radius: 12px;
@@ -477,6 +511,28 @@ footer {
   gap: 16px;
 }
 
+.academic-form-card,
+.academic-list-panel {
+  overflow: hidden;
+}
+
+.academic-form-card h2,
+.academic-list-panel h2 {
+  letter-spacing: -0.015em;
+}
+
+.academic-row {
+  border-radius: 10px;
+  transition:
+    background 140ms ease,
+    padding 140ms ease;
+}
+
+.academic-row:hover {
+  background: color-mix(in srgb, var(--ml-color-brand) 5%, var(--ml-color-surface));
+  padding-inline: 10px;
+}
+
 .academic-form-card h2,
 .academic-list-panel h2 {
   margin: 0;
@@ -634,24 +690,35 @@ footer {
   .academic-pane-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 5px;
     width: min(100%, 500px);
+    padding: 5px;
+    border: 1px solid var(--ml-color-border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--ml-color-canvas) 78%, var(--ml-color-surface));
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--ml-color-text) 5%, transparent);
   }
 
   .academic-pane-switch-button {
     min-height: 44px;
-    border: 1px solid var(--ml-color-border);
-    border-radius: 11px;
-    background: var(--ml-color-surface);
-    color: var(--ml-color-text);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ml-color-text-muted);
     padding: 8px 12px;
     font-weight: 800;
+    transition:
+      background 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease,
+      box-shadow 140ms ease;
   }
 
   .academic-pane-switch-button-active {
     border-color: var(--ml-color-brand);
     background: var(--ml-color-brand);
     color: white;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--ml-color-brand) 24%, transparent);
   }
 
   .academic-single-module {
