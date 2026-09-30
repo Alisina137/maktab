@@ -1,11 +1,11 @@
 "use client";
-import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { adminApi, friendlyAdminError } from "./admin-client";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
-import { adminErrorText, adminText } from "./admin-i18n";
+import { adminText } from "./admin-i18n";
 
 type AcademicYear = {
   id: string;
@@ -44,24 +44,12 @@ type Overview = {
   timetable: TimetablePeriod[];
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const schoolWeekdays = ["SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"] as const;
 
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
-  if (init?.body != null && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers
-  });
-  const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(body?.message ?? "Request failed.");
-  return body as T;
+  return adminApi<T>(path, { ...init, headers });
 }
 
 function formValue(form: FormData, key: string): string {
@@ -69,12 +57,12 @@ function formValue(form: FormData, key: string): string {
 }
 
 export function AcademicPanel({ accessToken }: { accessToken: string }) {
-  const { locale } = useAdminWorkspace();
+  const { locale, showToast } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [busy, setBusy] = useState(false);
-  const { error, notice, setError, setNotice } = useTransientAdminFeedback();
+  const [loadError, setLoadError] = useState("");
 
   const yearMap = useMemo(() => new Map(overview?.academicYears.map((item) => [item.id, item]) ?? []), [overview]);
   const classMap = useMemo(() => new Map(overview?.classes.map((item) => [item.id, item]) ?? []), [overview]);
@@ -85,8 +73,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
     void load();
   }, [accessToken]);
 
-  async function load() {
-    setError("");
+  async function load(showFailureToast = false) {
+    setLoadError("");
     try {
       const [academicData, accountData] = await Promise.all([
         request<Overview>(accessToken, "/v1/admin/academics"),
@@ -94,41 +82,64 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       ]);
       setOverview(academicData);
       setUsers(accountData.users);
+      return true;
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not load academic structure."));
+      const message = friendlyAdminError(cause, "Could not load academic structure.", locale);
+      setLoadError(message);
+      if (showFailureToast) {
+        showToast({
+          kind: "error",
+          title: t("Academics"),
+          message
+        });
+      }
+      return false;
     }
   }
 
-  async function mutate(path: string, payload?: Record<string, unknown>, success = "Saved.") {
+  async function mutate(
+    path: string,
+    payload: Record<string, unknown> | undefined,
+    context: string,
+    success: string
+  ): Promise<boolean> {
     setBusy(true);
-    setError("");
-    setNotice("");
     try {
       await request(accessToken, path, {
         method: "POST",
         ...(payload ? { body: JSON.stringify(payload) } : {})
       });
-      setNotice(t(success));
-      await load();
+      showToast({
+        kind: "success",
+        title: t(context),
+        message: t(success)
+      });
+      await load(true);
+      return true;
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Academic action failed."));
+      showToast({
+        kind: "error",
+        title: t(context),
+        message: friendlyAdminError(cause, "Academic action failed.", locale)
+      });
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  function submit(
+  async function submit(
     event: FormEvent<HTMLFormElement>,
     path: string,
     toPayload: (form: FormData) => Record<string, unknown>,
+    context: string,
     success: string
   ) {
     event.preventDefault();
     const element = event.currentTarget;
     const data = new FormData(element);
-    void mutate(path, toPayload(data), success).then(() => {
-      if (!error) element.reset();
-    });
+    const succeeded = await mutate(path, toPayload(data), context, success);
+    if (succeeded) element.reset();
   }
 
   if (!overview) {
@@ -136,9 +147,9 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
       <section className="admin-panel academic-section admin-loading-card">
         <AdminLoader label={t("Loading Phase 3 data…")} />
         <AdminSkeleton rows={5} />
-        {error ? (
+        {loadError ? (
           <>
-            <div className="admin-error" role="alert">{error}</div>
+            <div className="admin-error" role="alert">{loadError}</div>
             <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
           </>
         ) : null}
@@ -157,11 +168,8 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           <h2>{t("Model the school year")}</h2>
           <p>{t("Academic years, grades, classes, subjects, teachers, assignments, Negaran responsibility, and conflict-safe timetables.")}</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
+        <button className="admin-secondary" onClick={() => void load(true)} disabled={busy}>{t("Refresh")}</button>
       </div>
-
-      {error ? <div className="admin-error" role="alert">{error}</div> : null}
-      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       <div className="academic-summary-grid">
         <Summary label={t("Academic years")} value={overview.academicYears.length} />
@@ -178,7 +186,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             name: formValue(form, "name"),
             startDate: formValue(form, "startDate"),
             endDate: formValue(form, "endDate")
-          }), "Academic year created.")}>
+          }), "Academic year", "Academic year created.")}>
             <label>{t("Name")}<input name="name" placeholder="1405" required /></label>
             <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" required /></label>
             <label>{t("End date")}<AdminHijriDatePicker locale={locale} name="endDate" required /></label>
@@ -191,7 +199,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             code: formValue(form, "code"),
             name: formValue(form, "name"),
             sortOrder: Number(formValue(form, "sortOrder") || "0")
-          }), "Grade level created.")}>
+          }), "Grade level", "Grade level created.")}>
             <label>{t("Code")}<input name="code" placeholder="G7" required /></label>
             <label>{t("Name")}<input name="name" placeholder={t("Grade 7")} required /></label>
             <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue="7" required /></label>
@@ -203,7 +211,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
           <form className="admin-form" onSubmit={(event) => submit(event, "/v1/admin/academics/subjects", (form) => ({
             code: formValue(form, "code"),
             name: formValue(form, "name")
-          }), "Subject created.")}>
+          }), "Subject", "Subject created.")}>
             <label>{t("Code")}<input name="code" placeholder="MATH" required /></label>
             <label>{t("Name")}<input name="name" placeholder={t("Mathematics")} required /></label>
             <button className="admin-primary" disabled={busy}>{t("Create subject")}</button>
@@ -216,7 +224,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             gradeLevelId: formValue(form, "gradeLevelId"),
             code: formValue(form, "code"),
             name: formValue(form, "name")
-          }), "Class created.")}>
+          }), "Class section", "Class created.")}>
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, `${year.name} · ${t(year.status)}`])} />
             <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} />
             <label>{t("Code")}<input name="code" placeholder="7A" required /></label>
@@ -231,7 +239,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             employeeCode: formValue(form, "employeeCode"),
             fullName: formValue(form, "fullName"),
             phone: formValue(form, "phone") || undefined
-          }), "Teacher profile created.")}>
+          }), "Teacher profile", "Teacher profile created.")}>
             <Select
               name="userId"
               label={t("Teacher account")}
@@ -250,7 +258,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             classId: formValue(form, "classId"),
             subjectId: formValue(form, "subjectId"),
             teacherUserId: formValue(form, "teacherUserId")
-          }), "Teacher assignment created.")}>
+          }), "Teacher assignment", "Teacher assignment created.")}>
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
@@ -266,7 +274,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             teacherUserId: formValue(form, "teacherUserId"),
             startDate: formValue(form, "startDate"),
             ...(formValue(form, "endDate") ? { endDate: formValue(form, "endDate") } : {})
-          }), "Negaran assigned.")}>
+          }), "Negaran assignment", "Negaran assigned.")}>
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} />
@@ -285,7 +293,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
             weekday: formValue(form, "weekday"),
             startsAt: formValue(form, "startsAt"),
             endsAt: formValue(form, "endsAt")
-          }), "Timetable period created.")}>
+          }), "Timetable period", "Timetable period created.")}>
             <Select name="academicYearId" label={t("Academic year")} items={overview.academicYears.filter((year) => year.status === "DRAFT" || year.status === "ACTIVE").map((year) => [year.id, year.name])} />
             <Select name="classId" label={t("Class")} items={overview.classes.map((item) => [item.id, item.name])} />
             <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} />
@@ -313,9 +321,9 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
                 <span>{formatAdminHijriDate(locale, year.startDate)} → {formatAdminHijriDate(locale, year.endDate)} · {t(year.status)}</span>
               </div>
               <div className="admin-actions">
-                {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Academic year activated.")}>{t("Activate")}</button> : null}
-                {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Academic year closed.")}>{t("Close")}</button> : null}
-                {year.status === "CLOSED" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Academic year archived.")}>{t("Archive")}</button> : null}
+                {year.status === "DRAFT" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/activate`, undefined, "Activate academic year", "Academic year activated.")}>{t("Activate")}</button> : null}
+                {year.status === "ACTIVE" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/close`, undefined, "Close academic year", "Academic year closed.")}>{t("Close")}</button> : null}
+                {year.status === "CLOSED" ? <button disabled={busy} onClick={() => void mutate(`/v1/admin/academics/years/${year.id}/archive`, undefined, "Archive academic year", "Academic year archived.")}>{t("Archive")}</button> : null}
               </div>
             </div>
           ))}
@@ -342,7 +350,7 @@ export function AcademicPanel({ accessToken }: { accessToken: string }) {
                 locale={locale}
                 busy={busy}
                 onEnd={(endDate) =>
-                  mutate(`/v1/admin/academics/negaran/${item.id}/end`, { endDate }, "Negaran assignment ended.")
+                  mutate(`/v1/admin/academics/negaran/${item.id}/end`, { endDate }, "End Negaran assignment", "Negaran assignment ended.")
                 }
               />
             )

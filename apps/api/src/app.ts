@@ -111,9 +111,17 @@ export function buildApp(options: BuildAppOptions) {
     });
 
     if (statusCode < 500) {
+      const maybeCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      const message =
+        maybeCode === "FST_ERR_CTP_EMPTY_JSON_BODY"
+          ? "The request body was empty even though JSON content was declared. Refresh the page and try again."
+          : "The request could not be processed. Please try again.";
       return reply.code(statusCode).send({
         error: "invalid_request",
-        message: "The request could not be processed. Please try again."
+        message
       });
     }
 

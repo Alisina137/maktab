@@ -24,7 +24,11 @@ import { requireSchoolAdmin } from "../users/routes.js";
 
 function sendAcademicError(reply: FastifyReply, error: unknown) {
   if (error instanceof ZodError) {
-    return reply.code(400).send({ error: "validation_error", issues: error.issues });
+    return reply.code(400).send({
+      error: "validation_error",
+      message: error.issues[0]?.message ?? "Academic request validation failed.",
+      issues: error.issues
+    });
   }
   if (error instanceof AcademicValidationError) {
     return reply.code(400).send({ error: "academic_validation", message: error.message });

@@ -404,6 +404,115 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.equal(body.timetable.length, 1);
 });
 
+test("academic structure returns specific lifecycle and validation errors", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "ACADEMIC-ERRORS");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const invalidYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "Invalid year", startDate: "2027-03-21", endDate: "2026-03-20" }
+  });
+  assert.equal(invalidYear.statusCode, 400);
+  assert.equal(invalidYear.json<{ error: string }>().error, "validation_error");
+  assert.equal(
+    invalidYear.json<{ message: string }>().message,
+    "Academic year end date must be after its start date."
+  );
+
+  const firstYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1406", startDate: "2027-03-21", endDate: "2028-03-20" }
+  });
+  assert.equal(firstYear.statusCode, 201);
+  const firstYearId = firstYear.json<{ academicYear: { id: string } }>().academicYear.id;
+
+  const activateFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activateFirst.statusCode, 200);
+
+  const secondYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1407", startDate: "2028-03-21", endDate: "2029-03-20" }
+  });
+  assert.equal(secondYear.statusCode, 201);
+  const secondYearId = secondYear.json<{ academicYear: { id: string } }>().academicYear.id;
+
+  const activateSecond = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${secondYearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activateSecond.statusCode, 409);
+  assert.equal(activateSecond.json<{ error: string }>().error, "academic_conflict");
+  assert.equal(
+    activateSecond.json<{ message: string }>().message,
+    "Only one academic year may be active for a school."
+  );
+
+  const grade = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G7", name: "Grade 7", sortOrder: 7 }
+  });
+  assert.equal(grade.statusCode, 201);
+  const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: firstYearId,
+      gradeLevelId: gradeId,
+      code: "7A",
+      name: "Grade 7 A"
+    }
+  });
+  assert.equal(classResponse.statusCode, 201);
+
+  const closeFirst = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${firstYearId}/close`,
+    headers: auth
+  });
+  assert.equal(closeFirst.statusCode, 200);
+
+  const classOnClosedYear = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: firstYearId,
+      gradeLevelId: gradeId,
+      code: "7B",
+      name: "Grade 7 B"
+    }
+  });
+  assert.equal(classOnClosedYear.statusCode, 409);
+  assert.equal(classOnClosedYear.json<{ error: string }>().error, "academic_conflict");
+  assert.equal(
+    classOnClosedYear.json<{ message: string }>().message,
+    "Closed or archived academic years cannot receive new academic structure."
+  );
+});
+
 test("public school search returns active minimal school records", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {

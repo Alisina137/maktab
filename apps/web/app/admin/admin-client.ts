@@ -87,8 +87,11 @@ export async function adminApi<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const record = body && typeof body === "object" ? body as Record<string, unknown> : null;
+    const issues = Array.isArray(record?.issues) ? record.issues : [];
+    const firstIssue = issues.find((issue) => issue && typeof issue === "object") as Record<string, unknown> | undefined;
+    const issueMessage = typeof firstIssue?.message === "string" ? firstIssue.message : null;
     throw new AdminApiError(
-      typeof record?.message === "string" ? record.message : "Request failed.",
+      typeof record?.message === "string" ? record.message : issueMessage ?? "Request failed.",
       response.status,
       typeof record?.error === "string" ? record.error : null,
       response.headers.get("x-request-id")
@@ -123,10 +126,17 @@ export function friendlyAdminError(
     invalid_response: "The school service returned an unreadable response. Please try again."
   };
 
-  const english = cause.code ? messages[cause.code] ?? cause.message : cause.message;
+  const mapped = cause.code ? messages[cause.code] : undefined;
+  const specificMessage =
+    cause.message &&
+    cause.message !== "Request failed." &&
+    cause.message !== "The request could not be processed. Please try again."
+      ? cause.message
+      : null;
+  const english = specificMessage ?? mapped ?? cause.message ?? fallback;
   if (locale === "en") return english || fallback;
   const translated = adminText(locale, english);
-  return translated !== english ? translated : fallbackText;
+  return translated !== english ? translated : english || fallbackText;
 }
 
 export function saveAdminSession(value: StoredAdminSession) {

@@ -423,3 +423,17 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - JSON content type is still added automatically for academic mutations that actually send a request body.
 - Existing lifecycle rules remain unchanged: `DRAFT → ACTIVE → CLOSED → ARCHIVED`, only one ACTIVE year per school, and closed/archived years remain immutable for new year-bound academic structure.
 
+## Testing Step 6 hardening — Academic request, validation, and popup feedback
+
+- Re-audited Admin → Academics before restarting manual Testing Step 6.
+- Academics now uses the shared `adminApi` transport rather than a separate request implementation.
+- Bodyless academic-year lifecycle actions no longer declare JSON unless they actually send a body.
+- Academic create/lifecycle actions now use the shared global admin toast popup with action-specific titles and success messages.
+- Failed academic submissions keep their entered form values; forms reset only after a confirmed successful mutation.
+- Shared admin API handling now surfaces the first structured validation issue instead of replacing it with a generic request failure.
+- Academic Zod validation responses now include a specific top-level message while retaining the full issues array.
+- Known empty-JSON parser failures now return actionable feedback rather than only the generic invalid-request text.
+- Added Dari/Persian and Pashto translations for key academic lifecycle, duplicate, immutable-year, and validation errors.
+- Added API regression coverage for invalid academic-year dates, one-active-year enforcement, valid class creation, and closed-year immutability.
+- Manual Testing Step 6 should restart from the beginning after pulling this change.
+
