@@ -33,6 +33,92 @@ button:disabled {
   opacity: 0.55;
 }
 
+/*
+ * Admin async-button feedback is activated only for the button that started
+ * an operation. Other controls may be disabled by the same busy state, but
+ * they remain visually quiet instead of all showing spinners at once.
+ */
+.admin-workspace button[data-admin-pending="true"]:disabled {
+  --admin-button-loader-color: var(--ml-color-brand-strong);
+  position: relative;
+  cursor: wait;
+  opacity: 0.82;
+  color: transparent !important;
+  text-shadow: none !important;
+  transition:
+    opacity 150ms ease,
+    filter 150ms ease,
+    transform 150ms ease;
+}
+
+.admin-workspace .admin-primary[data-admin-pending="true"]:disabled,
+.admin-workspace .academic-pane-switch-button-active[data-admin-pending="true"]:disabled {
+  --admin-button-loader-color: white;
+}
+
+.admin-workspace .admin-danger[data-admin-pending="true"]:disabled {
+  --admin-button-loader-color: var(--ml-color-danger);
+}
+
+.admin-workspace button[data-admin-pending="true"]:disabled::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid color-mix(in srgb, var(--admin-button-loader-color) 28%, transparent);
+  border-top-color: var(--admin-button-loader-color);
+  border-right-color: var(--admin-button-loader-color);
+  border-radius: 999px;
+  animation: admin-button-spin 680ms linear infinite;
+  pointer-events: none;
+}
+
+.admin-workspace button[data-admin-pending="true"]:disabled::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    color-mix(in srgb, currentColor 8%, transparent) 45%,
+    transparent 65%
+  );
+  animation: admin-button-sheen 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes admin-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes admin-button-sheen {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(-16%);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: translateX(16%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-workspace button[data-admin-pending="true"]:disabled::after {
+    animation-duration: 1.4s;
+  }
+
+  .admin-workspace button[data-admin-pending="true"]:disabled::before {
+    animation: none;
+  }
+}
+
 :focus-visible {
   outline: 3px solid var(--ml-color-focus);
   outline-offset: 2px;

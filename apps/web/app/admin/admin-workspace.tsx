@@ -188,6 +188,105 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   }, [locale]);
 
   useEffect(() => {
+    if (!ready || !stored) return;
+
+    const root = document.querySelector<HTMLElement>(".admin-workspace");
+    if (!root) return;
+
+    const pendingButtons = new Set<HTMLButtonElement>();
+    const fallbackTimers = new Map<HTMLButtonElement, ReturnType<typeof setTimeout>>();
+
+    function clearPending(button: HTMLButtonElement) {
+      const timer = fallbackTimers.get(button);
+      if (timer) clearTimeout(timer);
+      fallbackTimers.delete(button);
+      pendingButtons.delete(button);
+      delete button.dataset.adminPending;
+      button.removeAttribute("aria-busy");
+    }
+
+    function markPending(button: HTMLButtonElement) {
+      if (button.disabled || button.dataset.adminNoLoading === "true") return;
+
+      const existingTimer = fallbackTimers.get(button);
+      if (existingTimer) clearTimeout(existingTimer);
+
+      button.dataset.adminPending = "true";
+      button.setAttribute("aria-busy", "true");
+      pendingButtons.add(button);
+
+      // Most admin actions disable their trigger immediately after setting busy=true.
+      // If a clicked control turns out to be synchronous (Edit, tabs, etc.), remove
+      // the marker before any loading treatment becomes visible.
+      fallbackTimers.set(
+        button,
+        setTimeout(() => {
+          if (!button.disabled) clearPending(button);
+        }, 160)
+      );
+    }
+
+    function buttonFromTarget(target: EventTarget | null) {
+      return target instanceof Element ? target.closest<HTMLButtonElement>("button") : null;
+    }
+
+    function handleClick(event: MouseEvent) {
+      const button = buttonFromTarget(event.target);
+      if (!button || !root.contains(button)) return;
+      markPending(button);
+    }
+
+    function handleSubmit(event: SubmitEvent) {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !root.contains(form)) return;
+
+      const submitter = event.submitter;
+      if (submitter instanceof HTMLButtonElement) {
+        markPending(submitter);
+        return;
+      }
+
+      const fallback = form.querySelector<HTMLButtonElement>('button[type="submit"]:not(:disabled)');
+      if (fallback) markPending(fallback);
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type !== "attributes" || mutation.attributeName !== "disabled") continue;
+        const button = mutation.target;
+        if (!(button instanceof HTMLButtonElement) || !pendingButtons.has(button)) continue;
+        if (!button.disabled) clearPending(button);
+      }
+
+      for (const button of pendingButtons) {
+        if (!button.isConnected) clearPending(button);
+      }
+    });
+
+    root.addEventListener("click", handleClick, true);
+    root.addEventListener("submit", handleSubmit, true);
+    observer.observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled"],
+      childList: true
+    });
+
+    return () => {
+      root.removeEventListener("click", handleClick, true);
+      root.removeEventListener("submit", handleSubmit, true);
+      observer.disconnect();
+      for (const timer of fallbackTimers.values()) clearTimeout(timer);
+      for (const button of pendingButtons) {
+        delete button.dataset.adminPending;
+        button.removeAttribute("aria-busy");
+      }
+      pendingButtons.clear();
+      fallbackTimers.clear();
+    };
+  }, [ready, stored?.school.id]);
+
+  useEffect(() => {
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
       if (exitTimer.current) clearTimeout(exitTimer.current);

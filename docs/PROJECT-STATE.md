@@ -561,3 +561,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added API regression coverage proving unused Grade and Subject deletion, dependency-aware blocking for used Grade/Subject/Teacher profile, successful cleanup after dependencies are removed, successful empty archived-year deletion, and continued API health after a blocked deletion.
 - Academic-year lifecycle safety is unchanged: permanent year deletion still requires the year to be ARCHIVED.
 
+## Admin async-button loading feedback
+
+- Added a workspace-wide loading treatment for administrator action buttons that already disable themselves while an async operation is running.
+- The admin shell tracks the exact button that initiated an operation, including form submit buttons, so only the clicked action displays loading feedback even when a shared `busy` state temporarily disables neighboring controls.
+- While pending, the action button keeps its original dimensions and accessible label, becomes visibly disabled with a wait cursor, and shows a centered animated spinner with a subtle loading sheen.
+- Primary, secondary, and danger actions retain appropriate loader contrast.
+- The loading marker clears automatically as soon as the button is re-enabled, when an action fails, when navigation removes the button, or when the admin workspace unmounts.
+- Synchronous controls such as Edit buttons and filter/toggle controls are automatically ignored when they do not transition into a disabled async state.
+- Form submission triggered from the keyboard receives the same pending-button treatment as pointer/touch clicks.
+- Reduced-motion preferences disable the decorative sheen and slow the spinner animation.
+- This applies across the authenticated admin workspace without duplicating loading markup in every create, update, delete, lifecycle, account, attendance, learning, communication, fees, and profile form.
+
