@@ -2114,13 +2114,20 @@ button,
 
 .admin-route-nav {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   gap: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 8px;
   border: 1px solid #e0e7f2;
   border-radius: 16px;
   background: white;
   box-shadow: 0 10px 30px rgba(33,54,96,.06);
+  white-space: nowrap;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
@@ -3499,5 +3506,41 @@ html[dir="rtl"] body {
 
   .academic-timetable-person {
     flex: 0 0 min(250px, 78vw);
+  }
+}
+
+
+/* Responsive admin route navigation */
+@media (max-width: 900px) {
+  .admin-route-nav {
+    padding-bottom: 11px;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: thin;
+    scrollbar-color: #a9b9d3 #edf1f7;
+  }
+
+  .admin-route-nav-link {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .admin-route-nav::-webkit-scrollbar {
+    display: block;
+    height: 7px;
+  }
+
+  .admin-route-nav::-webkit-scrollbar-track {
+    margin-inline: 8px;
+    border-radius: 999px;
+    background: #edf1f7;
+  }
+
+  .admin-route-nav::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #a9b9d3;
+  }
+
+  .admin-route-nav::-webkit-scrollbar-thumb:hover {
+    background: #879bbd;
   }
 }
