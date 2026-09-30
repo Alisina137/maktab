@@ -427,7 +427,7 @@ function NegaranEndAction({
 }: {
   locale: "fa-AF" | "ps-AF" | "en";
   busy: boolean;
-  onEnd: (endDate: string) => Promise<void>;
+  onEnd: (endDate: string) => Promise<unknown>;
 }) {
   const t = (english: string) => adminText(locale, english);
   const [endDate, setEndDate] = useState("");
