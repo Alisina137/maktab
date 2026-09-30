@@ -402,3 +402,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The font family switches automatically with the current document language, so changing the admin language to English immediately applies the English typography.
 - No external web-font dependency was added, avoiding runtime font-download failures.
 - CI verified typecheck, tests, and production build after the typography refinement.
+
+
+## Step 5 fix — Suspended account incorrectly shown as offline/reconnected
+
+- Fixed a race where the mobile network-recovery loop could dismiss a newly detected suspension and replace it with the "connection restored" popup.
+- `GET /v1/auth/me` is now always fetched live and is never satisfied from the read cache, so account status cannot remain stale as `ACTIVE`.
+- Network recovery now verifies the authenticated user's current account status before showing any recovered-connection feedback.
+- If the account is still `SUSPENDED`, recovery keeps the app in restricted suspended mode and preserves the suspension popup instead of showing "reconnected".
+- A network recovery request that started before a newer non-network error is no longer allowed to dismiss that newer popup.
+- Cached-read fallback notifications cannot overwrite the suspension message once suspended mode is active.
+- A protected request that returns `account_suspended` now immediately persists the suspended state locally, disables cached-read preference, enters restricted home mode, and stops further generic error handling for that response.
+- CI verified typecheck, tests, and production build after the fix.
