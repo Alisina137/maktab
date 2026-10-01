@@ -167,3 +167,12 @@ Phase 4 automated coverage includes:
 - Expo Android export
 
 The final CI result and real Neon migration status are recorded separately in `docs/PROJECT-STATE.md`.
+
+## Step 8 family-management refinements
+
+- New parent and student login usernames accept only English letters and digits, with no spaces or special characters.
+- Duplicate parent/student usernames return an action-oriented conflict message, and the Admin family workspace surfaces that conflict in a dedicated popup.
+- Parent accounts can be permanently deleted only when no student record is linked to them. The API enforces this rule even if the UI is bypassed.
+- The Add Student form suggests the lowest unused student code in the `S-xxxx` sequence. Codes use at least four digits, fill gaps first, and naturally continue to five digits after `S-9999`.
+- Parent selection in Add Student is username-first: options display only the unique parent username, and a search field filters the available parent accounts by username.
+
