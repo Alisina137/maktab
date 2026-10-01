@@ -58,6 +58,17 @@ const usernameSchema = z
   .regex(/^[A-Za-z0-9._@+-]+$/)
   .transform((value) => value.toLowerCase());
 
+const familyUsernameSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(64)
+  .regex(
+    /^[A-Za-z0-9]+$/,
+    "Username may contain only English letters and digits. Spaces and special characters are not allowed."
+  )
+  .transform((value) => value.toLowerCase());
+
 const codeSchema = z
   .string()
   .trim()
@@ -280,7 +291,7 @@ export type UpdateTimetablePeriodInput = CreateTimetablePeriodInput;
 
 
 export const createParentAccountSchema = z.object({
-  username: usernameSchema,
+  username: familyUsernameSchema,
   fullName: z.string().trim().min(2).max(160),
   phone: z.string().trim().max(32).optional()
 });
@@ -354,7 +365,7 @@ export const attendanceDateRangeSchema = z
 
 
 export const createStudentAccountSchema = z.object({
-  username: usernameSchema
+  username: familyUsernameSchema
 });
 export type CreateStudentAccountInput = z.infer<typeof createStudentAccountSchema>;
 
