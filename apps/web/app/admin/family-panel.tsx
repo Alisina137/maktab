@@ -334,8 +334,9 @@ function useFiveVisibleRows(count: number) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const container = ref.current;
-    if (!container) return;
+    const currentContainer = ref.current;
+    if (!currentContainer) return;
+    const container: HTMLDivElement = currentContainer;
 
     function updateHeight() {
       if (count <= 5) {
