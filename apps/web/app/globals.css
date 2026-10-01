@@ -953,6 +953,108 @@ footer {
   align-self: start;
 }
 
+.family-account-preview {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 24%, var(--ml-color-border));
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--ml-color-brand) 5%, var(--ml-color-surface)), var(--ml-color-surface));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--ml-color-text) 4%, transparent),
+    0 18px 40px color-mix(in srgb, var(--ml-color-brand) 10%, transparent);
+}
+
+.family-account-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.family-account-preview-header h2 {
+  margin: 4px 0 6px;
+  font-size: 22px;
+  letter-spacing: -.025em;
+}
+
+.family-account-preview-header p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--ml-color-text-muted);
+  line-height: 1.6;
+}
+
+.family-account-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.family-account-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.family-account-preview-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ml-color-surface) 92%, var(--ml-color-brand) 8%);
+}
+
+.family-account-preview-grid span {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.family-account-preview-grid strong,
+.family-account-preview-grid code {
+  overflow-wrap: anywhere;
+  color: var(--ml-color-text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.family-account-preview-password {
+  grid-column: 1 / -1;
+}
+
+.family-account-preview-password code {
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ml-color-brand) 10%, var(--ml-color-surface));
+  color: var(--ml-color-brand-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+.family-account-preview-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #f4b740 11%, var(--ml-color-surface));
+  color: var(--ml-color-text);
+  line-height: 1.55;
+}
+
+.family-account-preview-note strong {
+  white-space: nowrap;
+}
+
+
 .family-section .academic-data-grid .admin-actions button {
   min-height: 34px;
   padding-inline: 9px;
@@ -1054,19 +1156,56 @@ footer {
 @media (max-width: 760px) {
   .family-summary-grid,
   .family-import-controls,
-  .family-mapping-grid {
+  .family-mapping-grid,
+  .family-account-preview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .family-account-preview-header {
+    flex-direction: column;
+  }
+
+  .family-account-preview-actions {
+    justify-content: flex-start;
+  }
+
+  .family-account-preview-password {
+    grid-column: auto;
   }
 }
 
 @media print {
-  body:has(.family-credential) .admin-shell > *:not(.family-section),
-  body:has(.family-credential) .family-section > *:not(.family-credential) {
+  body:has(.family-account-preview) .admin-shell > *:not(.family-section),
+  body:has(.family-account-preview) .family-section > *:not(.family-account-preview),
+  body:has(.family-credential):not(:has(.family-account-preview)) .admin-shell > *:not(.family-section),
+  body:has(.family-credential):not(:has(.family-account-preview)) .family-section > *:not(.family-credential) {
     display: none !important;
   }
 
+  .family-account-preview,
+  .family-credential {
+    box-shadow: none !important;
+  }
+
+  .family-account-preview {
+    border: 1px solid #d7dce5 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .family-account-preview-actions,
   .family-credential .admin-secondary {
     display: none !important;
+  }
+
+  .family-account-preview-grid > div {
+    break-inside: avoid;
+    background: #fff !important;
+  }
+
+  .family-account-preview-password code {
+    color: #111827 !important;
+    background: #f3f4f6 !important;
   }
 }
 
