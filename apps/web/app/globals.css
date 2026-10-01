@@ -1200,8 +1200,8 @@ footer {
 }
 
 .family-list-scroll {
-  height: 550px;
-  max-height: 550px;
+  height: 450px;
+  max-height: 450px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
