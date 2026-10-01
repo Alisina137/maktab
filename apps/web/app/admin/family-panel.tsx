@@ -1209,348 +1209,350 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <Summary label={t("Families with siblings")} value={overview.parents.filter((item) => item.childCount > 1).length} />
       </div>
 
-      <div className="academic-form-grid family-form-grid">
-        <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
-          <form className="admin-form" onSubmit={createParent}>
-            <label>
-              {t("Username")}
-              <input
-                name="username"
-                placeholder="Ahmad, Haidar23, Fatima2026"
-                autoCapitalize="none"
-                autoComplete="off"
-                pattern="[A-Za-z0-9]+"
-                minLength={3}
-                maxLength={64}
-                title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
-                required
-              />
-            </label>
-            <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
-            <label>{t("Full name")}<input name="fullName" placeholder={t("Parent full name")} required /></label>
-            <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
-            <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
-          </form>
-        </article>
-
-        <article className="admin-panel academic-form-card">
-          <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
-          <form className="admin-form" onSubmit={createStudent}>
-            <label>
-              {t("Student code")}
-              <input
-                name="studentCode"
-                value={studentCode}
-                onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
-                placeholder="S-0001"
-                required
-              />
-            </label>
-            <p className="admin-form-help">{t("The lowest available student code is suggested automatically. You can change it if needed.")}</p>
-            <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
-            <label>
-              {t("Search parent username")}
-              <input
-                value={parentSearch}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setParentSearch(next);
-                  const exact = availableParents.find((parent) => parent.user.username.toLowerCase() === next.trim().toLowerCase());
-                  if (exact) setSelectedParentUserId(exact.user.id);
-                  else if (selectedParentUserId && !availableParents.some((parent) => parent.user.id === selectedParentUserId && parent.user.username.toLowerCase().includes(next.trim().toLowerCase()))) {
-                    setSelectedParentUserId("");
-                  }
-                }}
-                placeholder={t("Type a username to filter parents")}
-                autoCapitalize="none"
-                autoComplete="off"
-              />
-            </label>
-            <label>
-              {t("Parent")}
-              <select
-                name="parentUserId"
-                required
-                value={selectedParentUserId}
-                onChange={(event) => setSelectedParentUserId(event.target.value)}
-              >
-                <option value="">{t("Select parent")}</option>
-                {filteredParents.map((parent) => (
-                  <option key={parent.user.id} value={parent.user.id}>
-                    {parent.user.username}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>{t("Academic year")}<select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
-                <option value="">{t("Select year")}</option>
-                {selectedAcademicYear && selectedYearMutable ? (
-                  <option value={selectedAcademicYear.id}>{selectedAcademicYear.name} · {t(selectedAcademicYear.status)}</option>
-                ) : null}
-              </select>
-            </label>
-            <label>{t("Class")}<select name="classId" required defaultValue="" key={studentYearId}>
-                <option value="">{t("Select class")}</option>
-                {availableClasses.map((classSection) => (
-                  <option key={classSection.id} value={classSection.id}>{classSection.name} · {classSection.code}</option>
-                ))}
-              </select>
-            </label>
-            <button className="admin-primary" disabled={busy || availableParents.length === 0 || !selectedYearMutable}>{t("Add student")}</button>
-          </form>
-        </article>
-
-        <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create student login")}</h2><p>{t("Creates a school-issued STUDENT account and links it to exactly one existing student record.")}</p></div>
-          <form className="admin-form" onSubmit={createStudentAccount}>
-            <label>
-              {t("Student without login")}
-              <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
-                <option value="">{t("Select student")}</option>
-                {studentsWithoutLogin.map((item) => (
-                  <option key={item.student.id} value={item.student.id}>{item.student.fullName} · {item.student.studentCode}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t("Username")}
-              <input
-                name="username"
-                placeholder="Ahmad, Haidar23, Fatima2026"
-                autoCapitalize="none"
-                autoComplete="off"
-                pattern="[A-Za-z0-9]+"
-                minLength={3}
-                maxLength={64}
-                title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
-                required
-              />
-            </label>
-            <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
-            <label>
-              {t("Phone")}
-              <input name="phone" placeholder="07xxxxxxxx" inputMode="tel" autoComplete="tel" />
-            </label>
-            <button
-              className="admin-primary"
-              disabled={busy || !studentAccountId}
-              data-admin-no-loading="true"
-              data-admin-pending={studentAccountSubmitting ? "true" : undefined}
-              aria-busy={studentAccountSubmitting || undefined}
+      <div className="family-add-student-layout">
+      <article className="admin-panel academic-form-card family-add-student-card">
+        <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
+        <form className="admin-form" onSubmit={createStudent}>
+          <label>
+            {t("Student code")}
+            <input
+              name="studentCode"
+              value={studentCode}
+              onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
+              placeholder="S-0001"
+              required
+            />
+          </label>
+          <p className="admin-form-help">{t("The lowest available student code is suggested automatically. You can change it if needed.")}</p>
+          <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
+          <label>
+            {t("Search parent username")}
+            <input
+              value={parentSearch}
+              onChange={(event) => {
+                const next = event.target.value;
+                setParentSearch(next);
+                const exact = availableParents.find((parent) => parent.user.username.toLowerCase() === next.trim().toLowerCase());
+                if (exact) setSelectedParentUserId(exact.user.id);
+                else if (selectedParentUserId && !availableParents.some((parent) => parent.user.id === selectedParentUserId && parent.user.username.toLowerCase().includes(next.trim().toLowerCase()))) {
+                  setSelectedParentUserId("");
+                }
+              }}
+              placeholder={t("Type a username to filter parents")}
+              autoCapitalize="none"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            {t("Parent")}
+            <select
+              name="parentUserId"
+              required
+              value={selectedParentUserId}
+              onChange={(event) => setSelectedParentUserId(event.target.value)}
             >
-              {t("Create student credential")}
-            </button>
-          </form>
-        </article>
+              <option value="">{t("Select parent")}</option>
+              {filteredParents.map((parent) => (
+                <option key={parent.user.id} value={parent.user.id}>
+                  {parent.user.username}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>{t("Academic year")}<select name="academicYearId" required value={studentYearId} onChange={(event) => setStudentYearId(event.target.value)}>
+              <option value="">{t("Select year")}</option>
+              {selectedAcademicYear && selectedYearMutable ? (
+                <option value={selectedAcademicYear.id}>{selectedAcademicYear.name} · {t(selectedAcademicYear.status)}</option>
+              ) : null}
+            </select>
+          </label>
+          <label>{t("Class")}<select name="classId" required defaultValue="" key={studentYearId}>
+              <option value="">{t("Select class")}</option>
+              {availableClasses.map((classSection) => (
+                <option key={classSection.id} value={classSection.id}>{classSection.name} · {classSection.code}</option>
+              ))}
+            </select>
+          </label>
+          <button className="admin-primary family-add-student-submit" disabled={busy || availableParents.length === 0 || !selectedYearMutable}>{t("Add student")}</button>
+        </form>
+      </article>
       </div>
 
-      <div className="academic-data-grid">
-        <article className="admin-panel academic-list-panel">
-          <div className="admin-section-header">
-            <div>
-              <h2>{t("Parents")}</h2>
-              <p>{listedParents.length} / {overview.parents.length}</p>
-            </div>
-            <button
-              type="button"
-              className="admin-secondary academic-filter-clear"
-              onClick={clearParentListFilters}
-              disabled={!parentListHasFilters}
-              data-admin-no-loading="true"
-            >
-              {t("Clear filters")}
-            </button>
+      <div className="family-account-layout">
+        <div className="family-account-column">
+      <article className="admin-panel academic-form-card">
+        <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
+        <form className="admin-form" onSubmit={createParent}>
+          <label>
+            {t("Username")}
+            <input
+              name="username"
+              placeholder="Ahmad, Haidar23, Fatima2026"
+              autoCapitalize="none"
+              autoComplete="off"
+              pattern="[A-Za-z0-9]+"
+              minLength={3}
+              maxLength={64}
+              title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
+              required
+            />
+          </label>
+          <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
+          <label>{t("Full name")}<input name="fullName" placeholder={t("Parent full name")} required /></label>
+          <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
+          <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
+        </form>
+      </article>
+      <article className="admin-panel academic-list-panel">
+        <div className="admin-section-header">
+          <div>
+            <h2>{t("Parents")}</h2>
+            <p>{listedParents.length} / {overview.parents.length}</p>
           </div>
-
-          <div className="academic-timetable-filters family-list-filters" aria-label={t("Parent filters")}>
-            <label>
-              <span>{t("Username")}</span>
-              <input
-                type="search"
-                value={parentUsernameFilter}
-                onChange={(event) => setParentUsernameFilter(event.target.value)}
-                placeholder={t("Search username")}
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            <label>
-              <span>{t("Account status")}</span>
-              <select value={parentStatusFilter} onChange={(event) => setParentStatusFilter(event.target.value)}>
-                <option value="">{t("All statuses")}</option>
-                {parentStatuses.map((status) => (
-                  <option key={status} value={status}>{t(status)}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t("Child count")}</span>
-              <select value={parentChildFilter} onChange={(event) => setParentChildFilter(event.target.value)}>
-                <option value="">{t("All child counts")}</option>
-                <option value="NONE">{t("No children")}</option>
-                <option value="ONE">{t("One child")}</option>
-                <option value="MULTIPLE">{t("Multiple children")}</option>
-              </select>
-            </label>
-          </div>
-
-          <div
-            className={`academic-rows family-list-rows ${listedParents.length > 4 ? "family-list-scroll" : ""}`}
+          <button
+            type="button"
+            className="admin-secondary academic-filter-clear"
+            onClick={clearParentListFilters}
+            disabled={!parentListHasFilters}
+            data-admin-no-loading="true"
           >
-            {listedParents.map((parent) => (
-              <div className="academic-row" key={parent.user.id}>
-                <div>
-                  <strong>{parent.profile.fullName}</strong>
-                  <span>{parent.user.username} · {adminFormat(locale, "{count} child(ren)", { count: parent.childCount })} · {parent.profile.phone || t("No phone")}</span>
-                  <span>{t(parent.user.status)}{parent.user.lastLoginAt
+            {t("Clear filters")}
+          </button>
+        </div>
+
+        <div className="academic-timetable-filters family-list-filters" aria-label={t("Parent filters")}>
+          <label>
+            <span>{t("Username")}</span>
+            <input
+              type="search"
+              value={parentUsernameFilter}
+              onChange={(event) => setParentUsernameFilter(event.target.value)}
+              placeholder={t("Search username")}
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <label>
+            <span>{t("Account status")}</span>
+            <select value={parentStatusFilter} onChange={(event) => setParentStatusFilter(event.target.value)}>
+              <option value="">{t("All statuses")}</option>
+              {parentStatuses.map((status) => (
+                <option key={status} value={status}>{t(status)}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("Child count")}</span>
+            <select value={parentChildFilter} onChange={(event) => setParentChildFilter(event.target.value)}>
+              <option value="">{t("All child counts")}</option>
+              <option value="NONE">{t("No children")}</option>
+              <option value="ONE">{t("One child")}</option>
+              <option value="MULTIPLE">{t("Multiple children")}</option>
+            </select>
+          </label>
+        </div>
+
+        <div
+          className={`academic-rows family-list-rows ${listedParents.length > 4 ? "family-list-scroll" : ""}`}
+        >
+          {listedParents.map((parent) => (
+            <div className="academic-row" key={parent.user.id}>
+              <div>
+                <strong>{parent.profile.fullName}</strong>
+                <span>{parent.user.username} · {adminFormat(locale, "{count} child(ren)", { count: parent.childCount })} · {parent.profile.phone || t("No phone")}</span>
+                <span>{t(parent.user.status)}{parent.user.lastLoginAt
   ? ` · ${adminFormat(locale, "last login {date}", { date: formatAdminHijriDateTime(locale, parent.user.lastLoginAt) })}`
   : ` · ${t("never logged in")}`}</span>
+              </div>
+              <div className="admin-actions">
+                <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "reset-password")}>{t("Reset password")}</button>
+                {parent.user.status === "SUSPENDED" ? (
+                  <button disabled={busy} onClick={() => void parentAction(parent, "reactivate")}>{t("Reactivate")}</button>
+                ) : (
+                  <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "suspend")}>{t("Suspend")}</button>
+                )}
+                <button
+                  className="admin-danger"
+                  disabled={busy || parent.childCount > 0}
+                  title={parent.childCount > 0 ? t("This parent cannot be deleted because students are linked to the account.") : t("Delete parent")}
+                  onClick={() => void deleteParent(parent)}
+                >
+                  {t("Delete parent")}
+                </button>
+              </div>
+            </div>
+          ))}
+          {overview.parents.length === 0 ? (
+            <p className="admin-copy">{t("No parent accounts yet.")}</p>
+          ) : listedParents.length === 0 ? (
+            <p className="admin-copy">{t("No parents match the selected filters.")}</p>
+          ) : null}
+        </div>
+      </article>
+        </div>
+
+        <div className="family-account-column">
+      <article className="admin-panel academic-form-card">
+        <div><h2>{t("Create student login")}</h2><p>{t("Creates a school-issued STUDENT account and links it to exactly one existing student record.")}</p></div>
+        <form className="admin-form" onSubmit={createStudentAccount}>
+          <label>
+            {t("Student without login")}
+            <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
+              <option value="">{t("Select student")}</option>
+              {studentsWithoutLogin.map((item) => (
+                <option key={item.student.id} value={item.student.id}>{item.student.fullName} · {item.student.studentCode}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t("Username")}
+            <input
+              name="username"
+              placeholder="Ahmad, Haidar23, Fatima2026"
+              autoCapitalize="none"
+              autoComplete="off"
+              pattern="[A-Za-z0-9]+"
+              minLength={3}
+              maxLength={64}
+              title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
+              required
+            />
+          </label>
+          <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
+          <label>
+            {t("Phone")}
+            <input name="phone" placeholder="07xxxxxxxx" inputMode="tel" autoComplete="tel" />
+          </label>
+          <button
+            className="admin-primary"
+            disabled={busy || !studentAccountId}
+            data-admin-no-loading="true"
+            data-admin-pending={studentAccountSubmitting ? "true" : undefined}
+            aria-busy={studentAccountSubmitting || undefined}
+          >
+            {t("Create student credential")}
+          </button>
+        </form>
+      </article>
+      <article className="admin-panel academic-list-panel">
+        <div className="admin-section-header">
+          <div>
+            <h2>{t("Students")}</h2>
+            <p>{listedStudents.length} / {selectedYearStudents.length}</p>
+          </div>
+          <button
+            type="button"
+            className="admin-secondary academic-filter-clear"
+            onClick={clearStudentListFilters}
+            disabled={!studentListHasFilters}
+            data-admin-no-loading="true"
+          >
+            {t("Clear filters")}
+          </button>
+        </div>
+
+        <div className="academic-timetable-filters family-list-filters" aria-label={t("Student filters")}>
+          <label>
+            <span>{t("Username")}</span>
+            <input
+              type="search"
+              value={studentUsernameFilter}
+              onChange={(event) => setStudentUsernameFilter(event.target.value)}
+              placeholder={t("Search username")}
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <label>
+            <span>{t("Class")}</span>
+            <select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)}>
+              <option value="">{t("All classes")}</option>
+              {studentClassOptions.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("Parent")}</span>
+            <select value={studentParentFilter} onChange={(event) => setStudentParentFilter(event.target.value)}>
+              <option value="">{t("All parents")}</option>
+              {studentParentOptions.map((parent) => (
+                <option key={parent.user.id} value={parent.user.id}>{parent.profile.fullName}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("Student status")}</span>
+            <select value={studentStatusFilter} onChange={(event) => setStudentStatusFilter(event.target.value)}>
+              <option value="">{t("All statuses")}</option>
+              {studentStatuses.map((status) => (
+                <option key={status} value={status}>{t(status)}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div
+          className={`academic-rows family-list-rows ${listedStudents.length > 4 ? "family-list-scroll" : ""}`}
+        >
+          {listedStudents.map((item) => {
+            const parent = parentMap.get(item.student.parentUserId);
+            return (
+              <div className="academic-row" key={item.student.id}>
+                <div>
+                  <strong>{item.student.fullName}</strong>
+                  <span>{item.student.studentCode} · {item.classSection.name} · {item.academicYear.name}</span>
+                  <span>{t("Parent")}: {parent?.profile.fullName ?? t("Unknown")} · {t(item.student.status)}</span>
+                  <span>
+                    {item.user
+                      ? `${item.user.username} · ${t(item.user.status)}`
+                      : t("No student login yet")}
+                  </span>
                 </div>
                 <div className="admin-actions">
-                  <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "reset-password")}>{t("Reset password")}</button>
-                  {parent.user.status === "SUSPENDED" ? (
-                    <button disabled={busy} onClick={() => void parentAction(parent, "reactivate")}>{t("Reactivate")}</button>
-                  ) : (
-                    <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "suspend")}>{t("Suspend")}</button>
-                  )}
+                  {item.user ? (
+                    <>
+                      <button
+                        disabled={busy || item.user.status === "ARCHIVED"}
+                        onClick={() => void studentAccountAction(item, "reset-password")}
+                      >
+                        {t("Reset password")}
+                      </button>
+                      {item.user.status === "SUSPENDED" ? (
+                        <button disabled={busy} onClick={() => void studentAccountAction(item, "reactivate")}>
+                          {t("Reactivate")}
+                        </button>
+                      ) : (
+                        <button
+                          disabled={busy || item.user.status === "ARCHIVED"}
+                          onClick={() => void studentAccountAction(item, "suspend")}
+                        >
+                          {t("Suspend")}
+                        </button>
+                      )}
+                    </>
+                  ) : null}
                   <button
                     className="admin-danger"
-                    disabled={busy || parent.childCount > 0}
-                    title={parent.childCount > 0 ? t("This parent cannot be deleted because students are linked to the account.") : t("Delete parent")}
-                    onClick={() => void deleteParent(parent)}
+                    disabled={busy}
+                    onClick={() => void deleteStudent(item)}
                   >
-                    {t("Delete parent")}
+                    {t("Delete")}
                   </button>
                 </div>
               </div>
-            ))}
-            {overview.parents.length === 0 ? (
-              <p className="admin-copy">{t("No parent accounts yet.")}</p>
-            ) : listedParents.length === 0 ? (
-              <p className="admin-copy">{t("No parents match the selected filters.")}</p>
-            ) : null}
-          </div>
-        </article>
-
-        <article className="admin-panel academic-list-panel">
-          <div className="admin-section-header">
-            <div>
-              <h2>{t("Students")}</h2>
-              <p>{listedStudents.length} / {selectedYearStudents.length}</p>
-            </div>
-            <button
-              type="button"
-              className="admin-secondary academic-filter-clear"
-              onClick={clearStudentListFilters}
-              disabled={!studentListHasFilters}
-              data-admin-no-loading="true"
-            >
-              {t("Clear filters")}
-            </button>
-          </div>
-
-          <div className="academic-timetable-filters family-list-filters" aria-label={t("Student filters")}>
-            <label>
-              <span>{t("Username")}</span>
-              <input
-                type="search"
-                value={studentUsernameFilter}
-                onChange={(event) => setStudentUsernameFilter(event.target.value)}
-                placeholder={t("Search username")}
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            <label>
-              <span>{t("Class")}</span>
-              <select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)}>
-                <option value="">{t("All classes")}</option>
-                {studentClassOptions.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t("Parent")}</span>
-              <select value={studentParentFilter} onChange={(event) => setStudentParentFilter(event.target.value)}>
-                <option value="">{t("All parents")}</option>
-                {studentParentOptions.map((parent) => (
-                  <option key={parent.user.id} value={parent.user.id}>{parent.profile.fullName}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t("Student status")}</span>
-              <select value={studentStatusFilter} onChange={(event) => setStudentStatusFilter(event.target.value)}>
-                <option value="">{t("All statuses")}</option>
-                {studentStatuses.map((status) => (
-                  <option key={status} value={status}>{t(status)}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div
-            className={`academic-rows family-list-rows ${listedStudents.length > 4 ? "family-list-scroll" : ""}`}
-          >
-            {listedStudents.map((item) => {
-              const parent = parentMap.get(item.student.parentUserId);
-              return (
-                <div className="academic-row" key={item.student.id}>
-                  <div>
-                    <strong>{item.student.fullName}</strong>
-                    <span>{item.student.studentCode} · {item.classSection.name} · {item.academicYear.name}</span>
-                    <span>{t("Parent")}: {parent?.profile.fullName ?? t("Unknown")} · {t(item.student.status)}</span>
-                    <span>
-                      {item.user
-                        ? `${item.user.username} · ${t(item.user.status)}`
-                        : t("No student login yet")}
-                    </span>
-                  </div>
-                  <div className="admin-actions">
-                    {item.user ? (
-                      <>
-                        <button
-                          disabled={busy || item.user.status === "ARCHIVED"}
-                          onClick={() => void studentAccountAction(item, "reset-password")}
-                        >
-                          {t("Reset password")}
-                        </button>
-                        {item.user.status === "SUSPENDED" ? (
-                          <button disabled={busy} onClick={() => void studentAccountAction(item, "reactivate")}>
-                            {t("Reactivate")}
-                          </button>
-                        ) : (
-                          <button
-                            disabled={busy || item.user.status === "ARCHIVED"}
-                            onClick={() => void studentAccountAction(item, "suspend")}
-                          >
-                            {t("Suspend")}
-                          </button>
-                        )}
-                      </>
-                    ) : null}
-                    <button
-                      className="admin-danger"
-                      disabled={busy}
-                      onClick={() => void deleteStudent(item)}
-                    >
-                      {t("Delete")}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {selectedYearStudents.length === 0 ? (
-              <p className="admin-copy">{t("No students in the selected academic year.")}</p>
-            ) : listedStudents.length === 0 ? (
-              <p className="admin-copy">{t("No students match the selected filters.")}</p>
-            ) : null}
-          </div>
-        </article>
+            );
+          })}
+          {selectedYearStudents.length === 0 ? (
+            <p className="admin-copy">{t("No students in the selected academic year.")}</p>
+          ) : listedStudents.length === 0 ? (
+            <p className="admin-copy">{t("No students match the selected filters.")}</p>
+          ) : null}
+        </div>
+      </article>
+        </div>
       </div>
 
       <article className="admin-panel family-import-panel">
