@@ -1056,7 +1056,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               <span>{t("Full name")}</span>
               <strong>{accountPreview.fullName}</strong>
             </div>
-            <div>
+            <div className="family-account-preview-phone">
               <span>{t("Phone number")}</span>
               <strong dir="ltr">{accountPreview.phone || t("Not provided")}</strong>
             </div>
