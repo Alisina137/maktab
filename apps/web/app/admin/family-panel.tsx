@@ -29,6 +29,7 @@ type StudentRow = {
     userId: string | null;
     studentCode: string;
     fullName: string;
+    phone: string | null;
     academicYearId: string;
     classId: string;
     status: "ACTIVE" | "WITHDRAWN";
@@ -73,6 +74,13 @@ type Validation = {
   normalizedRows: Array<Record<string, string>>;
 };
 type Credential = { username: string; temporaryPassword: string };
+type AccountCredentialPreview = {
+  accountType: "PARENT" | "STUDENT";
+  username: string;
+  fullName: string;
+  phone: string | null;
+  temporaryPassword: string;
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -169,6 +177,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [accountPreview, setAccountPreview] = useState<AccountCredentialPreview | null>(null);
+  const [accountPreviewClosePrompt, setAccountPreviewClosePrompt] = useState(false);
 
   const [studentYearId, setStudentYearId] = useState("");
   const [studentAccountId, setStudentAccountId] = useState("");
@@ -264,6 +274,27 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     }
   }, [studentAccountId, studentsWithoutLogin]);
 
+  function printAccountPreview(preview: AccountCredentialPreview) {
+    const originalTitle = document.title;
+    const typeLabel = preview.accountType === "PARENT" ? "parent" : "student";
+    document.title = `${typeLabel}-account-${preview.username}`;
+    window.print();
+    document.title = originalTitle;
+  }
+
+  function scheduleAccountPreviewPrint(preview: AccountCredentialPreview) {
+    window.setTimeout(() => printAccountPreview(preview), 180);
+  }
+
+  function requestCloseAccountPreview() {
+    setAccountPreviewClosePrompt(true);
+  }
+
+  function confirmCloseAccountPreview() {
+    setAccountPreview(null);
+    setAccountPreviewClosePrompt(false);
+  }
+
   async function load(options?: { silentFeedback?: boolean }): Promise<FamilyOverview | null> {
     if (!options?.silentFeedback) setError("");
     try {
@@ -298,7 +329,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     setCredentials([]);
     try {
-      const result = await request<{ user: User; temporaryPassword: string }>(
+      const result = await request<{
+        user: User;
+        profile: ParentSummary["profile"];
+        temporaryPassword: string;
+      }>(
         accessToken,
         "/v1/admin/families/parents",
         {
@@ -310,9 +345,18 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           })
         }
       );
-      setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
-      setNotice(t("Parent account created. Give the temporary credential to the parent securely."));
+      const preview: AccountCredentialPreview = {
+        accountType: "PARENT",
+        username: result.user.username,
+        fullName: result.profile.fullName,
+        phone: result.profile.phone,
+        temporaryPassword: result.temporaryPassword
+      };
+      setCredentials([]);
+      setAccountPreview(preview);
+      setNotice(t("Parent account created. Save or print the account information before closing the preview."));
       formElement.reset();
+      scheduleAccountPreviewPrint(preview);
       await load({ silentFeedback: true });
     } catch (cause) {
       if (isDuplicateUsernameError(cause)) {
@@ -398,7 +442,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         `/v1/admin/families/students/${targetStudentId}/account`,
         {
           method: "POST",
-          body: JSON.stringify({ username: String(form.get("username") ?? "").trim() })
+          body: JSON.stringify({
+            username: String(form.get("username") ?? "").trim(),
+            phone: String(form.get("phone") ?? "").trim() || undefined
+          })
         }
       );
 
@@ -408,22 +455,31 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           ...current,
           students: current.students.map((item) =>
             item.student.id === targetStudentId
-              ? { ...item, student: { ...item.student, userId: result.user.id }, user: result.user }
+              ? { ...item, student: result.student, user: result.user }
               : item
           ),
           enrollments: current.enrollments.map((item) =>
             item.student.id === targetStudentId
-              ? { ...item, student: { ...item.student, userId: result.user.id }, user: result.user }
+              ? { ...item, student: result.student, user: result.user }
               : item
           )
         };
       });
 
       setError("");
-      setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
-      setNotice(t("Student login created and linked to exactly one student record."));
+      const preview: AccountCredentialPreview = {
+        accountType: "STUDENT",
+        username: result.user.username,
+        fullName: result.student.fullName,
+        phone: result.student.phone,
+        temporaryPassword: result.temporaryPassword
+      };
+      setCredentials([]);
+      setAccountPreview(preview);
+      setNotice(t("Student login created. Save or print the account information before closing the preview."));
       setStudentAccountId("");
       formElement.reset();
+      scheduleAccountPreviewPrint(preview);
 
       // The credential creation is already complete. Refresh quietly so a
       // follow-up read failure never turns a successful create into a mixed
@@ -672,6 +728,23 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   return (
     <section className="family-section admin-page-enter">
+      {accountPreviewClosePrompt ? (
+        <div className="family-username-popup-backdrop" role="presentation">
+          <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-account-save-title">
+            <strong id="family-account-save-title">{t("Have you saved the account information?")}</strong>
+            <p>{t("Choose Yes only after you have saved or printed the username, full name, phone number, and temporary password.")}</p>
+            <div className="admin-actions">
+              <button className="admin-secondary" type="button" onClick={() => setAccountPreviewClosePrompt(false)} data-admin-no-loading="true">
+                {t("No")}
+              </button>
+              <button className="admin-primary" type="button" onClick={confirmCloseAccountPreview} data-admin-no-loading="true">
+                {t("Yes")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {usernamePopup ? (
         <div className="family-username-popup-backdrop" role="presentation">
           <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-username-popup-title">
@@ -694,6 +767,60 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
+
+      {accountPreview ? (
+        <section className="credential-card family-account-preview">
+          <div className="family-account-preview-header">
+            <div>
+              <span className="eyebrow">{t(accountPreview.accountType === "PARENT" ? "Parent account information" : "Student account information")}</span>
+              <h2>{t("Account credential")}</h2>
+              <p>{t("Save this information as PDF or print it now. The temporary password cannot be retrieved later.")}</p>
+            </div>
+            <div className="family-account-preview-actions">
+              <button
+                className="admin-secondary"
+                type="button"
+                onClick={() => printAccountPreview(accountPreview)}
+                data-admin-no-loading="true"
+              >
+                {t("Print")}
+              </button>
+              <button
+                className="admin-secondary"
+                type="button"
+                onClick={requestCloseAccountPreview}
+                data-admin-no-loading="true"
+              >
+                {t("Close")}
+              </button>
+            </div>
+          </div>
+
+          <div className="family-account-preview-grid">
+            <div>
+              <span>{t("Username")}</span>
+              <strong dir="ltr">{accountPreview.username}</strong>
+            </div>
+            <div>
+              <span>{t("Full name")}</span>
+              <strong>{accountPreview.fullName}</strong>
+            </div>
+            <div>
+              <span>{t("Phone number")}</span>
+              <strong dir="ltr">{accountPreview.phone || t("Not provided")}</strong>
+            </div>
+            <div className="family-account-preview-password">
+              <span>{t("Temporary password")}</span>
+              <code dir="ltr">{accountPreview.temporaryPassword}</code>
+            </div>
+          </div>
+
+          <div className="family-account-preview-note">
+            <strong>{t("Important")}</strong>
+            <span>{t("Give this information only to the account owner and keep the PDF in a secure place.")}</span>
+          </div>
+        </section>
+      ) : null}
 
       {credentials.length > 0 ? (
         <section className="credential-card family-credential">
@@ -837,6 +964,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               />
             </label>
             <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
+            <label>
+              {t("Phone")}
+              <input name="phone" placeholder="07xxxxxxxx" inputMode="tel" autoComplete="tel" />
+            </label>
             <button
               className="admin-primary"
               disabled={busy || !studentAccountId}
