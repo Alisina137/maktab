@@ -773,3 +773,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The print stylesheet isolates the credential preview so saved PDFs contain the account information rather than the surrounding Admin workspace.
 - Added migration `0014_student_phone.sql` for the nullable Student phone field and updated database/API test harnesses to apply it.
 
+## Testing Step 8 follow-up — unified Families feedback popups
+
+- Replaced the Families/Parent page inline success and error banners with a persistent modal popup pattern.
+- Student deletion, parent deletion, create actions, suspend/reactivate, password reset, imports, and other Families operations now surface success/error feedback through the same popup with an explicit OK action.
+- Initial Families load failures use the popup too and retain a Retry action.
+- The feedback hook now supports an opt-in persistent mode; other Admin pages keep their existing timed feedback behavior.
+- Bulk-import row-level validation details remain visible inline for diagnosis, while validation pass/fail also triggers the unified popup summary.
+
