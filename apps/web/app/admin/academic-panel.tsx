@@ -1426,6 +1426,7 @@ function TimetableViews({
   const [view, setView] = useState<"TEACHER" | "CLASS">("TEACHER");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
+  const [localNow, setLocalNow] = useState<Date | null>(null);
 
   const classMap = useMemo(() => new Map(classes.map((item) => [item.id, item])), [classes]);
   const teacherMap = useMemo(() => new Map(teachers.map((item) => [item.userId, item])), [teachers]);
@@ -1470,6 +1471,28 @@ function TimetableViews({
     if (classGroups.length === 0) setSelectedClassId("");
     else if (!classGroups.some((item) => item.id === selectedClassId)) setSelectedClassId(classGroups[0]?.id ?? "");
   }, [classGroups, selectedClassId]);
+
+  useEffect(() => {
+    const updateLocalNow = () => setLocalNow(new Date());
+    updateLocalNow();
+    const timer = window.setInterval(updateLocalNow, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const localWeekdays = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+  const currentWeekday = localNow ? localWeekdays[localNow.getDay()] ?? "" : "";
+  const currentTime = localNow
+    ? `${String(localNow.getHours()).padStart(2, "0")}:${String(localNow.getMinutes()).padStart(2, "0")}`
+    : "";
+
+  function isCurrentPeriod(day: string, period: TimetablePeriod) {
+    return Boolean(
+      currentTime &&
+      day === currentWeekday &&
+      currentTime >= period.startsAt &&
+      currentTime < period.endsAt
+    );
+  }
 
   const groups = view === "TEACHER" ? teacherGroups : classGroups;
   const selectedId = view === "TEACHER" ? selectedTeacherId : selectedClassId;
@@ -1534,16 +1557,24 @@ function TimetableViews({
                       <th className="academic-week-day-column" scope="row">{t(day)}</th>
                       {timeSlots.map((slot) => {
                         const periods = selectedGroup.periods.filter((period) => period.weekday === day && period.startsAt === slot.startsAt && period.endsAt === slot.endsAt);
+                        const activeCell = periods.some((period) => isCurrentPeriod(day, period));
                         return (
-                          <td key={slot.key}>
+                          <td key={slot.key} className={activeCell ? "academic-timetable-current-slot" : undefined}>
                             {periods.length ? (
                               <div className="academic-timetable-cell-stack">
-                                {periods.map((period) => (
-                                  <div className="academic-timetable-cell" key={period.id}>
-                                    <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
-                                    <span>{view === "TEACHER" ? classMap.get(period.classId)?.name ?? t("Class") : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}</span>
-                                  </div>
-                                ))}
+                                {periods.map((period) => {
+                                  const activePeriod = isCurrentPeriod(day, period);
+                                  return (
+                                    <div
+                                      className={activePeriod ? "academic-timetable-cell academic-timetable-cell-current" : "academic-timetable-cell"}
+                                      key={period.id}
+                                    >
+                                      {activePeriod ? <small className="academic-timetable-now-badge">{t("Now")}</small> : null}
+                                      <strong>{subjectMap.get(period.subjectId)?.name ?? t("Subject")}</strong>
+                                      <span>{view === "TEACHER" ? classMap.get(period.classId)?.name ?? t("Class") : teacherMap.get(period.teacherUserId)?.fullName ?? t("Teacher")}</span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             ) : <span className="academic-timetable-free">—</span>}
                           </td>
