@@ -1197,10 +1197,11 @@ footer {
 
 .family-feedback-toast-host {
   position: fixed;
-  top: 86px;
-  inset-inline-end: 22px;
+  top: 24px;
+  left: 50%;
   z-index: 1300;
-  width: min(420px, calc(100vw - 32px));
+  width: min(620px, calc(100vw - 28px));
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -1288,9 +1289,10 @@ footer {
 
 @media (max-width: 760px) {
   .family-feedback-toast-host {
-    top: 72px;
-    inset-inline: 12px;
-    width: auto;
+    top: 16px;
+    left: 50%;
+    width: min(620px, calc(100vw - 24px));
+    transform: translateX(-50%);
   }
 
   .family-feedback-toast {
