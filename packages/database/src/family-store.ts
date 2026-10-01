@@ -78,7 +78,7 @@ export interface FamilyStore {
   createStudentAccount(
     schoolId: string,
     studentId: string,
-    input: { username: string; passwordHash: string }
+    input: { username: string; phone?: string; passwordHash: string }
   ): Promise<{ user: User; student: Student }>;
   createStudent(schoolId: string, input: CreateStudentInput): Promise<Student>;
   updateStudent(schoolId: string, studentId: string, input: UpdateStudentInput): Promise<Student>;
@@ -352,7 +352,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
           const [updated] = await tx
             .update(students)
-            .set({ userId: user.id, updatedAt: new Date() })
+            .set({ userId: user.id, phone: input.phone || null, updatedAt: new Date() })
             .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
             .returning();
           if (!updated) throw new FamilyNotFoundError("Student not found.");
