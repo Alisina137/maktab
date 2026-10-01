@@ -519,8 +519,7 @@ export function registerAuthRoutes(
 
   app.get("/v1/auth/me", async (request, reply) => {
     const context = await requireAccess(request, reply, store, {
-      allowSuspended: true,
-      allowSubscriptionUnavailable: true
+      allowSuspended: true
     });
     if (!context) return;
     return {
