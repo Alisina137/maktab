@@ -1,7 +1,7 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
@@ -330,53 +330,6 @@ function isDuplicateUsernameError(cause: unknown) {
   return cause instanceof Error && cause.message === "This username already exists. Please type another username.";
 }
 
-function useFourVisibleRows(count: number) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const currentContainer = ref.current;
-    if (!currentContainer) return;
-    const container: HTMLDivElement = currentContainer;
-
-    function updateHeight() {
-      if (count <= 4) {
-        container.style.removeProperty("--family-list-max-height");
-        return;
-      }
-
-      const rows = Array.from(container.children).filter(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement && child.classList.contains("academic-row")
-      );
-      const fourthRow = rows[3];
-      if (!fourthRow) return;
-
-      const containerTop = container.getBoundingClientRect().top;
-      const fourthBottom = fourthRow.getBoundingClientRect().bottom;
-      container.style.setProperty(
-        "--family-list-max-height",
-        `${Math.ceil(fourthBottom - containerTop)}px`
-      );
-    }
-
-    updateHeight();
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(container);
-    for (const child of Array.from(container.children).slice(0, 4)) {
-      if (child instanceof HTMLElement) observer.observe(child);
-    }
-    window.addEventListener("resize", updateHeight);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateHeight);
-    };
-  }, [count]);
-
-  return ref;
-}
-
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
@@ -538,9 +491,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const studentListHasFilters = Boolean(
     studentClassFilter || studentParentFilter || studentStatusFilter || studentLoginFilter
   );
-
-  const parentRowsRef = useFourVisibleRows(listedParents.length);
-  const studentRowsRef = useFourVisibleRows(listedStudents.length);
 
   function clearParentListFilters() {
     setParentStatusFilter("");
@@ -1437,7 +1387,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </div>
 
           <div
-            ref={parentRowsRef}
             className={`academic-rows family-list-rows ${listedParents.length > 4 ? "family-list-scroll" : ""}`}
           >
             {listedParents.map((parent) => (
@@ -1534,7 +1483,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </div>
 
           <div
-            ref={studentRowsRef}
             className={`academic-rows family-list-rows ${listedStudents.length > 4 ? "family-list-scroll" : ""}`}
           >
             {listedStudents.map((item) => {
