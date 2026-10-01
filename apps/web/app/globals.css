@@ -1232,6 +1232,10 @@ footer {
 .family-import-panel {
   display: grid;
   gap: 18px;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--ml-color-brand) 18%, var(--ml-color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ml-color-brand) 3%, var(--ml-color-surface)), var(--ml-color-surface) 180px);
 }
 
 .family-import-controls,
@@ -1241,25 +1245,148 @@ footer {
   gap: 14px;
 }
 
-.family-import-controls label,
+.family-import-controls > label,
+.family-import-file-field,
 .family-mapping-grid label {
   display: grid;
+  align-content: start;
   gap: 7px;
+  min-width: 0;
   color: var(--ml-color-text-muted);
   font-size: 13px;
   font-weight: 700;
 }
 
-.family-import-controls input,
+.family-import-field-label {
+  color: var(--ml-color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .family-import-controls select,
 .family-mapping-grid select {
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--ml-color-border);
   border-radius: 11px;
-  background: white;
+  background: var(--ml-color-surface);
   color: var(--ml-color-text);
   padding: 0 12px;
+}
+
+.family-import-controls select:focus-visible,
+.family-mapping-grid select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ml-color-brand) 18%, transparent);
+  outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--ml-color-brand) 58%, var(--ml-color-border));
+}
+
+.family-import-file-picker {
+  position: relative;
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--ml-color-brand) 42%, var(--ml-color-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ml-color-brand) 4%, var(--ml-color-surface));
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.family-import-file-picker:hover {
+  border-color: color-mix(in srgb, var(--ml-color-brand) 72%, var(--ml-color-border));
+  background: color-mix(in srgb, var(--ml-color-brand) 7%, var(--ml-color-surface));
+  transform: translateY(-1px);
+}
+
+.family-import-file-picker:has(.family-import-file-input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--ml-color-brand) 18%, transparent);
+  outline-offset: 2px;
+  border-color: var(--ml-color-brand);
+}
+
+.family-import-file-picker:has(.family-import-file-input:disabled) {
+  opacity: .58;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.family-import-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.family-import-file-input:disabled {
+  cursor: not-allowed;
+}
+
+.family-import-file-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ml-color-brand) 12%, var(--ml-color-surface));
+  color: var(--ml-color-brand-strong);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.family-import-file-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.family-import-file-copy strong {
+  color: var(--ml-color-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.family-import-file-copy span {
+  overflow: hidden;
+  color: var(--ml-color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.family-import-file-action {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 26%, var(--ml-color-border));
+  border-radius: 9px;
+  background: var(--ml-color-surface);
+  color: var(--ml-color-brand-strong);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.family-mapping-grid {
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 11%, var(--ml-color-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ml-color-brand) 2.5%, var(--ml-color-surface));
 }
 
 .family-import-actions {
