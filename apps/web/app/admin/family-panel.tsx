@@ -99,6 +99,24 @@ function normalizeHeader(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function nextAvailableStudentCode(students: StudentRow[]) {
+  const used = new Set<number>();
+  for (const item of students) {
+    const match = /^S-(\d+)$/i.exec(item.student.studentCode.trim());
+    if (!match?.[1]) continue;
+    const number = Number(match[1]);
+    if (Number.isInteger(number) && number > 0) used.add(number);
+  }
+
+  let next = 1;
+  while (used.has(next)) next += 1;
+  return `S-${String(next).padStart(4, "0")}`;
+}
+
+function isDuplicateUsernameError(cause: unknown) {
+  return cause instanceof Error && cause.message === "This username already exists. Please type another username.";
+}
+
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
@@ -141,6 +159,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   const [studentYearId, setStudentYearId] = useState("");
   const [studentAccountId, setStudentAccountId] = useState("");
+  const [studentCode, setStudentCode] = useState("");
+  const [parentSearch, setParentSearch] = useState("");
+  const [selectedParentUserId, setSelectedParentUserId] = useState("");
+  const [usernamePopup, setUsernamePopup] = useState("");
   const [importEntity, setImportEntity] = useState<ImportEntity>("PARENT");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -155,6 +177,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const availableClasses = useMemo(
     () => academics?.classes.filter((item) => item.academicYearId === studentYearId) ?? [],
     [academics, studentYearId]
+  );
+
+  const suggestedStudentCode = useMemo(
+    () => nextAvailableStudentCode(overview?.students ?? []),
+    [overview?.students]
   );
 
   const selectedYearStudents = useMemo(() => {
@@ -175,6 +202,19 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const selectedYearMutable =
     selectedAcademicYear?.status === "DRAFT" || selectedAcademicYear?.status === "ACTIVE";
 
+  const availableParents = useMemo(
+    () => overview?.parents.filter(
+      (parent) => parent.user.status !== "SUSPENDED" && parent.user.status !== "ARCHIVED"
+    ) ?? [],
+    [overview?.parents]
+  );
+
+  const filteredParents = useMemo(() => {
+    const query = parentSearch.trim().toLowerCase();
+    if (!query) return availableParents;
+    return availableParents.filter((parent) => parent.user.username.toLowerCase().includes(query));
+  }, [availableParents, parentSearch]);
+
   useEffect(() => {
     void load();
   }, [accessToken]);
@@ -182,6 +222,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   useEffect(() => {
     if (selectedAcademicYearId) setStudentYearId(selectedAcademicYearId);
   }, [selectedAcademicYearId]);
+
+  useEffect(() => {
+    if (!studentCode && overview) setStudentCode(suggestedStudentCode);
+  }, [overview, studentCode, suggestedStudentCode]);
 
   async function load() {
     setError("");
@@ -229,7 +273,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not create parent."));
+      if (isDuplicateUsernameError(cause)) {
+        setUsernamePopup(t("This username already exists. Please type another username."));
+      } else {
+        setError(adminErrorText(locale, cause, "Could not create parent."));
+      }
     } finally {
       setBusy(false);
     }
@@ -245,14 +293,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       await request(accessToken, "/v1/admin/families/students", {
         method: "POST",
         body: JSON.stringify({
-          studentCode: String(form.get("studentCode") ?? "").trim(),
+          studentCode: studentCode.trim(),
           fullName: String(form.get("fullName") ?? "").trim(),
-          parentUserId: String(form.get("parentUserId") ?? ""),
+          parentUserId: selectedParentUserId,
           academicYearId: String(form.get("academicYearId") ?? ""),
           classId: String(form.get("classId") ?? "")
         })
       });
       setNotice(t("Student created and linked to the selected parent."));
+      setStudentCode("");
+      setParentSearch("");
+      setSelectedParentUserId("");
       event.currentTarget.reset();
       await load();
     } catch (cause) {
@@ -285,7 +336,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       event.currentTarget.reset();
       await load();
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not create student account."));
+      if (isDuplicateUsernameError(cause)) {
+        setUsernamePopup(t("This username already exists. Please type another username."));
+      } else {
+        setError(adminErrorText(locale, cause, "Could not create student account."));
+      }
     } finally {
       setBusy(false);
     }
@@ -311,6 +366,29 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       await load();
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Parent account action failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteParent(parent: ParentSummary) {
+    if (parent.childCount > 0) {
+      setError(t("This parent cannot be deleted because students are linked to the account."));
+      return;
+    }
+
+    if (!window.confirm(t("Delete this parent account? This action cannot be undone."))) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setCredentials([]);
+    try {
+      await request(accessToken, `/v1/admin/families/parents/${parent.user.id}`, { method: "DELETE" });
+      setNotice(t("Parent account deleted."));
+      await load();
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Could not delete parent account."));
     } finally {
       setBusy(false);
     }
@@ -425,12 +503,20 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     );
   }
 
-  const availableParents = overview.parents.filter(
-    (parent) => parent.user.status !== "SUSPENDED" && parent.user.status !== "ARCHIVED"
-  );
-
   return (
     <section className="family-section admin-page-enter">
+      {usernamePopup ? (
+        <div className="family-username-popup-backdrop" role="presentation">
+          <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-username-popup-title">
+            <strong id="family-username-popup-title">{t("Username already exists")}</strong>
+            <p>{usernamePopup}</p>
+            <button className="admin-primary" type="button" onClick={() => setUsernamePopup("")} data-admin-no-loading="true">
+              {t("OK")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
@@ -470,7 +556,21 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <article className="admin-panel academic-form-card">
           <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
           <form className="admin-form" onSubmit={createParent}>
-            <label>{t("Username")}<input name="username" placeholder="parent.001" autoCapitalize="none" required /></label>
+            <label>
+              {t("Username")}
+              <input
+                name="username"
+                placeholder="Ahmad, Haidar23, Fatima2026"
+                autoCapitalize="none"
+                autoComplete="off"
+                pattern="[A-Za-z0-9]+"
+                minLength={3}
+                maxLength={64}
+                title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
+                required
+              />
+            </label>
+            <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
             <label>{t("Full name")}<input name="fullName" placeholder={t("Parent full name")} required /></label>
             <label>{t("Phone")}<input name="phone" placeholder="07xxxxxxxx" /></label>
             <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
@@ -480,15 +580,48 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <article className="admin-panel academic-form-card">
           <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
           <form className="admin-form" onSubmit={createStudent}>
-            <label>{t("Student code")}<input name="studentCode" placeholder="S-001" required /></label>
+            <label>
+              {t("Student code")}
+              <input
+                name="studentCode"
+                value={studentCode}
+                onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
+                placeholder="S-0001"
+                required
+              />
+            </label>
+            <p className="admin-form-help">{t("The lowest available student code is suggested automatically. You can change it if needed.")}</p>
             <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
             <label>
+              {t("Search parent username")}
+              <input
+                value={parentSearch}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setParentSearch(next);
+                  const exact = availableParents.find((parent) => parent.user.username.toLowerCase() === next.trim().toLowerCase());
+                  if (exact) setSelectedParentUserId(exact.user.id);
+                  else if (selectedParentUserId && !availableParents.some((parent) => parent.user.id === selectedParentUserId && parent.user.username.toLowerCase().includes(next.trim().toLowerCase()))) {
+                    setSelectedParentUserId("");
+                  }
+                }}
+                placeholder={t("Type a username to filter parents")}
+                autoCapitalize="none"
+                autoComplete="off"
+              />
+            </label>
+            <label>
               {t("Parent")}
-              <select name="parentUserId" required defaultValue="">
+              <select
+                name="parentUserId"
+                required
+                value={selectedParentUserId}
+                onChange={(event) => setSelectedParentUserId(event.target.value)}
+              >
                 <option value="">{t("Select parent")}</option>
-                {availableParents.map((parent) => (
+                {filteredParents.map((parent) => (
                   <option key={parent.user.id} value={parent.user.id}>
-                    {parent.profile.fullName} · {parent.user.username}
+                    {parent.user.username}
                   </option>
                 ))}
               </select>
@@ -523,7 +656,21 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 ))}
               </select>
             </label>
-            <label>{t("Username")}<input name="username" placeholder="student.001" autoCapitalize="none" required /></label>
+            <label>
+              {t("Username")}
+              <input
+                name="username"
+                placeholder="Ahmad, Haidar23, Fatima2026"
+                autoCapitalize="none"
+                autoComplete="off"
+                pattern="[A-Za-z0-9]+"
+                minLength={3}
+                maxLength={64}
+                title={t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}
+                required
+              />
+            </label>
+            <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
             <button className="admin-primary" disabled={busy || !studentAccountId}>{t("Create student credential")}</button>
           </form>
         </article>
@@ -551,6 +698,14 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                   ) : (
                     <button disabled={busy || parent.user.status === "ARCHIVED"} onClick={() => void parentAction(parent, "suspend")}>{t("Suspend")}</button>
                   )}
+                  <button
+                    className="admin-danger"
+                    disabled={busy || parent.childCount > 0}
+                    title={parent.childCount > 0 ? t("This parent cannot be deleted because students are linked to the account.") : t("Delete parent")}
+                    onClick={() => void deleteParent(parent)}
+                  >
+                    {t("Delete parent")}
+                  </button>
                 </div>
               </div>
             ))}
