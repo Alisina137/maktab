@@ -798,3 +798,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Success/error toasts retain explicit OK dismissal; initial load errors also retain Retry.
 - Only decision-required confirmations, such as closing unsaved one-time credential information, remain modal.
 
+## Testing Step 8 follow-up — Families action loading lifecycle
+
+- Fixed Families action buttons remaining in the premium loading state after the mutation itself had already succeeded and success feedback was visible.
+- Successful Parent/Student mutations now end their request-bound busy state immediately after the authoritative create/update/delete response.
+- Secondary Families refreshes run silently in the background and no longer keep Create Parent, Add Student, Create Student Login, parent/student account actions, delete actions, or import commit buttons loading.
+- Data-dependent duplicate student-code recovery still awaits its refresh because the refreshed codes are required to calculate the next suggestion.
+
