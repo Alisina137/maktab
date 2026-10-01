@@ -686,3 +686,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Timetable creation now uses a duration selector with 30, 35, 40, 45, 50, 55, and 60 minute options. The Admin selects a start time, the end time is calculated automatically, and a start→end preview is shown before submission.
 - The manual timetable end-time input was removed from the Admin form; the calculated end time continues to use the existing API contract.
 
+## Testing Step 7 follow-up — assignment-aware timetable creation
+
+- Timetable creation now derives selectable classes, subjects, and teachers from existing Teacher Assignments in the selected academic year.
+- Selecting a class shows only subjects actually assigned in that class; selecting a subject shows only the teacher assigned to that exact class+subject slot.
+- This prevents the Admin UI from constructing a filled but invalid Class + Subject + Teacher combination that the API would reject.
+- Class duration is positioned immediately after the Teacher selector, while end time remains calculated automatically from start time + duration.
+
