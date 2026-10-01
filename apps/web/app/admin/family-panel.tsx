@@ -175,8 +175,9 @@ async function buildAccountPdf(
   const canvas = document.createElement("canvas");
   canvas.width = 1240;
   canvas.height = 1754;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("PDF canvas is unavailable.");
+  const maybeContext = canvas.getContext("2d");
+  if (!maybeContext) throw new Error("PDF canvas is unavailable.");
+  const context: CanvasRenderingContext2D = maybeContext;
 
   const pageWidth = canvas.width;
   const margin = 96;
