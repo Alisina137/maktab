@@ -671,14 +671,16 @@ export function AcademicPanel({
         />
       </AcademicForm>
 
-      <EntityList
-        title={t("Timetable periods")}
-        rows={selectedTimetable.map((item) => ({
-          id: item.id,
-          title: (classMap.get(item.classId)?.name ?? t("Class")) + " · " + (subjectMap.get(item.subjectId)?.name ?? t("Subject")),
-          detail: (teacherMap.get(item.teacherUserId)?.fullName ?? t("Teacher")) + " · " + t(item.weekday) + " · " + item.startsAt + "–" + item.endsAt,
-          action: selectedYearMutable ? <CrudActions t={t} busy={busy} onEdit={() => beginEdit(item.id)} onDelete={() => void remove("/v1/admin/academics/timetable/" + item.id, "Delete timetable period", "Timetable period deleted.")} /> : undefined
-        }))}
+      <TimetablePeriodList
+        timetable={selectedTimetable}
+        teachers={overview.teachers}
+        classes={selectedClasses}
+        subjects={overview.subjects}
+        locale={locale}
+        busy={busy}
+        mutable={selectedYearMutable}
+        onEdit={beginEdit}
+        onDelete={(periodId) => void remove("/v1/admin/academics/timetable/" + periodId, "Delete timetable period", "Timetable period deleted.")}
       />
 
       <TimetableViews
@@ -1038,23 +1040,17 @@ function TimetablePeriodForm({
   const [duration, setDuration] = useState(() => editing ? minutesBetween(editing.startsAt, editing.endsAt) : 45);
   const endTime = endTimeFromDuration(startTime, duration);
 
-  const assignedClassIds = new Set(assignments.map((assignment) => assignment.classId));
+  const teacherAssignments = teacherUserId
+    ? assignments.filter((assignment) => assignment.teacherUserId === teacherUserId)
+    : [];
+  const assignedClassIds = new Set(teacherAssignments.map((assignment) => assignment.classId));
   const availableClasses = classes.filter((item) => assignedClassIds.has(item.id));
 
-  const classAssignments = classId
-    ? assignments.filter((assignment) => assignment.classId === classId)
+  const classAssignments = teacherUserId && classId
+    ? teacherAssignments.filter((assignment) => assignment.classId === classId)
     : [];
   const assignedSubjectIds = new Set(classAssignments.map((assignment) => assignment.subjectId));
   const availableSubjects = subjects.filter((item) => assignedSubjectIds.has(item.id));
-
-  const matchingAssignments = classId && subjectId
-    ? assignments.filter((assignment) =>
-        assignment.classId === classId &&
-        assignment.subjectId === subjectId
-      )
-    : [];
-  const matchingTeacherIds = new Set(matchingAssignments.map((assignment) => assignment.teacherUserId));
-  const availableTeachers = teachers.filter((item) => matchingTeacherIds.has(item.userId));
 
   return (
     <form
@@ -1072,16 +1068,30 @@ function TimetablePeriodForm({
           endsAt: endTime
         }).then((succeeded) => {
           if (succeeded && !editing) {
-            setClassId("");
-            setSubjectId("");
-            setTeacherUserId("");
             setStartTime("");
-            setDuration(45);
           }
         });
       }}
     >
       <ReadOnlyYear year={year} locale={locale} />
+      <ControlledSelect
+        name="teacherUserId"
+        label={t("Teacher")}
+        items={teachers.map((item) => [item.userId, item.fullName])}
+        value={teacherUserId}
+        onChange={(next) => {
+          setTeacherUserId(next);
+          setClassId("");
+          setSubjectId("");
+        }}
+        disabled={!mutable}
+      />
+      <label>
+        {t("Class duration")}
+        <select value={String(duration)} onChange={(event) => setDuration(Number(event.target.value))} disabled={!mutable}>
+          {timetableDurations.map((minutes) => <option key={minutes} value={minutes}>{minutes} {t("minutes")}</option>)}
+        </select>
+      </label>
       <ControlledSelect
         name="classId"
         label={t("Class")}
@@ -1090,37 +1100,19 @@ function TimetablePeriodForm({
         onChange={(next) => {
           setClassId(next);
           setSubjectId("");
-          setTeacherUserId("");
         }}
-        disabled={!mutable}
+        disabled={!mutable || !teacherUserId}
       />
       <ControlledSelect
         name="subjectId"
         label={t("Subject")}
         items={availableSubjects.map((item) => [item.id, item.name])}
         value={subjectId}
-        onChange={(next) => {
-          setSubjectId(next);
-          setTeacherUserId("");
-        }}
-        disabled={!mutable || !classId}
+        onChange={setSubjectId}
+        disabled={!mutable || !teacherUserId || !classId}
       />
-      <ControlledSelect
-        name="teacherUserId"
-        label={t("Teacher")}
-        items={availableTeachers.map((item) => [item.userId, item.fullName])}
-        value={teacherUserId}
-        onChange={setTeacherUserId}
-        disabled={!mutable || !subjectId}
-      />
-      <label>
-        {t("Class duration")}
-        <select value={String(duration)} onChange={(event) => setDuration(Number(event.target.value))} disabled={!mutable}>
-          {timetableDurations.map((minutes) => <option key={minutes} value={minutes}>{minutes} {t("minutes")}</option>)}
-        </select>
-      </label>
       <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} defaultValue={editing?.weekday ?? ""} disabled={!mutable} />
-      <p className="admin-form-help">{t("Timetable choices follow existing teacher assignments for the selected academic year.")}</p>
+      <p className="admin-form-help">{t("Choose a teacher first. Class and subject options then follow that teacher's assignments for this academic year.")}</p>
       <label>
         {t("Starts")}
         <input name="startsAt" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required disabled={!mutable} />
@@ -1146,6 +1138,149 @@ function TimetablePeriodForm({
         onCancel={onCancel}
       />
     </form>
+  );
+}
+
+
+function TimetablePeriodList({
+  timetable,
+  teachers,
+  classes,
+  subjects,
+  locale,
+  busy,
+  mutable,
+  onEdit,
+  onDelete
+}: {
+  timetable: TimetablePeriod[];
+  teachers: Teacher[];
+  classes: ClassSection[];
+  subjects: Subject[];
+  locale: AdminLocale;
+  busy: boolean;
+  mutable: boolean;
+  onEdit: (periodId: string) => void;
+  onDelete: (periodId: string) => void;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const [teacherFilter, setTeacherFilter] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [weekdayFilter, setWeekdayFilter] = useState("");
+  const [timeFilter, setTimeFilter] = useState("");
+
+  const teacherMap = useMemo(() => new Map(teachers.map((item) => [item.userId, item.fullName])), [teachers]);
+  const classMap = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
+  const subjectMap = useMemo(() => new Map(subjects.map((item) => [item.id, item.name])), [subjects]);
+
+  const teacherIds = new Set(timetable.map((item) => item.teacherUserId));
+  const classIds = new Set(timetable.map((item) => item.classId));
+  const subjectIds = new Set(timetable.map((item) => item.subjectId));
+  const weekdays = schoolWeekdays.filter((day) => timetable.some((item) => item.weekday === day));
+  const times = Array.from(new Set(timetable.map((item) => item.startsAt + "|" + item.endsAt))).sort();
+
+  const filtered = timetable.filter((item) =>
+    (!teacherFilter || item.teacherUserId === teacherFilter) &&
+    (!classFilter || item.classId === classFilter) &&
+    (!subjectFilter || item.subjectId === subjectFilter) &&
+    (!weekdayFilter || item.weekday === weekdayFilter) &&
+    (!timeFilter || item.startsAt + "|" + item.endsAt === timeFilter)
+  );
+
+  const hasFilters = Boolean(teacherFilter || classFilter || subjectFilter || weekdayFilter || timeFilter);
+
+  function clearFilters() {
+    setTeacherFilter("");
+    setClassFilter("");
+    setSubjectFilter("");
+    setWeekdayFilter("");
+    setTimeFilter("");
+  }
+
+  return (
+    <article className="admin-panel academic-list-panel academic-timetable-list">
+      <div className="admin-section-header">
+        <div>
+          <h2>{t("Timetable periods")}</h2>
+          <p>{filtered.length} / {timetable.length}</p>
+        </div>
+        <button
+          type="button"
+          className="admin-secondary academic-filter-clear"
+          onClick={clearFilters}
+          disabled={!hasFilters}
+          data-admin-no-loading="true"
+        >
+          {t("Clear filters")}
+        </button>
+      </div>
+
+      <div className="academic-timetable-filters" aria-label={t("Timetable filters")}>
+        <label>
+          <span>{t("Teacher")}</span>
+          <select value={teacherFilter} onChange={(event) => setTeacherFilter(event.target.value)}>
+            <option value="">{t("All teachers")}</option>
+            {teachers.filter((item) => teacherIds.has(item.userId)).map((item) => (
+              <option key={item.userId} value={item.userId}>{item.fullName}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t("Class")}</span>
+          <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+            <option value="">{t("All classes")}</option>
+            {classes.filter((item) => classIds.has(item.id)).map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t("Subject")}</span>
+          <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
+            <option value="">{t("All subjects")}</option>
+            {subjects.filter((item) => subjectIds.has(item.id)).map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t("Weekday")}</span>
+          <select value={weekdayFilter} onChange={(event) => setWeekdayFilter(event.target.value)}>
+            <option value="">{t("All weekdays")}</option>
+            {weekdays.map((day) => <option key={day} value={day}>{t(day)}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>{t("Time")}</span>
+          <select value={timeFilter} onChange={(event) => setTimeFilter(event.target.value)}>
+            <option value="">{t("All times")}</option>
+            {times.map((value) => {
+              const [start, end] = value.split("|");
+              return <option key={value} value={value}>{start}–{end}</option>;
+            })}
+          </select>
+        </label>
+      </div>
+
+      <div className="academic-rows academic-timetable-list-rows">
+        {filtered.map((item) => (
+          <div className="academic-row" key={item.id}>
+            <div>
+              <strong>{(classMap.get(item.classId) ?? t("Class")) + " · " + (subjectMap.get(item.subjectId) ?? t("Subject"))}</strong>
+              <span>{(teacherMap.get(item.teacherUserId) ?? t("Teacher")) + " · " + t(item.weekday) + " · " + item.startsAt + "–" + item.endsAt}</span>
+            </div>
+            {mutable ? (
+              <div className="admin-actions">
+                <button disabled={busy} onClick={() => onEdit(item.id)}>{t("Edit")}</button>
+                <button className="admin-danger" disabled={busy} onClick={() => onDelete(item.id)}>{t("Delete")}</button>
+              </div>
+            ) : null}
+          </div>
+        ))}
+        {filtered.length === 0 ? <p className="admin-copy">{t("No timetable periods match the selected filters.")}</p> : null}
+      </div>
+    </article>
   );
 }
 
