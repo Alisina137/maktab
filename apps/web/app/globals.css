@@ -954,23 +954,40 @@ footer {
 }
 
 .family-account-preview {
+  width: min(100%, 980px);
+  justify-self: center;
   display: grid;
-  gap: 18px;
-  padding: 22px;
-  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 24%, var(--ml-color-border));
-  border-radius: 20px;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 28%, var(--ml-color-border));
+  border-radius: 22px;
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--ml-color-brand) 5%, var(--ml-color-surface)), var(--ml-color-surface));
+    radial-gradient(circle at top right, color-mix(in srgb, var(--ml-color-brand) 9%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--ml-color-brand) 4%, var(--ml-color-surface)), var(--ml-color-surface));
   box-shadow:
-    0 1px 2px color-mix(in srgb, var(--ml-color-text) 4%, transparent),
-    0 18px 40px color-mix(in srgb, var(--ml-color-brand) 10%, transparent);
+    0 2px 5px color-mix(in srgb, var(--ml-color-text) 5%, transparent),
+    0 24px 54px color-mix(in srgb, var(--ml-color-brand) 11%, transparent);
 }
 
-.family-account-preview-header {
+/* The legacy credential card styles turn every nested div into a two-column grid.
+   Reset that behavior for the richer Parent/Student account preview. */
+.credential-card.family-account-preview div {
+  display: block;
+  grid-template-columns: none;
+}
+
+.credential-card.family-account-preview .family-account-preview-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ml-color-border) 84%, var(--ml-color-brand) 16%);
+}
+
+.family-account-preview-header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .family-account-preview-header h2 {
@@ -986,27 +1003,39 @@ footer {
   line-height: 1.6;
 }
 
-.family-account-preview-actions {
+.credential-card.family-account-preview .family-account-preview-actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
 }
 
-.family-account-preview-grid {
+.family-account-preview-actions button {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  min-height: 38px;
+  padding-inline: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.credential-card.family-account-preview .family-account-preview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 14px;
 }
 
-.family-account-preview-grid > div {
+.credential-card.family-account-preview .family-account-preview-grid > div {
   min-width: 0;
   display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-  border: 1px solid var(--ml-color-border);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--ml-color-surface) 92%, var(--ml-color-brand) 8%);
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-border) 88%, var(--ml-color-brand) 12%);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--ml-color-surface) 94%, var(--ml-color-brand) 6%);
 }
 
 .family-account-preview-grid span {
@@ -1019,10 +1048,22 @@ footer {
 
 .family-account-preview-grid strong,
 .family-account-preview-grid code {
-  overflow-wrap: anywhere;
+  width: 100%;
+  min-width: 0;
   color: var(--ml-color-text);
   font-size: 16px;
   font-weight: 800;
+  line-height: 1.45;
+}
+
+.family-account-preview-grid strong[dir="ltr"],
+.family-account-preview-grid code[dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .family-account-preview-password {
@@ -1039,13 +1080,14 @@ footer {
   letter-spacing: .04em;
 }
 
-.family-account-preview-note {
+.credential-card.family-account-preview .family-account-preview-note {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, #f4b740 11%, var(--ml-color-surface));
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, #f4b740 22%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, #f4b740 10%, var(--ml-color-surface));
   color: var(--ml-color-text);
   line-height: 1.55;
 }
@@ -1204,6 +1246,12 @@ footer {
 
   .family-account-preview-actions {
     justify-content: flex-start;
+  }
+
+  .family-account-preview-actions button {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
   }
 
   .family-account-preview-password {
