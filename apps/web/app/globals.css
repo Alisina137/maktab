@@ -1002,6 +1002,7 @@ footer {
 .family-account-layout {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
   align-items: start;
   gap: 18px;
 }
@@ -1009,13 +1010,30 @@ footer {
 .family-account-column {
   min-width: 0;
   display: grid;
+  grid-row: 1 / span 2;
+  grid-template-rows: subgrid;
   gap: 18px;
-  align-content: start;
+}
+
+.family-account-column:first-child {
+  grid-column: 1;
+}
+
+.family-account-column:last-child {
+  grid-column: 2;
 }
 
 .family-account-column > .academic-form-card,
 .family-account-column > .academic-list-panel {
   min-width: 0;
+}
+
+.family-account-column > .academic-form-card {
+  align-self: stretch;
+  height: 100%;
+}
+
+.family-account-column > .academic-list-panel {
   align-self: start;
 }
 
