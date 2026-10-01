@@ -69,6 +69,7 @@ export interface FamilyStore {
     schoolId: string,
     input: CreateParentAccountInput & { passwordHash: string }
   ): Promise<{ user: User; profile: ParentProfile }>;
+  deleteParentAccount(schoolId: string, parentUserId: string): Promise<void>;
   createStudentAccount(
     schoolId: string,
     studentId: string,
@@ -284,6 +285,23 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         if (isUniqueError(error)) throw new FamilyConflictError("That username already exists in this school.");
         throw error;
       }
+    },
+
+    async deleteParentAccount(schoolId, parentUserId) {
+      await getParent(schoolId, parentUserId);
+      const [linkedStudent] = await db
+        .select({ id: students.id })
+        .from(students)
+        .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, parentUserId)))
+        .limit(1);
+
+      if (linkedStudent) {
+        throw new FamilyConflictError("This parent cannot be deleted because students are linked to the account.");
+      }
+
+      await db
+        .delete(users)
+        .where(and(eq(users.schoolId, schoolId), eq(users.id, parentUserId)));
     },
 
     async createStudentAccount(schoolId, studentId, input) {
