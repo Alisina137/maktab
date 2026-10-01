@@ -693,3 +693,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - This prevents the Admin UI from constructing a filled but invalid Class + Subject + Teacher combination that the API would reject.
 - Class duration is positioned immediately after the Teacher selector, while end time remains calculated automatically from start time + duration.
 
+## Testing Step 7 timetable refinement — teacher-first creation, persistent form, filters, and premium feedback
+
+- Timetable creation now shows all teacher profiles first. After a teacher is selected, the Class and Subject selectors are constrained to that teacher's assignments for the selected academic year, preserving assignment validity without hiding other teachers from the Teacher selector.
+- After a successful timetable creation, Teacher, Class, Subject, Duration, and Weekday remain selected; only Start Time is cleared so the administrator can enter the next period quickly.
+- The timetable list panel is capped at 600px height and scrolls internally when more periods are present.
+- Added combinable timetable-list filters for Teacher, Class, Subject, Weekday, and Time. Each selector only contains values that exist in the current timetable list, with a single Clear filters action.
+- Upgraded global async-button feedback with a blue luminous sweep, blue glow, inline spinner, and reduced-motion fallback while retaining the button label during processing.
+
