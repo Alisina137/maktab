@@ -186,6 +186,27 @@ export function registerFamilyRoutes(
     }
   });
 
+  app.delete<{ Params: { studentId: string } }>(
+    "/v1/admin/families/students/:studentId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        await families.deleteStudent(context.user.schoolId, request.params.studentId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "student.deleted",
+          entityType: "student",
+          entityId: request.params.studentId
+        });
+        return reply.code(204).send();
+      } catch (error) {
+        return sendFamilyError(reply, error);
+      }
+    }
+  );
+
   app.patch<{ Params: { studentId: string } }>(
     "/v1/admin/families/students/:studentId",
     async (request, reply) => {
