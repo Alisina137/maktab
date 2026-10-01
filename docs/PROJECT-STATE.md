@@ -729,3 +729,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Add Student parent selection now shows usernames only and includes a username search field for large parent lists.
 - Added API coverage for invalid family usernames, duplicate usernames, deletion of an unlinked parent, and rejection of deletion when a student is linked.
 
+## Testing Step 8 follow-up — student credential creation lifecycle
+
+- Fixed student credential creation showing success and error feedback at the same time when the credential POST succeeded but the follow-up Families refresh failed.
+- A successful student-account response now updates the linked student optimistically in both the current student list and enrollment view before performing a silent refresh.
+- Follow-up refresh failures after successful credential creation no longer overwrite the successful result or hide the one-time temporary password with an unrelated load error.
+- The Create student credential button now owns an explicit request-bound pending state and opts out of the generic Admin click loader.
+- Its premium loading treatment starts when account creation begins and is always cleared in the request finally block, even though the form becomes disabled afterward because the selected student is cleared.
+
