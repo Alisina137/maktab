@@ -73,6 +73,7 @@ button:disabled {
 .admin-workspace button[data-admin-pending="true"]:disabled::after {
   content: "";
   position: absolute;
+  z-index: 2;
   top: 50%;
   inset-inline-end: 12px;
   width: 16px;
@@ -89,7 +90,7 @@ button:disabled {
 .admin-workspace button[data-admin-pending="true"]:disabled::before {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   top: -45%;
   bottom: -45%;
   left: -42%;
