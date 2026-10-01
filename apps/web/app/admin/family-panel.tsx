@@ -1212,18 +1212,20 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <div className="family-add-student-layout">
       <article className="admin-panel academic-form-card family-add-student-card">
         <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
-        <form className="admin-form" onSubmit={createStudent}>
-          <label>
-            {t("Student code")}
-            <input
-              name="studentCode"
-              value={studentCode}
-              onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
-              placeholder="S-0001"
-              required
-            />
-          </label>
-          <p className="admin-form-help">{t("The lowest available student code is suggested automatically. You can change it if needed.")}</p>
+        <form className="admin-form family-add-student-form" onSubmit={createStudent}>
+          <div className="family-add-student-field">
+            <label>
+              {t("Student code")}
+              <input
+                name="studentCode"
+                value={studentCode}
+                onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
+                placeholder="S-0001"
+                required
+              />
+            </label>
+            <p className="admin-form-help">{t("The lowest available student code is suggested automatically. You can change it if needed.")}</p>
+          </div>
           <label>{t("Full name")}<input name="fullName" placeholder={t("Student full name")} required /></label>
           <label>
             {t("Search parent username")}
