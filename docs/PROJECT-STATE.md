@@ -879,3 +879,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Refined the Bulk Import controls into a clearer grouped surface and strengthened the custom file-picker card.
 - The import file picker now has a larger upload/status icon, clearer hover/focus treatment, a more prominent Browse action, and a distinct selected-file state with a check mark once a file is chosen.
 - Import parsing, column mapping, validation, confirmation, credential preview, and account creation behavior remain unchanged.
+
+
+### Step 9.7 Bulk-import credential parity — Step 9 complete
+- Parent, Teacher, and Student bulk imports now follow the same credential lifecycle: validate mapped data, generate a one-time temporary password, create the school-issued login account, require password change on first login, and return credentials only after a successful transactional import.
+- Student bulk import now requires a username and supports an optional phone number in addition to student code, full name, parent username, academic year, and class.
+- Student username validation uses the same school-controlled username rules as manual Student account creation and rejects usernames that already exist in the school or are duplicated inside the import file.
+- Student account creation and student-record creation occur in the same database transaction, so a failed batch cannot leave an orphan Student account or a Student record without its intended imported login.
+- Parent, Teacher, and Student bulk imports now all use the same rich queued account-credential preview instead of mixing rich previews with the legacy raw credential block.
+- Every imported account preview shows account type, username, full name, phone (or Not provided), and temporary password; each preview supports Export as PDF, automatic PDF export, protected Close confirmation, and batch position such as 1 / 3.
+- Teacher credential previews now have localized Dari and Pashto account-type labels.
+- Added API regression coverage proving that imported Parent, Teacher, and Student credentials are generated, can authenticate with the correct role, and that imported Student accounts are linked to their Student record. Duplicate Student import usernames are also explicitly rejected.
+- With CSV/XLSX parsing, mapping, validation, duplicate/error handling, preview, confirmation, transactional import, and credential generation now covered consistently across all three entity types, Testing Step 9 is complete.
