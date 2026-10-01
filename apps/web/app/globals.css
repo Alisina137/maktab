@@ -953,6 +953,14 @@ footer {
   align-self: start;
 }
 
+.family-section .academic-data-grid .admin-actions button {
+  min-height: 34px;
+  padding-inline: 9px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
 .family-import-panel {
   display: grid;
   gap: 18px;
