@@ -459,13 +459,9 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           .limit(1)
       ]);
 
-      const dependencies: string[] = [];
-      if (attendance[0]) dependencies.push("attendance");
-      if (grade[0]) dependencies.push("grades");
-      if (invoice[0]) dependencies.push("fees");
-      if (dependencies.length > 0) {
+      if (attendance[0] || grade[0] || invoice[0]) {
         throw new FamilyConflictError(
-          `This student cannot be deleted because data is linked: ${dependencies.join(", ")}.`
+          "This student cannot be deleted because attendance, grade, or fee data is linked to the student."
         );
       }
 
