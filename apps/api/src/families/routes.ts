@@ -4,6 +4,7 @@ import {
   createParentAccountSchema,
   createStudentAccountSchema,
   createStudentSchema,
+  studentImportRowSchema,
   teacherImportRowSchema,
   updateStudentSchema,
   type BulkImportEntity
@@ -347,6 +348,8 @@ export function registerFamilyRoutes(
             continue;
           }
 
+          const username = mapped(source, input.mapping, "username");
+          const phone = mapped(source, input.mapping, "phone") || undefined;
           const studentCode = mapped(source, input.mapping, "studentCode").toUpperCase();
           const fullName = mapped(source, input.mapping, "fullName");
           const parentUsername = mapped(source, input.mapping, "parentUsername").toLowerCase();
@@ -376,20 +379,30 @@ export function registerFamilyRoutes(
             continue;
           }
 
-          const parsed = createStudentSchema.parse({
+          const parsed = studentImportRowSchema.parse({
+            username,
+            phone,
             parentUserId: parent.user.id,
             studentCode,
             fullName,
             academicYearId: year.id,
             classId: classSection.id
           });
+          const usernameKey = parsed.username.toLowerCase();
           const codeKey = parsed.studentCode.toUpperCase();
+          if (existingUsernames.has(usernameKey) || seenUsernames.has(usernameKey)) {
+            errors.push({ row: rowNumber, field: "username", message: "Username already exists or is duplicated in this file." });
+            continue;
+          }
           if (existingStudentCodes.has(codeKey) || seenStudentCodes.has(codeKey)) {
             errors.push({ row: rowNumber, field: "studentCode", message: "Student code already exists or is duplicated in this file." });
             continue;
           }
+          seenUsernames.add(usernameKey);
           seenStudentCodes.add(codeKey);
           normalizedRows.push({
+            username: parsed.username,
+            phone: parsed.phone ?? "",
             parentUserId: parsed.parentUserId,
             studentCode: parsed.studentCode,
             fullName: parsed.fullName,
@@ -446,8 +459,13 @@ export function registerFamilyRoutes(
         }));
         importedCount = (await families.importTeachers(context.user.schoolId, prepared)).length;
       } else {
-        const rows = z.array(createStudentSchema).parse(input.rows);
-        importedCount = (await families.importStudents(context.user.schoolId, rows)).length;
+        const rows = z.array(studentImportRowSchema).parse(input.rows);
+        const prepared = await Promise.all(rows.map(async (row) => {
+          const temporaryPassword = generateTemporaryPassword();
+          credentials.push({ username: row.username, temporaryPassword });
+          return { ...row, passwordHash: await hashPassword(temporaryPassword) };
+        }));
+        importedCount = (await families.importStudents(context.user.schoolId, prepared)).length;
       }
 
       await accounts.writeAudit({
