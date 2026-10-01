@@ -819,11 +819,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Its existing fixed full-viewport backdrop now centers the dialog in the user's current viewport rather than relative to the transformed Families page container.
 - Clicking Close therefore shows the confirmation immediately in the visible center even when the administrator has scrolled far down the page.
 
-### Step 8 family list four-row scrolling
-- Parent and Student lists now remain natural-height through four records.
-- When a list contains more than four records, its maximum height is measured from the actual first four rendered rows and the list becomes vertically scrollable.
-- The measured approach preserves four visible rows even when Parent/Student row heights differ or change responsively.
-- Scrolling is scoped only to these two Families lists and uses a compact custom scrollbar.
+### Step 8 family list fixed-height scrolling
+- Parent and Student lists remain natural-height through four filtered records.
+- When a filtered list contains more than four records, the list switches to a fixed 550px height with vertical scrolling.
+- Removed the previous row-measurement/ResizeObserver logic; the fixed-height rule is simpler and deterministic.
+- Scrolling remains scoped only to these two Families lists and uses the existing compact scrollbar styling.
 
 ### Step 8 timetable-style Parent/Student list filters
 - Reused the Academic Timetable filter interaction pattern for both Families lists: filtered/total count, dropdown filter panel, and Clear filters action.
