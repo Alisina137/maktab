@@ -1639,7 +1639,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
           <div className="family-import-file-field">
             <span className="family-import-field-label">{t("CSV or XLSX file")}</span>
-            <label className="family-import-file-picker">
+            <label className={`family-import-file-picker${importFileName ? " family-import-file-picker-selected" : ""}`}>
               <input
                 className="family-import-file-input"
                 type="file"
@@ -1647,7 +1647,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 onChange={(event) => void selectImportFile(event.target.files?.[0])}
                 disabled={busy}
               />
-              <span className="family-import-file-icon" aria-hidden="true">↑</span>
+              <span className="family-import-file-icon" aria-hidden="true">{importFileName ? "✓" : "↑"}</span>
               <span className="family-import-file-copy">
                 <strong>{t("Choose import file")}</strong>
                 <span>{importFileName || t("CSV, TSV or XLSX")}</span>
