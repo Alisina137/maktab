@@ -3567,4 +3567,36 @@ test("bulk import creates login credentials consistently for parents, teachers, 
   assert.equal(importedStudent.user?.username, "bulkstudent1");
   assert.equal(importedStudent.user?.role, "STUDENT");
   assert.equal(importedStudent.user?.mustChangePassword, true);
+
+  const duplicateStudentUsername = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/import/validate",
+    headers: auth,
+    payload: {
+      entityType: "STUDENT",
+      rows: [{
+        username: "bulkstudent1",
+        studentCode: "S-BULK-2",
+        fullName: "Second Bulk Student",
+        parentUsername: "bulkparent1",
+        academicYear: "1405",
+        classCode: "9A"
+      }],
+      mapping: {
+        username: "username",
+        studentCode: "studentCode",
+        fullName: "fullName",
+        parentUsername: "parentUsername",
+        academicYear: "academicYear",
+        classCode: "classCode"
+      }
+    }
+  });
+  assert.equal(duplicateStudentUsername.statusCode, 200);
+  const duplicateBody = duplicateStudentUsername.json<{
+    valid: boolean;
+    errors: Array<{ field?: string; message: string }>;
+  }>();
+  assert.equal(duplicateBody.valid, false);
+  assert.ok(duplicateBody.errors.some((item) => item.field === "username"));
 });
