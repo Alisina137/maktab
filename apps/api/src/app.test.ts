@@ -1414,6 +1414,37 @@ test("family usernames are alphanumeric and empty parents can be deleted safely"
   assert.equal(studentResponse.statusCode, 201);
   const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
 
+  const duplicateStudentCode = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: auth,
+    payload: {
+      parentUserId: linkedParent.user.id,
+      studentCode: "S-0001",
+      fullName: "Duplicate Code Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  assert.equal(duplicateStudentCode.statusCode, 409);
+  assert.equal(
+    duplicateStudentCode.json<{ message: string }>().message,
+    "That student code already exists in this school."
+  );
+
+  const overviewAfterDuplicateStudent = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(overviewAfterDuplicateStudent.statusCode, 200);
+  assert.equal(
+    overviewAfterDuplicateStudent
+      .json<{ students: Array<{ student: { studentCode: string } }> }>()
+      .students.filter((item) => item.student.studentCode === "S-0001").length,
+    1
+  );
+
   const invalidStudentUsername = await app.inject({
     method: "POST",
     url: `/v1/admin/families/students/${studentId}/account`,
