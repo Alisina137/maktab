@@ -833,3 +833,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The existing four-visible-row scroll cap now measures and scrolls the filtered result set rather than the unfiltered list.
 - Filter labels and empty states are localized for Dari and Pashto.
 
+### Step 8 family username filters
+- Added case-insensitive partial username search to the Parent list filters.
+- Added case-insensitive partial username search to the Student list filters.
+- Removed the Student login-status filter and its derived option/state logic.
+- Student rows without a login remain visible when username search is empty and are excluded only when a username query is entered.
+- Username search inputs reuse the Academic Timetable filter styling, Clear filters behavior, filtered/total counts, and the existing 550px scroll rule for filtered results over four items.
+
