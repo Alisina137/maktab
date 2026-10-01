@@ -159,6 +159,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   const [studentYearId, setStudentYearId] = useState("");
   const [studentAccountId, setStudentAccountId] = useState("");
+  const [studentAccountSubmitting, setStudentAccountSubmitting] = useState(false);
   const [studentCode, setStudentCode] = useState("");
   const [parentSearch, setParentSearch] = useState("");
   const [selectedParentUserId, setSelectedParentUserId] = useState("");
@@ -227,8 +228,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     if (!studentCode && overview) setStudentCode(suggestedStudentCode);
   }, [overview, studentCode, suggestedStudentCode]);
 
-  async function load(): Promise<FamilyOverview | null> {
-    setError("");
+  async function load(options?: { silentFeedback?: boolean }): Promise<FamilyOverview | null> {
+    if (!options?.silentFeedback) setError("");
     try {
       const [familyData, academicData] = await Promise.all([
         request<FamilyOverview>(accessToken, "/v1/admin/families"),
@@ -245,7 +246,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       );
       return familyData;
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not load family data."));
+      if (!options?.silentFeedback) {
+        setError(adminErrorText(locale, cause, "Could not load family data."));
+      }
       return null;
     }
   }
@@ -317,33 +320,62 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   async function createStudentAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!studentAccountId) return;
+    if (!studentAccountId || studentAccountSubmitting) return;
+
+    const targetStudentId = studentAccountId;
     setBusy(true);
+    setStudentAccountSubmitting(true);
     setError("");
     setNotice("");
     setCredentials([]);
     const form = new FormData(event.currentTarget);
+
     try {
-      const result = await request<{ user: User; temporaryPassword: string }>(
+      const result = await request<{ user: User; student: StudentRow["student"]; temporaryPassword: string }>(
         accessToken,
-        `/v1/admin/families/students/${studentAccountId}/account`,
+        `/v1/admin/families/students/${targetStudentId}/account`,
         {
           method: "POST",
           body: JSON.stringify({ username: String(form.get("username") ?? "").trim() })
         }
       );
+
+      setOverview((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          students: current.students.map((item) =>
+            item.student.id === targetStudentId
+              ? { ...item, student: { ...item.student, userId: result.user.id } }
+              : item
+          ),
+          enrollments: current.enrollments.map((item) =>
+            item.student.id === targetStudentId
+              ? { ...item, student: { ...item.student, userId: result.user.id } }
+              : item
+          )
+        };
+      });
+
+      setError("");
       setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
       setNotice(t("Student login created and linked to exactly one student record."));
       setStudentAccountId("");
       event.currentTarget.reset();
-      await load();
+
+      // The credential creation is already complete. Refresh quietly so a
+      // follow-up read failure never turns a successful create into a mixed
+      // success/error state or hides the one-time credential.
+      await load({ silentFeedback: true });
     } catch (cause) {
+      setNotice("");
       if (isDuplicateUsernameError(cause)) {
         setUsernamePopup(t("This username already exists. Please type another username."));
       } else {
         setError(adminErrorText(locale, cause, "Could not create student account."));
       }
     } finally {
+      setStudentAccountSubmitting(false);
       setBusy(false);
     }
   }
@@ -673,7 +705,15 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               />
             </label>
             <p className="admin-form-help">{t("Only English letters and digits are allowed. Spaces and special characters are not allowed.")}</p>
-            <button className="admin-primary" disabled={busy || !studentAccountId}>{t("Create student credential")}</button>
+            <button
+              className="admin-primary"
+              disabled={busy || !studentAccountId}
+              data-admin-no-loading="true"
+              data-admin-pending={studentAccountSubmitting ? "true" : undefined}
+              aria-busy={studentAccountSubmitting || undefined}
+            >
+              {t("Create student credential")}
+            </button>
           </form>
         </article>
       </div>
