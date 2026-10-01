@@ -1,7 +1,7 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
@@ -330,6 +330,52 @@ function isDuplicateUsernameError(cause: unknown) {
   return cause instanceof Error && cause.message === "This username already exists. Please type another username.";
 }
 
+function useFiveVisibleRows(count: number) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const container = ref.current;
+    if (!container) return;
+
+    function updateHeight() {
+      if (count <= 5) {
+        container.style.removeProperty("--family-list-max-height");
+        return;
+      }
+
+      const rows = Array.from(container.children).filter(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && child.classList.contains("academic-row")
+      );
+      const fifthRow = rows[4];
+      if (!fifthRow) return;
+
+      const containerTop = container.getBoundingClientRect().top;
+      const fifthBottom = fifthRow.getBoundingClientRect().bottom;
+      container.style.setProperty(
+        "--family-list-max-height",
+        `${Math.ceil(fifthBottom - containerTop)}px`
+      );
+    }
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(container);
+    for (const child of Array.from(container.children).slice(0, 5)) {
+      if (child instanceof HTMLElement) observer.observe(child);
+    }
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [count]);
+
+  return ref;
+}
+
 async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
@@ -422,6 +468,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       a.student.fullName.localeCompare(b.student.fullName)
     );
   }, [overview, selectedAcademicYearId]);
+
+  const parentRowsRef = useFiveVisibleRows(overview?.parents.length ?? 0);
+  const studentRowsRef = useFiveVisibleRows(selectedYearStudents.length);
 
   const selectedYearMutable =
     selectedAcademicYear?.status === "DRAFT" || selectedAcademicYear?.status === "ACTIVE";
@@ -1271,7 +1320,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div className="admin-section-header">
             <div><h2>{t("Parents")}</h2><p>{adminFormat(locale, "{count} school-controlled family account(s)", { count: overview.parents.length })}</p></div>
           </div>
-          <div className="academic-rows">
+          <div
+            ref={parentRowsRef}
+            className={`academic-rows family-list-rows ${overview.parents.length > 5 ? "family-list-scroll" : ""}`}
+          >
             {overview.parents.map((parent) => (
               <div className="academic-row" key={parent.user.id}>
                 <div>
@@ -1307,7 +1359,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div className="admin-section-header">
             <div><h2>{t("Students")}</h2><p>{adminFormat(locale, "{count} student record(s)", { count: selectedYearStudents.length })}</p></div>
           </div>
-          <div className="academic-rows">
+          <div
+            ref={studentRowsRef}
+            className={`academic-rows family-list-rows ${selectedYearStudents.length > 5 ? "family-list-scroll" : ""}`}
+          >
             {selectedYearStudents.map((item) => {
               const parent = parentMap.get(item.student.parentUserId);
               return (
