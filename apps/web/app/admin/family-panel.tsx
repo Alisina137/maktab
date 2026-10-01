@@ -330,7 +330,7 @@ function isDuplicateUsernameError(cause: unknown) {
   return cause instanceof Error && cause.message === "This username already exists. Please type another username.";
 }
 
-function useFiveVisibleRows(count: number) {
+function useFourVisibleRows(count: number) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -339,7 +339,7 @@ function useFiveVisibleRows(count: number) {
     const container: HTMLDivElement = currentContainer;
 
     function updateHeight() {
-      if (count <= 5) {
+      if (count <= 4) {
         container.style.removeProperty("--family-list-max-height");
         return;
       }
@@ -348,14 +348,14 @@ function useFiveVisibleRows(count: number) {
         (child): child is HTMLElement =>
           child instanceof HTMLElement && child.classList.contains("academic-row")
       );
-      const fifthRow = rows[4];
-      if (!fifthRow) return;
+      const fourthRow = rows[3];
+      if (!fourthRow) return;
 
       const containerTop = container.getBoundingClientRect().top;
-      const fifthBottom = fifthRow.getBoundingClientRect().bottom;
+      const fourthBottom = fourthRow.getBoundingClientRect().bottom;
       container.style.setProperty(
         "--family-list-max-height",
-        `${Math.ceil(fifthBottom - containerTop)}px`
+        `${Math.ceil(fourthBottom - containerTop)}px`
       );
     }
 
@@ -363,7 +363,7 @@ function useFiveVisibleRows(count: number) {
 
     const observer = new ResizeObserver(updateHeight);
     observer.observe(container);
-    for (const child of Array.from(container.children).slice(0, 5)) {
+    for (const child of Array.from(container.children).slice(0, 4)) {
       if (child instanceof HTMLElement) observer.observe(child);
     }
     window.addEventListener("resize", updateHeight);
@@ -470,8 +470,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     );
   }, [overview, selectedAcademicYearId]);
 
-  const parentRowsRef = useFiveVisibleRows(overview?.parents.length ?? 0);
-  const studentRowsRef = useFiveVisibleRows(selectedYearStudents.length);
+  const parentRowsRef = useFourVisibleRows(overview?.parents.length ?? 0);
+  const studentRowsRef = useFourVisibleRows(selectedYearStudents.length);
 
   const selectedYearMutable =
     selectedAcademicYear?.status === "DRAFT" || selectedAcademicYear?.status === "ACTIVE";
@@ -1323,7 +1323,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </div>
           <div
             ref={parentRowsRef}
-            className={`academic-rows family-list-rows ${overview.parents.length > 5 ? "family-list-scroll" : ""}`}
+            className={`academic-rows family-list-rows ${overview.parents.length > 4 ? "family-list-scroll" : ""}`}
           >
             {overview.parents.map((parent) => (
               <div className="academic-row" key={parent.user.id}>
@@ -1362,7 +1362,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </div>
           <div
             ref={studentRowsRef}
-            className={`academic-rows family-list-rows ${selectedYearStudents.length > 5 ? "family-list-scroll" : ""}`}
+            className={`academic-rows family-list-rows ${selectedYearStudents.length > 4 ? "family-list-scroll" : ""}`}
           >
             {selectedYearStudents.map((item) => {
               const parent = parentMap.get(item.student.parentUserId);
