@@ -1195,6 +1195,59 @@ footer {
   padding-top: 24px;
 }
 
+.family-feedback-toast-host {
+  position: fixed;
+  top: 86px;
+  inset-inline-end: 22px;
+  z-index: 1300;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.family-feedback-toast {
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  pointer-events: auto;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, .18);
+}
+
+.family-feedback-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.family-feedback-copy strong {
+  font-size: 14px;
+}
+
+.family-feedback-copy p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.family-feedback-dismiss {
+  justify-self: auto !important;
+  min-width: 64px !important;
+  padding-inline: 12px;
+}
+
+.family-feedback-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.family-feedback-actions button {
+  min-height: 34px;
+  padding-inline: 10px;
+  font-size: 12px;
+}
+
+
 .family-feedback-icon {
   width: 42px;
   height: 42px;
@@ -1234,6 +1287,30 @@ footer {
 
 
 @media (max-width: 760px) {
+  .family-feedback-toast-host {
+    top: 72px;
+    inset-inline: 12px;
+    width: auto;
+  }
+
+  .family-feedback-toast {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .family-feedback-dismiss,
+  .family-feedback-actions {
+    grid-column: 1 / -1;
+    justify-self: stretch !important;
+  }
+
+  .family-feedback-dismiss {
+    width: 100%;
+  }
+
+  .family-feedback-actions {
+    justify-content: flex-start;
+  }
+
   .family-summary-grid,
   .family-import-controls,
   .family-mapping-grid,
