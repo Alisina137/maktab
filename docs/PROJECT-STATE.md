@@ -809,3 +809,8 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Moved non-blocking Families success/error toasts from the form-side corner to the same top-center placement used by Academic/Admin feedback.
 - Desktop placement now uses top 24px, centered at 50% viewport width, with the same 620px maximum width convention; mobile uses the same centered behavior with tighter margins.
 
+### Step 8 family toast viewport anchoring
+- Families success/error toasts now render through a React portal directly under `document.body`.
+- This prevents the transformed `.admin-page-enter` animation container from becoming the containing block for `position: fixed`.
+- Toasts are therefore truly fixed to the viewport top-center and remain there regardless of page scroll position.
+
