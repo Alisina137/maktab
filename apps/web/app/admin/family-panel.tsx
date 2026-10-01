@@ -135,7 +135,14 @@ async function request<T>(accessToken: string, path: string, init?: RequestInit)
     headers
   });
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
+  let body: any = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new Error("The school service returned an unreadable response. Please try again.");
+    }
+  }
   if (!response.ok) throw new Error(body?.message ?? "Request failed.");
   return body as T;
 }
@@ -222,6 +229,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     return availableParents.filter((parent) => parent.user.username.toLowerCase().includes(query));
   }, [availableParents, parentSearch]);
 
+  const studentsWithoutLogin = useMemo(
+    () => overview?.students.filter((item) => !item.student.userId && item.student.status === "ACTIVE") ?? [],
+    [overview?.students]
+  );
+
   useEffect(() => {
     void load();
   }, [accessToken]);
@@ -233,6 +245,24 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   useEffect(() => {
     if (!studentCode && overview) setStudentCode(suggestedStudentCode);
   }, [overview, studentCode, suggestedStudentCode]);
+
+  useEffect(() => {
+    if (
+      selectedParentUserId &&
+      !availableParents.some((parent) => parent.user.id === selectedParentUserId)
+    ) {
+      setSelectedParentUserId("");
+    }
+  }, [availableParents, selectedParentUserId]);
+
+  useEffect(() => {
+    if (
+      studentAccountId &&
+      !studentsWithoutLogin.some((item) => item.student.id === studentAccountId)
+    ) {
+      setStudentAccountId("");
+    }
+  }, [studentAccountId, studentsWithoutLogin]);
 
   async function load(options?: { silentFeedback?: boolean }): Promise<FamilyOverview | null> {
     if (!options?.silentFeedback) setError("");
@@ -302,6 +332,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setBusy(true);
     setError("");
     setNotice("");
+    setCredentials([]);
     try {
       const result = await request<{ student: StudentRow["student"] }>(
         accessToken,
@@ -335,7 +366,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     } catch (cause) {
       if (cause instanceof Error && cause.message === "That student code already exists in this school.") {
         const refreshed = await load({ silentFeedback: true });
-        setStudentCode(nextAvailableStudentCode(refreshed?.students ?? overview?.students ?? []));
+        const knownCodes = [
+          ...((refreshed?.students ?? overview?.students ?? []).map((item) => item.student.studentCode)),
+          studentCode.trim()
+        ];
+        setStudentCode(nextAvailableStudentCodeFromValues(knownCodes));
       }
       setNotice("");
       setError(adminErrorText(locale, cause, "Could not create student."));
@@ -782,7 +817,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               {t("Student without login")}
               <select value={studentAccountId} onChange={(event) => setStudentAccountId(event.target.value)} required>
                 <option value="">{t("Select student")}</option>
-                {overview.students.filter((item) => !item.student.userId && item.student.status === "ACTIVE").map((item) => (
+                {studentsWithoutLogin.map((item) => (
                   <option key={item.student.id} value={item.student.id}>{item.student.fullName} · {item.student.studentCode}</option>
                 ))}
               </select>
