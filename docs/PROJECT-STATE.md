@@ -840,3 +840,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Student rows without a login remain visible when username search is empty and are excluded only when a username query is entered.
 - Username search inputs reuse the Academic Timetable filter styling, Clear filters behavior, filtered/total counts, and the existing 550px scroll rule for filtered results over four items.
 
+### Step 8 Families workflow layout
+- Reorganized the Families page without changing Parent/Student business logic.
+- Add Student is now the first form and spans the full available width.
+- Add Student uses a two-column field grid for its six inputs: three field positions per column, with the submit action spanning the form.
+- Parent Account and Student Account forms now sit side by side below Add Student.
+- The Parent list is directly below Parent Account in the same column; the Student list is directly below Student Account in the other column.
+- Existing filters, filtered/total counts, list actions, 550px scrolling for more than four filtered rows, credential previews, and mutation behavior are preserved.
+- On small screens the Add Student field grid and Parent/Student columns collapse to a single column for usability.
+
