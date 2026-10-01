@@ -821,7 +821,7 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 
 ### Step 8 family list fixed-height scrolling
 - Parent and Student lists remain natural-height through four filtered records.
-- When a filtered list contains more than four records, the list switches to a fixed 550px height with vertical scrolling.
+- When a filtered list contains more than four records, the list switches to a fixed 450px height with vertical scrolling.
 - Removed the previous row-measurement/ResizeObserver logic; the fixed-height rule is simpler and deterministic.
 - Scrolling remains scoped only to these two Families lists and uses the existing compact scrollbar styling.
 
@@ -838,7 +838,7 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added case-insensitive partial username search to the Student list filters.
 - Removed the Student login-status filter and its derived option/state logic.
 - Student rows without a login remain visible when username search is empty and are excluded only when a username query is entered.
-- Username search inputs reuse the Academic Timetable filter styling, Clear filters behavior, filtered/total counts, and the existing 550px scroll rule for filtered results over four items.
+- Username search inputs reuse the Academic Timetable filter styling, Clear filters behavior, filtered/total counts, and the existing 450px scroll rule for filtered results over four items.
 
 ### Step 8 Families workflow layout
 - Reorganized the Families page without changing Parent/Student business logic.
@@ -846,7 +846,7 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Add Student uses a two-column field grid for its six inputs: three field positions per column, with the submit action spanning the form.
 - Parent Account and Student Account forms now sit side by side below Add Student.
 - The Parent list is directly below Parent Account in the same column; the Student list is directly below Student Account in the other column.
-- Existing filters, filtered/total counts, list actions, 550px scrolling for more than four filtered rows, credential previews, and mutation behavior are preserved.
+- Existing filters, filtered/total counts, list actions, 450px scrolling for more than four filtered rows, credential previews, and mutation behavior are preserved.
 - On small screens the Add Student field grid and Parent/Student columns collapse to a single column for usability.
 
 ### Step 8 equal Parent/Student account form heights
