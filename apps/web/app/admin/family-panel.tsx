@@ -82,6 +82,18 @@ type AccountCredentialPreview = {
   temporaryPassword: string;
 };
 
+type AccountPdfLabels = {
+  title: string;
+  subtitle: string;
+  username: string;
+  fullName: string;
+  phone: string;
+  temporaryPassword: string;
+  notProvided: string;
+  important: string;
+  note: string;
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const importFields: Record<ImportEntity, Array<{ key: string; label: string; required: boolean; aliases: string[] }>> = {
@@ -104,6 +116,191 @@ const importFields: Record<ImportEntity, Array<{ key: string; label: string; req
     { key: "phone", label: "Phone", required: false, aliases: ["phone", "mobile", "phonenumber"] }
   ]
 };
+
+
+function hasRtlText(value: string) {
+  return /[\u0590-\u08FF]/.test(value);
+}
+
+function concatBytes(parts: Uint8Array[]) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+function jpegPdfBytes(jpeg: Uint8Array, width: number, height: number) {
+  const encode = (value: string) => new TextEncoder().encode(value);
+  const content = "q\n595 0 0 842 0 0 cm\n/Im0 Do\nQ\n";
+  const objects: Uint8Array[] = [
+    encode("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"),
+    encode("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"),
+    encode("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n"),
+    encode(`4 0 obj\n<< /Length ${encode(content).length} >>\nstream\n${content}endstream\nendobj\n`),
+    concatBytes([
+      encode(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`),
+      jpeg,
+      encode("\nendstream\nendobj\n")
+    ])
+  ];
+
+  const header = encode("%PDF-1.4\n%MaktabLink\n");
+  const offsets: number[] = [0];
+  let cursor = header.length;
+  for (const object of objects) {
+    offsets.push(cursor);
+    cursor += object.length;
+  }
+
+  const xrefOffset = cursor;
+  let xref = "xref\n0 6\n0000000000 65535 f \n";
+  for (let index = 1; index <= 5; index += 1) {
+    xref += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+  }
+  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return concatBytes([header, ...objects, encode(xref)]);
+}
+
+async function buildAccountPdf(
+  preview: AccountCredentialPreview,
+  labels: AccountPdfLabels
+) {
+  if (document.fonts?.ready) await document.fonts.ready;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1240;
+  canvas.height = 1754;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("PDF canvas is unavailable.");
+
+  const pageWidth = canvas.width;
+  const margin = 96;
+  const contentWidth = pageWidth - margin * 2;
+
+  function roundedRect(x: number, y: number, width: number, height: number, radius: number) {
+    const r = Math.min(radius, width / 2, height / 2);
+    context.beginPath();
+    context.moveTo(x + r, y);
+    context.lineTo(x + width - r, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + r);
+    context.lineTo(x + width, y + height - r);
+    context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    context.lineTo(x + r, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - r);
+    context.lineTo(x, y + r);
+    context.quadraticCurveTo(x, y, x + r, y);
+    context.closePath();
+  }
+
+  function drawText(
+    value: string,
+    x: number,
+    y: number,
+    options: { size: number; weight?: number; maxWidth?: number; muted?: boolean; monospace?: boolean }
+  ) {
+    const rtl = hasRtlText(value);
+    context.save();
+    context.direction = rtl ? "rtl" : "ltr";
+    context.textAlign = rtl ? "right" : "left";
+    context.textBaseline = "alphabetic";
+    context.fillStyle = options.muted ? "#64748b" : "#172033";
+    context.font = `${options.weight ?? 700} ${options.size}px ${options.monospace ? "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" : "Arial, sans-serif"}`;
+    context.fillText(value, rtl ? pageWidth - x : x, y, options.maxWidth);
+    context.restore();
+  }
+
+  function drawField(label: string, value: string, x: number, y: number, width: number, height: number, monospace = false) {
+    context.save();
+    roundedRect(x, y, width, height, 22);
+    context.fillStyle = "#f8faff";
+    context.fill();
+    context.strokeStyle = "#d9e2f2";
+    context.lineWidth = 2;
+    context.stroke();
+    context.restore();
+
+    const labelRtl = hasRtlText(label);
+    const valueRtl = hasRtlText(value);
+    context.save();
+    context.direction = labelRtl ? "rtl" : "ltr";
+    context.textAlign = labelRtl ? "right" : "left";
+    context.fillStyle = "#64748b";
+    context.font = "700 24px Arial, sans-serif";
+    context.fillText(label, labelRtl ? x + width - 34 : x + 34, y + 48, width - 68);
+    context.restore();
+
+    context.save();
+    context.direction = valueRtl ? "rtl" : "ltr";
+    context.textAlign = valueRtl ? "right" : "left";
+    context.fillStyle = "#172033";
+    context.font = `800 36px ${monospace ? "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" : "Arial, sans-serif"}`;
+    context.fillText(value, valueRtl ? x + width - 34 : x + 34, y + 112, width - 68);
+    context.restore();
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  roundedRect(margin, 86, contentWidth, 230, 32);
+  context.fillStyle = "#eef4ff";
+  context.fill();
+  context.strokeStyle = "#cbdaf6";
+  context.lineWidth = 2;
+  context.stroke();
+
+  drawText("MaktabLink", margin + 42, 150, { size: 30, weight: 900 });
+  drawText(labels.title, margin + 42, 215, { size: 46, weight: 900, maxWidth: contentWidth - 84 });
+  drawText(labels.subtitle, margin + 42, 270, { size: 25, weight: 600, maxWidth: contentWidth - 84, muted: true });
+
+  const gap = 24;
+  const columnWidth = (contentWidth - gap) / 2;
+  drawField(labels.username, preview.username, margin, 365, columnWidth, 150, true);
+  drawField(labels.fullName, preview.fullName, margin + columnWidth + gap, 365, columnWidth, 150);
+  drawField(labels.phone, preview.phone || labels.notProvided, margin, 545, contentWidth, 150, true);
+  drawField(labels.temporaryPassword, preview.temporaryPassword, margin, 725, contentWidth, 170, true);
+
+  roundedRect(margin, 945, contentWidth, 170, 22);
+  context.fillStyle = "#fff8e9";
+  context.fill();
+  context.strokeStyle = "#f3d69c";
+  context.lineWidth = 2;
+  context.stroke();
+  drawText(labels.important, margin + 34, 1000, { size: 25, weight: 900 });
+  drawText(labels.note, margin + 34, 1060, { size: 24, weight: 600, maxWidth: contentWidth - 68, muted: true });
+
+  context.fillStyle = "#e8eef8";
+  context.fillRect(margin, 1205, contentWidth, 2);
+  drawText("MaktabLink · Account Credential", margin, 1260, { size: 21, weight: 600, muted: true });
+
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const binary = window.atob(base64);
+  const jpeg = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) jpeg[index] = binary.charCodeAt(index);
+
+  return jpegPdfBytes(jpeg, canvas.width, canvas.height);
+}
+
+function downloadAccountPdf(preview: AccountCredentialPreview, labels: AccountPdfLabels) {
+  return buildAccountPdf(preview, labels).then((bytes) => {
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const type = preview.accountType === "PARENT" ? "parent" : "student";
+    const safeUsername = preview.username.replace(/[^A-Za-z0-9]+/g, "-") || "account";
+    link.href = url;
+    link.download = `${type}-account-${safeUsername}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  });
+}
 
 function normalizeHeader(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -274,16 +471,32 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     }
   }, [studentAccountId, studentsWithoutLogin]);
 
-  function printAccountPreview(preview: AccountCredentialPreview) {
-    const originalTitle = document.title;
-    const typeLabel = preview.accountType === "PARENT" ? "parent" : "student";
-    document.title = `${typeLabel}-account-${preview.username}`;
-    window.print();
-    document.title = originalTitle;
+  function accountPdfLabels(preview: AccountCredentialPreview): AccountPdfLabels {
+    return {
+      title: t(preview.accountType === "PARENT" ? "Parent account information" : "Student account information"),
+      subtitle: t("Account credential"),
+      username: t("Username"),
+      fullName: t("Full name"),
+      phone: t("Phone number"),
+      temporaryPassword: t("Temporary password"),
+      notProvided: t("Not provided"),
+      important: t("Important"),
+      note: t("Give this information only to the account owner and keep the PDF in a secure place.")
+    };
   }
 
-  function scheduleAccountPreviewPrint(preview: AccountCredentialPreview) {
-    window.setTimeout(() => printAccountPreview(preview), 180);
+  async function exportAccountPreviewPdf(preview: AccountCredentialPreview) {
+    try {
+      await downloadAccountPdf(preview, accountPdfLabels(preview));
+    } catch {
+      setError(t("Could not export the account information as PDF. Please try again."));
+    }
+  }
+
+  function scheduleAccountPreviewExport(preview: AccountCredentialPreview) {
+    window.setTimeout(() => {
+      void exportAccountPreviewPdf(preview);
+    }, 180);
   }
 
   function requestCloseAccountPreview() {
@@ -354,9 +567,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       };
       setCredentials([]);
       setAccountPreview(preview);
-      setNotice(t("Parent account created. Save or print the account information before closing the preview."));
+      setNotice(t("Parent account created. The account PDF was exported automatically. Keep it secure before closing the preview."));
       formElement.reset();
-      scheduleAccountPreviewPrint(preview);
+      scheduleAccountPreviewExport(preview);
       await load({ silentFeedback: true });
     } catch (cause) {
       if (isDuplicateUsernameError(cause)) {
@@ -476,10 +689,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       };
       setCredentials([]);
       setAccountPreview(preview);
-      setNotice(t("Student login created. Save or print the account information before closing the preview."));
+      setNotice(t("Student login created. The account PDF was exported automatically. Keep it secure before closing the preview."));
       setStudentAccountId("");
       formElement.reset();
-      scheduleAccountPreviewPrint(preview);
+      scheduleAccountPreviewExport(preview);
 
       // The credential creation is already complete. Refresh quietly so a
       // follow-up read failure never turns a successful create into a mixed
@@ -747,7 +960,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <div className="family-username-popup-backdrop" role="presentation">
           <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-account-save-title">
             <strong id="family-account-save-title">{t("Have you saved the account information?")}</strong>
-            <p>{t("Choose Yes only after you have saved or printed the username, full name, phone number, and temporary password.")}</p>
+            <p>{t("Choose Yes only after you have saved the exported PDF containing the username, full name, phone number, and temporary password.")}</p>
             <div className="admin-actions">
               <button className="admin-secondary" type="button" onClick={() => setAccountPreviewClosePrompt(false)} data-admin-no-loading="true">
                 {t("No")}
@@ -812,16 +1025,16 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <div>
               <span className="eyebrow">{t(accountPreview.accountType === "PARENT" ? "Parent account information" : "Student account information")}</span>
               <h2>{t("Account credential")}</h2>
-              <p>{t("Save this information as PDF or print it now. The temporary password cannot be retrieved later.")}</p>
+              <p>{t("The account PDF is exported automatically after creation. You can export it again below. The temporary password cannot be retrieved later.")}</p>
             </div>
             <div className="family-account-preview-actions">
               <button
                 className="admin-secondary"
                 type="button"
-                onClick={() => printAccountPreview(accountPreview)}
+                onClick={() => void exportAccountPreviewPdf(accountPreview)}
                 data-admin-no-loading="true"
               >
-                {t("Print")}
+                {t("Export as PDF")}
               </button>
               <button
                 className="admin-secondary"
