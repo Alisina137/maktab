@@ -991,16 +991,15 @@ function NegaranAssignmentForm({
 
 function minutesBetween(start: string, end: string) {
   if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return 45;
-  const [startHour, startMinute] = start.split(":").map(Number);
-  const [endHour, endMinute] = end.split(":").map(Number);
-  const difference = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  const startTotal = Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5));
+  const endTotal = Number(end.slice(0, 2)) * 60 + Number(end.slice(3, 5));
+  const difference = endTotal - startTotal;
   return timetableDurations.includes(difference as (typeof timetableDurations)[number]) ? difference : 45;
 }
 
 function endTimeFromDuration(start: string, duration: number) {
   if (!/^\d{2}:\d{2}$/.test(start)) return "";
-  const [hour, minute] = start.split(":").map(Number);
-  const total = hour * 60 + minute + duration;
+  const total = Number(start.slice(0, 2)) * 60 + Number(start.slice(3, 5)) + duration;
   if (total >= 24 * 60) return "";
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
