@@ -747,3 +747,6 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Student class-history records are removed through the existing student-history cascade when a dependency-free student is deleted.
 - Added API regression coverage for student suspend, reactivate, reset-password, safe deletion, and the resulting ability to delete the formerly linked parent.
 
+### Step 8 family list action sizing
+- Reduced only the Parent/Student list action buttons to a more compact 34px height with tighter horizontal padding and smaller text so Reset password, Suspend/Reactivate, and Delete fit the row more cleanly without affecting action buttons elsewhere in the admin UI.
+
