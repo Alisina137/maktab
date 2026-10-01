@@ -11,7 +11,10 @@ import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
   classSections,
+  feeInvoices,
+  gradeRecords,
   parentProfiles,
+  studentAttendances,
   studentClassHistory,
   students,
   teacherProfiles,
@@ -32,6 +35,7 @@ export interface ParentSummary {
 
 export interface StudentFamilyView {
   student: Student;
+  user: User | null;
   classSection: ClassSection;
   academicYear: AcademicYear;
 }
@@ -39,6 +43,7 @@ export interface StudentFamilyView {
 export interface StudentEnrollmentView {
   history: StudentClassHistory;
   student: Student;
+  user: User | null;
   classSection: ClassSection;
   academicYear: AcademicYear;
 }
@@ -77,6 +82,7 @@ export interface FamilyStore {
   ): Promise<{ user: User; student: Student }>;
   createStudent(schoolId: string, input: CreateStudentInput): Promise<Student>;
   updateStudent(schoolId: string, studentId: string, input: UpdateStudentInput): Promise<Student>;
+  deleteStudent(schoolId: string, studentId: string): Promise<void>;
   importParents(
     schoolId: string,
     rows: PreparedParentImportRow[]
@@ -204,8 +210,9 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           .where(eq(parentProfiles.schoolId, schoolId))
           .orderBy(asc(parentProfiles.fullName)),
         db
-          .select({ student: students, classSection: classSections, academicYear: academicYears })
+          .select({ student: students, user: users, classSection: classSections, academicYear: academicYears })
           .from(students)
+          .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
           .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
           .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
           .where(eq(students.schoolId, schoolId))
@@ -214,11 +221,13 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           .select({
             history: studentClassHistory,
             student: students,
+            user: users,
             classSection: classSections,
             academicYear: academicYears
           })
           .from(studentClassHistory)
           .innerJoin(students, and(eq(students.id, studentClassHistory.studentId), eq(students.schoolId, studentClassHistory.schoolId)))
+          .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
           .innerJoin(classSections, and(eq(classSections.id, studentClassHistory.classId), eq(classSections.schoolId, studentClassHistory.schoolId)))
           .innerJoin(academicYears, and(eq(academicYears.id, studentClassHistory.academicYearId), eq(academicYears.schoolId, studentClassHistory.schoolId)))
           .where(eq(studentClassHistory.schoolId, schoolId))
@@ -243,8 +252,9 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     async getParentHome(schoolId, parentUserId) {
       const { profile } = await getParent(schoolId, parentUserId);
       const children = await db
-        .select({ student: students, classSection: classSections, academicYear: academicYears })
+        .select({ student: students, user: users, classSection: classSections, academicYear: academicYears })
         .from(students)
+        .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
         .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
         .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
         .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, parentUserId)))
@@ -420,6 +430,55 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           .returning();
         if (!updated) throw new FamilyNotFoundError("Student not found.");
         return updated;
+      });
+    },
+
+    async deleteStudent(schoolId, studentId) {
+      const [student] = await db
+        .select()
+        .from(students)
+        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+        .limit(1);
+      if (!student) throw new FamilyNotFoundError("Student not found.");
+
+      const [attendance, grade, invoice] = await Promise.all([
+        db
+          .select({ id: studentAttendances.id })
+          .from(studentAttendances)
+          .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.studentId, studentId)))
+          .limit(1),
+        db
+          .select({ id: gradeRecords.id })
+          .from(gradeRecords)
+          .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.studentId, studentId)))
+          .limit(1),
+        db
+          .select({ id: feeInvoices.id })
+          .from(feeInvoices)
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.studentId, studentId)))
+          .limit(1)
+      ]);
+
+      const dependencies: string[] = [];
+      if (attendance[0]) dependencies.push("attendance");
+      if (grade[0]) dependencies.push("grades");
+      if (invoice[0]) dependencies.push("fees");
+      if (dependencies.length > 0) {
+        throw new FamilyConflictError(
+          `This student cannot be deleted because data is linked: ${dependencies.join(", ")}.`
+        );
+      }
+
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(students)
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)));
+
+        if (student.userId) {
+          await tx
+            .delete(users)
+            .where(and(eq(users.schoolId, schoolId), eq(users.id, student.userId)));
+        }
       });
     },
 
