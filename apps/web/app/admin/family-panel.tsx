@@ -623,7 +623,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       void load({ silentFeedback: true });
     } catch (cause) {
       if (cause instanceof Error && cause.message === "That student code already exists in this school.") {
-        const refreshed = void load({ silentFeedback: true });
+        const refreshed = await load({ silentFeedback: true });
         const knownCodes = [
           ...((refreshed?.students ?? overview?.students ?? []).map((item) => item.student.studentCode)),
           studentCode.trim()
