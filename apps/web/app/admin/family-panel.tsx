@@ -175,7 +175,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
-  const { error, notice, setError, setNotice } = useTransientAdminFeedback();
+  const { error, notice, setError, setNotice } = useTransientAdminFeedback({ persistent: true });
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [accountPreview, setAccountPreview] = useState<AccountCredentialPreview | null>(null);
   const [accountPreviewClosePrompt, setAccountPreviewClosePrompt] = useState(false);
@@ -717,10 +717,21 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <AdminLoader label={t("Loading Phase 4 data…")} />
         <AdminSkeleton rows={5} />
         {error ? (
-          <>
-            <div className="admin-error" role="alert">{error}</div>
-            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
-          </>
+          <div className="family-username-popup-backdrop" role="presentation">
+            <div className="family-username-popup family-feedback-popup family-feedback-error" role="alertdialog" aria-modal="true" aria-labelledby="family-load-error-title">
+              <span className="family-feedback-icon" aria-hidden="true">!</span>
+              <strong id="family-load-error-title">{t("Error")}</strong>
+              <p>{error}</p>
+              <div className="admin-actions">
+                <button className="admin-secondary" type="button" onClick={() => setError("")} data-admin-no-loading="true">
+                  {t("OK")}
+                </button>
+                <button className="admin-primary" type="button" onClick={() => void load()} data-admin-no-loading="true">
+                  {t("Retry")}
+                </button>
+              </div>
+            </div>
+          </div>
         ) : null}
       </section>
     );
@@ -757,6 +768,32 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </div>
       ) : null}
 
+      {error || notice ? (
+        <div className="family-username-popup-backdrop" role="presentation">
+          <div
+            className={`family-username-popup family-feedback-popup ${error ? "family-feedback-error" : "family-feedback-success"}`}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="family-feedback-title"
+          >
+            <span className="family-feedback-icon" aria-hidden="true">{error ? "!" : "✓"}</span>
+            <strong id="family-feedback-title">{t(error ? "Error" : "Success")}</strong>
+            <p>{error || notice}</p>
+            <button
+              className="admin-primary"
+              type="button"
+              onClick={() => {
+                setError("");
+                setNotice("");
+              }}
+              data-admin-no-loading="true"
+            >
+              {t("OK")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="admin-section-header academic-heading">
         <div>
           <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
@@ -764,9 +801,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <p>{t("Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.")}</p>
         </div>
       </div>
-
-      {error ? <div className="admin-error" role="alert">{error}</div> : null}
-      {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       {accountPreview ? (
         <section className="credential-card family-account-preview">
