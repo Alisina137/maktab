@@ -849,3 +849,9 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Existing filters, filtered/total counts, list actions, 550px scrolling for more than four filtered rows, credential previews, and mutation behavior are preserved.
 - On small screens the Add Student field grid and Parent/Student columns collapse to a single column for usability.
 
+### Step 8 equal Parent/Student account form heights
+- Parent Account and Student Account now share the same desktop/tablet grid row height, so both cards always match the taller form without a hard-coded pixel height.
+- The equal-height behavior uses a shared CSS subgrid row, preserving localization-safe sizing when labels/descriptions wrap.
+- Parent and Student lists remain directly below their matching account forms.
+- On mobile, where the two account columns stack, the shared-row rule is reset and each form returns to natural height.
+
