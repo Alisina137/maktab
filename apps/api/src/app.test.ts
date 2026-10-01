@@ -281,7 +281,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: { authorization: `Bearer ${adminAccessToken}` },
-    payload: { username: "parent.one", fullName: "Parent One" }
+    payload: { username: "parentone", fullName: "Parent One" }
   });
   assert.equal(createParent.statusCode, 201);
   const createdParent = createParent.json<{
@@ -295,7 +295,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: {
       schoolId: schoolB,
       expectedRole: "PARENT",
-      username: "parent.one",
+      username: "parentone",
       password: createdParent.temporaryPassword
     }
   });
@@ -307,7 +307,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: {
       schoolId: schoolA,
       expectedRole: "TEACHER",
-      username: "parent.one",
+      username: "parentone",
       password: createdParent.temporaryPassword
     }
   });
@@ -320,7 +320,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: {
       schoolId: schoolA,
       expectedRole: "PARENT",
-      username: "parent.one",
+      username: "parentone",
       password: createdParent.temporaryPassword
     }
   });
@@ -373,7 +373,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: {
       schoolId: schoolA,
       expectedRole: "PARENT",
-      username: "parent.one",
+      username: "parentone",
       password: "ParentSecure2026!"
     }
   });
@@ -1230,7 +1230,7 @@ test("parent account can own three students and sees all three through one login
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: auth,
-    payload: { username: "family.parent", fullName: "Family Parent", phone: "0700000000" }
+    payload: { username: "familyparent", fullName: "Family Parent", phone: "0700000000" }
   });
   assert.equal(parentResponse.statusCode, 201);
   const parent = parentResponse.json<{
@@ -1260,7 +1260,7 @@ test("parent account can own three students and sees all three through one login
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "family.parent",
+      username: "familyparent",
       password: parent.temporaryPassword
     }
   });
@@ -1298,6 +1298,143 @@ test("parent account can own three students and sees all three through one login
   assert.equal(
     familyOverviewBody.enrollments.filter((item) => item.academicYear.id === yearId).length,
     3
+  );
+});
+
+
+
+test("family usernames are alphanumeric and empty parents can be deleted safely", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "FAMILYRULES");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const invalidParent = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "parent.withdot", fullName: "Invalid Parent" }
+  });
+  assert.equal(invalidParent.statusCode, 400);
+  assert.match(
+    invalidParent.json<{ message: string }>().message,
+    /only English letters and digits/i
+  );
+
+  const emptyParentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "emptyparent1", fullName: "Empty Parent" }
+  });
+  assert.equal(emptyParentResponse.statusCode, 201);
+  const emptyParent = emptyParentResponse.json<{ user: { id: string } }>();
+
+  const duplicate = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "emptyparent1", fullName: "Duplicate Parent" }
+  });
+  assert.equal(duplicate.statusCode, 409);
+  assert.equal(
+    duplicate.json<{ message: string }>().message,
+    "This username already exists. Please type another username."
+  );
+
+  const deleted = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/families/parents/${emptyParent.user.id}`,
+    headers: auth
+  });
+  assert.equal(deleted.statusCode, 204);
+
+  const overviewAfterDelete = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(overviewAfterDelete.statusCode, 200);
+  assert.ok(
+    !overviewAfterDelete
+      .json<{ parents: Array<{ user: { id: string } }> }>()
+      .parents.some((item) => item.user.id === emptyParent.user.id)
+  );
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1406", startDate: "2027-03-21", endDate: "2028-03-19" }
+  });
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  await app.inject({ method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: auth });
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G1", name: "Grade 1", sortOrder: 1 }
+  });
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "1A", name: "Grade 1 A" }
+  });
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  const linkedParentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "linkedparent1", fullName: "Linked Parent" }
+  });
+  const linkedParent = linkedParentResponse.json<{ user: { id: string } }>();
+
+  const studentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: auth,
+    payload: {
+      parentUserId: linkedParent.user.id,
+      studentCode: "S-0001",
+      fullName: "Linked Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  assert.equal(studentResponse.statusCode, 201);
+  const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+
+  const invalidStudentUsername = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentId}/account`,
+    headers: auth,
+    payload: { username: "student.withdot" }
+  });
+  assert.equal(invalidStudentUsername.statusCode, 400);
+  assert.match(
+    invalidStudentUsername.json<{ message: string }>().message,
+    /only English letters and digits/i
+  );
+
+  const blockedDelete = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/families/parents/${linkedParent.user.id}`,
+    headers: auth
+  });
+  assert.equal(blockedDelete.statusCode, 409);
+  assert.equal(
+    blockedDelete.json<{ message: string }>().message,
+    "This parent cannot be deleted because students are linked to the account."
   );
 });
 
@@ -1341,13 +1478,13 @@ test("bulk student import validation reports duplicate rows without committing t
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: auth,
-    payload: { username: "import.parent", fullName: "Import Parent" }
+    payload: { username: "importparent", fullName: "Import Parent" }
   });
   assert.equal(parentResponse.statusCode, 201);
 
   const rows = [
-    { code: "IMP-001", name: "Student One", parent: "import.parent", year: "1405", class: "8A" },
-    { code: "IMP-001", name: "Student Duplicate", parent: "import.parent", year: "1405", class: "8A" }
+    { code: "IMP-001", name: "Student One", parent: "importparent", year: "1405", class: "8A" },
+    { code: "IMP-001", name: "Student Duplicate", parent: "importparent", year: "1405", class: "8A" }
   ];
   const validation = await app.inject({
     method: "POST",
@@ -1448,7 +1585,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "attendance.parent", fullName: "Attendance Parent" }
+    payload: { username: "attendanceparent", fullName: "Attendance Parent" }
   });
   assert.equal(parentResponse.statusCode, 201);
   const parentBody = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
@@ -1524,7 +1661,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "attendance.parent",
+      username: "attendanceparent",
       password: parentBody.temporaryPassword
     }
   });
@@ -1723,7 +1860,7 @@ test("homework stays private as draft, then becomes visible to parent and linked
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "learn.parent", fullName: "Learning Parent" }
+    payload: { username: "learnparent", fullName: "Learning Parent" }
   });
   const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
 
@@ -1745,7 +1882,7 @@ test("homework stays private as draft, then becomes visible to parent and linked
     method: "POST",
     url: `/v1/admin/families/students/${studentId}/account`,
     headers: admin,
-    payload: { username: "student.learning" }
+    payload: { username: "studentlearning" }
   });
   assert.equal(studentAccount.statusCode, 201);
   const studentCredential = studentAccount.json<{ temporaryPassword: string }>();
@@ -1774,7 +1911,7 @@ test("homework stays private as draft, then becomes visible to parent and linked
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "learn.parent",
+      username: "learnparent",
       password: parent.temporaryPassword
     }
   });
@@ -1792,7 +1929,7 @@ test("homework stays private as draft, then becomes visible to parent and linked
     payload: {
       schoolId,
       expectedRole: "STUDENT",
-      username: "student.learning",
+      username: "studentlearning",
       password: studentCredential.temporaryPassword
     }
   });
@@ -1933,7 +2070,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "marks.parent", fullName: "Marks Parent" }
+    payload: { username: "marksparent", fullName: "Marks Parent" }
   });
   const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
   const studentResponse = await app.inject({
@@ -1954,7 +2091,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST",
     url: `/v1/admin/families/students/${studentId}/account`,
     headers: admin,
-    payload: { username: "marks.student" }
+    payload: { username: "marksstudent" }
   });
   assert.equal(studentAccount.statusCode, 201);
   const studentCredential = studentAccount.json<{ temporaryPassword: string }>();
@@ -1965,7 +2102,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     payload: {
       schoolId,
       expectedRole: "STUDENT",
-      username: "marks.student",
+      username: "marksstudent",
       password: studentCredential.temporaryPassword
     }
   });
@@ -1982,7 +2119,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   const parentLogin = await app.inject({
     method: "POST",
     url: "/v1/auth/login",
-    payload: { schoolId, expectedRole: "PARENT", username: "marks.parent", password: parent.temporaryPassword }
+    payload: { schoolId, expectedRole: "PARENT", username: "marksparent", password: parent.temporaryPassword }
   });
   const parentChanged = await app.inject({
     method: "POST",
@@ -2213,13 +2350,13 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "class.a.parent", fullName: "Class A Parent" }
+    payload: { username: "classaparent", fullName: "Class A Parent" }
   });
   const parentBResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "class.b.parent", fullName: "Class B Parent" }
+    payload: { username: "classbparent", fullName: "Class B Parent" }
   });
   const parentA = parentAResponse.json<{ user: { id: string }; temporaryPassword: string }>();
   const parentB = parentBResponse.json<{ user: { id: string }; temporaryPassword: string }>();
@@ -2251,10 +2388,10 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   const studentA = studentAResponse.json<{ student: { id: string } }>().student;
 
   const parentAToken = await activateRoleLogin(
-    app, schoolId, "PARENT", "class.a.parent", parentA.temporaryPassword, "ClassAParent2026!"
+    app, schoolId, "PARENT", "classaparent", parentA.temporaryPassword, "ClassAParent2026!"
   );
   const parentBToken = await activateRoleLogin(
-    app, schoolId, "PARENT", "class.b.parent", parentB.temporaryPassword, "ClassBParent2026!"
+    app, schoolId, "PARENT", "classbparent", parentB.temporaryPassword, "ClassBParent2026!"
   );
 
   const announcement = await app.inject({
@@ -2448,7 +2585,7 @@ test("Phase 8 subscription suspension blocks end users and operational admin wri
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "suspend.parent", fullName: "Suspended Parent" }
+    payload: { username: "suspendparent", fullName: "Suspended Parent" }
   });
   assert.equal(parentResponse.statusCode, 201);
   const parent = parentResponse.json<{ temporaryPassword: string }>();
@@ -2459,7 +2596,7 @@ test("Phase 8 subscription suspension blocks end users and operational admin wri
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "suspend.parent",
+      username: "suspendparent",
       password: parent.temporaryPassword
     }
   });
@@ -2805,7 +2942,7 @@ test("school users can read the public administrator contact card", async (t) =>
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: admin,
-    payload: { username: "contact.parent", fullName: "Contact Parent" }
+    payload: { username: "contactparent", fullName: "Contact Parent" }
   });
   assert.equal(parentResponse.statusCode, 201);
   const parent = parentResponse.json<{ temporaryPassword: string }>();
@@ -2813,7 +2950,7 @@ test("school users can read the public administrator contact card", async (t) =>
     app,
     schoolId,
     "PARENT",
-    "contact.parent",
+    "contactparent",
     parent.temporaryPassword,
     "ContactParent2026!"
   );
@@ -2944,7 +3081,7 @@ test("first-login password change enforces the complete password policy", async 
     method: "POST",
     url: "/v1/admin/families/parents",
     headers: { authorization: `Bearer ${adminAccessToken}` },
-    payload: { username: "password.parent", fullName: "Password Parent" }
+    payload: { username: "passwordparent", fullName: "Password Parent" }
   });
   assert.equal(parentResponse.statusCode, 201);
   const created = parentResponse.json<{ temporaryPassword: string }>();
@@ -2955,7 +3092,7 @@ test("first-login password change enforces the complete password policy", async 
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "password.parent",
+      username: "passwordparent",
       password: created.temporaryPassword
     }
   });
