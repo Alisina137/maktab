@@ -704,3 +704,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 ### Timetable list height adjustment
 - Increased the timetable list panel maximum height from 600px to 1000px while preserving internal scrolling for longer lists.
 
+## Testing Step 7 timetable refinement — live current lesson highlight
+
+- Teacher and Class timetable views now use the browser/computer local weekday and time to identify the currently active lesson.
+- A timetable cell is considered active when today's local weekday matches the period weekday and the current local time is greater than or equal to the period start and earlier than its end.
+- The active period receives a blue highlighted cell, a localized "Now" badge, and a subtle pulse effect.
+- The local clock refreshes every 30 seconds while the timetable is open, so the highlight moves automatically as periods begin and end.
+- This behavior is presentation-only and does not modify stored timetable data.
+
