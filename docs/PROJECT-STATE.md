@@ -825,3 +825,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The measured approach preserves four visible rows even when Parent/Student row heights differ or change responsively.
 - Scrolling is scoped only to these two Families lists and uses a compact custom scrollbar.
 
+### Step 8 timetable-style Parent/Student list filters
+- Reused the Academic Timetable filter interaction pattern for both Families lists: filtered/total count, dropdown filter panel, and Clear filters action.
+- Parent list filters now include account status and child-count group (none, one, multiple).
+- Student list filters now include class, parent, student status, and login/account status, including students without a login.
+- Empty filtered results show filter-specific messages instead of the base empty-state copy.
+- The existing four-visible-row scroll cap now measures and scrolls the filtered result set rather than the unfiltered list.
+- Filter labels and empty states are localized for Dari and Pashto.
+
