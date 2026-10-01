@@ -306,6 +306,12 @@ export const createStudentSchema = z.object({
 });
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 
+export const studentImportRowSchema = createStudentSchema.extend({
+  username: familyUsernameSchema,
+  phone: z.string().trim().max(32).optional()
+});
+export type StudentImportRow = z.infer<typeof studentImportRowSchema>;
+
 export const updateStudentSchema = z.object({
   parentUserId: z.string().uuid().optional(),
   fullName: z.string().trim().min(2).max(160).optional(),
