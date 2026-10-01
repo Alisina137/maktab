@@ -433,6 +433,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [studentCode, setStudentCode] = useState("");
   const [parentSearch, setParentSearch] = useState("");
   const [selectedParentUserId, setSelectedParentUserId] = useState("");
+  const [parentStatusFilter, setParentStatusFilter] = useState("");
+  const [parentChildFilter, setParentChildFilter] = useState("");
+  const [studentClassFilter, setStudentClassFilter] = useState("");
+  const [studentParentFilter, setStudentParentFilter] = useState("");
+  const [studentStatusFilter, setStudentStatusFilter] = useState("");
+  const [studentLoginFilter, setStudentLoginFilter] = useState("");
   const [usernamePopup, setUsernamePopup] = useState("");
   const [importEntity, setImportEntity] = useState<ImportEntity>("PARENT");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -470,8 +476,83 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     );
   }, [overview, selectedAcademicYearId]);
 
-  const parentRowsRef = useFourVisibleRows(overview?.parents.length ?? 0);
-  const studentRowsRef = useFourVisibleRows(selectedYearStudents.length);
+  const parentStatuses = useMemo(
+    () => Array.from(new Set((overview?.parents ?? []).map((item) => item.user.status))).sort(),
+    [overview?.parents]
+  );
+
+  const listedParents = useMemo(
+    () => (overview?.parents ?? []).filter((parent) =>
+      (!parentStatusFilter || parent.user.status === parentStatusFilter) &&
+      (
+        !parentChildFilter ||
+        (parentChildFilter === "NONE" && parent.childCount === 0) ||
+        (parentChildFilter === "ONE" && parent.childCount === 1) ||
+        (parentChildFilter === "MULTIPLE" && parent.childCount > 1)
+      )
+    ),
+    [overview?.parents, parentStatusFilter, parentChildFilter]
+  );
+
+  const studentClassOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of selectedYearStudents) map.set(item.classSection.id, item.classSection.name);
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [selectedYearStudents]);
+
+  const studentParentOptions = useMemo(() => {
+    const ids = new Set(selectedYearStudents.map((item) => item.student.parentUserId));
+    return (overview?.parents ?? [])
+      .filter((parent) => ids.has(parent.user.id))
+      .slice()
+      .sort((a, b) => a.profile.fullName.localeCompare(b.profile.fullName));
+  }, [overview?.parents, selectedYearStudents]);
+
+  const studentStatuses = useMemo(
+    () => Array.from(new Set(selectedYearStudents.map((item) => item.student.status))).sort(),
+    [selectedYearStudents]
+  );
+
+  const studentLoginStatuses = useMemo(
+    () => Array.from(new Set(selectedYearStudents.map((item) => item.user?.status ?? "NO_LOGIN"))).sort(),
+    [selectedYearStudents]
+  );
+
+  const listedStudents = useMemo(
+    () => selectedYearStudents.filter((item) =>
+      (!studentClassFilter || item.classSection.id === studentClassFilter) &&
+      (!studentParentFilter || item.student.parentUserId === studentParentFilter) &&
+      (!studentStatusFilter || item.student.status === studentStatusFilter) &&
+      (!studentLoginFilter || (item.user?.status ?? "NO_LOGIN") === studentLoginFilter)
+    ),
+    [
+      selectedYearStudents,
+      studentClassFilter,
+      studentParentFilter,
+      studentStatusFilter,
+      studentLoginFilter
+    ]
+  );
+
+  const parentListHasFilters = Boolean(parentStatusFilter || parentChildFilter);
+  const studentListHasFilters = Boolean(
+    studentClassFilter || studentParentFilter || studentStatusFilter || studentLoginFilter
+  );
+
+  const parentRowsRef = useFourVisibleRows(listedParents.length);
+  const studentRowsRef = useFourVisibleRows(listedStudents.length);
+
+  function clearParentListFilters() {
+    setParentStatusFilter("");
+    setParentChildFilter("");
+  }
+
+  function clearStudentListFilters() {
+    setStudentClassFilter("");
+    setStudentParentFilter("");
+    setStudentStatusFilter("");
+    setStudentLoginFilter("");
+  }
 
   const selectedYearMutable =
     selectedAcademicYear?.status === "DRAFT" || selectedAcademicYear?.status === "ACTIVE";
@@ -1319,13 +1400,47 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <div className="academic-data-grid">
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>{t("Parents")}</h2><p>{adminFormat(locale, "{count} school-controlled family account(s)", { count: overview.parents.length })}</p></div>
+            <div>
+              <h2>{t("Parents")}</h2>
+              <p>{listedParents.length} / {overview.parents.length}</p>
+            </div>
+            <button
+              type="button"
+              className="admin-secondary academic-filter-clear"
+              onClick={clearParentListFilters}
+              disabled={!parentListHasFilters}
+              data-admin-no-loading="true"
+            >
+              {t("Clear filters")}
+            </button>
           </div>
+
+          <div className="academic-timetable-filters family-list-filters" aria-label={t("Parent filters")}>
+            <label>
+              <span>{t("Account status")}</span>
+              <select value={parentStatusFilter} onChange={(event) => setParentStatusFilter(event.target.value)}>
+                <option value="">{t("All statuses")}</option>
+                {parentStatuses.map((status) => (
+                  <option key={status} value={status}>{t(status)}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t("Child count")}</span>
+              <select value={parentChildFilter} onChange={(event) => setParentChildFilter(event.target.value)}>
+                <option value="">{t("All child counts")}</option>
+                <option value="NONE">{t("No children")}</option>
+                <option value="ONE">{t("One child")}</option>
+                <option value="MULTIPLE">{t("Multiple children")}</option>
+              </select>
+            </label>
+          </div>
+
           <div
             ref={parentRowsRef}
-            className={`academic-rows family-list-rows ${overview.parents.length > 4 ? "family-list-scroll" : ""}`}
+            className={`academic-rows family-list-rows ${listedParents.length > 4 ? "family-list-scroll" : ""}`}
           >
-            {overview.parents.map((parent) => (
+            {listedParents.map((parent) => (
               <div className="academic-row" key={parent.user.id}>
                 <div>
                   <strong>{parent.profile.fullName}</strong>
@@ -1352,19 +1467,77 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 </div>
               </div>
             ))}
-            {overview.parents.length === 0 ? <p className="admin-copy">{t("No parent accounts yet.")}</p> : null}
+            {overview.parents.length === 0 ? (
+              <p className="admin-copy">{t("No parent accounts yet.")}</p>
+            ) : listedParents.length === 0 ? (
+              <p className="admin-copy">{t("No parents match the selected filters.")}</p>
+            ) : null}
           </div>
         </article>
 
         <article className="admin-panel academic-list-panel">
           <div className="admin-section-header">
-            <div><h2>{t("Students")}</h2><p>{adminFormat(locale, "{count} student record(s)", { count: selectedYearStudents.length })}</p></div>
+            <div>
+              <h2>{t("Students")}</h2>
+              <p>{listedStudents.length} / {selectedYearStudents.length}</p>
+            </div>
+            <button
+              type="button"
+              className="admin-secondary academic-filter-clear"
+              onClick={clearStudentListFilters}
+              disabled={!studentListHasFilters}
+              data-admin-no-loading="true"
+            >
+              {t("Clear filters")}
+            </button>
           </div>
+
+          <div className="academic-timetable-filters family-list-filters" aria-label={t("Student filters")}>
+            <label>
+              <span>{t("Class")}</span>
+              <select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)}>
+                <option value="">{t("All classes")}</option>
+                {studentClassOptions.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t("Parent")}</span>
+              <select value={studentParentFilter} onChange={(event) => setStudentParentFilter(event.target.value)}>
+                <option value="">{t("All parents")}</option>
+                {studentParentOptions.map((parent) => (
+                  <option key={parent.user.id} value={parent.user.id}>{parent.profile.fullName}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t("Student status")}</span>
+              <select value={studentStatusFilter} onChange={(event) => setStudentStatusFilter(event.target.value)}>
+                <option value="">{t("All statuses")}</option>
+                {studentStatuses.map((status) => (
+                  <option key={status} value={status}>{t(status)}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t("Login status")}</span>
+              <select value={studentLoginFilter} onChange={(event) => setStudentLoginFilter(event.target.value)}>
+                <option value="">{t("All login statuses")}</option>
+                {studentLoginStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "NO_LOGIN" ? t("No student login") : t(status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <div
             ref={studentRowsRef}
-            className={`academic-rows family-list-rows ${selectedYearStudents.length > 4 ? "family-list-scroll" : ""}`}
+            className={`academic-rows family-list-rows ${listedStudents.length > 4 ? "family-list-scroll" : ""}`}
           >
-            {selectedYearStudents.map((item) => {
+            {listedStudents.map((item) => {
               const parent = parentMap.get(item.student.parentUserId);
               return (
                 <div className="academic-row" key={item.student.id}>
@@ -1412,7 +1585,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 </div>
               );
             })}
-            {selectedYearStudents.length === 0 ? <p className="admin-copy">{t("No students in the selected academic year.")}</p> : null}
+            {selectedYearStudents.length === 0 ? (
+              <p className="admin-copy">{t("No students in the selected academic year.")}</p>
+            ) : listedStudents.length === 0 ? (
+              <p className="admin-copy">{t("No students match the selected filters.")}</p>
+            ) : null}
           </div>
         </article>
       </div>
