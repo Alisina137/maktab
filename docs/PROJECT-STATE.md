@@ -750,3 +750,16 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 ### Step 8 family list action sizing
 - Reduced only the Parent/Student list action buttons to a more compact 34px height with tighter horizontal padding and smaller text so Reset password, Suspend/Reactivate, and Delete fit the row more cleanly without affecting action buttons elsewhere in the admin UI.
 
+## Testing Step 8 follow-up — full Families page reliability audit
+
+- Audited the complete Families admin workflow from browser form state through API contracts, family-store validation, database writes, feedback, refresh behavior, and loading state.
+- Fixed async React form handlers that reused `event.currentTarget` after an `await`. Parent creation, Add Student, and Student Login now capture the form element synchronously before any async work, preventing a successful request from being followed by a client-side reset exception.
+- Successful family mutations now refresh silently where appropriate so a secondary overview refresh failure cannot overwrite a successful create/reset/delete result with unrelated error feedback.
+- Add Student no longer depends on the follow-up refresh to compute the next `S-xxxx` suggestion. It uses the successful create response plus known codes, and duplicate-code recovery advances safely even if refresh fails.
+- Add Student now clears stale temporary credentials from prior account operations before creating a student.
+- Parent and student-login selections automatically clear if refreshed data makes the selected account unavailable.
+- Family API response parsing now reports a clear unreadable-service response instead of exposing a raw JSON parse exception.
+- PostgreSQL unique detection now recognizes SQLSTATE `23505`, and a race-time foreign-key failure (`23503`) during student creation is converted to a normal family conflict instead of an unexpected 500.
+- Added localized messages for duplicate student codes, unavailable parents, missing classes, closed/archived years, and stale parent/year/class references.
+- Added regression coverage proving a duplicate `S-0001` submission returns `409`, does not become a server error, and does not create a second student.
+
