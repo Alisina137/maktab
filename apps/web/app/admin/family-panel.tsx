@@ -76,7 +76,7 @@ type Validation = {
 };
 type Credential = { username: string; temporaryPassword: string };
 type AccountCredentialPreview = {
-  accountType: "PARENT" | "STUDENT";
+  accountType: "PARENT" | "STUDENT" | "TEACHER";
   username: string;
   fullName: string;
   phone: string | null;
@@ -104,9 +104,11 @@ const importFields: Record<ImportEntity, Array<{ key: string; label: string; req
     { key: "phone", label: "Phone", required: false, aliases: ["phone", "mobile", "phonenumber"] }
   ],
   STUDENT: [
+    { key: "username", label: "Username", required: true, aliases: ["username", "user", "studentusername"] },
     { key: "studentCode", label: "Student code", required: true, aliases: ["studentcode", "code", "studentid"] },
     { key: "fullName", label: "Student full name", required: true, aliases: ["fullname", "studentname", "name"] },
     { key: "parentUsername", label: "Parent username", required: true, aliases: ["parentusername", "parent", "guardianusername"] },
+    { key: "phone", label: "Phone", required: false, aliases: ["phone", "mobile", "phonenumber"] },
     { key: "academicYear", label: "Academic year", required: true, aliases: ["academicyear", "year", "yearname"] },
     { key: "classCode", label: "Class code", required: true, aliases: ["classcode", "class", "section"] }
   ],
@@ -293,7 +295,7 @@ function downloadAccountPdf(preview: AccountCredentialPreview, labels: AccountPd
     const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const type = preview.accountType === "PARENT" ? "parent" : "student";
+    const type = preview.accountType.toLowerCase();
     const safeUsername = preview.username.replace(/[^A-Za-z0-9]+/g, "-") || "account";
     link.href = url;
     link.download = `${type}-account-${safeUsername}.pdf`;
@@ -558,7 +560,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   function accountPdfLabels(preview: AccountCredentialPreview): AccountPdfLabels {
     return {
-      title: t(preview.accountType === "PARENT" ? "Parent account information" : "Student account information"),
+      title: t(
+        preview.accountType === "PARENT"
+          ? "Parent account information"
+          : preview.accountType === "TEACHER"
+            ? "Teacher account information"
+            : "Student account information"
+      ),
       subtitle: t("Account credential"),
       username: t("Username"),
       fullName: t("Full name"),
@@ -1019,14 +1027,20 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         }
       );
 
-      if (committedEntity === "PARENT" && result.credentials.length > 0) {
+      if (result.credentials.length > 0) {
         const rowsByUsername = new Map(
           normalizedRows.map((row) => [String(row.username ?? "").toLowerCase(), row])
         );
+        const accountType: AccountCredentialPreview["accountType"] =
+          committedEntity === "PARENT"
+            ? "PARENT"
+            : committedEntity === "TEACHER"
+              ? "TEACHER"
+              : "STUDENT";
         const importedPreviews: AccountCredentialPreview[] = result.credentials.map((credential) => {
           const row = rowsByUsername.get(credential.username.toLowerCase());
           return {
-            accountType: "PARENT",
+            accountType,
             username: credential.username,
             fullName: String(row?.fullName ?? credential.username),
             phone: String(row?.phone ?? "").trim() || null,
@@ -1042,10 +1056,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         setAccountPreviewBatchTotal(importedPreviews.length);
         if (firstPreview) scheduleAccountPreviewExport(firstPreview);
       } else {
+        setCredentials([]);
+        setAccountPreview(null);
         setAccountPreviewQueue([]);
         setAccountPreviewBatchIndex(0);
         setAccountPreviewBatchTotal(0);
-        setCredentials(result.credentials);
       }
 
       setNotice(adminFormat(locale, "{count} {entity} row(s) imported successfully.", {
@@ -1195,7 +1210,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div className="family-account-preview-header">
             <div>
               <span className="eyebrow">
-                {t(accountPreview.accountType === "PARENT" ? "Parent account information" : "Student account information")}
+                {t(
+                  accountPreview.accountType === "PARENT"
+                    ? "Parent account information"
+                    : accountPreview.accountType === "TEACHER"
+                      ? "Teacher account information"
+                      : "Student account information"
+                )}
                 {accountPreviewBatchTotal > 1 ? ` · ${accountPreviewBatchIndex} / ${accountPreviewBatchTotal}` : ""}
               </span>
               <h2>{t("Account credential")}</h2>
