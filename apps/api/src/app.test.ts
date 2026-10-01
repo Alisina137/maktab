@@ -1436,6 +1436,65 @@ test("family usernames are alphanumeric and empty parents can be deleted safely"
     blockedDelete.json<{ message: string }>().message,
     "This parent cannot be deleted because students are linked to the account."
   );
+
+  const studentAccount = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentId}/account`,
+    headers: auth,
+    payload: { username: "linkedstudent1" }
+  });
+  assert.equal(studentAccount.statusCode, 201);
+  const studentUserId = studentAccount.json<{ user: { id: string } }>().user.id;
+
+  const suspendStudent = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${studentUserId}/suspend`,
+    headers: auth
+  });
+  assert.equal(suspendStudent.statusCode, 200);
+  assert.equal(suspendStudent.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+
+  const reactivateStudent = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${studentUserId}/reactivate`,
+    headers: auth
+  });
+  assert.equal(reactivateStudent.statusCode, 200);
+  assert.notEqual(reactivateStudent.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+
+  const resetStudent = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${studentUserId}/reset-password`,
+    headers: auth
+  });
+  assert.equal(resetStudent.statusCode, 200);
+  assert.ok(resetStudent.json<{ temporaryPassword?: string }>().temporaryPassword);
+
+  const deleteStudent = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/families/students/${studentId}`,
+    headers: auth
+  });
+  assert.equal(deleteStudent.statusCode, 204);
+
+  const overviewAfterStudentDelete = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(overviewAfterStudentDelete.statusCode, 200);
+  assert.ok(
+    !overviewAfterStudentDelete
+      .json<{ students: Array<{ student: { id: string } }> }>()
+      .students.some((item) => item.student.id === studentId)
+  );
+
+  const deleteParentAfterStudent = await app.inject({
+    method: "DELETE",
+    url: `/v1/admin/families/parents/${linkedParent.user.id}`,
+    headers: auth
+  });
+  assert.equal(deleteParentAfterStudent.statusCode, 204);
 });
 
 
