@@ -319,6 +319,7 @@ export const students = pgTable(
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     studentCode: varchar("student_code", { length: 32 }).notNull(),
     fullName: varchar("full_name", { length: 160 }).notNull(),
+    phone: varchar("phone", { length: 32 }),
     academicYearId: uuid("academic_year_id")
       .notNull()
       .references(() => academicYears.id, { onDelete: "restrict" }),
