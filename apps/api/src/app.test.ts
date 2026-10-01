@@ -1593,8 +1593,8 @@ test("bulk student import validation reports duplicate rows without committing t
   assert.equal(parentResponse.statusCode, 201);
 
   const rows = [
-    { code: "IMP-001", name: "Student One", parent: "importparent", year: "1405", class: "8A" },
-    { code: "IMP-001", name: "Student Duplicate", parent: "importparent", year: "1405", class: "8A" }
+    { username: "importstudent1", code: "IMP-001", name: "Student One", parent: "importparent", year: "1405", class: "8A" },
+    { username: "importstudent2", code: "IMP-001", name: "Student Duplicate", parent: "importparent", year: "1405", class: "8A" }
   ];
   const validation = await app.inject({
     method: "POST",
@@ -1604,6 +1604,7 @@ test("bulk student import validation reports duplicate rows without committing t
       entityType: "STUDENT",
       rows,
       mapping: {
+        username: "username",
         studentCode: "code",
         fullName: "name",
         parentUsername: "parent",
@@ -3379,3 +3380,191 @@ test("academic entity CRUD edits classes and protects dependent class history", 
   assert.equal(overviewBody.classes.some((item) => item.id === protectedClassId), true);
 });
 
+
+
+test("bulk import creates login credentials consistently for parents, teachers, and students", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "IMPORT-CREDENTIALS");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
+  });
+  assert.equal(yearResponse.statusCode, 201);
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+
+  const activateYear = await app.inject({
+    method: "POST",
+    url: `/v1/admin/academics/years/${yearId}/activate`,
+    headers: auth
+  });
+  assert.equal(activateYear.statusCode, 200);
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G9", name: "Grade 9", sortOrder: 9 }
+  });
+  assert.equal(gradeResponse.statusCode, 201);
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "9A", name: "Grade 9 A" }
+  });
+  assert.equal(classResponse.statusCode, 201);
+
+  async function validateAndCommit(
+    entityType: "PARENT" | "TEACHER" | "STUDENT",
+    rows: Array<Record<string, string>>,
+    mapping: Record<string, string>
+  ) {
+    const validation = await app.inject({
+      method: "POST",
+      url: "/v1/admin/families/import/validate",
+      headers: auth,
+      payload: { entityType, rows, mapping }
+    });
+    assert.equal(validation.statusCode, 200);
+    const validationBody = validation.json<{
+      valid: boolean;
+      normalizedRows: Array<Record<string, string>>;
+      errors: unknown[];
+    }>();
+    assert.equal(validationBody.valid, true);
+    assert.deepEqual(validationBody.errors, []);
+
+    const commit = await app.inject({
+      method: "POST",
+      url: "/v1/admin/families/import/commit",
+      headers: auth,
+      payload: { entityType, rows: validationBody.normalizedRows }
+    });
+    assert.equal(commit.statusCode, 201);
+    return commit.json<{
+      importedCount: number;
+      credentials: Array<{ username: string; temporaryPassword: string }>;
+    }>();
+  }
+
+  const parentImport = await validateAndCommit(
+    "PARENT",
+    [{ username: "bulkparent1", fullName: "Bulk Parent", phone: "0700000001" }],
+    { username: "username", fullName: "fullName", phone: "phone" }
+  );
+  assert.equal(parentImport.importedCount, 1);
+  assert.equal(parentImport.credentials.length, 1);
+  assert.equal(parentImport.credentials[0]?.username, "bulkparent1");
+
+  const parentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "bulkparent1",
+      password: parentImport.credentials[0]?.temporaryPassword
+    }
+  });
+  assert.equal(parentLogin.statusCode, 200);
+
+  const teacherImport = await validateAndCommit(
+    "TEACHER",
+    [{
+      username: "bulkteacher1",
+      employeeCode: "T-BULK-1",
+      fullName: "Bulk Teacher",
+      phone: "0700000002"
+    }],
+    {
+      username: "username",
+      employeeCode: "employeeCode",
+      fullName: "fullName",
+      phone: "phone"
+    }
+  );
+  assert.equal(teacherImport.importedCount, 1);
+  assert.equal(teacherImport.credentials.length, 1);
+  assert.equal(teacherImport.credentials[0]?.username, "bulkteacher1");
+
+  const teacherLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "TEACHER",
+      username: "bulkteacher1",
+      password: teacherImport.credentials[0]?.temporaryPassword
+    }
+  });
+  assert.equal(teacherLogin.statusCode, 200);
+
+  const studentImport = await validateAndCommit(
+    "STUDENT",
+    [{
+      username: "bulkstudent1",
+      studentCode: "S-BULK-1",
+      fullName: "Bulk Student",
+      parentUsername: "bulkparent1",
+      phone: "0700000003",
+      academicYear: "1405",
+      classCode: "9A"
+    }],
+    {
+      username: "username",
+      studentCode: "studentCode",
+      fullName: "fullName",
+      parentUsername: "parentUsername",
+      phone: "phone",
+      academicYear: "academicYear",
+      classCode: "classCode"
+    }
+  );
+  assert.equal(studentImport.importedCount, 1);
+  assert.equal(studentImport.credentials.length, 1);
+  assert.equal(studentImport.credentials[0]?.username, "bulkstudent1");
+
+  const studentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "STUDENT",
+      username: "bulkstudent1",
+      password: studentImport.credentials[0]?.temporaryPassword
+    }
+  });
+  assert.equal(studentLogin.statusCode, 200);
+
+  const familyOverview = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(familyOverview.statusCode, 200);
+  const overviewBody = familyOverview.json<{
+    students: Array<{
+      student: { studentCode: string; phone: string | null; userId: string | null };
+      user: { username: string; role: string; mustChangePassword: boolean } | null;
+    }>;
+  }>();
+  const importedStudent = overviewBody.students.find((item) => item.student.studentCode === "S-BULK-1");
+  assert.ok(importedStudent);
+  assert.ok(importedStudent.student.userId);
+  assert.equal(importedStudent.student.phone, "0700000003");
+  assert.equal(importedStudent.user?.username, "bulkstudent1");
+  assert.equal(importedStudent.user?.role, "STUDENT");
+  assert.equal(importedStudent.user?.mustChangePassword, true);
+});
