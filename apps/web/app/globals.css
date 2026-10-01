@@ -40,19 +40,30 @@ button:disabled {
  */
 .admin-workspace button[data-admin-pending="true"]:disabled {
   --admin-button-loader-color: var(--ml-color-brand-strong);
+  --admin-button-glow: #2f78ff;
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   cursor: wait;
-  opacity: 0.88;
-  padding-inline-end: 38px;
+  opacity: 0.96;
+  padding-inline-end: 40px;
+  border-color: color-mix(in srgb, var(--admin-button-glow) 45%, var(--ml-color-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--admin-button-glow) 18%, transparent),
+    0 10px 28px color-mix(in srgb, var(--admin-button-glow) 26%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.32);
   transition:
     opacity 150ms ease,
     filter 150ms ease,
-    transform 150ms ease;
+    transform 150ms ease,
+    box-shadow 180ms ease;
+  animation: admin-button-premium-glow 1.55s ease-in-out infinite;
 }
 
 .admin-workspace .admin-primary[data-admin-pending="true"]:disabled,
 .admin-workspace .academic-pane-switch-button-active[data-admin-pending="true"]:disabled {
   --admin-button-loader-color: white;
+  --admin-button-glow: #4b8dff;
 }
 
 .admin-workspace .admin-danger[data-admin-pending="true"]:disabled {
@@ -78,15 +89,23 @@ button:disabled {
 .admin-workspace button[data-admin-pending="true"]:disabled::before {
   content: "";
   position: absolute;
-  inset: 2px;
-  border-radius: inherit;
+  z-index: -1;
+  top: -45%;
+  bottom: -45%;
+  left: -42%;
+  width: 38%;
+  border-radius: 999px;
   background: linear-gradient(
-    105deg,
-    transparent 25%,
-    color-mix(in srgb, currentColor 8%, transparent) 45%,
-    transparent 65%
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, #5b9cff 18%, transparent) 22%,
+    color-mix(in srgb, #2f78ff 46%, transparent) 50%,
+    color-mix(in srgb, #8fbcff 24%, transparent) 78%,
+    transparent 100%
   );
-  animation: admin-button-sheen 1.15s ease-in-out infinite;
+  filter: blur(7px);
+  transform: skewX(-18deg) translateX(-150%);
+  animation: admin-button-premium-sweep 1.35s cubic-bezier(.2,.7,.25,1) infinite;
   pointer-events: none;
 }
 
@@ -96,22 +115,50 @@ button:disabled {
   }
 }
 
-@keyframes admin-button-sheen {
+@keyframes admin-button-premium-sweep {
+  0% {
+    opacity: 0;
+    transform: skewX(-18deg) translateX(-170%);
+  }
+
+  18% {
+    opacity: .9;
+  }
+
+  72% {
+    opacity: .75;
+  }
+
+  100% {
+    opacity: 0;
+    transform: skewX(-18deg) translateX(520%);
+  }
+}
+
+@keyframes admin-button-premium-glow {
   0%,
   100% {
-    opacity: 0.25;
-    transform: translateX(-16%);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--admin-button-glow) 16%, transparent),
+      0 8px 22px color-mix(in srgb, var(--admin-button-glow) 20%, transparent),
+      inset 0 1px 0 rgba(255,255,255,.28);
   }
 
   50% {
-    opacity: 0.7;
-    transform: translateX(16%);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--admin-button-glow) 30%, transparent),
+      0 12px 34px color-mix(in srgb, var(--admin-button-glow) 34%, transparent),
+      inset 0 1px 0 rgba(255,255,255,.42);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .admin-workspace button[data-admin-pending="true"]:disabled::after {
     animation-duration: 1.4s;
+  }
+
+  .admin-workspace button[data-admin-pending="true"]:disabled {
+    animation: none;
   }
 
   .admin-workspace button[data-admin-pending="true"]:disabled::before {
@@ -573,6 +620,82 @@ footer {
   background: color-mix(in srgb, var(--ml-color-brand) 5%, var(--ml-color-surface));
   padding-inline: 10px;
 }
+
+.academic-timetable-list {
+  display: flex;
+  max-height: 600px;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.academic-timetable-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 12%, var(--ml-color-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ml-color-brand) 3%, var(--ml-color-surface));
+}
+
+.academic-timetable-filters label {
+  display: grid;
+  gap: 5px;
+}
+
+.academic-timetable-filters label:last-child {
+  grid-column: 1 / -1;
+}
+
+.academic-timetable-filters span {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.academic-timetable-filters select {
+  min-width: 0;
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 10px;
+  background: var(--ml-color-surface);
+  color: var(--ml-color-text);
+  padding: 0 10px;
+}
+
+.academic-timetable-list-rows {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline-end: 4px;
+  scrollbar-gutter: stable;
+}
+
+.academic-timetable-list-rows::-webkit-scrollbar {
+  width: 8px;
+}
+
+.academic-timetable-list-rows::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ml-color-brand) 38%, var(--ml-color-border));
+}
+
+.academic-filter-clear:disabled {
+  opacity: .42;
+}
+
+@media (max-width: 560px) {
+  .academic-timetable-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-timetable-filters label:last-child {
+    grid-column: auto;
+  }
+}
+
 
 .academic-form-card h2,
 .academic-list-panel h2 {
