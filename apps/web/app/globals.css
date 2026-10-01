@@ -1416,6 +1416,22 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .family-account-layout {
+    grid-template-rows: auto;
+  }
+
+  .family-account-column,
+  .family-account-column:first-child,
+  .family-account-column:last-child {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-rows: auto auto;
+  }
+
+  .family-account-column > .academic-form-card {
+    height: auto;
+  }
+
   .family-add-student-submit {
     grid-column: auto;
     width: 100%;
