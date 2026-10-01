@@ -386,12 +386,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [studentCode, setStudentCode] = useState("");
   const [parentSearch, setParentSearch] = useState("");
   const [selectedParentUserId, setSelectedParentUserId] = useState("");
+  const [parentUsernameFilter, setParentUsernameFilter] = useState("");
   const [parentStatusFilter, setParentStatusFilter] = useState("");
   const [parentChildFilter, setParentChildFilter] = useState("");
+  const [studentUsernameFilter, setStudentUsernameFilter] = useState("");
   const [studentClassFilter, setStudentClassFilter] = useState("");
   const [studentParentFilter, setStudentParentFilter] = useState("");
   const [studentStatusFilter, setStudentStatusFilter] = useState("");
-  const [studentLoginFilter, setStudentLoginFilter] = useState("");
   const [usernamePopup, setUsernamePopup] = useState("");
   const [importEntity, setImportEntity] = useState<ImportEntity>("PARENT");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -434,8 +435,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     [overview?.parents]
   );
 
-  const listedParents = useMemo(
-    () => (overview?.parents ?? []).filter((parent) =>
+  const listedParents = useMemo(() => {
+    const usernameQuery = parentUsernameFilter.trim().toLowerCase();
+    return (overview?.parents ?? []).filter((parent) =>
+      (!usernameQuery || parent.user.username.toLowerCase().includes(usernameQuery)) &&
       (!parentStatusFilter || parent.user.status === parentStatusFilter) &&
       (
         !parentChildFilter ||
@@ -443,9 +446,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         (parentChildFilter === "ONE" && parent.childCount === 1) ||
         (parentChildFilter === "MULTIPLE" && parent.childCount > 1)
       )
-    ),
-    [overview?.parents, parentStatusFilter, parentChildFilter]
-  );
+    );
+  }, [overview?.parents, parentUsernameFilter, parentStatusFilter, parentChildFilter]);
 
   const studentClassOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -466,42 +468,38 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     [selectedYearStudents]
   );
 
-  const studentLoginStatuses = useMemo(
-    () => Array.from(new Set(selectedYearStudents.map((item) => item.user?.status ?? "NO_LOGIN"))).sort(),
-    [selectedYearStudents]
-  );
-
-  const listedStudents = useMemo(
-    () => selectedYearStudents.filter((item) =>
+  const listedStudents = useMemo(() => {
+    const usernameQuery = studentUsernameFilter.trim().toLowerCase();
+    return selectedYearStudents.filter((item) =>
+      (!usernameQuery || Boolean(item.user?.username.toLowerCase().includes(usernameQuery))) &&
       (!studentClassFilter || item.classSection.id === studentClassFilter) &&
       (!studentParentFilter || item.student.parentUserId === studentParentFilter) &&
-      (!studentStatusFilter || item.student.status === studentStatusFilter) &&
-      (!studentLoginFilter || (item.user?.status ?? "NO_LOGIN") === studentLoginFilter)
-    ),
-    [
-      selectedYearStudents,
-      studentClassFilter,
-      studentParentFilter,
-      studentStatusFilter,
-      studentLoginFilter
-    ]
-  );
+      (!studentStatusFilter || item.student.status === studentStatusFilter)
+    );
+  }, [
+    selectedYearStudents,
+    studentUsernameFilter,
+    studentClassFilter,
+    studentParentFilter,
+    studentStatusFilter
+  ]);
 
-  const parentListHasFilters = Boolean(parentStatusFilter || parentChildFilter);
+  const parentListHasFilters = Boolean(parentUsernameFilter.trim() || parentStatusFilter || parentChildFilter);
   const studentListHasFilters = Boolean(
-    studentClassFilter || studentParentFilter || studentStatusFilter || studentLoginFilter
+    studentUsernameFilter.trim() || studentClassFilter || studentParentFilter || studentStatusFilter
   );
 
   function clearParentListFilters() {
+    setParentUsernameFilter("");
     setParentStatusFilter("");
     setParentChildFilter("");
   }
 
   function clearStudentListFilters() {
+    setStudentUsernameFilter("");
     setStudentClassFilter("");
     setStudentParentFilter("");
     setStudentStatusFilter("");
-    setStudentLoginFilter("");
   }
 
   const selectedYearMutable =
@@ -1367,6 +1365,18 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
           <div className="academic-timetable-filters family-list-filters" aria-label={t("Parent filters")}>
             <label>
+              <span>{t("Username")}</span>
+              <input
+                type="search"
+                value={parentUsernameFilter}
+                onChange={(event) => setParentUsernameFilter(event.target.value)}
+                placeholder={t("Search username")}
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label>
               <span>{t("Account status")}</span>
               <select value={parentStatusFilter} onChange={(event) => setParentStatusFilter(event.target.value)}>
                 <option value="">{t("All statuses")}</option>
@@ -1443,6 +1453,18 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
           <div className="academic-timetable-filters family-list-filters" aria-label={t("Student filters")}>
             <label>
+              <span>{t("Username")}</span>
+              <input
+                type="search"
+                value={studentUsernameFilter}
+                onChange={(event) => setStudentUsernameFilter(event.target.value)}
+                placeholder={t("Search username")}
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label>
               <span>{t("Class")}</span>
               <select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)}>
                 <option value="">{t("All classes")}</option>
@@ -1466,17 +1488,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 <option value="">{t("All statuses")}</option>
                 {studentStatuses.map((status) => (
                   <option key={status} value={status}>{t(status)}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t("Login status")}</span>
-              <select value={studentLoginFilter} onChange={(event) => setStudentLoginFilter(event.target.value)}>
-                <option value="">{t("All login statuses")}</option>
-                {studentLoginStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status === "NO_LOGIN" ? t("No student login") : t(status)}
-                  </option>
                 ))}
               </select>
             </label>
