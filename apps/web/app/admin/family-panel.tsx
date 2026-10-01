@@ -671,7 +671,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({ entityType: importEntity, rows: preview.rows, mapping })
       });
       setValidation(result);
-      if (result.valid) setNotice(adminFormat(locale, "{count} rows validated. Review and confirm the import.", { count: result.validRowCount }));
+      if (result.valid) {
+        setNotice(adminFormat(locale, "{count} rows validated. Review and confirm the import.", { count: result.validRowCount }));
+      } else {
+        setError(t("Import not committed — fix the errors and validate again."));
+      }
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Import validation failed."));
     } finally {
