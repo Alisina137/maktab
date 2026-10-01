@@ -484,6 +484,44 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   });
   assert.equal(assignmentResponse.statusCode, 201);
 
+  const secondTeacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "teacher.academic.two", role: "TEACHER" }
+  });
+  assert.equal(secondTeacherAccount.statusCode, 201);
+  const secondTeacherUserId = secondTeacherAccount.json<{ user: { id: string } }>().user.id;
+
+  const secondTeacherProfile = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: auth,
+    payload: {
+      userId: secondTeacherUserId,
+      employeeCode: "T-002",
+      fullName: "Second Academic Teacher"
+    }
+  });
+  assert.equal(secondTeacherProfile.statusCode, 201);
+
+  const occupiedClassSubject = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      classId,
+      subjectId,
+      teacherUserId: secondTeacherUserId
+    }
+  });
+  assert.equal(occupiedClassSubject.statusCode, 409);
+  assert.equal(
+    occupiedClassSubject.json<{ message: string }>().message,
+    "This class and subject already have a teacher assigned."
+  );
+
   const negaranResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/academics/negaran",

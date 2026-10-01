@@ -19,13 +19,16 @@ A school can model actual academic operations.
 
 - A teacher may teach multiple subjects.
 - A teacher may teach multiple classes.
-- A class may have several subject teachers.
+- A class may have several teachers across different subjects.
+- Within one academic year, a class + subject combination may have only one assigned teacher.
+- The same teacher may still teach that subject in another class, or another subject in the same class.
 - Each timetable period maps one class to one subject and teacher.
 - Teacher timetable conflicts are rejected.
 - Class timetable conflicts are rejected.
 - Negaran is a teacher assignment, not a user role.
 - A teacher may be Negaran while also teaching that or other classes.
 - A class may have at most one primary Negaran for any overlapping date range.
+- A teacher may supervise at most one class as Negaran for any overlapping date range.
 - Historical Negaran assignments are retained.
 - Academic structure remains tied to an academic year.
 - Closing/archiving an academic year preserves its historical data.

@@ -120,6 +120,16 @@ test("a teacher can teach several classes and subjects while separately supervis
     teacherUserId: secondTeacherUser.id
   });
 
+  await assert.rejects(
+    academics.createTeacherAssignment(school.school.id, {
+      academicYearId: year.id,
+      classId: class7A.id,
+      subjectId: math.id,
+      teacherUserId: secondTeacherUser.id
+    }),
+    /class and subject already have a teacher/i
+  );
+
   const negaran = await academics.createNegaranAssignment(school.school.id, {
     academicYearId: year.id,
     classId: class7A.id,
@@ -176,6 +186,16 @@ test("a teacher can teach several classes and subjects while separately supervis
       startDate: "2026-09-01"
     }),
     /already has a Negaran/i
+  );
+
+  await assert.rejects(
+    academics.createNegaranAssignment(school.school.id, {
+      academicYearId: year.id,
+      classId: class8A.id,
+      teacherUserId: teacherUser.id,
+      startDate: "2026-09-01"
+    }),
+    /teacher is already Negaran/i
   );
 });
 

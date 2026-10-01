@@ -921,6 +921,20 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         getTeacher(schoolId, input.teacherUserId)
       ]);
 
+      const [occupiedSlot] = await db
+        .select({ id: teacherAssignments.id })
+        .from(teacherAssignments)
+        .where(and(
+          eq(teacherAssignments.schoolId, schoolId),
+          eq(teacherAssignments.academicYearId, input.academicYearId),
+          eq(teacherAssignments.classId, input.classId),
+          eq(teacherAssignments.subjectId, input.subjectId)
+        ))
+        .limit(1);
+      if (occupiedSlot) {
+        throw new AcademicConflictError("This class and subject already have a teacher assigned.");
+      }
+
       try {
         const [assignment] = await db
           .insert(teacherAssignments)
@@ -929,7 +943,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (!assignment) throw new Error("Teacher assignment insert did not return a row.");
         return assignment;
       } catch (error) {
-        if (isUniqueError(error)) throw new AcademicConflictError("This teacher is already assigned to that subject and class.");
+        if (isUniqueError(error)) throw new AcademicConflictError("This class and subject already have a teacher assigned.");
         throw error;
       }
     },
@@ -959,6 +973,20 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         getSubject(schoolId, input.subjectId),
         getTeacher(schoolId, input.teacherUserId)
       ]);
+      const [occupiedSlot] = await db
+        .select({ id: teacherAssignments.id })
+        .from(teacherAssignments)
+        .where(and(
+          eq(teacherAssignments.schoolId, schoolId),
+          eq(teacherAssignments.academicYearId, input.academicYearId),
+          eq(teacherAssignments.classId, input.classId),
+          eq(teacherAssignments.subjectId, input.subjectId),
+          ne(teacherAssignments.id, assignmentId)
+        ))
+        .limit(1);
+      if (occupiedSlot) {
+        throw new AcademicConflictError("This class and subject already have a teacher assigned.");
+      }
       try {
         const [updated] = await db
           .update(teacherAssignments)
@@ -972,7 +1000,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         if (!updated) throw new AcademicNotFoundError("Teacher assignment not found.");
         return updated;
       } catch (error) {
-        if (isUniqueError(error)) throw new AcademicConflictError("That teacher assignment already exists.");
+        if (isUniqueError(error)) throw new AcademicConflictError("This class and subject already have a teacher assigned.");
         throw error;
       }
     },
@@ -1038,16 +1066,23 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const existing = await db
         .select()
         .from(negaranAssignments)
-        .where(
-          and(
-            eq(negaranAssignments.schoolId, schoolId),
-            eq(negaranAssignments.academicYearId, input.academicYearId),
-            eq(negaranAssignments.classId, input.classId)
+        .where(and(
+          eq(negaranAssignments.schoolId, schoolId),
+          eq(negaranAssignments.academicYearId, input.academicYearId),
+          or(
+            eq(negaranAssignments.classId, input.classId),
+            eq(negaranAssignments.teacherUserId, input.teacherUserId)
           )
-        );
+        ));
 
-      if (existing.some((item) => dateRangesOverlap(item.startDate, item.endDate, input.startDate, input.endDate ?? null))) {
+      const overlap = existing.find((item) =>
+        dateRangesOverlap(item.startDate, item.endDate, input.startDate, input.endDate ?? null)
+      );
+      if (overlap?.classId === input.classId) {
         throw new AcademicConflictError("This class already has a Negaran during the selected date range.");
+      }
+      if (overlap?.teacherUserId === input.teacherUserId) {
+        throw new AcademicConflictError("This teacher is already Negaran for another class during the selected date range.");
       }
 
       const [assignment] = await db
@@ -1082,16 +1117,31 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicValidationError("Negaran assignment dates must fall inside the academic year.");
       }
       const overlaps = await db
-        .select({ id: negaranAssignments.id, startDate: negaranAssignments.startDate, endDate: negaranAssignments.endDate })
+        .select({
+          id: negaranAssignments.id,
+          classId: negaranAssignments.classId,
+          teacherUserId: negaranAssignments.teacherUserId,
+          startDate: negaranAssignments.startDate,
+          endDate: negaranAssignments.endDate
+        })
         .from(negaranAssignments)
         .where(and(
           eq(negaranAssignments.schoolId, schoolId),
           eq(negaranAssignments.academicYearId, input.academicYearId),
-          eq(negaranAssignments.classId, input.classId),
+          or(
+            eq(negaranAssignments.classId, input.classId),
+            eq(negaranAssignments.teacherUserId, input.teacherUserId)
+          ),
           ne(negaranAssignments.id, assignmentId)
         ));
-      if (overlaps.some((row) => dateRangesOverlap(input.startDate, input.endDate ?? null, row.startDate, row.endDate))) {
+      const overlap = overlaps.find((row) =>
+        dateRangesOverlap(input.startDate, input.endDate ?? null, row.startDate, row.endDate)
+      );
+      if (overlap?.classId === input.classId) {
         throw new AcademicConflictError("This class already has an overlapping Negaran assignment.");
+      }
+      if (overlap?.teacherUserId === input.teacherUserId) {
+        throw new AcademicConflictError("This teacher is already Negaran for another class during the selected date range.");
       }
       const [updated] = await db
         .update(negaranAssignments)
