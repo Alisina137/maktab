@@ -790,3 +790,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The PDF is generated client-side from a Unicode-capable canvas so Dari/Pashto/English account information can be captured visually without adding a new PDF dependency.
 - The exported PDF contains the same four credential fields as the preview and uses a safe filename based on account type and username.
 
+## Testing Step 8 follow-up — non-blocking Families feedback
+
+- Converted general Families success/error feedback from full-screen modal overlays into compact fixed toast cards.
+- Toast hosts use pointer-events only on the message card, so the rest of the Families page remains fully interactive while success/error feedback is visible.
+- Duplicate-username errors now use the same non-blocking toast pattern.
+- Success/error toasts retain explicit OK dismissal; initial load errors also retain Retry.
+- Only decision-required confirmations, such as closing unsaved one-time credential information, remain modal.
+
