@@ -36,7 +36,8 @@ async function createTestApp() {
     "0009_school_image.sql",
     "0010_admin_profiles.sql",
     "0011_admin_contact_profile.sql",
-    "0012_admin_password_2fa.sql"
+    "0012_admin_password_2fa.sql",
+    "0014_student_phone.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
