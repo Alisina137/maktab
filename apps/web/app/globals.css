@@ -945,6 +945,14 @@ footer {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.family-form-grid {
+  align-items: start;
+}
+
+.family-form-grid > .academic-form-card {
+  align-self: start;
+}
+
 .family-import-panel {
   display: grid;
   gap: 18px;
