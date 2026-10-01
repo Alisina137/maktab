@@ -101,10 +101,10 @@ function normalizeHeader(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function nextAvailableStudentCode(students: StudentRow[]) {
+function nextAvailableStudentCodeFromValues(codes: string[]) {
   const used = new Set<number>();
-  for (const item of students) {
-    const match = /^S-(\d+)$/i.exec(item.student.studentCode.trim());
+  for (const code of codes) {
+    const match = /^S-(\d+)$/i.exec(code.trim());
     if (!match?.[1]) continue;
     const number = Number(match[1]);
     if (Number.isInteger(number) && number > 0) used.add(number);
@@ -113,6 +113,10 @@ function nextAvailableStudentCode(students: StudentRow[]) {
   let next = 1;
   while (used.has(next)) next += 1;
   return `S-${String(next).padStart(4, "0")}`;
+}
+
+function nextAvailableStudentCode(students: StudentRow[]) {
+  return nextAvailableStudentCodeFromValues(students.map((item) => item.student.studentCode));
 }
 
 function isDuplicateUsernameError(cause: unknown) {
@@ -299,23 +303,41 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setError("");
     setNotice("");
     try {
-      await request(accessToken, "/v1/admin/families/students", {
-        method: "POST",
-        body: JSON.stringify({
-          studentCode: studentCode.trim(),
-          fullName: String(form.get("fullName") ?? "").trim(),
-          parentUserId: selectedParentUserId,
-          academicYearId: String(form.get("academicYearId") ?? ""),
-          classId: String(form.get("classId") ?? "")
-        })
-      });
+      const result = await request<{ student: StudentRow["student"] }>(
+        accessToken,
+        "/v1/admin/families/students",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentCode: studentCode.trim(),
+            fullName: String(form.get("fullName") ?? "").trim(),
+            parentUserId: selectedParentUserId,
+            academicYearId: String(form.get("academicYearId") ?? ""),
+            classId: String(form.get("classId") ?? "")
+          })
+        }
+      );
+
       setNotice(t("Student created and linked to the selected parent."));
       setParentSearch("");
       setSelectedParentUserId("");
       formElement.reset();
-      const refreshed = await load({ silentFeedback: true });
-      setStudentCode(nextAvailableStudentCode(refreshed?.students ?? []));
+
+      const knownCodes = [
+        ...(overview?.students.map((item) => item.student.studentCode) ?? []),
+        result.student.studentCode
+      ];
+      setStudentCode(nextAvailableStudentCodeFromValues(knownCodes));
+
+      // Refresh the lists quietly. The create response is already authoritative
+      // for success, so a secondary read failure must not turn it into an error.
+      await load({ silentFeedback: true });
     } catch (cause) {
+      if (cause instanceof Error && cause.message === "That student code already exists in this school.") {
+        const refreshed = await load({ silentFeedback: true });
+        setStudentCode(nextAvailableStudentCode(refreshed?.students ?? overview?.students ?? []));
+      }
+      setNotice("");
       setError(adminErrorText(locale, cause, "Could not create student."));
     } finally {
       setBusy(false);
