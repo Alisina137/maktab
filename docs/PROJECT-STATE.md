@@ -781,3 +781,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The feedback hook now supports an opt-in persistent mode; other Admin pages keep their existing timed feedback behavior.
 - Bulk-import row-level validation details remain visible inline for diagnosis, while validation pass/fail also triggers the unified popup summary.
 
+## Testing Step 8 follow-up — direct PDF credential export and preview repair
+
+- Fixed the Parent/Student credential preview layout conflict caused by the legacy generic `.credential-card div` rule applying a two-column grid to every nested preview element.
+- Username, full name, phone number, and temporary password now render in stable dedicated cards; phone and temporary password use full-width rows and LTR values no longer wrap vertically.
+- Parent/Student account actions now use equal 100px buttons labeled Export as PDF and Close.
+- Replaced the browser print/save dialog with an actual generated PDF download. Account creation automatically exports a `.pdf` file, and Export as PDF generates the file again on demand.
+- The PDF is generated client-side from a Unicode-capable canvas so Dari/Pashto/English account information can be captured visually without adding a new PDF dependency.
+- The exported PDF contains the same four credential fields as the preview and uses a safe filename based on account type and username.
+
