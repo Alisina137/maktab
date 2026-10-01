@@ -1636,15 +1636,25 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
               <option value="TEACHER">{t("Teachers")}</option>
             </select>
           </label>
-          <label>
-            {t("CSV or XLSX file")}
-            <input
-              type="file"
-              accept=".csv,.tsv,.xlsx"
-              onChange={(event) => void selectImportFile(event.target.files?.[0])}
-              disabled={busy}
-            />
-          </label>
+
+          <div className="family-import-file-field">
+            <span className="family-import-field-label">{t("CSV or XLSX file")}</span>
+            <label className="family-import-file-picker">
+              <input
+                className="family-import-file-input"
+                type="file"
+                accept=".csv,.tsv,.xlsx"
+                onChange={(event) => void selectImportFile(event.target.files?.[0])}
+                disabled={busy}
+              />
+              <span className="family-import-file-icon" aria-hidden="true">↑</span>
+              <span className="family-import-file-copy">
+                <strong>{t("Choose import file")}</strong>
+                <span>{importFileName || t("CSV, TSV or XLSX")}</span>
+              </span>
+              <span className="family-import-file-action">{t("Browse")}</span>
+            </label>
+          </div>
         </div>
 
         {preview ? (
