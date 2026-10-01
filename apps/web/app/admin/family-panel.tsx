@@ -33,6 +33,7 @@ type StudentRow = {
     classId: string;
     status: "ACTIVE" | "WITHDRAWN";
   };
+  user: User | null;
   classSection: { id: string; code: string; name: string; academicYearId: string };
   academicYear: { id: string; name: string; status: string };
 };
@@ -46,6 +47,7 @@ type EnrollmentRow = {
     endedAt: string | null;
   };
   student: StudentRow["student"];
+  user: User | null;
   classSection: StudentRow["classSection"];
   academicYear: StudentRow["academicYear"];
 };
@@ -346,12 +348,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           ...current,
           students: current.students.map((item) =>
             item.student.id === targetStudentId
-              ? { ...item, student: { ...item.student, userId: result.user.id } }
+              ? { ...item, student: { ...item.student, userId: result.user.id }, user: result.user }
               : item
           ),
           enrollments: current.enrollments.map((item) =>
             item.student.id === targetStudentId
-              ? { ...item, student: { ...item.student, userId: result.user.id } }
+              ? { ...item, student: { ...item.student, userId: result.user.id }, user: result.user }
               : item
           )
         };
@@ -400,6 +402,77 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       await load();
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Parent account action failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function studentAccountAction(item: EnrollmentRow, action: "reset-password" | "suspend" | "reactivate") {
+    if (!item.user) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setCredentials([]);
+    try {
+      const result = await request<{ user: User; temporaryPassword?: string }>(
+        accessToken,
+        `/v1/admin/users/${item.user.id}/${action}`,
+        { method: "POST" }
+      );
+
+      if (result.temporaryPassword) {
+        setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
+        setNotice(t("A new temporary password was generated. It is shown only in this response."));
+      } else {
+        setNotice(t(action === "suspend" ? "Student account suspended." : "Student account reactivated."));
+      }
+
+      setOverview((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          students: current.students.map((studentItem) =>
+            studentItem.student.id === item.student.id
+              ? { ...studentItem, user: result.user }
+              : studentItem
+          ),
+          enrollments: current.enrollments.map((enrollment) =>
+            enrollment.student.id === item.student.id
+              ? { ...enrollment, user: result.user }
+              : enrollment
+          )
+        };
+      });
+      await load({ silentFeedback: true });
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Student account action failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteStudent(item: EnrollmentRow) {
+    if (!window.confirm(t("Delete this student? This action cannot be undone."))) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setCredentials([]);
+    try {
+      await request(accessToken, `/v1/admin/families/students/${item.student.id}`, { method: "DELETE" });
+      setNotice(t("Student deleted."));
+      setOverview((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          students: current.students.filter((studentItem) => studentItem.student.id !== item.student.id),
+          enrollments: current.enrollments.filter((enrollment) => enrollment.student.id !== item.student.id)
+        };
+      });
+      await load({ silentFeedback: true });
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Could not delete student."));
     } finally {
       setBusy(false);
     }
@@ -557,7 +630,6 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <h2>{t("Onboard families")}</h2>
           <p>{t("Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.")}</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -586,7 +658,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <Summary label={t("Families with siblings")} value={overview.parents.filter((item) => item.childCount > 1).length} />
       </div>
 
-      <div className="academic-form-grid">
+      <div className="academic-form-grid family-form-grid">
         <article className="admin-panel academic-form-card">
           <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
           <form className="admin-form" onSubmit={createParent}>
@@ -768,7 +840,42 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                     <strong>{item.student.fullName}</strong>
                     <span>{item.student.studentCode} · {item.classSection.name} · {item.academicYear.name}</span>
                     <span>{t("Parent")}: {parent?.profile.fullName ?? t("Unknown")} · {t(item.student.status)}</span>
-                    <span>{t(item.student.userId ? "Student login linked" : "No student login yet")}</span>
+                    <span>
+                      {item.user
+                        ? `${item.user.username} · ${t(item.user.status)}`
+                        : t("No student login yet")}
+                    </span>
+                  </div>
+                  <div className="admin-actions">
+                    {item.user ? (
+                      <>
+                        <button
+                          disabled={busy || item.user.status === "ARCHIVED"}
+                          onClick={() => void studentAccountAction(item, "reset-password")}
+                        >
+                          {t("Reset password")}
+                        </button>
+                        {item.user.status === "SUSPENDED" ? (
+                          <button disabled={busy} onClick={() => void studentAccountAction(item, "reactivate")}>
+                            {t("Reactivate")}
+                          </button>
+                        ) : (
+                          <button
+                            disabled={busy || item.user.status === "ARCHIVED"}
+                            onClick={() => void studentAccountAction(item, "suspend")}
+                          >
+                            {t("Suspend")}
+                          </button>
+                        )}
+                      </>
+                    ) : null}
+                    <button
+                      className="admin-danger"
+                      disabled={busy}
+                      onClick={() => void deleteStudent(item)}
+                    >
+                      {t("Delete")}
+                    </button>
                   </div>
                 </div>
               );
