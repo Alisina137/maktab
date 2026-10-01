@@ -935,12 +935,18 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <AdminLoader label={t("Loading Phase 4 data…")} />
         <AdminSkeleton rows={5} />
         {error ? (
-          <div className="family-username-popup-backdrop" role="presentation">
-            <div className="family-username-popup family-feedback-popup family-feedback-error" role="alertdialog" aria-modal="true" aria-labelledby="family-load-error-title">
+          <div className="family-feedback-toast-host">
+            <div
+              className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
+              role="alert"
+              aria-labelledby="family-load-error-title"
+            >
               <span className="family-feedback-icon" aria-hidden="true">!</span>
-              <strong id="family-load-error-title">{t("Error")}</strong>
-              <p>{error}</p>
-              <div className="admin-actions">
+              <div className="family-feedback-copy">
+                <strong id="family-load-error-title">{t("Error")}</strong>
+                <p>{error}</p>
+              </div>
+              <div className="admin-actions family-feedback-actions">
                 <button className="admin-secondary" type="button" onClick={() => setError("")} data-admin-no-loading="true">
                   {t("OK")}
                 </button>
@@ -987,18 +993,19 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       ) : null}
 
       {error || notice ? (
-        <div className="family-username-popup-backdrop" role="presentation">
+        <div className="family-feedback-toast-host">
           <div
-            className={`family-username-popup family-feedback-popup ${error ? "family-feedback-error" : "family-feedback-success"}`}
-            role="alertdialog"
-            aria-modal="true"
+            className={`family-username-popup family-feedback-popup family-feedback-toast ${error ? "family-feedback-error" : "family-feedback-success"}`}
+            role={error ? "alert" : "status"}
             aria-labelledby="family-feedback-title"
           >
             <span className="family-feedback-icon" aria-hidden="true">{error ? "!" : "✓"}</span>
-            <strong id="family-feedback-title">{t(error ? "Error" : "Success")}</strong>
-            <p>{error || notice}</p>
+            <div className="family-feedback-copy">
+              <strong id="family-feedback-title">{t(error ? "Error" : "Success")}</strong>
+              <p>{error || notice}</p>
+            </div>
             <button
-              className="admin-primary"
+              className="admin-primary family-feedback-dismiss"
               type="button"
               onClick={() => {
                 setError("");
