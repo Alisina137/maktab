@@ -1472,10 +1472,29 @@ test("family usernames are alphanumeric and empty parents can be deleted safely"
     method: "POST",
     url: `/v1/admin/families/students/${studentId}/account`,
     headers: auth,
-    payload: { username: "linkedstudent1" }
+    payload: { username: "linkedstudent1", phone: "0701234567" }
   });
   assert.equal(studentAccount.statusCode, 201);
-  const studentUserId = studentAccount.json<{ user: { id: string } }>().user.id;
+  const studentAccountBody = studentAccount.json<{
+    user: { id: string };
+    student: { phone: string | null; fullName: string };
+    temporaryPassword: string;
+  }>();
+  const studentUserId = studentAccountBody.user.id;
+  assert.equal(studentAccountBody.student.phone, "0701234567");
+  assert.equal(studentAccountBody.student.fullName, "Linked Student");
+  assert.ok(studentAccountBody.temporaryPassword.length >= 8);
+
+  const overviewWithStudentPhone = await app.inject({
+    method: "GET",
+    url: "/v1/admin/families",
+    headers: auth
+  });
+  assert.equal(overviewWithStudentPhone.statusCode, 200);
+  const linkedStudentOverview = overviewWithStudentPhone
+    .json<{ students: Array<{ student: { id: string; phone: string | null } }> }>()
+    .students.find((item) => item.student.id === studentId);
+  assert.equal(linkedStudentOverview?.student.phone, "0701234567");
 
   const suspendStudent = await app.inject({
     method: "POST",
