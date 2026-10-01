@@ -871,3 +871,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Mapping controls now sit in a subtle grouped surface so the upload, mapping, validation, and confirmation stages are visually easier to scan.
 - Added Dari and Pashto localization for the new file-picker copy.
 
+
+
+### Step 9.5 Family form and bulk-import styling refinement
+- Normalized the Add Student form controls so text inputs and selects share the same 48px height, border radius, surface color, typography, padding, hover state, and keyboard-focus treatment.
+- Kept the existing two-column six-field Add Student layout and all parent/year/class selection behavior unchanged.
+- Refined the Bulk Import controls into a clearer grouped surface and strengthened the custom file-picker card.
+- The import file picker now has a larger upload/status icon, clearer hover/focus treatment, a more prominent Browse action, and a distinct selected-file state with a check mark once a file is chosen.
+- Import parsing, column mapping, validation, confirmation, credential preview, and account creation behavior remain unchanged.
