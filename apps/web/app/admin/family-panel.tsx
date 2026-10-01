@@ -571,7 +571,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setNotice(t("Parent account created. The account PDF was exported automatically. Keep it secure before closing the preview."));
       formElement.reset();
       scheduleAccountPreviewExport(preview);
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       if (isDuplicateUsernameError(cause)) {
         setUsernamePopup(t("This username already exists. Please type another username."));
@@ -620,10 +620,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
       // Refresh the lists quietly. The create response is already authoritative
       // for success, so a secondary read failure must not turn it into an error.
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       if (cause instanceof Error && cause.message === "That student code already exists in this school.") {
-        const refreshed = await load({ silentFeedback: true });
+        const refreshed = void load({ silentFeedback: true });
         const knownCodes = [
           ...((refreshed?.students ?? overview?.students ?? []).map((item) => item.student.studentCode)),
           studentCode.trim()
@@ -698,7 +698,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       // The credential creation is already complete. Refresh quietly so a
       // follow-up read failure never turns a successful create into a mixed
       // success/error state or hides the one-time credential.
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setNotice("");
       if (isDuplicateUsernameError(cause)) {
@@ -729,7 +729,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       } else {
         setNotice(t(action === "suspend" ? "Parent account suspended." : "Parent account reactivated."));
       }
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Parent account action failed."));
     } finally {
@@ -774,7 +774,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           )
         };
       });
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Student account action failed."));
     } finally {
@@ -800,7 +800,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           enrollments: current.enrollments.filter((enrollment) => enrollment.student.id !== item.student.id)
         };
       });
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not delete student."));
     } finally {
@@ -823,7 +823,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     try {
       await request(accessToken, `/v1/admin/families/parents/${parent.user.id}`, { method: "DELETE" });
       setNotice(t("Parent account deleted."));
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not delete parent account."));
     } finally {
@@ -921,7 +921,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setValidation(null);
       setMapping({});
       setImportFileName("");
-      await load({ silentFeedback: true });
+      void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Import failed."));
     } finally {
