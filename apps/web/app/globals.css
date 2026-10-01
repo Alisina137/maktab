@@ -978,6 +978,45 @@ footer {
   min-width: 0;
 }
 
+.family-add-student-form > label,
+.family-add-student-field > label {
+  align-content: start;
+}
+
+.family-add-student-form :where(input, select) {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 11px;
+  background: var(--ml-color-surface);
+  color: var(--ml-color-text);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.family-add-student-form select {
+  cursor: pointer;
+}
+
+.family-add-student-form :where(input, select):not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--ml-color-brand) 38%, var(--ml-color-border));
+}
+
+.family-add-student-form :where(input, select):focus-visible {
+  border-color: var(--ml-color-brand);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ml-color-brand) 14%, transparent);
+}
+
+.family-add-student-form input::placeholder {
+  color: color-mix(in srgb, var(--ml-color-text-muted) 78%, transparent);
+  opacity: 1;
+}
+
 .family-add-student-field {
   display: grid;
   gap: 7px;
@@ -1245,6 +1284,14 @@ footer {
   gap: 14px;
 }
 
+.family-import-controls {
+  align-items: stretch;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 12%, var(--ml-color-border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ml-color-brand) 2.5%, var(--ml-color-surface));
+}
+
 .family-import-controls > label,
 .family-import-file-field,
 .family-mapping-grid label {
@@ -1255,6 +1302,11 @@ footer {
   color: var(--ml-color-text-muted);
   font-size: 13px;
   font-weight: 700;
+}
+
+.family-import-controls > label,
+.family-import-file-field {
+  min-height: 100%;
 }
 
 .family-import-field-label {
@@ -1284,16 +1336,18 @@ footer {
 .family-import-file-picker {
   position: relative;
   min-width: 0;
-  min-height: 72px;
+  min-height: 78px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1px dashed color-mix(in srgb, var(--ml-color-brand) 42%, var(--ml-color-border));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--ml-color-brand) 4%, var(--ml-color-surface));
+  padding: 13px 14px;
+  border: 2px dashed color-mix(in srgb, var(--ml-color-brand) 38%, var(--ml-color-border));
+  border-radius: 15px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ml-color-brand) 6%, var(--ml-color-surface)), var(--ml-color-surface));
   cursor: pointer;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 55%, transparent);
   transition:
     border-color 150ms ease,
     background 150ms ease,
@@ -1303,8 +1357,19 @@ footer {
 
 .family-import-file-picker:hover {
   border-color: color-mix(in srgb, var(--ml-color-brand) 72%, var(--ml-color-border));
-  background: color-mix(in srgb, var(--ml-color-brand) 7%, var(--ml-color-surface));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ml-color-brand) 9%, var(--ml-color-surface)), var(--ml-color-surface));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 60%, transparent),
+    0 8px 22px color-mix(in srgb, var(--ml-color-brand) 9%, transparent);
   transform: translateY(-1px);
+}
+
+.family-import-file-picker-selected {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ml-color-brand) 58%, var(--ml-color-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ml-color-brand) 10%, var(--ml-color-surface)), var(--ml-color-surface));
 }
 
 .family-import-file-picker:has(.family-import-file-input:focus-visible) {
@@ -1333,16 +1398,26 @@ footer {
 }
 
 .family-import-file-icon {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 13px;
   background: color-mix(in srgb, var(--ml-color-brand) 12%, var(--ml-color-surface));
   color: var(--ml-color-brand-strong);
   font-size: 22px;
   font-weight: 900;
   line-height: 1;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ml-color-brand) 9%, transparent);
+}
+
+.family-import-file-picker-selected .family-import-file-icon {
+  background: color-mix(in srgb, var(--ml-color-brand) 18%, var(--ml-color-surface));
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--ml-color-brand) 5%, transparent);
+}
+
+.family-import-file-picker-selected .family-import-file-copy strong {
+  color: var(--ml-color-brand-strong);
 }
 
 .family-import-file-copy {
@@ -1368,18 +1443,29 @@ footer {
 }
 
 .family-import-file-action {
-  min-height: 34px;
+  min-width: 78px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 26%, var(--ml-color-border));
-  border-radius: 9px;
-  background: var(--ml-color-surface);
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 28%, var(--ml-color-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ml-color-brand) 4%, var(--ml-color-surface));
   color: var(--ml-color-brand-strong);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ml-color-text) 6%, transparent);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.family-import-file-picker:hover .family-import-file-action {
+  border-color: color-mix(in srgb, var(--ml-color-brand) 46%, var(--ml-color-border));
+  background: color-mix(in srgb, var(--ml-color-brand) 8%, var(--ml-color-surface));
 }
 
 .family-mapping-grid {
