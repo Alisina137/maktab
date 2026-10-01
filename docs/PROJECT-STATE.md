@@ -863,3 +863,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Full name and phone are reconstructed from the already-validated normalized import rows and paired to returned credentials by username.
 - Teacher/reset credential flows keep the legacy credential block because they do not currently use the Parent/Student rich profile preview contract.
 
+### Step 9 Bulk Import UI polish
+- Refined the Bulk Import panel styling without changing upload, mapping, validation, or commit behavior.
+- Replaced the browser-default file input presentation with a full-width clickable import-file card.
+- The file picker now shows a dedicated upload icon, Choose import file label, supported CSV/TSV/XLSX formats, selected filename, and a Browse action.
+- Added hover, keyboard-focus, disabled, and theme-aware states to the import picker.
+- Mapping controls now sit in a subtle grouped surface so the upload, mapping, validation, and confirmation stages are visually easier to scan.
+- Added Dari and Pashto localization for the new file-picker copy.
+
