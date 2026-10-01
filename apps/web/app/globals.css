@@ -655,7 +655,8 @@ footer {
   font-weight: 800;
 }
 
-.academic-timetable-filters select {
+.academic-timetable-filters select,
+.academic-timetable-filters input {
   min-width: 0;
   min-height: 40px;
   width: 100%;
@@ -664,6 +665,11 @@ footer {
   background: var(--ml-color-surface);
   color: var(--ml-color-text);
   padding: 0 10px;
+}
+
+.academic-timetable-filters input[type="search"] {
+  direction: ltr;
+  text-align: start;
 }
 
 .academic-timetable-list-rows {
