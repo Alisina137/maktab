@@ -126,19 +126,39 @@ export class FamilyNotFoundError extends Error {
 }
 
 function databaseErrorCode(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : undefined;
+  if (typeof error !== "object" || error === null) return undefined;
+  if ("code" in error && typeof (error as { code?: unknown }).code === "string") {
+    return (error as { code: string }).code;
+  }
+  if ("cause" in error) {
+    return databaseErrorCode((error as { cause?: unknown }).cause);
+  }
+  return undefined;
+}
+
+function databaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const causeMessage =
+      "cause" in error ? databaseErrorMessage((error as Error & { cause?: unknown }).cause) : "";
+    return [error.message, causeMessage].filter(Boolean).join(" ");
+  }
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error ?? "");
 }
 
 function isUniqueError(error: unknown): boolean {
-  if (databaseErrorCode(error) === "23505") return true;
-  const message = error instanceof Error ? error.message : String(error);
-  return /unique|duplicate/i.test(message);
+  return databaseErrorCode(error) === "23505" || /unique|duplicate/i.test(databaseErrorMessage(error));
 }
 
 function isForeignKeyError(error: unknown): boolean {
-  return databaseErrorCode(error) === "23503";
+  return databaseErrorCode(error) === "23503" || /foreign key/i.test(databaseErrorMessage(error));
 }
 
 export function createFamilyStore(db: FoundationDatabase): FamilyStore {
