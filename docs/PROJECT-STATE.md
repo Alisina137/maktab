@@ -891,3 +891,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Teacher credential previews now have localized Dari and Pashto account-type labels.
 - Added API regression coverage proving that imported Parent, Teacher, and Student credentials are generated, can authenticate with the correct role, and that imported Student accounts are linked to their Student record. Duplicate Student import usernames are also explicitly rejected.
 - With CSV/XLSX parsing, mapping, validation, duplicate/error handling, preview, confirmation, transactional import, and credential generation now covered consistently across all three entity types, Testing Step 9 is complete.
+
+
+### Post-Step-9 verification regression fixes
+- Fixed Family-store database constraint detection to unwrap nested driver errors, so duplicate parent usernames return the intended 409 family conflict instead of an internal 500.
+- Restored subscription enforcement on `GET /v1/auth/me`: suspended/cancelled school subscriptions now block Parent/Teacher/Student sessions with `school_service_unavailable`, while school administrators remain able to reach permitted administrative/billing flows.
+- Updated stale academic API regression assertions to match the current dependency-aware delete contract, including dependency lists for academic years and classes.
+- Updated the teacher-assignment regression expectation to account for the intentionally created second teacher profile while still verifying that the duplicate class+subject assignment is rejected.
+- Updated the legacy administrator-password regression test to enforce the current email-verification requirement instead of expecting the superseded direct password-change behavior.
+- The Step 9 bulk credential regression itself was already passing in the reported run; these fixes address the six unrelated API failures that prevented `pnpm verify` from completing.
