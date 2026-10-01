@@ -4035,6 +4035,52 @@ html[dir="rtl"] body {
   font-size: 9px;
 }
 
+.academic-timetable-current-slot {
+  background: color-mix(in srgb, #2f78ff 7%, var(--ml-color-surface));
+}
+
+.academic-timetable-cell-current {
+  position: relative;
+  border-color: color-mix(in srgb, #2f78ff 62%, #dce5f5);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #2f78ff 12%, #ffffff), color-mix(in srgb, #2f78ff 6%, #f1f5fd));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #2f78ff 12%, transparent),
+    0 10px 24px color-mix(in srgb, #2f78ff 20%, transparent);
+  animation: academic-current-period-pulse 2.2s ease-in-out infinite;
+}
+
+.academic-timetable-now-badge {
+  justify-self: start;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #2f78ff;
+  color: #fff !important;
+  font-size: 9px !important;
+  font-weight: 900;
+  letter-spacing: .02em;
+  box-shadow: 0 5px 12px rgba(47, 120, 255, .24);
+}
+
+@keyframes academic-current-period-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, #2f78ff 10%, transparent),
+      0 8px 20px color-mix(in srgb, #2f78ff 16%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, #2f78ff 16%, transparent),
+      0 12px 30px color-mix(in srgb, #2f78ff 26%, transparent);
+  }
+}
+
+
 .academic-timetable-free {
   display: grid;
   min-height: 62px;
@@ -4070,6 +4116,10 @@ html[dir="rtl"] body {
 @media (prefers-reduced-motion: reduce) {
   .academic-timetable-tab {
     transition: none;
+  }
+
+  .academic-timetable-cell-current {
+    animation: none;
   }
 }
 
