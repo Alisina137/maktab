@@ -176,3 +176,13 @@ The final CI result and real Neon migration status are recorded separately in `d
 - The Add Student form suggests the lowest unused student code in the `S-xxxx` sequence. Codes use at least four digits, fill gaps first, and naturally continue to five digits after `S-9999`.
 - Parent selection in Add Student is username-first: options display only the unique parent username, and a search field filters the available parent accounts by username.
 
+### Student account/list administration
+
+The Admin Families student list now mirrors parent-account administration where applicable:
+
+- Reset password for students with a login
+- Suspend/Reactivate students with a login
+- Delete the student record when no protected attendance, grade, or fee records depend on it
+
+Deleting a dependency-free student also removes its school-issued login account when present. Students without login accounts expose only student-record actions.
+
