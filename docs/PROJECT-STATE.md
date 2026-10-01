@@ -805,3 +805,7 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Secondary Families refreshes run silently in the background and no longer keep Create Parent, Add Student, Create Student Login, parent/student account actions, delete actions, or import commit buttons loading.
 - Data-dependent duplicate student-code recovery still awaits its refresh because the refreshed codes are required to calculate the next suggestion.
 
+### Step 8 family toast alignment
+- Moved non-blocking Families success/error toasts from the form-side corner to the same top-center placement used by Academic/Admin feedback.
+- Desktop placement now uses top 24px, centered at 50% viewport width, with the same 620px maximum width convention; mobile uses the same centered behavior with tighter margins.
+
