@@ -174,6 +174,7 @@ export function AcademicPanel({
     event.preventDefault();
     const succeeded = await mutate(path, payload, context, success, method);
     if (succeeded) setEditingId(null);
+    return succeeded;
   }
 
   async function remove(path: string, context: string, success: string, message = "Delete this record permanently?") {
@@ -549,33 +550,29 @@ export function AcademicPanel({
     return (
       <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} notice={historicalNotice}>
         <AcademicForm title={t(editing ? "Edit teacher assignment" : "Teacher assignment")} hint={t("Teacher → Subject → Class for one academic year.")}>
-          <form
-            id="academic-entity-form"
-            className="admin-form"
+          <TeacherAssignmentForm
             key={editing?.id ?? "new-assignment-" + effectiveYearId}
-            onSubmit={(event) => {
-              const form = new FormData(event.currentTarget);
-              void submit(
+            locale={locale}
+            editing={editing}
+            busy={busy}
+            year={effectiveYear}
+            mutable={selectedYearMutable}
+            classes={selectedClasses}
+            subjects={overview.subjects}
+            teachers={overview.teachers}
+            assignments={selectedAssignments}
+            onSubmit={(event, payload) =>
+              submit(
                 event,
                 editing ? "/v1/admin/academics/assignments/" + editing.id : "/v1/admin/academics/assignments",
-                {
-                  academicYearId: effectiveYearId,
-                  classId: formValue(form, "classId"),
-                  subjectId: formValue(form, "subjectId"),
-                  teacherUserId: formValue(form, "teacherUserId")
-                },
+                payload,
                 editing ? "Edit teacher assignment" : "Teacher assignment",
                 editing ? "Teacher assignment updated." : "Teacher assignment created.",
                 editing ? "PATCH" : "POST"
-              );
-            }}
-          >
-            <ReadOnlyYear year={effectiveYear} locale={locale} />
-            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
-            <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} defaultValue={editing?.subjectId ?? ""} disabled={!selectedYearMutable} />
-            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
-            <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Assign teacher")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
-          </form>
+              )
+            }
+            onCancel={() => setEditingId(null)}
+          />
         </AcademicForm>
         <EntityList
           title={t("Teacher assignments")}
@@ -595,36 +592,28 @@ export function AcademicPanel({
     return (
       <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy} notice={historicalNotice}>
         <AcademicForm title={t(editing ? "Edit Negaran assignment" : "Negaran assignment")} hint={t("One primary class supervisor may be active for a class at a time.")}>
-          <form
-            id="academic-entity-form"
-            className="admin-form"
+          <NegaranAssignmentForm
             key={editing?.id ?? "new-negaran-" + effectiveYearId}
-            onSubmit={(event) => {
-              const form = new FormData(event.currentTarget);
-              const endDate = formValue(form, "endDate");
-              void submit(
+            locale={locale}
+            editing={editing}
+            busy={busy}
+            year={effectiveYear}
+            mutable={selectedYearMutable}
+            classes={selectedClasses}
+            teachers={overview.teachers}
+            negaranAssignments={selectedNegaranAssignments}
+            onSubmit={(event, payload) =>
+              submit(
                 event,
                 editing ? "/v1/admin/academics/negaran/" + editing.id : "/v1/admin/academics/negaran",
-                {
-                  academicYearId: effectiveYearId,
-                  classId: formValue(form, "classId"),
-                  teacherUserId: formValue(form, "teacherUserId"),
-                  startDate: formValue(form, "startDate"),
-                  ...(endDate ? { endDate } : {})
-                },
+                payload,
                 editing ? "Edit Negaran assignment" : "Negaran assignment",
                 editing ? "Negaran assignment updated." : "Negaran assigned.",
                 editing ? "PATCH" : "POST"
-              );
-            }}
-          >
-            <ReadOnlyYear year={effectiveYear} locale={locale} />
-            <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
-            <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
-            <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" defaultValue={editing?.startDate ?? ""} required disabled={!selectedYearMutable} /></label>
-            <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" defaultValue={editing?.endDate ?? ""} disabled={!selectedYearMutable} /></label>
-            <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Assign Negaran")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
-          </form>
+              )
+            }
+            onCancel={() => setEditingId(null)}
+          />
         </AcademicForm>
         <EntityList
           title={t("Negaran history")}
@@ -657,39 +646,28 @@ export function AcademicPanel({
   return (
     <AcademicEntityPage section="timetable" title={t(pageTitle.timetable)} locale={locale} busy={busy} notice={historicalNotice}>
       <AcademicForm title={t(editing ? "Edit timetable period" : "Timetable period")} hint={t("A period must match an existing teacher assignment. Class and teacher overlaps are rejected.")}>
-        <form
-          id="academic-entity-form"
-          className="admin-form"
+        <TimetablePeriodForm
           key={editing?.id ?? "new-period-" + effectiveYearId}
-          onSubmit={(event) => {
-            const form = new FormData(event.currentTarget);
-            void submit(
+          locale={locale}
+          editing={editing}
+          busy={busy}
+          year={effectiveYear}
+          mutable={selectedYearMutable}
+          classes={selectedClasses}
+          subjects={overview.subjects}
+          teachers={overview.teachers}
+          onSubmit={(event, payload) =>
+            submit(
               event,
               editing ? "/v1/admin/academics/timetable/" + editing.id : "/v1/admin/academics/timetable",
-              {
-                academicYearId: effectiveYearId,
-                classId: formValue(form, "classId"),
-                subjectId: formValue(form, "subjectId"),
-                teacherUserId: formValue(form, "teacherUserId"),
-                weekday: formValue(form, "weekday"),
-                startsAt: formValue(form, "startsAt"),
-                endsAt: formValue(form, "endsAt")
-              },
+              payload,
               editing ? "Edit timetable period" : "Timetable period",
               editing ? "Timetable period updated." : "Timetable period created.",
               editing ? "PATCH" : "POST"
-            );
-          }}
-        >
-          <ReadOnlyYear year={effectiveYear} locale={locale} />
-          <Select name="classId" label={t("Class")} items={selectedClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!selectedYearMutable} />
-          <Select name="subjectId" label={t("Subject")} items={overview.subjects.map((item) => [item.id, item.name])} defaultValue={editing?.subjectId ?? ""} disabled={!selectedYearMutable} />
-          <Select name="teacherUserId" label={t("Teacher")} items={overview.teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!selectedYearMutable} />
-          <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} defaultValue={editing?.weekday ?? ""} disabled={!selectedYearMutable} />
-          <label>{t("Starts")}<input name="startsAt" type="time" defaultValue={editing?.startsAt ?? ""} required disabled={!selectedYearMutable} /></label>
-          <label>{t("Ends")}<input name="endsAt" type="time" defaultValue={editing?.endsAt ?? ""} required disabled={!selectedYearMutable} /></label>
-          <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Add period")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
-        </form>
+            )
+          }
+          onCancel={() => setEditingId(null)}
+        />
       </AcademicForm>
 
       <EntityList
@@ -802,13 +780,328 @@ function AcademicForm({ title, hint, children }: { title: string; hint: string; 
   );
 }
 
+
+const timetableDurations = [30, 35, 40, 45, 50, 55, 60] as const;
+
+function ControlledSelect({
+  label,
+  name,
+  items,
+  value,
+  onChange,
+  disabled = false
+}: {
+  label: string;
+  name: string;
+  items: Array<[string, string]>;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label>
+      {label}
+      <select name={name} required value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
+        <option value="" disabled>—</option>
+        {items.map(([optionValue, text]) => <option value={optionValue} key={optionValue}>{text}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function TeacherAssignmentForm({
+  locale,
+  editing,
+  busy,
+  year,
+  mutable,
+  classes,
+  subjects,
+  teachers,
+  assignments,
+  onSubmit,
+  onCancel
+}: {
+  locale: AdminLocale;
+  editing: Assignment | null;
+  busy: boolean;
+  year: AcademicYear | null;
+  mutable: boolean;
+  classes: ClassSection[];
+  subjects: Subject[];
+  teachers: Teacher[];
+  assignments: Assignment[];
+  onSubmit: (event: FormEvent<HTMLFormElement>, payload: Record<string, unknown>) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const [classId, setClassId] = useState(editing?.classId ?? "");
+  const [subjectId, setSubjectId] = useState(editing?.subjectId ?? "");
+  const [teacherUserId, setTeacherUserId] = useState(editing?.teacherUserId ?? "");
+
+  const availableClasses = classes.filter((classSection) =>
+    classSection.id === editing?.classId ||
+    subjects.some((subject) =>
+      !assignments.some((assignment) =>
+        assignment.id !== editing?.id &&
+        assignment.classId === classSection.id &&
+        assignment.subjectId === subject.id
+      )
+    )
+  );
+
+  const availableSubjects = classId
+    ? subjects.filter((subject) =>
+        subject.id === editing?.subjectId ||
+        !assignments.some((assignment) =>
+          assignment.id !== editing?.id &&
+          assignment.classId === classId &&
+          assignment.subjectId === subject.id
+        )
+      )
+    : [];
+
+  return (
+    <form
+      id="academic-entity-form"
+      className="admin-form"
+      onSubmit={(event) => {
+        void onSubmit(event, {
+          academicYearId: year?.id ?? "",
+          classId,
+          subjectId,
+          teacherUserId
+        }).then((succeeded) => {
+          if (succeeded && !editing) {
+            setClassId("");
+            setSubjectId("");
+            setTeacherUserId("");
+          }
+        });
+      }}
+    >
+      <ReadOnlyYear year={year} locale={locale} />
+      <ControlledSelect
+        name="classId"
+        label={t("Class")}
+        items={availableClasses.map((item) => [item.id, item.name])}
+        value={classId}
+        onChange={(next) => {
+          setClassId(next);
+          if (next !== editing?.classId) setSubjectId("");
+        }}
+        disabled={!mutable}
+      />
+      <ControlledSelect
+        name="subjectId"
+        label={t("Subject")}
+        items={availableSubjects.map((item) => [item.id, item.name])}
+        value={subjectId}
+        onChange={setSubjectId}
+        disabled={!mutable || !classId}
+      />
+      <ControlledSelect
+        name="teacherUserId"
+        label={t("Teacher")}
+        items={teachers.map((item) => [item.userId, item.fullName])}
+        value={teacherUserId}
+        onChange={setTeacherUserId}
+        disabled={!mutable || !subjectId}
+      />
+      <p className="admin-form-help">{t("Choose a class to see subjects that do not already have a teacher.")}</p>
+      <FormActions
+        editing={Boolean(editing)}
+        busy={busy}
+        disabled={!mutable || !classId || !subjectId || !teacherUserId}
+        createLabel={t("Assign teacher")}
+        saveLabel={t("Save changes")}
+        cancelLabel={t("Cancel edit")}
+        onCancel={onCancel}
+      />
+    </form>
+  );
+}
+
+function NegaranAssignmentForm({
+  locale,
+  editing,
+  busy,
+  year,
+  mutable,
+  classes,
+  teachers,
+  negaranAssignments,
+  onSubmit,
+  onCancel
+}: {
+  locale: AdminLocale;
+  editing: Negaran | null;
+  busy: boolean;
+  year: AcademicYear | null;
+  mutable: boolean;
+  classes: ClassSection[];
+  teachers: Teacher[];
+  negaranAssignments: Negaran[];
+  onSubmit: (event: FormEvent<HTMLFormElement>, payload: Record<string, unknown>) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const activeAssignments = negaranAssignments.filter((item) => !item.endDate && item.id !== editing?.id);
+  const availableClasses = classes.filter((item) =>
+    item.id === editing?.classId || !activeAssignments.some((assignment) => assignment.classId === item.id)
+  );
+  const availableTeachers = teachers.filter((item) =>
+    item.userId === editing?.teacherUserId || !activeAssignments.some((assignment) => assignment.teacherUserId === item.userId)
+  );
+
+  return (
+    <form
+      id="academic-entity-form"
+      className="admin-form"
+      onSubmit={(event) => {
+        const form = new FormData(event.currentTarget);
+        const endDate = formValue(form, "endDate");
+        void onSubmit(event, {
+          academicYearId: year?.id ?? "",
+          classId: formValue(form, "classId"),
+          teacherUserId: formValue(form, "teacherUserId"),
+          startDate: formValue(form, "startDate"),
+          ...(endDate ? { endDate } : {})
+        });
+      }}
+    >
+      <ReadOnlyYear year={year} locale={locale} />
+      <Select name="classId" label={t("Class")} items={availableClasses.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!mutable} />
+      <Select name="teacherUserId" label={t("Teacher")} items={availableTeachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!mutable} />
+      <p className="admin-form-help">{t("Only classes and teachers without an active Negaran assignment are shown.")}</p>
+      <label>{t("Start date")}<AdminHijriDatePicker locale={locale} name="startDate" defaultValue={editing?.startDate ?? ""} required disabled={!mutable} /></label>
+      <label>{t("End date (optional)")}<AdminHijriDatePicker locale={locale} name="endDate" defaultValue={editing?.endDate ?? ""} disabled={!mutable} /></label>
+      <FormActions
+        editing={Boolean(editing)}
+        busy={busy}
+        disabled={!mutable || availableClasses.length === 0 || availableTeachers.length === 0}
+        createLabel={t("Assign Negaran")}
+        saveLabel={t("Save changes")}
+        cancelLabel={t("Cancel edit")}
+        onCancel={onCancel}
+      />
+    </form>
+  );
+}
+
+function minutesBetween(start: string, end: string) {
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return 45;
+  const [startHour, startMinute] = start.split(":").map(Number);
+  const [endHour, endMinute] = end.split(":").map(Number);
+  const difference = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  return timetableDurations.includes(difference as (typeof timetableDurations)[number]) ? difference : 45;
+}
+
+function endTimeFromDuration(start: string, duration: number) {
+  if (!/^\d{2}:\d{2}$/.test(start)) return "";
+  const [hour, minute] = start.split(":").map(Number);
+  const total = hour * 60 + minute + duration;
+  if (total >= 24 * 60) return "";
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function TimetablePeriodForm({
+  locale,
+  editing,
+  busy,
+  year,
+  mutable,
+  classes,
+  subjects,
+  teachers,
+  onSubmit,
+  onCancel
+}: {
+  locale: AdminLocale;
+  editing: TimetablePeriod | null;
+  busy: boolean;
+  year: AcademicYear | null;
+  mutable: boolean;
+  classes: ClassSection[];
+  subjects: Subject[];
+  teachers: Teacher[];
+  onSubmit: (event: FormEvent<HTMLFormElement>, payload: Record<string, unknown>) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const t = (english: string) => adminText(locale, english);
+  const [startTime, setStartTime] = useState(editing?.startsAt ?? "");
+  const [duration, setDuration] = useState(() => editing ? minutesBetween(editing.startsAt, editing.endsAt) : 45);
+  const endTime = endTimeFromDuration(startTime, duration);
+
+  return (
+    <form
+      id="academic-entity-form"
+      className="admin-form"
+      onSubmit={(event) => {
+        const form = new FormData(event.currentTarget);
+        void onSubmit(event, {
+          academicYearId: year?.id ?? "",
+          classId: formValue(form, "classId"),
+          subjectId: formValue(form, "subjectId"),
+          teacherUserId: formValue(form, "teacherUserId"),
+          weekday: formValue(form, "weekday"),
+          startsAt: startTime,
+          endsAt: endTime
+        }).then((succeeded) => {
+          if (succeeded && !editing) {
+            setStartTime("");
+            setDuration(45);
+          }
+        });
+      }}
+    >
+      <ReadOnlyYear year={year} locale={locale} />
+      <Select name="classId" label={t("Class")} items={classes.map((item) => [item.id, item.name])} defaultValue={editing?.classId ?? ""} disabled={!mutable} />
+      <Select name="subjectId" label={t("Subject")} items={subjects.map((item) => [item.id, item.name])} defaultValue={editing?.subjectId ?? ""} disabled={!mutable} />
+      <Select name="teacherUserId" label={t("Teacher")} items={teachers.map((item) => [item.userId, item.fullName])} defaultValue={editing?.teacherUserId ?? ""} disabled={!mutable} />
+      <Select name="weekday" label={t("Weekday")} items={schoolWeekdays.map((day) => [day, t(day)])} defaultValue={editing?.weekday ?? ""} disabled={!mutable} />
+      <label>
+        {t("Class duration")}
+        <select value={String(duration)} onChange={(event) => setDuration(Number(event.target.value))} disabled={!mutable}>
+          {timetableDurations.map((minutes) => <option key={minutes} value={minutes}>{minutes} {t("minutes")}</option>)}
+        </select>
+      </label>
+      <label>
+        {t("Starts")}
+        <input name="startsAt" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required disabled={!mutable} />
+      </label>
+      <input type="hidden" name="endsAt" value={endTime} />
+      <div className={startTime && !endTime ? "academic-time-preview academic-time-preview-error" : "academic-time-preview"}>
+        <span>{t("Time preview")}</span>
+        <strong>
+          {startTime && endTime
+            ? `${startTime} → ${endTime}`
+            : startTime
+              ? t("This lesson would end after midnight. Choose an earlier start time.")
+              : t("Select a start time to preview the end time.")}
+        </strong>
+      </div>
+      <FormActions
+        editing={Boolean(editing)}
+        busy={busy}
+        disabled={!mutable || !startTime || !endTime}
+        createLabel={t("Add period")}
+        saveLabel={t("Save changes")}
+        cancelLabel={t("Cancel edit")}
+        onCancel={onCancel}
+      />
+    </form>
+  );
+}
+
 function FormActions({
   editing,
   busy,
   createLabel,
   saveLabel,
   cancelLabel,
-  onCancel
+  onCancel,
+  disabled = false
 }: {
   editing: boolean;
   busy: boolean;
@@ -816,10 +1109,11 @@ function FormActions({
   saveLabel: string;
   cancelLabel: string;
   onCancel: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="admin-actions">
-      <button className="admin-primary" disabled={busy}>{editing ? saveLabel : createLabel}</button>
+      <button className="admin-primary" disabled={busy || disabled}>{editing ? saveLabel : createLabel}</button>
       {editing ? <button className="admin-secondary" type="button" onClick={onCancel} disabled={busy}>{cancelLabel}</button> : null}
     </div>
   );

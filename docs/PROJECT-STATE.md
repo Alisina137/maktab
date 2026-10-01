@@ -677,3 +677,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Academic data still refreshes automatically on initial load and after successful create, edit, delete, and academic-year lifecycle mutations.
 - Shared academic-year context refresh behavior remains unchanged.
 
+## Testing Step 7 hardening — teacher assignment, Negaran, and timetable UX
+
+- Teacher assignment creation now filters occupied class+subject combinations: once a subject has a teacher in a class for the selected year, that subject is no longer available for another teacher in that class.
+- Negaran creation now lists only classes and teachers without an active Negaran assignment; overlapping teacher/class responsibility is also rejected by the backend.
+- Fixed the Solar Hijri calendar being clipped beneath Academic cards by restoring visible overflow for Academic form/list containers.
+- Added Dari/Persian and Pashto translations for Teacher Setup conflict, validation, and timetable feedback so error/success flows follow the selected Admin language.
+- Timetable creation now uses a duration selector with 30, 35, 40, 45, 50, 55, and 60 minute options. The Admin selects a start time, the end time is calculated automatically, and a start→end preview is shown before submission.
+- The manual timetable end-time input was removed from the Admin form; the calculated end time continues to use the existing API contract.
+

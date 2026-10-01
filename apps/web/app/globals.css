@@ -513,13 +513,54 @@ footer {
 
 .academic-form-card,
 .academic-list-panel {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .academic-form-card h2,
 .academic-list-panel h2 {
   letter-spacing: -0.015em;
 }
+
+.admin-form-help {
+  margin: -4px 0 0;
+  color: var(--ml-color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.academic-time-preview {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 22%, var(--ml-color-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ml-color-brand) 5%, var(--ml-color-surface));
+}
+
+.academic-time-preview span {
+  color: var(--ml-color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.academic-time-preview strong {
+  direction: ltr;
+  text-align: start;
+  font-size: 15px;
+  letter-spacing: .02em;
+}
+
+.academic-time-preview-error {
+  border-color: color-mix(in srgb, var(--ml-color-danger) 34%, var(--ml-color-border));
+  background: color-mix(in srgb, var(--ml-color-danger) 6%, var(--ml-color-surface));
+  color: var(--ml-color-danger);
+}
+
+.academic-responsive-pane-form {
+  position: relative;
+  z-index: 2;
+}
+
 
 .academic-row {
   border-radius: 10px;
