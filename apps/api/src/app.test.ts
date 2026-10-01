@@ -564,7 +564,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     negaranAssignments: unknown[];
     timetable: unknown[];
   }>();
-  assert.equal(body.teachers.length, 1);
+  assert.equal(body.teachers.length, 2);
   assert.equal(body.assignments.length, 1);
   assert.equal(body.negaranAssignments.length, 1);
   assert.equal(body.timetable.length, 1);
@@ -804,10 +804,15 @@ test("academic structure returns specific lifecycle and validation errors", asyn
     headers: auth
   });
   assert.equal(blockedDeleteWithHistory.statusCode, 409);
+  const blockedDeleteWithHistoryBody = blockedDeleteWithHistory.json<{
+    message: string;
+    dependencies: string[];
+  }>();
   assert.equal(
-    blockedDeleteWithHistory.json<{ message: string }>().message,
-    "This archived academic year cannot be deleted because it contains historical school data."
+    blockedDeleteWithHistoryBody.message,
+    "This academic year cannot be deleted because it is used by:"
   );
+  assert.ok(blockedDeleteWithHistoryBody.dependencies.includes("Classes"));
 
   const blockedDeleteClosed = await app.inject({
     method: "DELETE",
@@ -3079,7 +3084,7 @@ test("school users can read the public administrator contact card", async (t) =>
   assert.equal(body.contact.whatsapp, "+93700111222");
 });
 
-test("administrator can change their own password without using directory reset", async (t) => {
+test("administrator cannot bypass email verification when changing their own password", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
     await app.close();
@@ -3097,20 +3102,23 @@ test("administrator can change their own password without using directory reset"
       newPassword: "AdminChanged2026!"
     }
   });
-  assert.equal(changed.statusCode, 200);
-  assert.equal(changed.json<{ mustChangePassword: boolean }>().mustChangePassword, false);
+  assert.equal(changed.statusCode, 403);
+  assert.equal(
+    changed.json<{ error: string }>().error,
+    "two_factor_verification_required"
+  );
 
-  const login = await app.inject({
+  const originalPasswordStillWorks = await app.inject({
     method: "POST",
     url: "/v1/auth/login",
     payload: {
       schoolId,
       expectedRole: "SCHOOL_ADMIN",
       username: "admin",
-      password: "AdminChanged2026!"
+      password: "AdminSecure2026!"
     }
   });
-  assert.equal(login.statusCode, 200);
+  assert.equal(originalPasswordStillWorks.statusCode, 200);
 });
 
 test("security account actions remain available while subscription writes are blocked", async (t) => {
@@ -3362,10 +3370,15 @@ test("academic entity CRUD edits classes and protects dependent class history", 
     headers: auth
   });
   assert.equal(blockedDelete.statusCode, 409);
+  const blockedDeleteBody = blockedDelete.json<{
+    message: string;
+    dependencies: string[];
+  }>();
   assert.equal(
-    blockedDelete.json<{ message: string }>().message,
-    "This class cannot be deleted because school records depend on it."
+    blockedDeleteBody.message,
+    "This class cannot be deleted because it is used by:"
   );
+  assert.ok(blockedDeleteBody.dependencies.includes("Teacher assignments"));
 
   const overview = await app.inject({
     method: "GET",
