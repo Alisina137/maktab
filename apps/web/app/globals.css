@@ -1147,6 +1147,43 @@ footer {
   min-width: 92px;
 }
 
+.family-feedback-popup {
+  position: relative;
+  padding-top: 24px;
+}
+
+.family-feedback-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.family-feedback-success .family-feedback-icon {
+  background: color-mix(in srgb, var(--ml-color-success) 13%, var(--ml-color-surface));
+  color: var(--ml-color-success);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--ml-color-success) 5%, transparent);
+}
+
+.family-feedback-error .family-feedback-icon {
+  background: color-mix(in srgb, var(--ml-color-danger) 11%, var(--ml-color-surface));
+  color: var(--ml-color-danger);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--ml-color-danger) 5%, transparent);
+}
+
+.family-feedback-success {
+  border-color: color-mix(in srgb, var(--ml-color-success) 28%, var(--ml-color-border));
+}
+
+.family-feedback-error {
+  border-color: color-mix(in srgb, var(--ml-color-danger) 28%, var(--ml-color-border));
+}
+
+
 .family-section .admin-form input[pattern="[A-Za-z0-9]+"] {
   direction: ltr;
   text-align: start;
