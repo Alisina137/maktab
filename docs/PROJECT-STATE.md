@@ -712,3 +712,10 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The local clock refreshes every 30 seconds while the timetable is open, so the highlight moves automatically as periods begin and end.
 - This behavior is presentation-only and does not modify stored timetable data.
 
+## Testing Step 7 timetable refinement — submit loading lifecycle
+
+- Fixed the timetable Create/Save button remaining in its premium loading state after a request completed.
+- Timetable submission now owns an explicit local pending state that starts immediately before the async create/update request and is cleared in a finally block when that request completes.
+- The timetable submit button opts out of the generic Admin click-based loading marker and uses the request-bound pending state instead.
+- After successful creation, Start Time may remain cleared (and the button therefore disabled for validation) without incorrectly displaying the blue loading sweep.
+
