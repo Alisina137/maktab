@@ -3,6 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import type {
   CreateParentAccountInput,
   CreateStudentInput,
+  StudentImportRow,
   StudentStatus,
   TeacherImportRow,
   UpdateStudentInput
@@ -63,6 +64,10 @@ export interface PreparedParentImportRow extends CreateParentAccountInput {
   passwordHash: string;
 }
 
+export interface PreparedStudentImportRow extends StudentImportRow {
+  passwordHash: string;
+}
+
 export interface PreparedTeacherImportRow extends TeacherImportRow {
   passwordHash: string;
 }
@@ -87,7 +92,10 @@ export interface FamilyStore {
     schoolId: string,
     rows: PreparedParentImportRow[]
   ): Promise<Array<{ user: User; profile: ParentProfile }>>;
-  importStudents(schoolId: string, rows: CreateStudentInput[]): Promise<Student[]>;
+  importStudents(
+    schoolId: string,
+    rows: PreparedStudentImportRow[]
+  ): Promise<Array<{ user: User; student: Student }>>;
   importTeachers(
     schoolId: string,
     rows: PreparedTeacherImportRow[]
@@ -184,7 +192,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
   async function insertStudent(
     tx: FamilyTransaction,
     schoolId: string,
-    input: CreateStudentInput
+    input: CreateStudentInput & { userId?: string; phone?: string }
   ): Promise<Student> {
     const [student] = await tx
       .insert(students)
@@ -192,8 +200,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         id: randomUUID(),
         schoolId,
         parentUserId: input.parentUserId,
+        userId: input.userId ?? null,
         studentCode: input.studentCode,
         fullName: input.fullName,
+        phone: input.phone || null,
         academicYearId: input.academicYearId,
         classId: input.classId,
         status: "ACTIVE"
@@ -539,12 +549,39 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           await getClassYear(schoolId, row.academicYearId, row.classId);
         }
         return await db.transaction(async (tx) => {
-          const created: Student[] = [];
-          for (const row of rows) created.push(await insertStudent(tx, schoolId, row));
+          const created: Array<{ user: User; student: Student }> = [];
+          for (const row of rows) {
+            const [user] = await tx
+              .insert(users)
+              .values({
+                id: randomUUID(),
+                schoolId,
+                username: row.username,
+                passwordHash: row.passwordHash,
+                role: "STUDENT",
+                status: "INVITED",
+                mustChangePassword: true
+              })
+              .returning();
+            if (!user) throw new Error("Student user insert did not return a row.");
+
+            const student = await insertStudent(tx, schoolId, {
+              parentUserId: row.parentUserId,
+              studentCode: row.studentCode,
+              fullName: row.fullName,
+              academicYearId: row.academicYearId,
+              classId: row.classId,
+              userId: user.id,
+              phone: row.phone
+            });
+            created.push({ user, student });
+          }
           return created;
         });
       } catch (error) {
-        if (isUniqueError(error)) throw new FamilyConflictError("Import contains a duplicate or existing student code.");
+        if (isUniqueError(error)) {
+          throw new FamilyConflictError("Import conflicts with an existing student username or student code.");
+        }
         throw error;
       }
     },
