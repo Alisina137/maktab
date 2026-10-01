@@ -227,7 +227,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     if (!studentCode && overview) setStudentCode(suggestedStudentCode);
   }, [overview, studentCode, suggestedStudentCode]);
 
-  async function load() {
+  async function load(): Promise<FamilyOverview | null> {
     setError("");
     try {
       const [familyData, academicData] = await Promise.all([
@@ -243,8 +243,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         academicData.academicYears[0]?.id ||
         ""
       );
+      return familyData;
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not load family data."));
+      return null;
     }
   }
 
@@ -301,11 +303,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         })
       });
       setNotice(t("Student created and linked to the selected parent."));
-      setStudentCode("");
       setParentSearch("");
       setSelectedParentUserId("");
       event.currentTarget.reset();
-      await load();
+      const refreshed = await load();
+      setStudentCode(nextAvailableStudentCode(refreshed?.students ?? []));
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not create student."));
     } finally {
