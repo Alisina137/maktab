@@ -981,11 +981,23 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       ) : null}
 
       {usernamePopup ? (
-        <div className="family-username-popup-backdrop" role="presentation">
-          <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-username-popup-title">
-            <strong id="family-username-popup-title">{t("Username already exists")}</strong>
-            <p>{usernamePopup}</p>
-            <button className="admin-primary" type="button" onClick={() => setUsernamePopup("")} data-admin-no-loading="true">
+        <div className="family-feedback-toast-host">
+          <div
+            className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
+            role="alert"
+            aria-labelledby="family-username-popup-title"
+          >
+            <span className="family-feedback-icon" aria-hidden="true">!</span>
+            <div className="family-feedback-copy">
+              <strong id="family-username-popup-title">{t("Username already exists")}</strong>
+              <p>{usernamePopup}</p>
+            </div>
+            <button
+              className="admin-primary family-feedback-dismiss"
+              type="button"
+              onClick={() => setUsernamePopup("")}
+              data-admin-no-loading="true"
+            >
               {t("OK")}
             </button>
           </div>
