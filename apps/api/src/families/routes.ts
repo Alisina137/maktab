@@ -140,7 +140,7 @@ export function registerFamilyRoutes(
         const created = await families.createStudentAccount(
           context.user.schoolId,
           request.params.studentId,
-          { username: input.username, passwordHash }
+          { username: input.username, phone: input.phone, passwordHash }
         );
         await accounts.writeAudit({
           schoolId: context.user.schoolId,
@@ -148,7 +148,7 @@ export function registerFamilyRoutes(
           action: "student.account_created",
           entityType: "student",
           entityId: created.student.id,
-          metadata: { userId: created.user.id, username: created.user.username }
+          metadata: { userId: created.user.id, username: created.user.username, phone: created.student.phone }
         });
         return reply.code(201).send({
           user: safeUser(created.user),
