@@ -737,3 +737,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The Create student credential button now owns an explicit request-bound pending state and opts out of the generic Admin click loader.
 - Its premium loading treatment starts when account creation begins and is always cleared in the request finally block, even though the form becomes disabled afterward because the selected student is cleared.
 
+## Testing Step 8 follow-up — student list actions and family layout
+
+- Removed the manual Families Refresh button; family data already refreshes after successful mutations and on initial load.
+- Family creation cards now align to the start of the grid so Create Parent, Add Student, and Create Student Login keep their natural content height instead of stretching to the tallest card.
+- Student rows now expose linked account state and username when a STUDENT login exists.
+- Students with logins receive Reset password and Suspend/Reactivate actions using the existing school-admin account controls; students without logins do not show meaningless account actions.
+- Student rows now include Delete. Deletion removes the student and its optional login account only when no attendance, grade, or fee data is linked; otherwise the API returns a localized dependency error.
+- Student class-history records are removed through the existing student-history cascade when a dependency-free student is deleted.
+- Added API regression coverage for student suspend, reactivate, reset-password, safe deletion, and the resulting ability to delete the formerly linked parent.
+
