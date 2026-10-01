@@ -991,6 +991,50 @@ footer {
   margin-top: 5px;
 }
 
+.family-username-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, .42);
+  backdrop-filter: blur(8px);
+}
+
+.family-username-popup {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 20%, var(--ml-color-border));
+  border-radius: 20px;
+  background: var(--ml-color-surface);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .26);
+}
+
+.family-username-popup strong {
+  font-size: 18px;
+  letter-spacing: -.015em;
+}
+
+.family-username-popup p {
+  margin: 0;
+  color: var(--ml-color-text-muted);
+  line-height: 1.6;
+}
+
+.family-username-popup .admin-primary {
+  justify-self: end;
+  min-width: 92px;
+}
+
+.family-section .admin-form input[pattern="[A-Za-z0-9]+"] {
+  direction: ltr;
+  text-align: start;
+}
+
+
 @media (max-width: 760px) {
   .family-summary-grid,
   .family-import-controls,
