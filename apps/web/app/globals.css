@@ -1106,6 +1106,10 @@ footer {
   line-height: 1.15;
 }
 
+.family-list-filters label:last-child {
+  grid-column: auto;
+}
+
 .family-list-rows {
   min-height: 0;
 }
