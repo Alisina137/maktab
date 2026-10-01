@@ -701,3 +701,6 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added combinable timetable-list filters for Teacher, Class, Subject, Weekday, and Time. Each selector only contains values that exist in the current timetable list, with a single Clear filters action.
 - Upgraded global async-button feedback with a blue luminous sweep, blue glow, inline spinner, and reduced-motion fallback while retaining the button label during processing.
 
+### Timetable list height adjustment
+- Increased the timetable list panel maximum height from 600px to 1000px while preserving internal scrolling for longer lists.
+
