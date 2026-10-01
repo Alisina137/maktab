@@ -282,7 +282,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           return { user, profile };
         });
       } catch (error) {
-        if (isUniqueError(error)) throw new FamilyConflictError("That username already exists in this school.");
+        if (isUniqueError(error)) throw new FamilyConflictError("This username already exists. Please type another username.");
         throw error;
       }
     },
@@ -338,7 +338,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           return { user, student: updated };
         });
       } catch (error) {
-        if (isUniqueError(error)) throw new FamilyConflictError("That username already exists in this school.");
+        if (isUniqueError(error)) throw new FamilyConflictError("This username already exists. Please type another username.");
         throw error;
       }
     },
