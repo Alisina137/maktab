@@ -763,3 +763,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added localized messages for duplicate student codes, unavailable parents, missing classes, closed/archived years, and stale parent/year/class references.
 - Added regression coverage proving a duplicate `S-0001` submission returns `409`, does not become a server error, and does not create a second student.
 
+## Testing Step 8 follow-up — printable Parent/Student account credentials
+
+- Parent account creation now opens a dedicated credential preview containing username, full name, phone number, and the one-time temporary password.
+- Student login creation now accepts an optional phone number, stores it on the student record, and uses the same credential preview fields.
+- After successful Parent or Student account creation, the browser print dialog opens automatically so the administrator can choose Save as PDF or print a paper copy. Cancelling that dialog does not dismiss the credential preview.
+- The preview includes explicit Print and Close actions. Print reopens the browser print/save-PDF dialog.
+- Close opens a confirmation asking whether the account information has been saved; the preview is dismissed only after confirming Yes.
+- The print stylesheet isolates the credential preview so saved PDFs contain the account information rather than the surrounding Admin workspace.
+- Added migration `0014_student_phone.sql` for the nullable Student phone field and updated database/API test harnesses to apply it.
+
