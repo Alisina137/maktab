@@ -1038,6 +1038,7 @@ function TimetablePeriodForm({
   const [teacherUserId, setTeacherUserId] = useState(editing?.teacherUserId ?? "");
   const [startTime, setStartTime] = useState(editing?.startsAt ?? "");
   const [duration, setDuration] = useState(() => editing ? minutesBetween(editing.startsAt, editing.endsAt) : 45);
+  const [submitting, setSubmitting] = useState(false);
   const endTime = endTimeFromDuration(startTime, duration);
 
   const teacherAssignments = teacherUserId
@@ -1058,6 +1059,7 @@ function TimetablePeriodForm({
       className="admin-form"
       onSubmit={(event) => {
         const form = new FormData(event.currentTarget);
+        setSubmitting(true);
         void onSubmit(event, {
           academicYearId: year?.id ?? "",
           classId,
@@ -1066,11 +1068,15 @@ function TimetablePeriodForm({
           weekday: formValue(form, "weekday"),
           startsAt: startTime,
           endsAt: endTime
-        }).then((succeeded) => {
-          if (succeeded && !editing) {
-            setStartTime("");
-          }
-        });
+        })
+          .then((succeeded) => {
+            if (succeeded && !editing) {
+              setStartTime("");
+            }
+          })
+          .finally(() => {
+            setSubmitting(false);
+          });
       }}
     >
       <ReadOnlyYear year={year} locale={locale} />
@@ -1131,6 +1137,7 @@ function TimetablePeriodForm({
       <FormActions
         editing={Boolean(editing)}
         busy={busy}
+        pending={submitting}
         disabled={!mutable || !classId || !subjectId || !teacherUserId || !startTime || !endTime}
         createLabel={t("Add period")}
         saveLabel={t("Save changes")}
@@ -1287,6 +1294,7 @@ function TimetablePeriodList({
 function FormActions({
   editing,
   busy,
+  pending,
   createLabel,
   saveLabel,
   cancelLabel,
@@ -1295,6 +1303,7 @@ function FormActions({
 }: {
   editing: boolean;
   busy: boolean;
+  pending?: boolean;
   createLabel: string;
   saveLabel: string;
   cancelLabel: string;
@@ -1303,7 +1312,15 @@ function FormActions({
 }) {
   return (
     <div className="admin-actions">
-      <button className="admin-primary" disabled={busy || disabled}>{editing ? saveLabel : createLabel}</button>
+      <button
+        className="admin-primary"
+        disabled={busy || disabled}
+        data-admin-no-loading={pending !== undefined ? "true" : undefined}
+        data-admin-pending={pending ? "true" : undefined}
+        aria-busy={pending || undefined}
+      >
+        {editing ? saveLabel : createLabel}
+      </button>
       {editing ? <button className="admin-secondary" type="button" onClick={onCancel} disabled={busy}>{cancelLabel}</button> : null}
     </div>
   );
