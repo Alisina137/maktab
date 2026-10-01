@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -370,6 +371,7 @@ function toBase64(file: File): Promise<string> {
 export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
+  const toastPortalTarget = typeof document === "undefined" ? null : document.body;
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -934,29 +936,32 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       <section className="admin-panel family-section admin-loading-card">
         <AdminLoader label={t("Loading Phase 4 data…")} />
         <AdminSkeleton rows={5} />
-        {error ? (
-          <div className="family-feedback-toast-host">
-            <div
-              className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
-              role="alert"
-              aria-labelledby="family-load-error-title"
-            >
-              <span className="family-feedback-icon" aria-hidden="true">!</span>
-              <div className="family-feedback-copy">
-                <strong id="family-load-error-title">{t("Error")}</strong>
-                <p>{error}</p>
-              </div>
-              <div className="admin-actions family-feedback-actions">
-                <button className="admin-secondary" type="button" onClick={() => setError("")} data-admin-no-loading="true">
-                  {t("OK")}
-                </button>
-                <button className="admin-primary" type="button" onClick={() => void load()} data-admin-no-loading="true">
-                  {t("Retry")}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        {error && toastPortalTarget
+          ? createPortal(
+              <div className="family-feedback-toast-host">
+                <div
+                  className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
+                  role="alert"
+                  aria-labelledby="family-load-error-title"
+                >
+                  <span className="family-feedback-icon" aria-hidden="true">!</span>
+                  <div className="family-feedback-copy">
+                    <strong id="family-load-error-title">{t("Error")}</strong>
+                    <p>{error}</p>
+                  </div>
+                  <div className="admin-actions family-feedback-actions">
+                    <button className="admin-secondary" type="button" onClick={() => setError("")} data-admin-no-loading="true">
+                      {t("OK")}
+                    </button>
+                    <button className="admin-primary" type="button" onClick={() => void load()} data-admin-no-loading="true">
+                      {t("Retry")}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              toastPortalTarget
+            )
+          : null}
       </section>
     );
   }
@@ -980,56 +985,62 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </div>
       ) : null}
 
-      {usernamePopup ? (
-        <div className="family-feedback-toast-host">
-          <div
-            className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
-            role="alert"
-            aria-labelledby="family-username-popup-title"
-          >
-            <span className="family-feedback-icon" aria-hidden="true">!</span>
-            <div className="family-feedback-copy">
-              <strong id="family-username-popup-title">{t("Username already exists")}</strong>
-              <p>{usernamePopup}</p>
-            </div>
-            <button
-              className="admin-primary family-feedback-dismiss"
-              type="button"
-              onClick={() => setUsernamePopup("")}
-              data-admin-no-loading="true"
-            >
-              {t("OK")}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {usernamePopup && toastPortalTarget
+        ? createPortal(
+            <div className="family-feedback-toast-host">
+              <div
+                className="family-username-popup family-feedback-popup family-feedback-toast family-feedback-error"
+                role="alert"
+                aria-labelledby="family-username-popup-title"
+              >
+                <span className="family-feedback-icon" aria-hidden="true">!</span>
+                <div className="family-feedback-copy">
+                  <strong id="family-username-popup-title">{t("Username already exists")}</strong>
+                  <p>{usernamePopup}</p>
+                </div>
+                <button
+                  className="admin-primary family-feedback-dismiss"
+                  type="button"
+                  onClick={() => setUsernamePopup("")}
+                  data-admin-no-loading="true"
+                >
+                  {t("OK")}
+                </button>
+              </div>
+            </div>,
+            toastPortalTarget
+          )
+        : null}
 
-      {error || notice ? (
-        <div className="family-feedback-toast-host">
-          <div
-            className={`family-username-popup family-feedback-popup family-feedback-toast ${error ? "family-feedback-error" : "family-feedback-success"}`}
-            role={error ? "alert" : "status"}
-            aria-labelledby="family-feedback-title"
-          >
-            <span className="family-feedback-icon" aria-hidden="true">{error ? "!" : "✓"}</span>
-            <div className="family-feedback-copy">
-              <strong id="family-feedback-title">{t(error ? "Error" : "Success")}</strong>
-              <p>{error || notice}</p>
-            </div>
-            <button
-              className="admin-primary family-feedback-dismiss"
-              type="button"
-              onClick={() => {
-                setError("");
-                setNotice("");
-              }}
-              data-admin-no-loading="true"
-            >
-              {t("OK")}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {(error || notice) && toastPortalTarget
+        ? createPortal(
+            <div className="family-feedback-toast-host">
+              <div
+                className={`family-username-popup family-feedback-popup family-feedback-toast ${error ? "family-feedback-error" : "family-feedback-success"}`}
+                role={error ? "alert" : "status"}
+                aria-labelledby="family-feedback-title"
+              >
+                <span className="family-feedback-icon" aria-hidden="true">{error ? "!" : "✓"}</span>
+                <div className="family-feedback-copy">
+                  <strong id="family-feedback-title">{t(error ? "Error" : "Success")}</strong>
+                  <p>{error || notice}</p>
+                </div>
+                <button
+                  className="admin-primary family-feedback-dismiss"
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setNotice("");
+                  }}
+                  data-admin-no-loading="true"
+                >
+                  {t("OK")}
+                </button>
+              </div>
+            </div>,
+            toastPortalTarget
+          )
+        : null}
 
       <div className="admin-section-header academic-heading">
         <div>
