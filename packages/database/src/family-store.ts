@@ -117,9 +117,20 @@ export class FamilyNotFoundError extends Error {
   }
 }
 
+function databaseErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
+
 function isUniqueError(error: unknown): boolean {
+  if (databaseErrorCode(error) === "23505") return true;
   const message = error instanceof Error ? error.message : String(error);
   return /unique|duplicate/i.test(message);
+}
+
+function isForeignKeyError(error: unknown): boolean {
+  return databaseErrorCode(error) === "23503";
 }
 
 export function createFamilyStore(db: FoundationDatabase): FamilyStore {
@@ -360,6 +371,11 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         return await db.transaction((tx) => insertStudent(tx, schoolId, input));
       } catch (error) {
         if (isUniqueError(error)) throw new FamilyConflictError("That student code already exists in this school.");
+        if (isForeignKeyError(error)) {
+          throw new FamilyConflictError(
+            "The selected parent, academic year, or class is no longer available. Refresh the page and try again."
+          );
+        }
         throw error;
       }
     },
