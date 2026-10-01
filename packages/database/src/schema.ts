@@ -408,9 +408,8 @@ export const teacherAssignments = pgTable(
     uniqueIndex("teacher_assignments_unique").on(
       table.schoolId,
       table.academicYearId,
-      table.teacherUserId,
-      table.subjectId,
-      table.classId
+      table.classId,
+      table.subjectId
     ),
     index("teacher_assignments_teacher_idx").on(table.schoolId, table.teacherUserId),
     index("teacher_assignments_class_idx").on(table.schoolId, table.classId)

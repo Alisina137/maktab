@@ -92,6 +92,13 @@
       "when": 1790683200000,
       "tag": "0012_admin_password_2fa",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790691600000,
+      "tag": "0013_teacher_assignment_slot_unique",
+      "breakpoints": true
     }
   ]
 }
