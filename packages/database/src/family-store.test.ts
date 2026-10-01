@@ -167,7 +167,8 @@ test("Phase 4 parent backfill makes legacy PARENT users available to parent home
     "0002_phase3_academic_structure.sql",
     "0003_phase4_student_family.sql",
     "0008_phase8_pilot_readiness.sql",
-    "0009_school_image.sql"
+    "0009_school_image.sql",
+    "0014_student_phone.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
