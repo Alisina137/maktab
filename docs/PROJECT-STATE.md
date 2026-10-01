@@ -814,3 +814,8 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - This prevents the transformed `.admin-page-enter` animation container from becoming the containing block for `position: fixed`.
 - Toasts are therefore truly fixed to the viewport top-center and remain there regardless of page scroll position.
 
+### Step 8 credential close confirmation viewport anchoring
+- Moved the one-time credential Close confirmation dialog into a React portal under `document.body`.
+- Its existing fixed full-viewport backdrop now centers the dialog in the user's current viewport rather than relative to the transformed Families page container.
+- Clicking Close therefore shows the confirmation immediately in the visible center even when the administrator has scrolled far down the page.
+
