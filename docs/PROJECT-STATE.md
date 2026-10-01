@@ -855,3 +855,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Parent and Student lists remain directly below their matching account forms.
 - On mobile, where the two account columns stack, the shared-row rule is reset and each form returns to natural height.
 
+### Step 9 Parent bulk-import credential preview
+- Parent bulk import now reuses the same rich one-time account preview used by manual Parent/Student account creation instead of the legacy raw credential block.
+- Imported parent previews include username, full name, phone, temporary password, Export as PDF, and the existing protected Close confirmation.
+- Multiple imported parents are presented as a queue with a visible position such as 1 / 2; confirming Close advances to the next imported parent.
+- Each imported parent PDF is automatically exported when that preview becomes active, matching the manual Parent account flow.
+- Full name and phone are reconstructed from the already-validated normalized import rows and paired to returned credentials by username.
+- Teacher/reset credential flows keep the legacy credential block because they do not currently use the Parent/Student rich profile preview contract.
+
