@@ -719,3 +719,13 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The timetable submit button opts out of the generic Admin click-based loading marker and uses the request-bound pending state instead.
 - After successful creation, Start Time may remain cleared (and the button therefore disabled for validation) without incorrectly displaying the blue loading sweep.
 
+## Testing Step 8 — parent/student onboarding refinement
+
+- Added safe parent deletion: only parent accounts with no linked students may be deleted; linked parents are rejected by the API with a clear dependency message.
+- Parent and student account usernames are now restricted to English letters and digits for new family-account creation. Spaces and special characters are rejected server-side and by the Admin form.
+- Duplicate family usernames now produce a localized popup asking the administrator to choose another username.
+- Parent/student username placeholders now use human-style examples such as `Ahmad` and `Haidar23`.
+- Add Student now suggests the lowest available `S-xxxx` code, filling gaps before incrementing beyond the highest code. At least four numeric digits are used.
+- Add Student parent selection now shows usernames only and includes a username search field for large parent lists.
+- Added API coverage for invalid family usernames, duplicate usernames, deletion of an unlinked parent, and rejection of deletion when a student is linked.
+
