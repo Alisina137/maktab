@@ -42,7 +42,13 @@ const commitSchema = z.object({
 type ImportErrorRow = { row: number; field?: string; message: string };
 
 function sendFamilyError(reply: FastifyReply, error: unknown) {
-  if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+  if (error instanceof ZodError) {
+    return reply.code(400).send({
+      error: "validation_error",
+      message: error.issues[0]?.message ?? "Family request validation failed.",
+      issues: error.issues
+    });
+  }
   if (error instanceof ImportFileError || error instanceof FamilyValidationError) {
     return reply.code(400).send({ error: "family_validation", message: error.message });
   }
@@ -100,6 +106,27 @@ export function registerFamilyRoutes(
       return sendFamilyError(reply, error);
     }
   });
+
+  app.delete<{ Params: { parentUserId: string } }>(
+    "/v1/admin/families/parents/:parentUserId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        await families.deleteParentAccount(context.user.schoolId, request.params.parentUserId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId,
+          actorUserId: context.user.id,
+          action: "parent.deleted",
+          entityType: "parent_profile",
+          entityId: request.params.parentUserId
+        });
+        return reply.code(204).send();
+      } catch (error) {
+        return sendFamilyError(reply, error);
+      }
+    }
+  );
 
   app.post<{ Params: { studentId: string } }>(
     "/v1/admin/families/students/:studentId/account",
