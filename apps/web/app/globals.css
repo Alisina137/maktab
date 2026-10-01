@@ -1066,6 +1066,7 @@ footer {
   word-break: normal;
 }
 
+.family-account-preview-phone,
 .family-account-preview-password {
   grid-column: 1 / -1;
 }
@@ -1254,6 +1255,7 @@ footer {
     max-width: 100px;
   }
 
+  .family-account-preview-phone,
   .family-account-preview-password {
     grid-column: auto;
   }
