@@ -378,6 +378,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const { error, notice, setError, setNotice } = useTransientAdminFeedback({ persistent: true });
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [accountPreview, setAccountPreview] = useState<AccountCredentialPreview | null>(null);
+  const [accountPreviewQueue, setAccountPreviewQueue] = useState<AccountCredentialPreview[]>([]);
+  const [accountPreviewBatchIndex, setAccountPreviewBatchIndex] = useState(0);
+  const [accountPreviewBatchTotal, setAccountPreviewBatchTotal] = useState(0);
   const [accountPreviewClosePrompt, setAccountPreviewClosePrompt] = useState(false);
 
   const [studentYearId, setStudentYearId] = useState("");
@@ -586,7 +589,20 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   }
 
   function confirmCloseAccountPreview() {
+    const [nextPreview, ...remainingPreviews] = accountPreviewQueue;
+    if (nextPreview) {
+      setAccountPreview(nextPreview);
+      setAccountPreviewQueue(remainingPreviews);
+      setAccountPreviewBatchIndex((current) => current + 1);
+      setAccountPreviewClosePrompt(false);
+      scheduleAccountPreviewExport(nextPreview);
+      return;
+    }
+
     setAccountPreview(null);
+    setAccountPreviewQueue([]);
+    setAccountPreviewBatchIndex(0);
+    setAccountPreviewBatchTotal(0);
     setAccountPreviewClosePrompt(false);
   }
 
@@ -648,6 +664,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         temporaryPassword: result.temporaryPassword
       };
       setCredentials([]);
+      setAccountPreviewQueue([]);
+      setAccountPreviewBatchIndex(0);
+      setAccountPreviewBatchTotal(0);
       setAccountPreview(preview);
       setNotice(t("Parent account created. The account PDF was exported automatically. Keep it secure before closing the preview."));
       formElement.reset();
@@ -770,6 +789,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         temporaryPassword: result.temporaryPassword
       };
       setCredentials([]);
+      setAccountPreviewQueue([]);
+      setAccountPreviewBatchIndex(0);
+      setAccountPreviewBatchTotal(0);
       setAccountPreview(preview);
       setNotice(t("Student login created. The account PDF was exported automatically. Keep it secure before closing the preview."));
       setStudentAccountId("");
@@ -980,6 +1002,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   async function commitImport() {
     if (!validation?.valid) return;
+    const normalizedRows = validation.normalizedRows;
+    const committedEntity = importEntity;
+
     setBusy(true);
     setError("");
     setNotice("");
@@ -990,13 +1015,46 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         "/v1/admin/families/import/commit",
         {
           method: "POST",
-          body: JSON.stringify({ entityType: importEntity, rows: validation.normalizedRows })
+          body: JSON.stringify({ entityType: committedEntity, rows: normalizedRows })
         }
       );
-      setCredentials(result.credentials);
+
+      if (committedEntity === "PARENT" && result.credentials.length > 0) {
+        const rowsByUsername = new Map(
+          normalizedRows.map((row) => [String(row.username ?? "").toLowerCase(), row])
+        );
+        const importedPreviews: AccountCredentialPreview[] = result.credentials.map((credential) => {
+          const row = rowsByUsername.get(credential.username.toLowerCase());
+          return {
+            accountType: "PARENT",
+            username: credential.username,
+            fullName: String(row?.fullName ?? credential.username),
+            phone: String(row?.phone ?? "").trim() || null,
+            temporaryPassword: credential.temporaryPassword
+          };
+        });
+        const [firstPreview, ...remainingPreviews] = importedPreviews;
+
+        setCredentials([]);
+        setAccountPreview(firstPreview ?? null);
+        setAccountPreviewQueue(remainingPreviews);
+        setAccountPreviewBatchIndex(firstPreview ? 1 : 0);
+        setAccountPreviewBatchTotal(importedPreviews.length);
+        if (firstPreview) scheduleAccountPreviewExport(firstPreview);
+      } else {
+        setAccountPreviewQueue([]);
+        setAccountPreviewBatchIndex(0);
+        setAccountPreviewBatchTotal(0);
+        setCredentials(result.credentials);
+      }
+
       setNotice(adminFormat(locale, "{count} {entity} row(s) imported successfully.", {
         count: result.importedCount,
-        entity: importEntity === "PARENT" ? t("Parents") : t("Students")
+        entity: committedEntity === "PARENT"
+          ? t("Parents")
+          : committedEntity === "TEACHER"
+            ? t("Teachers")
+            : t("Students")
       }));
       setPreview(null);
       setValidation(null);
@@ -1136,7 +1194,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         <section className="credential-card family-account-preview">
           <div className="family-account-preview-header">
             <div>
-              <span className="eyebrow">{t(accountPreview.accountType === "PARENT" ? "Parent account information" : "Student account information")}</span>
+              <span className="eyebrow">
+                {t(accountPreview.accountType === "PARENT" ? "Parent account information" : "Student account information")}
+                {accountPreviewBatchTotal > 1 ? ` · ${accountPreviewBatchIndex} / ${accountPreviewBatchTotal}` : ""}
+              </span>
               <h2>{t("Account credential")}</h2>
               <p>{t("The account PDF is exported automatically after creation. You can export it again below. The temporary password cannot be retrieved later.")}</p>
             </div>
