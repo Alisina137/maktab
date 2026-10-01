@@ -819,9 +819,9 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Its existing fixed full-viewport backdrop now centers the dialog in the user's current viewport rather than relative to the transformed Families page container.
 - Clicking Close therefore shows the confirmation immediately in the visible center even when the administrator has scrolled far down the page.
 
-### Step 8 family list five-row scrolling
-- Parent and Student lists now remain natural-height through five records.
-- When a list contains more than five records, its maximum height is measured from the actual first five rendered rows and the list becomes vertically scrollable.
-- The measured approach preserves five visible rows even when Parent/Student row heights differ or change responsively.
+### Step 8 family list four-row scrolling
+- Parent and Student lists now remain natural-height through four records.
+- When a list contains more than four records, its maximum height is measured from the actual first four rendered rows and the list becomes vertically scrollable.
+- The measured approach preserves four visible rows even when Parent/Student row heights differ or change responsively.
 - Scrolling is scoped only to these two Families lists and uses a compact custom scrollbar.
 
