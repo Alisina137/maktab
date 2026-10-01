@@ -968,22 +968,25 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   return (
     <section className="family-section admin-page-enter">
-      {accountPreviewClosePrompt ? (
-        <div className="family-username-popup-backdrop" role="presentation">
-          <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-account-save-title">
-            <strong id="family-account-save-title">{t("Have you saved the account information?")}</strong>
-            <p>{t("Choose Yes only after you have saved the exported PDF containing the username, full name, phone number, and temporary password.")}</p>
-            <div className="admin-actions">
-              <button className="admin-secondary" type="button" onClick={() => setAccountPreviewClosePrompt(false)} data-admin-no-loading="true">
-                {t("No")}
-              </button>
-              <button className="admin-primary" type="button" onClick={confirmCloseAccountPreview} data-admin-no-loading="true">
-                {t("Yes")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {accountPreviewClosePrompt && toastPortalTarget
+        ? createPortal(
+            <div className="family-username-popup-backdrop" role="presentation">
+              <div className="family-username-popup" role="alertdialog" aria-modal="true" aria-labelledby="family-account-save-title">
+                <strong id="family-account-save-title">{t("Have you saved the account information?")}</strong>
+                <p>{t("Choose Yes only after you have saved the exported PDF containing the username, full name, phone number, and temporary password.")}</p>
+                <div className="admin-actions">
+                  <button className="admin-secondary" type="button" onClick={() => setAccountPreviewClosePrompt(false)} data-admin-no-loading="true">
+                    {t("No")}
+                  </button>
+                  <button className="admin-primary" type="button" onClick={confirmCloseAccountPreview} data-admin-no-loading="true">
+                    {t("Yes")}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            toastPortalTarget
+          )
+        : null}
 
       {usernamePopup && toastPortalTarget
         ? createPortal(
