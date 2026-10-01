@@ -365,7 +365,8 @@ export const attendanceDateRangeSchema = z
 
 
 export const createStudentAccountSchema = z.object({
-  username: familyUsernameSchema
+  username: familyUsernameSchema,
+  phone: z.string().trim().max(32).optional()
 });
 export type CreateStudentAccountInput = z.infer<typeof createStudentAccountSchema>;
 
