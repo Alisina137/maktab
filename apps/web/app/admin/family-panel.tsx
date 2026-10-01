@@ -257,11 +257,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   async function createParent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setBusy(true);
     setError("");
     setNotice("");
     setCredentials([]);
-    const form = new FormData(event.currentTarget);
     try {
       const result = await request<{ user: User; temporaryPassword: string }>(
         accessToken,
@@ -277,8 +278,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       );
       setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
       setNotice(t("Parent account created. Give the temporary credential to the parent securely."));
-      event.currentTarget.reset();
-      await load();
+      formElement.reset();
+      await load({ silentFeedback: true });
     } catch (cause) {
       if (isDuplicateUsernameError(cause)) {
         setUsernamePopup(t("This username already exists. Please type another username."));
@@ -292,10 +293,11 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   async function createStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setBusy(true);
     setError("");
     setNotice("");
-    const form = new FormData(event.currentTarget);
     try {
       await request(accessToken, "/v1/admin/families/students", {
         method: "POST",
@@ -310,8 +312,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setNotice(t("Student created and linked to the selected parent."));
       setParentSearch("");
       setSelectedParentUserId("");
-      event.currentTarget.reset();
-      const refreshed = await load();
+      formElement.reset();
+      const refreshed = await load({ silentFeedback: true });
       setStudentCode(nextAvailableStudentCode(refreshed?.students ?? []));
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not create student."));
@@ -324,13 +326,14 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     event.preventDefault();
     if (!studentAccountId || studentAccountSubmitting) return;
 
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const targetStudentId = studentAccountId;
     setBusy(true);
     setStudentAccountSubmitting(true);
     setError("");
     setNotice("");
     setCredentials([]);
-    const form = new FormData(event.currentTarget);
 
     try {
       const result = await request<{ user: User; student: StudentRow["student"]; temporaryPassword: string }>(
@@ -363,7 +366,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setCredentials([{ username: result.user.username, temporaryPassword: result.temporaryPassword }]);
       setNotice(t("Student login created and linked to exactly one student record."));
       setStudentAccountId("");
-      event.currentTarget.reset();
+      formElement.reset();
 
       // The credential creation is already complete. Refresh quietly so a
       // follow-up read failure never turns a successful create into a mixed
@@ -399,7 +402,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       } else {
         setNotice(t(action === "suspend" ? "Parent account suspended." : "Parent account reactivated."));
       }
-      await load();
+      await load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Parent account action failed."));
     } finally {
@@ -493,7 +496,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     try {
       await request(accessToken, `/v1/admin/families/parents/${parent.user.id}`, { method: "DELETE" });
       setNotice(t("Parent account deleted."));
-      await load();
+      await load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not delete parent account."));
     } finally {
@@ -587,7 +590,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setValidation(null);
       setMapping({});
       setImportFileName("");
-      await load();
+      await load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Import failed."));
     } finally {
