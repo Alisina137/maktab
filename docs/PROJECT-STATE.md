@@ -1038,3 +1038,17 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Added localization unit tests proving Dari/Pashto Solar Hijri conversion and localized numbers/time/AFN output.
 - Added `scripts/verify-parent-localization.mjs` and root `pnpm verify:parent-localization`. The normal `pnpm verify` now runs this guard before typecheck/test/build, protecting Parent RTL/date/currency/status invariants from regression.
 - Automated CI has passed typecheck and tests for the completed 10.7 implementation; Android build verification is tracked by the latest workflow before final manual Expo review.
+
+
+### Testing Step 10.8 — Parent network, session, and resilience
+- Validated the Parent mobile experience against Product Specification V1 failure requirements for network interruption, duplicate/racing requests, expired sessions, low-bandwidth read caching, and failed push isolation.
+- Fixed reconnect freshness: once API health and account status are confirmed, cache-only mode is disabled before the reconnect epoch triggers Parent reloads. This prevents a recovered connection from immediately reusing stale cached Home/attendance/timetable/homework/fees/announcement data.
+- Read-cache fallback now surfaces the dedicated cached/offline message rather than presenting cached data as a generic API outage.
+- Hardened tunnel/proxy failure behavior: read-only API requests may safely fall back to the account-scoped cache when a tunnel/gateway returns malformed non-JSON content. Authentication, writes, subscription suspension, and other authoritative server errors remain uncached.
+- Parent cache keys remain scoped by school + signed-in user + request path, with bounded cache age. Logout/session loss clears the active cache scope so another account cannot read the previous account's cached paths.
+- Parent child-specific requests retain request-generation guards so responses for a previously selected child cannot overwrite the current child's data after rapid sibling switching or reconnect.
+- Mobile access sessions use single-flight refresh-token rotation. Requests receiving `session_invalid` retry once with the rotated access token; proactive refresh runs before access expiry and app foregrounding refreshes an expired/nearly-expired session.
+- Added API regression coverage proving refresh-token rotation is one-use: replaying the old refresh token returns `refresh_invalid`, logout revokes the current refresh session, and the associated access token becomes `session_invalid`.
+- Push registration/deactivation failures remain non-blocking; Parent login/home/logout do not depend on push-provider connectivity.
+- Added `scripts/verify-parent-resilience.mjs` and root `pnpm verify:parent-resilience`. Normal `pnpm verify` now checks Parent localization + resilience invariants before typecheck/tests/build.
+- Manual acceptance still requires an Expo device outage/reconnect smoke test: warm cache online, disconnect API/network, confirm cached Parent reads remain visible with an offline notice, restore connectivity, confirm fresh server data replaces cache automatically, background/resume across access-token expiry, and confirm logout/login is not required.
