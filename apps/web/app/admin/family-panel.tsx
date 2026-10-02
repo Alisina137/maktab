@@ -893,6 +893,61 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function studentEnrollmentAction(
+    item: EnrollmentRow,
+    status: "ACTIVE" | "WITHDRAWN"
+  ) {
+    if (
+      status === "WITHDRAWN" &&
+      !window.confirm(
+        t("Withdraw this student from the active Parent experience? Historical school records will be kept.")
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setCredentials([]);
+    try {
+      const result = await request<{ student: StudentRow["student"] }>(
+        accessToken,
+        `/v1/admin/families/students/${item.student.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status })
+        }
+      );
+
+      setOverview((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          students: current.students.map((studentItem) =>
+            studentItem.student.id === item.student.id
+              ? { ...studentItem, student: result.student }
+              : studentItem
+          ),
+          enrollments: current.enrollments.map((enrollment) =>
+            enrollment.student.id === item.student.id
+              ? { ...enrollment, student: result.student }
+              : enrollment
+          )
+        };
+      });
+
+      setNotice(
+        t(status === "WITHDRAWN" ? "Student withdrawn." : "Student enrollment reactivated.")
+      );
+      void load({ silentFeedback: true });
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Student enrollment action failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteStudent(item: EnrollmentRow) {
     if (!window.confirm(t("Delete this student? This action cannot be undone."))) return;
 
@@ -1606,18 +1661,33 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                       </button>
                       {item.user.status === "SUSPENDED" ? (
                         <button disabled={busy} onClick={() => void studentAccountAction(item, "reactivate")}>
-                          {t("Reactivate")}
+                          {t("Reactivate account")}
                         </button>
                       ) : (
                         <button
                           disabled={busy || item.user.status === "ARCHIVED"}
                           onClick={() => void studentAccountAction(item, "suspend")}
                         >
-                          {t("Suspend")}
+                          {t("Suspend account")}
                         </button>
                       )}
                     </>
                   ) : null}
+                  {item.student.status === "WITHDRAWN" ? (
+                    <button
+                      disabled={busy}
+                      onClick={() => void studentEnrollmentAction(item, "ACTIVE")}
+                    >
+                      {t("Reactivate enrollment")}
+                    </button>
+                  ) : (
+                    <button
+                      disabled={busy}
+                      onClick={() => void studentEnrollmentAction(item, "WITHDRAWN")}
+                    >
+                      {t("Withdraw")}
+                    </button>
+                  )}
                   <button
                     className="admin-danger"
                     disabled={busy}
