@@ -192,6 +192,14 @@ export type TranslationKey =
   | "fees.outstanding"
   | "fees.due"
   | "fees.none"
+  | "fees.statusDraft"
+  | "fees.statusIssued"
+  | "fees.statusPartiallyPaid"
+  | "fees.statusPaid"
+  | "fees.statusOverdue"
+  | "fees.statusCancelled"
+  | "fees.payment"
+  | "fees.reversal"
   | "contact.adminTitle"
   | "contact.adminHint"
   | "contact.email"
@@ -376,6 +384,14 @@ const en: Record<TranslationKey, string> = {
   "fees.outstanding": "Outstanding",
   "fees.due": "Due",
   "fees.none": "No issued fees for this student.",
+  "fees.statusDraft": "Draft",
+  "fees.statusIssued": "Issued",
+  "fees.statusPartiallyPaid": "Partially paid",
+  "fees.statusPaid": "Paid",
+  "fees.statusOverdue": "Overdue",
+  "fees.statusCancelled": "Cancelled",
+  "fees.payment": "Payment",
+  "fees.reversal": "Reversal",
   "common.networkError": "MaktabLink cannot reach the school service right now. Please check your connection and try again.",
   "common.cachedOffline": "Internet is unavailable. You are viewing securely saved information from this device.",
   "common.serviceUnavailable": "Your school's MaktabLink service is currently unavailable. Please contact the school administration.",
@@ -576,6 +592,14 @@ const dari: Record<TranslationKey, string> = {
   "fees.outstanding": "باقی‌مانده",
   "fees.due": "موعد",
   "fees.none": "برای این شاگرد فیس صادرشده‌ای وجود ندارد.",
+  "fees.statusDraft": "پیش‌نویس",
+  "fees.statusIssued": "صادرشده",
+  "fees.statusPartiallyPaid": "قسمتاً پرداخت‌شده",
+  "fees.statusPaid": "پرداخت‌شده",
+  "fees.statusOverdue": "از موعد گذشته",
+  "fees.statusCancelled": "لغوشده",
+  "fees.payment": "پرداخت",
+  "fees.reversal": "برگشت پرداخت",
   "common.networkError": "برنامه فعلاً به خدمات مکتب در MaktabLink دسترسی ندارد. لطفاً اتصال خود را بررسی کرده و دوباره کوشش کنید.",
   "common.cachedOffline": "اینترنت در دسترس نیست. معلومات امن ذخیره‌شده در این دستگاه را مشاهده می‌کنید.",
   "common.serviceUnavailable": "خدمت MaktabLink مکتب شما فعلاً در دسترس نیست. لطفاً با اداره مکتب تماس بگیرید.",
@@ -776,6 +800,14 @@ const pashto: Record<TranslationKey, string> = {
   "fees.outstanding": "پاتې",
   "fees.due": "موعد",
   "fees.none": "د دې زده کوونکي لپاره صادر شوی فیس نشته.",
+  "fees.statusDraft": "مسوده",
+  "fees.statusIssued": "صادر شوی",
+  "fees.statusPartiallyPaid": "یوه برخه ورکړل شوې",
+  "fees.statusPaid": "ورکړل شوی",
+  "fees.statusOverdue": "له مودې تېر",
+  "fees.statusCancelled": "لغوه شوی",
+  "fees.payment": "تادیه",
+  "fees.reversal": "د تادیې بېرته ګرځول",
   "common.networkError": "MaktabLink اوس د ښوونځي خدمت ته لاسرسی نه لري. مهرباني وکړئ خپله اړیکه وګورئ او بیا هڅه وکړئ.",
   "common.cachedOffline": "انټرنېټ نشته. تاسو په دې وسیله کې خوندي شوي معلومات ګورئ.",
   "common.serviceUnavailable": "ستاسو د ښوونځي MaktabLink خدمت اوس شتون نه لري. مهرباني وکړئ د ښوونځي له ادارې سره اړیکه ونیسئ.",
@@ -813,6 +845,76 @@ export function getDirection(locale: SupportedLocale): TextDirection {
 
 export function translate(locale: SupportedLocale, key: TranslationKey): string {
   return messages[locale][key];
+}
+
+const latinDigits = "0123456789";
+const easternArabicDigits = "۰۱۲۳۴۵۶۷۸۹";
+
+export function localizeDigits(value: string | number, locale: SupportedLocale): string {
+  const text = String(value);
+  if (locale === "en") return text;
+  return text.replace(/[0-9]/g, (digit) => easternArabicDigits[latinDigits.indexOf(digit)] ?? digit);
+}
+
+function dateFromDisplayValue(value: string): Date | null {
+  const trimmed = value.trim();
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  const date = dateOnly
+    ? new Date(`${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T12:00:00.000Z`)
+    : new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatLocalizedDate(value: string, locale: SupportedLocale): string {
+  const date = dateFromDisplayValue(value);
+  if (!date) return value;
+
+  const calendar = locale === "en" ? "gregory" : "persian";
+  const formatter = new Intl.DateTimeFormat(locale === "en" ? "en-US" : locale, {
+    calendar,
+    numberingSystem: locale === "en" ? "latn" : "arabext",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Kabul"
+  });
+  const parts = formatter.formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+
+  return `${part("year")}/${part("month")}/${part("day")}`;
+}
+
+export function formatLocalizedNumber(
+  value: number,
+  locale: SupportedLocale,
+  options: Intl.NumberFormatOptions = {}
+): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : locale, {
+    numberingSystem: locale === "en" ? "latn" : "arabext",
+    ...options
+  }).format(value);
+}
+
+export function formatAfn(value: number, locale: SupportedLocale): string {
+  const amount = formatLocalizedNumber(Math.max(0, value), locale);
+  return locale === "en" ? `AFN ${amount}` : `؋ ${amount}`;
+}
+
+export function formatLocalizedTime(value: string, locale: SupportedLocale): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return localizeDigits(value, locale);
+  const hours = localizeDigits(match[1].padStart(2, "0"), locale);
+  const minutes = localizeDigits(match[2], locale);
+  return `${hours}:${minutes}`;
+}
+
+export function formatLocalizedTimeRange(
+  startsAt: string,
+  endsAt: string,
+  locale: SupportedLocale
+): string {
+  return `${formatLocalizedTime(startsAt, locale)}–${formatLocalizedTime(endsAt, locale)}`;
 }
 
 export function isSupportedLocale(value: string): value is SupportedLocale {
