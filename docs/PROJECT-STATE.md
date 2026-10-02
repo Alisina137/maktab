@@ -981,4 +981,4 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Bottom navigation labels are localized in English, Dari, and Pashto and mirror their visual order for RTL locales.
 - Each tab exposes accessibility tab semantics and selected state.
 - Parent navigation resets to Home when the authenticated Parent account changes, preventing the previous account's tab state from leaking into a new login.
-- Step 10.5 is ready for local `pnpm verify` and Android/Expo navigation validation before moving to Step 10.6.
+- Step 10.5 automated verification is green: GitHub CI passed on commit `f2cf9858c4105293289c5cde19e00b23d8a46823`. Remaining validation is the Android/Expo Parent navigation smoke test before moving to Step 10.6.
