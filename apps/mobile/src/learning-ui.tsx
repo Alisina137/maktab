@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -467,29 +467,37 @@ export function LearnerLearningPanel({
 }) {
   const [view, setView] = useState<LearnerAcademicPayload | null>(null);
   const [busy, setBusy] = useState(false);
+  const loadRequestId = useRef(0);
 
   useEffect(() => {
+    const requestId = ++loadRequestId.current;
     if (mode === "PARENT" && !studentId) {
       setView(null);
+      setBusy(false);
       return;
     }
-    void load();
+    void load(requestId);
+    return () => {
+      if (loadRequestId.current === requestId) loadRequestId.current += 1;
+    };
   }, [accessToken, studentId, mode]);
 
-  async function load() {
+  async function load(requestId: number) {
     setBusy(true);
     try {
       const result =
         mode === "PARENT" && studentId
           ? await api.parentLearning(accessToken, studentId)
           : await api.studentHome(accessToken);
+      if (requestId !== loadRequestId.current) return;
       setView(result);
       onLoaded?.(result);
     } catch (cause) {
+      if (requestId !== loadRequestId.current) return;
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
     } finally {
-      setBusy(false);
+      if (requestId === loadRequestId.current) setBusy(false);
     }
   }
 
