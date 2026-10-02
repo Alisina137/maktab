@@ -2,10 +2,29 @@ import * as SecureStore from "expo-secure-store";
 import type { SchoolOption, SessionPayload } from "./api";
 
 const KEY = "maktablink.phase2.session";
+const PARENT_CHILD_KEY = "maktablink.parent.selected-child";
 
 export interface StoredSession {
   auth: SessionPayload;
   school: SchoolOption;
+}
+
+type ParentChildPreferences = Record<string, string>;
+
+function parentChildPreferenceKey(schoolId: string, parentUserId: string) {
+  return `${schoolId}:${parentUserId}`;
+}
+
+async function loadParentChildPreferences(): Promise<ParentChildPreferences> {
+  const raw = await SecureStore.getItemAsync(PARENT_CHILD_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed as ParentChildPreferences : {};
+  } catch {
+    await SecureStore.deleteItemAsync(PARENT_CHILD_KEY);
+    return {};
+  }
 }
 
 export async function loadStoredSession(): Promise<StoredSession | null> {
@@ -25,4 +44,24 @@ export async function saveStoredSession(value: StoredSession): Promise<void> {
 
 export async function clearStoredSession(): Promise<void> {
   await SecureStore.deleteItemAsync(KEY);
+}
+
+
+export async function loadPreferredParentChild(
+  schoolId: string,
+  parentUserId: string
+): Promise<string | null> {
+  const preferences = await loadParentChildPreferences();
+  const value = preferences[parentChildPreferenceKey(schoolId, parentUserId)];
+  return typeof value === "string" && value ? value : null;
+}
+
+export async function savePreferredParentChild(
+  schoolId: string,
+  parentUserId: string,
+  studentId: string
+): Promise<void> {
+  const preferences = await loadParentChildPreferences();
+  preferences[parentChildPreferenceKey(schoolId, parentUserId)] = studentId;
+  await SecureStore.setItemAsync(PARENT_CHILD_KEY, JSON.stringify(preferences));
 }
