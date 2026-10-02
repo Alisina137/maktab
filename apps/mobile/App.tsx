@@ -47,6 +47,13 @@ import { AdminContactCard } from "./src/admin-contact-card";
 import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
+import {
+  ParentAnnouncementsContent,
+  ParentBottomNavigation,
+  ParentHomeworkContent,
+  ParentMoreAcademicContent,
+  type ParentTab
+} from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
@@ -132,6 +139,7 @@ function AppContent() {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [parentHome, setParentHome] = useState<ParentHomePayload | null>(null);
   const [selectedChildId, setSelectedChildId] = useState("");
+  const [parentTab, setParentTab] = useState<ParentTab>("HOME");
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
   const [parentToday, setParentToday] = useState("");
   const [parentTimetable, setParentTimetable] = useState<ParentTimetablePeriod[]>([]);
@@ -323,6 +331,8 @@ function AppContent() {
       setParentCommunicationReady(false);
       void loadParentAttendance(session.accessToken, selectedChildId, requestId);
       void loadParentTimetable(session.accessToken, selectedChildId, requestId);
+      void loadParentLearningData(session.accessToken, selectedChildId, requestId);
+      void loadParentCommunicationData(session.accessToken, selectedChildId, requestId);
     }
   }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
@@ -780,6 +790,39 @@ function AppContent() {
     }
   }
 
+  async function loadParentLearningData(
+    accessToken: string,
+    studentId: string,
+    requestId: number
+  ) {
+    try {
+      const result = await api.parentLearning(accessToken, studentId);
+      if (requestId !== parentChildLoadRequestId.current) return;
+      setParentLearning(result);
+    } catch (cause) {
+      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+    }
+  }
+
+  async function loadParentCommunicationData(
+    accessToken: string,
+    studentId: string,
+    requestId: number
+  ) {
+    try {
+      const [announcementResult, feeResult] = await Promise.all([
+        api.announcements(accessToken),
+        api.parentFees(accessToken, studentId)
+      ]);
+      if (requestId !== parentChildLoadRequestId.current) return;
+      setParentAnnouncements(announcementResult.announcements);
+      setParentFees(feeResult.invoices);
+      setParentCommunicationReady(true);
+    } catch (cause) {
+      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+    }
+  }
+
   async function loadParentNotifications(accessToken: string) {
     try {
       const result = await api.parentNotifications(accessToken);
@@ -980,6 +1023,20 @@ function AppContent() {
 
   const selectedChild =
     parentHome?.children.find((item) => item.student.id === selectedChildId) ?? null;
+  const showParentNavigation =
+    screen === "home" &&
+    session?.user.role === "PARENT" &&
+    session.user.status !== "SUSPENDED";
+
+  function selectParentTab(tab: ParentTab) {
+    if (parentTab === tab) return;
+    setParentTab(tab);
+    setNotice(null);
+    setTimeout(() => {
+      onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+    }, 0);
+  }
+
   const attendanceMarkedCount = attendanceSheet
     ? attendanceSheet.students.filter((item) => attendanceDraft[item.student.id]).length
     : 0;
@@ -1009,7 +1066,7 @@ function AppContent() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, showParentNavigation && styles.contentWithParentNav]}
       >
         <View style={styles.topbar}>
           <View style={styles.brandRow}>
