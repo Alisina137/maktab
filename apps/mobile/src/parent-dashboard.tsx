@@ -3,6 +3,10 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
+  formatAfn,
+  formatLocalizedDate,
+  formatLocalizedNumber,
+  formatLocalizedTimeRange,
   getDirection,
   translate,
   type SupportedLocale,
@@ -53,10 +57,6 @@ function weekdayForDate(value: string): Weekday | null {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
   if (Number.isNaN(date.getTime())) return null;
   return jsWeekday[date.getUTCDay()] ?? null;
-}
-
-function formatAfn(value: number) {
-  return `AFN ${Math.max(0, value).toLocaleString("en-US")}`;
 }
 
 export function ParentDashboardPanel({
@@ -118,20 +118,20 @@ export function ParentDashboardPanel({
       ? dashboard.todayPeriods[0].subjectName
       : translate(locale, "parent.noClassesToday");
   const scheduleDetail = dashboard.todayPeriods[0]
-    ? `${dashboard.todayPeriods[0].period.startsAt}–${dashboard.todayPeriods[0].period.endsAt} · ${dashboard.todayPeriods[0].teacherName}${dashboard.todayPeriods.length > 1 ? ` · +${dashboard.todayPeriods.length - 1} ${translate(locale, "parent.moreItems")}` : ""}`
+    ? `${formatLocalizedTimeRange(dashboard.todayPeriods[0].period.startsAt, dashboard.todayPeriods[0].period.endsAt, locale)} · ${dashboard.todayPeriods[0].teacherName}${dashboard.todayPeriods.length > 1 ? ` · +${formatLocalizedNumber(dashboard.todayPeriods.length - 1, locale)} ${translate(locale, "parent.moreItems")}` : ""}`
     : "";
 
   const homeworkPrimary = !learning
     ? translate(locale, "common.loading")
     : dashboard.homework?.homework.title ?? translate(locale, "parent.noHomeworkDue");
   const homeworkDetail = dashboard.homework
-    ? `${dashboard.homework.subjectName} · ${translate(locale, "learning.due")} ${dashboard.homework.homework.dueAt.slice(0, 10)}`
+    ? `${dashboard.homework.subjectName} · ${translate(locale, "learning.due")} ${formatLocalizedDate(dashboard.homework.homework.dueAt, locale)}`
     : "";
 
   const resultPrimary = !learning
     ? translate(locale, "common.loading")
     : dashboard.latestResult
-      ? `${dashboard.latestResult.grade.score}/${dashboard.latestResult.examSubject.maxScore}`
+      ? `${formatLocalizedNumber(dashboard.latestResult.grade.score, locale)}/${formatLocalizedNumber(dashboard.latestResult.examSubject.maxScore, locale)}`
       : translate(locale, "parent.noPublishedResult");
   const resultDetail = dashboard.latestResult
     ? `${dashboard.latestResult.exam.name} · ${dashboard.latestResult.subjectName}`
@@ -140,13 +140,15 @@ export function ParentDashboardPanel({
   const feePrimary = !communicationReady
     ? translate(locale, "common.loading")
     : dashboard.outstanding > 0
-      ? formatAfn(dashboard.outstanding)
+      ? formatAfn(dashboard.outstanding, locale)
       : translate(locale, "parent.noOutstandingFees");
 
   const announcementPrimary = !communicationReady
     ? translate(locale, "common.loading")
     : dashboard.latestAnnouncement?.title ?? translate(locale, "parent.noAnnouncements");
-  const announcementDetail = dashboard.latestAnnouncement?.publishAt.slice(0, 10) ?? "";
+  const announcementDetail = dashboard.latestAnnouncement
+    ? formatLocalizedDate(dashboard.latestAnnouncement.publishAt, locale)
+    : "";
 
   return (
     <View style={styles.section}>
