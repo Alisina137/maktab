@@ -592,7 +592,14 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       const [student] = await db
         .select()
         .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId), eq(students.parentUserId, parentUserId)))
+        .where(
+          and(
+            eq(students.schoolId, schoolId),
+            eq(students.id, studentId),
+            eq(students.parentUserId, parentUserId),
+            eq(students.status, "ACTIVE")
+          )
+        )
         .limit(1);
       if (!student) throw new LearningNotFoundError("Student not found for this parent account.");
       return visibleView(schoolId, student);
