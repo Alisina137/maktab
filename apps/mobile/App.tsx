@@ -515,7 +515,7 @@ function AppContent() {
           setTeacherToday(null);
           setAttendanceSheet(null);
           setAttendanceDraft({});
-          void loadAdminContact(activeSession.accessToken);
+          void loadAdminContact(latestSession.accessToken);
           if (!wasSuspended) setAppError("auth.accountSuspended");
         } else if (wasSuspended) {
           setAppError(null);
