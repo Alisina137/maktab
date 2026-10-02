@@ -19,7 +19,9 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
+  formatLocalizedDate,
   getDirection,
+  localizeDigits,
   supportedLocales,
   translate,
   type SupportedLocale,
@@ -114,6 +116,21 @@ const attendanceKey: Record<AttendanceStatus, TranslationKey> = {
   LATE: "attendance.late",
   EXCUSED: "attendance.excused"
 };
+
+function isolateLtr(value: string): string {
+  return `\u2066${value}\u2069`;
+}
+
+function parentNotificationDetail(
+  notification: ParentNotification,
+  locale: SupportedLocale
+): string {
+  const dateValue = notification.metadata.date ?? notification.metadata.dueAt;
+  if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+    return formatLocalizedDate(dateValue, locale);
+  }
+  return String(notification.message ?? "");
+}
 
 function passwordValidationError(value: string): TranslationKey | null {
   if (value.length < 8) return "passwordChange.tooShort";
@@ -1609,7 +1626,7 @@ function AppContent() {
                       {parentHome?.parent.fullName ?? session.user.username}
                     </Text>
                     <Text style={[styles.parentHeroMeta, textDirection]}>
-                      {school?.name}{parentHome ? ` · ${session.user.username}` : ""}
+                      {school?.name}{parentHome ? ` · ${isolateLtr(session.user.username)}` : ""}
                     </Text>
                   </View>
                 </View>
@@ -1684,15 +1701,27 @@ function AppContent() {
                             <View style={[styles.childMetaGrid, direction === "rtl" && styles.childMetaGridRtl]}>
                               <View style={styles.childMetaCell}>
                                 <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
-                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={1}>{selectedChild.student.studentCode}</Text>
+                                <Text
+                                  style={[styles.childDetailValue, styles.identifierValue, direction === "rtl" && styles.identifierValueRtl]}
+                                  numberOfLines={1}
+                                >
+                                  {selectedChild.student.studentCode}
+                                </Text>
                               </View>
                               <View style={styles.childMetaCell}>
                                 <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
-                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>{selectedChild.classSection.code}</Text>
+                                <Text
+                                  style={[styles.childDetailValue, styles.identifierValue, direction === "rtl" && styles.identifierValueRtl]}
+                                  numberOfLines={2}
+                                >
+                                  {selectedChild.classSection.code}
+                                </Text>
                               </View>
                               <View style={styles.childMetaCell}>
                                 <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
-                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>{selectedChild.academicYear.name}</Text>
+                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>
+                                  {localizeDigits(selectedChild.academicYear.name, locale)}
+                                </Text>
                               </View>
                             </View>
                           </Animated.View>
@@ -1736,7 +1765,9 @@ function AppContent() {
                       </View>
                       {parentAttendance.slice(0, 7).map((day) => (
                         <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
-                          <Text style={[styles.historyDate, textDirection]}>{day.date}</Text>
+                          <Text style={[styles.historyDate, textDirection]}>
+                            {formatLocalizedDate(day.date, locale)}
+                          </Text>
                           <AttendanceBadge locale={locale} status={day.status} />
                         </View>
                       ))}
@@ -1783,7 +1814,7 @@ function AppContent() {
                                       : notification.title}
                             </Text>
                             <Text style={[styles.muted, textDirection]}>
-                              {String(notification.metadata.date ?? notification.metadata.dueAt ?? notification.message ?? "")}
+                              {parentNotificationDetail(notification, locale)}
                             </Text>
                           </View>
                         </Pressable>
@@ -3028,6 +3059,8 @@ const styles = StyleSheet.create({
   },
   childDetailLabel: { color: tokens.color.textMuted, fontSize: 10.5, fontWeight: "700" },
   childDetailValue: { color: tokens.color.text, fontSize: 13, lineHeight: 17, fontWeight: "900" },
+  identifierValue: { writingDirection: "ltr", textAlign: "left" },
+  identifierValueRtl: { textAlign: "right" },
   parentSectionCard: {
     padding: 16,
     backgroundColor: tokens.color.surface,
