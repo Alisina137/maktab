@@ -458,8 +458,13 @@ export function LearnerLearningPanel({
   mode,
   locale,
   textDirection,
-  onError
-}: CommonProps & { studentId?: string; mode: "PARENT" | "STUDENT" }) {
+  onError,
+  onLoaded
+}: CommonProps & {
+  studentId?: string;
+  mode: "PARENT" | "STUDENT";
+  onLoaded?: (view: LearnerAcademicPayload) => void;
+}) {
   const [view, setView] = useState<LearnerAcademicPayload | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -479,6 +484,7 @@ export function LearnerLearningPanel({
           ? await api.parentLearning(accessToken, studentId)
           : await api.studentHome(accessToken);
       setView(result);
+      onLoaded?.(result);
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
