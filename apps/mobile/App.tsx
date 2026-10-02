@@ -30,11 +30,15 @@ import {
   isNetworkApiError,
   setPreferCachedReads,
   type AdminContactPayload,
+  type AnnouncementPayload,
   type AttendanceSheetPayload,
   type AttendanceStatus,
+  type FeeInvoiceViewPayload,
+  type LearnerAcademicPayload,
   type ParentAttendanceDay,
   type ParentHomePayload,
   type ParentNotification,
+  type ParentTimetablePeriod,
   type SchoolOption,
   type SessionPayload,
   type TeacherTodayPayload
@@ -128,6 +132,10 @@ function AppContent() {
   const [selectedChildId, setSelectedChildId] = useState("");
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
   const [parentToday, setParentToday] = useState("");
+  const [parentTimetable, setParentTimetable] = useState<ParentTimetablePeriod[]>([]);
+  const [parentLearning, setParentLearning] = useState<LearnerAcademicPayload | null>(null);
+  const [parentAnnouncements, setParentAnnouncements] = useState<AnnouncementPayload[]>([]);
+  const [parentFees, setParentFees] = useState<FeeInvoiceViewPayload[]>([]);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
@@ -294,7 +302,12 @@ function AppContent() {
       session.user.status !== "SUSPENDED" &&
       selectedChildId
     ) {
+      setParentTimetable([]);
+      setParentLearning(null);
+      setParentAnnouncements([]);
+      setParentFees([]);
       void loadParentAttendance(session.accessToken, selectedChildId);
+      void loadParentTimetable(session.accessToken, selectedChildId);
     }
   }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
@@ -336,6 +349,10 @@ function AppContent() {
           setParentHome(null);
           setSelectedChildId("");
           setParentAttendance([]);
+          setParentTimetable([]);
+          setParentLearning(null);
+          setParentAnnouncements([]);
+          setParentFees([]);
           setParentNotifications([]);
           setTeacherToday(null);
           setAttendanceSheet(null);
@@ -409,6 +426,10 @@ function AppContent() {
     setSelectedChildId("");
     setParentAttendance([]);
     setParentToday("");
+    setParentTimetable([]);
+    setParentLearning(null);
+    setParentAnnouncements([]);
+    setParentFees([]);
     setParentNotifications([]);
     setTeacherToday(null);
     setAdminContact(null);
@@ -488,6 +509,10 @@ function AppContent() {
             setParentHome(null);
             setSelectedChildId("");
             setParentAttendance([]);
+            setParentTimetable([]);
+            setParentLearning(null);
+            setParentAnnouncements([]);
+            setParentFees([]);
             setParentNotifications([]);
             setTeacherToday(null);
             setAttendanceSheet(null);
@@ -677,6 +702,15 @@ function AppContent() {
       const result = await api.parentAttendance(accessToken, studentId);
       setParentToday(result.today);
       setParentAttendance(result.days);
+    } catch (cause) {
+      showCause(cause);
+    }
+  }
+
+  async function loadParentTimetable(accessToken: string, studentId: string) {
+    try {
+      const result = await api.parentTimetable(accessToken, studentId);
+      setParentTimetable(result.periods);
     } catch (cause) {
       showCause(cause);
     }
@@ -1301,16 +1335,17 @@ function AppContent() {
               <>
                 <ParentDashboardPanel
                   key={`parent-dashboard-${reconnectEpoch}-${selectedChild.student.id}`}
-                  accessToken={session.accessToken}
-                  studentId={selectedChild.student.id}
                   classId={selectedChild.student.classId}
                   todayDate={parentToday}
                   todayAttendance={
                     parentAttendance.find((item) => item.date === parentToday)?.status ?? null
                   }
+                  timetable={parentTimetable}
+                  learning={parentLearning}
+                  announcements={parentAnnouncements}
+                  fees={parentFees}
                   locale={locale}
                   textDirection={textDirection}
-                  onError={setAppError}
                 />
 
                 <View style={styles.phaseCard}>
@@ -1335,6 +1370,7 @@ function AppContent() {
                   textDirection={textDirection}
                   onError={setAppError}
                   onNotice={setNotice}
+                  onLoaded={setParentLearning}
                 />
 
                 <CommunicationPanel
@@ -1346,6 +1382,10 @@ function AppContent() {
                   textDirection={textDirection}
                   onError={setAppError}
                   onNotice={setNotice}
+                  onLoaded={({ announcements, fees }) => {
+                    setParentAnnouncements(announcements);
+                    setParentFees(fees);
+                  }}
                 />
 
                 <View style={styles.phaseCard}>
