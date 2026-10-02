@@ -903,9 +903,11 @@ export function formatAfn(value: number, locale: SupportedLocale): string {
 
 export function formatLocalizedTime(value: string, locale: SupportedLocale): string {
   const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return localizeDigits(value, locale);
-  const hours = localizeDigits(match[1].padStart(2, "0"), locale);
-  const minutes = localizeDigits(match[2], locale);
+  const hoursPart = match?.[1];
+  const minutesPart = match?.[2];
+  if (!hoursPart || !minutesPart) return localizeDigits(value, locale);
+  const hours = localizeDigits(hoursPart.padStart(2, "0"), locale);
+  const minutes = localizeDigits(minutesPart, locale);
   return `${hours}:${minutes}`;
 }
 
