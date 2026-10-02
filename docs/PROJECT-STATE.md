@@ -945,5 +945,6 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Detailed Parent announcements are now child-aware: school-wide and Parent-role announcements remain visible, while CLASS announcements are filtered to the selected child's class.
 - Child switch controls expose selected accessibility state, and the selected child is updated immediately before persistence so rapid repeated switching remains deterministic.
 - Preference-storage failures are treated as non-blocking convenience failures; Parent Home and manual switching continue to work even if device preference storage is temporarily unavailable.
+- Parent Home now resolves the current/remembered child before publishing the refreshed Home payload to the UI, eliminating a brief first-child fallback flash during refresh/restore.
 - Added API regression coverage proving an authenticated Parent cannot read the timetable of a student linked to another Parent account.
 - Step 10.3 is ready for local `pnpm verify` and manual multi-child Android/Expo validation.
