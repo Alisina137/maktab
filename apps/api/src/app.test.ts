@@ -1445,6 +1445,41 @@ test("parent account can own three students and sees all three through one login
     familyOverviewBody.enrollments.filter((item) => item.academicYear.id === yearId).length,
     3
   );
+
+  const otherParentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: { username: "otherfamilyparent", fullName: "Other Family Parent" }
+  });
+  assert.equal(otherParentResponse.statusCode, 201);
+  const otherParentId = otherParentResponse.json<{ user: { id: string } }>().user.id;
+
+  const otherStudentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: auth,
+    payload: {
+      parentUserId: otherParentId,
+      studentCode: "S-OTHER",
+      fullName: "Other Family Student",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  assert.equal(otherStudentResponse.statusCode, 201);
+  const otherStudentId = otherStudentResponse.json<{ student: { id: string } }>().student.id;
+
+  const blockedOtherChildTimetable = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${otherStudentId}/timetable`,
+    headers: { authorization: `Bearer ${parentAccess}` }
+  });
+  assert.equal(blockedOtherChildTimetable.statusCode, 404);
+  assert.equal(
+    blockedOtherChildTimetable.json<{ message: string }>().message,
+    "Student not found for this parent account."
+  );
 });
 
 
