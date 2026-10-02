@@ -924,3 +924,12 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Child-specific dashboard state is cleared immediately when the selected child changes, preventing the previous child's attendance, homework, results, fees or announcements from flashing while the new child data loads.
 - Product Specification V1 lists "next exam" as a Parent Home primary card, but the current approved MVP data model has no exam date field and the specification places richer exam scheduling in V1.1. The dashboard therefore shows an explicit exam-scheduling-unavailable state rather than inventing a date or mislabeling exam creation order as the "next exam."
 - Step 10.2 is ready for local `pnpm verify` and Android/Expo visual validation before moving to Step 10.3.
+
+
+### Step 10.2 test-data support and Accounts list height
+- Added a repeatable development command, `pnpm demo:parent-dashboard`, that targets an existing active Parent + Student in the active academic year and creates realistic demo records for Parent-dashboard validation.
+- The demo seed creates/refreshes: today's attendance, previous-day attendance, one published homework item, one published exam result, one issued fee with AFN 2500 outstanding, one class announcement, and a timetable period for today when the class does not already have one.
+- The seed reuses the selected student's real school, class, academic year, administrator, teacher profile, subject and teacher assignment where possible; if the class has no assignment but the school has a teacher profile, it creates the minimum missing assignment. It stops with a clear error instead of inventing a teacher when no teacher profile exists.
+- Optional environment selectors `DEMO_SCHOOL_CODE`, `DEMO_PARENT_USERNAME`, and `DEMO_STUDENT_CODE` can target a specific existing family; otherwise the first eligible active Parent + Student is used.
+- The seed is designed to be rerun safely: the same demo attendance, homework, exam/result, fee and announcement records are updated instead of duplicated.
+- Fixed the dedicated Admin Accounts directory list at exactly 500px height with internal vertical scrolling, hidden horizontal overflow, stable scrollbar space and contained overscroll.
