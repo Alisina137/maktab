@@ -88,6 +88,11 @@ export type TranslationKey =
   | "parent.latestAnnouncement"
   | "parent.noAnnouncements"
   | "parent.moreItems"
+  | "parent.navHome"
+  | "parent.navHomework"
+  | "parent.navAnnouncements"
+  | "parent.navMore"
+  | "parent.moreTitle"
   | "auth.logout"
   | "common.loading"
   | "common.errorTitle"
@@ -271,6 +276,11 @@ const en: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "Latest announcement",
   "parent.noAnnouncements": "No announcement for this child",
   "parent.moreItems": "more",
+  "parent.navHome": "Home",
+  "parent.navHomework": "Homework",
+  "parent.navAnnouncements": "Announcements",
+  "parent.navMore": "More",
+  "parent.moreTitle": "More",
   "auth.logout": "Log out",
   "common.loading": "Loading…",
   "common.errorTitle": "Something needs your attention",
@@ -466,6 +476,11 @@ const dari: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "آخرین اعلان",
   "parent.noAnnouncements": "برای این شاگرد اعلانی وجود ندارد",
   "parent.moreItems": "مورد دیگر",
+  "parent.navHome": "خانه",
+  "parent.navHomework": "کارخانگی",
+  "parent.navAnnouncements": "اعلانات",
+  "parent.navMore": "بیشتر",
+  "parent.moreTitle": "بیشتر",
   "auth.logout": "خروج",
   "common.loading": "در حال بارگذاری…",
   "common.errorTitle": "یک مورد نیاز به توجه شما دارد",
@@ -661,6 +676,11 @@ const pashto: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "وروستی اعلان",
   "parent.noAnnouncements": "د دې زده‌کوونکي لپاره اعلان نشته",
   "parent.moreItems": "نور",
+  "parent.navHome": "کور",
+  "parent.navHomework": "کورنی کار",
+  "parent.navAnnouncements": "اعلانونه",
+  "parent.navMore": "نور",
+  "parent.moreTitle": "نور",
   "auth.logout": "وتل",
   "common.loading": "بارېږي…",
   "common.errorTitle": "یو څه ستاسو پاملرنې ته اړتیا لري",
