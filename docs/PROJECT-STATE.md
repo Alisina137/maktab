@@ -967,3 +967,18 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Withdrawn students can be restored with `Reactivate enrollment`.
 - Student account suspension/reactivation remains a separate account-security action and is now labeled separately from enrollment status to avoid confusion.
 - Added Dari and Pashto labels for the new enrollment controls and confirmation message.
+
+
+### Testing Step 10.5 — Parent navigation
+- Implemented the Product Specification V1 Parent bottom navigation: Home, Homework, Announcements, More.
+- The Parent bottom bar is rendered only for authenticated, non-suspended Parent sessions; Teacher, Student, login, password-change, and suspended-account screens do not receive Parent navigation.
+- Home keeps the child selector, Parent/account context, dashboard summary, recent attendance, and Parent notifications.
+- Homework contains only the selected child's published homework.
+- Announcements contains school/role announcements plus only CLASS announcements for the selected child's class.
+- More contains the selected child's published results, fee balances and payment/reversal history, school administrator contact information, and logout.
+- Child selection remains owned by Home as required by the specification. Switching tabs preserves the selected child; switching children refreshes all child-specific data and the same data is reused by every Parent tab.
+- Parent learning, announcement, and fee data now load once per selected child at the App level rather than being re-requested when moving between navigation tabs. Existing request-generation guards continue to prevent stale child responses from replacing the currently selected child's data.
+- Bottom navigation labels are localized in English, Dari, and Pashto and mirror their visual order for RTL locales.
+- Each tab exposes accessibility tab semantics and selected state.
+- Parent navigation resets to Home when the authenticated Parent account changes, preventing the previous account's tab state from leaking into a new login.
+- Step 10.5 is ready for local `pnpm verify` and Android/Expo navigation validation before moving to Step 10.6.
