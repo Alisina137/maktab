@@ -1022,3 +1022,19 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Loading states in Parent tab content now use contained loading cards/rows rather than isolated spinners.
 - No Parent permissions, API contracts, data loading semantics, or child-switching behavior were changed during this styling pass.
 - Step 10.6 requires local Expo visual validation on a small Android device in Dari, Pashto, and English before moving to Step 10.7.
+
+
+### Testing Step 10.7 — Parent RTL and localization validation
+- Audited the Parent mobile experience against Product Specification V1 requirements for Dari, Pashto, English, true RTL support, AFN currency, and Solar Hijri date display.
+- Dari remains the first-run/default mobile language. An explicit user selection of Pashto or English is now persisted in Expo SecureStore and restored on later app launches.
+- Added shared locale display helpers for localized digits, numbers, AFN amounts, dates, clock times, and time ranges.
+- Parent-facing Dari/Pashto dates now display in the Persian/Solar Hijri calendar while API/storage values remain unchanged ISO/Gregorian values. English display remains Gregorian.
+- Parent dashboard schedule times, extra-period counts, result scores, homework due dates, announcement dates, and fee amounts now follow the selected locale.
+- Parent Homework, Announcements, Results, Fees, Recent Attendance, notification date metadata, and payment history now use localized display dates/numbers.
+- Fee invoice statuses and payment/reversal kinds no longer leak raw English database enum values into Dari/Pashto UI; localized labels were added for all fee states.
+- Parent bottom navigation now keeps the logical Home/Homework/Announcements/More array unchanged and applies RTL at the container level, rather than manually reversing the data array.
+- Student/class codes remain LTR identifiers inside RTL layouts to avoid character-order corruption. Usernames are bidi-isolated when displayed beside RTL school text.
+- Academic-year numeric text follows the selected locale's digits.
+- Added localization unit tests proving Dari/Pashto Solar Hijri conversion and localized numbers/time/AFN output.
+- Added `scripts/verify-parent-localization.mjs` and root `pnpm verify:parent-localization`. The normal `pnpm verify` now runs this guard before typecheck/test/build, protecting Parent RTL/date/currency/status invariants from regression.
+- Automated CI has passed typecheck and tests for the completed 10.7 implementation; Android build verification is tracked by the latest workflow before final manual Expo review.
