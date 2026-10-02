@@ -346,9 +346,22 @@ export function isNetworkApiError(error: unknown): error is ApiRequestError {
 }
 
 let preferCachedReads = false;
+let sessionRefreshHandler: (() => Promise<string | null>) | null = null;
 
 export function setPreferCachedReads(value: boolean) {
   preferCachedReads = value;
+}
+
+export function setSessionRefreshHandler(
+  handler: (() => Promise<string | null>) | null
+) {
+  sessionRefreshHandler = handler;
+}
+
+function withAuthorization(init: RequestInit | undefined, accessToken: string): RequestInit {
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${accessToken}`);
+  return { ...init, headers };
 }
 
 function apiBaseUrl(): string {
@@ -363,7 +376,7 @@ function apiBaseUrl(): string {
 async function request<T>(
   path: string,
   init?: RequestInit,
-  options: { cache?: boolean; timeoutMs?: number } = {}
+  options: { cache?: boolean; timeoutMs?: number; allowSessionRefresh?: boolean } = {}
 ): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
@@ -422,6 +435,27 @@ async function request<T>(
         body && typeof body === "object" && "error" in body && typeof body.error === "string"
           ? body.error
           : null;
+
+      const headers = new Headers(init?.headers);
+      const hasBearerToken = headers.get("Authorization")?.startsWith("Bearer ") ?? false;
+      const canRefresh =
+        options.allowSessionRefresh !== false &&
+        response.status === 401 &&
+        code === "session_invalid" &&
+        hasBearerToken &&
+        sessionRefreshHandler;
+
+      if (canRefresh) {
+        const nextAccessToken = await sessionRefreshHandler();
+        if (nextAccessToken) {
+          return request<T>(
+            path,
+            withAuthorization(init, nextAccessToken),
+            { ...options, allowSessionRefresh: false }
+          );
+        }
+      }
+
       throw new ApiRequestError(message, { status: response.status, code });
     }
 
@@ -458,10 +492,14 @@ export const api = {
   },
 
   refresh(refreshToken: string) {
-    return request<SessionPayload>("/v1/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken })
-    });
+    return request<SessionPayload>(
+      "/v1/auth/refresh",
+      {
+        method: "POST",
+        body: JSON.stringify({ refreshToken })
+      },
+      { cache: false, allowSessionRefresh: false }
+    );
   },
 
   me(accessToken: string) {
