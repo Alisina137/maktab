@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useMemo } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -8,15 +8,13 @@ import {
   type SupportedLocale,
   type TranslationKey
 } from "@maktablink/localization";
-import {
-  api,
-  type AnnouncementPayload,
-  type AttendanceStatus,
-  type FeeInvoiceViewPayload,
-  type LearnerAcademicPayload,
-  type ParentTimetablePeriod
+import type {
+  AnnouncementPayload,
+  AttendanceStatus,
+  FeeInvoiceViewPayload,
+  LearnerAcademicPayload,
+  ParentTimetablePeriod
 } from "./api";
-import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -24,14 +22,15 @@ type TextDirectionStyle = {
 };
 
 type Props = {
-  accessToken: string;
-  studentId: string;
   classId: string;
   todayDate: string;
   todayAttendance: AttendanceStatus | null;
+  timetable: ParentTimetablePeriod[];
+  learning: LearnerAcademicPayload | null;
+  announcements: AnnouncementPayload[];
+  fees: FeeInvoiceViewPayload[];
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
-  onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
 };
 
 type Weekday = ParentTimetablePeriod["period"]["weekday"];
@@ -59,46 +58,17 @@ function formatAfn(value: number) {
 }
 
 export function ParentDashboardPanel({
-  accessToken,
-  studentId,
   classId,
   todayDate,
   todayAttendance,
+  timetable,
+  learning,
+  announcements,
+  fees,
   locale,
-  textDirection,
-  onError
+  textDirection
 }: Props) {
   const rtl = getDirection(locale) === "rtl";
-  const [timetable, setTimetable] = useState<ParentTimetablePeriod[]>([]);
-  const [learning, setLearning] = useState<LearnerAcademicPayload | null>(null);
-  const [announcements, setAnnouncements] = useState<AnnouncementPayload[]>([]);
-  const [fees, setFees] = useState<FeeInvoiceViewPayload[]>([]);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    void load();
-  }, [accessToken, studentId]);
-
-  async function load() {
-    setBusy(true);
-    try {
-      const [timetableResult, learningResult, announcementResult, feeResult] = await Promise.all([
-        api.parentTimetable(accessToken, studentId),
-        api.parentLearning(accessToken, studentId),
-        api.announcements(accessToken),
-        api.parentFees(accessToken, studentId)
-      ]);
-      setTimetable(timetableResult.periods);
-      setLearning(learningResult);
-      setAnnouncements(announcementResult.announcements);
-      setFees(feeResult.invoices);
-    } catch (cause) {
-      const failure = appErrorFromCause(cause);
-      onError(failure.key, failure.kind);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   const dashboard = useMemo(() => {
     const weekday = weekdayForDate(todayDate);
@@ -113,9 +83,7 @@ export function ParentDashboardPanel({
     ) ?? null;
 
     const latestResult = learning?.results[0] ?? null;
-
     const outstanding = fees.reduce((sum, item) => sum + item.outstanding, 0);
-
     const relevantAnnouncements = announcements.filter(
       (item) => item.audienceScope !== "CLASS" || item.classId === classId
     );
@@ -170,8 +138,6 @@ export function ParentDashboardPanel({
         <Ionicons name="grid-outline" size={20} color={tokens.color.brandStrong} />
         <Text style={[styles.sectionTitle, textDirection]}>{translate(locale, "parent.dashboard")}</Text>
       </View>
-
-      {busy && !learning ? <ActivityIndicator color={tokens.color.brand} /> : null}
 
       <View style={styles.grid}>
         <DashboardCard
@@ -254,27 +220,11 @@ function DashboardCard({
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: 12
-  },
-  headingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9
-  },
-  rowRtl: {
-    flexDirection: "row-reverse"
-  },
-  sectionTitle: {
-    color: tokens.color.text,
-    fontSize: 17,
-    fontWeight: "900"
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10
-  },
+  section: { gap: 12 },
+  headingRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+  rowRtl: { flexDirection: "row-reverse" },
+  sectionTitle: { color: tokens.color.text, fontSize: 17, fontWeight: "900" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   card: {
     flexGrow: 1,
     flexBasis: "47%",
@@ -287,9 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color.surface,
     gap: 6
   },
-  cardWide: {
-    flexBasis: "100%"
-  },
+  cardWide: { flexBasis: "100%" },
   iconShell: {
     width: 36,
     height: 36,
@@ -298,20 +246,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#edf3ff"
   },
-  label: {
-    color: tokens.color.textMuted,
-    fontSize: 11.5,
-    fontWeight: "800"
-  },
-  primary: {
-    color: tokens.color.text,
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: "900"
-  },
-  detail: {
-    color: tokens.color.textMuted,
-    fontSize: 11.5,
-    lineHeight: 17
-  }
+  label: { color: tokens.color.textMuted, fontSize: 11.5, fontWeight: "800" },
+  primary: { color: tokens.color.text, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  detail: { color: tokens.color.textMuted, fontSize: 11.5, lineHeight: 17 }
 });
