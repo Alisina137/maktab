@@ -71,8 +71,15 @@ const weekdayNames = [
 ] as const;
 
 function weekdayFor(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  return weekdayNames[new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()];
+  const [yearText, monthText, dayText] = date.split("-");
+  if (!yearText || !monthText || !dayText) {
+    throw new Error("Invalid demo date: " + date);
+  }
+  const weekday = weekdayNames[
+    new Date(Date.UTC(Number(yearText), Number(monthText) - 1, Number(dayText), 12)).getUTCDay()
+  ];
+  if (!weekday) throw new Error("Could not resolve weekday for " + date + ".");
+  return weekday;
 }
 
 function periodsOverlap(startA: string, endA: string, startB: string, endB: string) {
