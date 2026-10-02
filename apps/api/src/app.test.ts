@@ -476,7 +476,7 @@ test("refresh sessions rotate once and logout revokes the current session", asyn
     url: "/v1/admin/families/parents",
     headers: { authorization: `Bearer ${adminAccessToken}` },
     payload: {
-      username: "session.parent",
+      username: "sessionparent",
       fullName: "Session Parent"
     }
   });
@@ -492,7 +492,7 @@ test("refresh sessions rotate once and logout revokes the current session", asyn
     payload: {
       schoolId,
       expectedRole: "PARENT",
-      username: "session.parent",
+      username: "sessionparent",
       password: parent.temporaryPassword
     }
   });
