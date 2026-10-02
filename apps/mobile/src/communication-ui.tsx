@@ -37,6 +37,7 @@ type Props = {
   textDirection: TextDirectionStyle;
   onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
   onNotice: (message: string | null) => void;
+  onLoaded?: (data: { announcements: AnnouncementPayload[]; fees: FeeInvoiceViewPayload[] }) => void;
 };
 
 export function CommunicationPanel({
@@ -47,7 +48,8 @@ export function CommunicationPanel({
   locale,
   textDirection,
   onError,
-  onNotice
+  onNotice,
+  onLoaded
 }: Props) {
   const rtl = getDirection(locale) === "rtl";
   const [announcements, setAnnouncements] = useState<AnnouncementPayload[]>([]);
@@ -75,19 +77,35 @@ export function CommunicationPanel({
   async function load() {
     setBusy(true);
     try {
+      let loadedAnnouncements: AnnouncementPayload[] = [];
+      let loadedFees: FeeInvoiceViewPayload[] = [];
       const tasks: Array<Promise<unknown>> = [
-        api.announcements(accessToken).then((result) => setAnnouncements(result.announcements))
+        api.announcements(accessToken).then((result) => {
+          loadedAnnouncements = result.announcements;
+          setAnnouncements(result.announcements);
+        })
       ];
       if (mode === "PARENT" && studentId) {
-        tasks.push(api.parentFees(accessToken, studentId).then((result) => setFees(result.invoices)));
+        tasks.push(
+          api.parentFees(accessToken, studentId).then((result) => {
+            loadedFees = result.invoices;
+            setFees(result.invoices);
+          })
+        );
       }
       if (mode === "STUDENT") {
-        tasks.push(api.studentFees(accessToken).then((result) => setFees(result.invoices)));
+        tasks.push(
+          api.studentFees(accessToken).then((result) => {
+            loadedFees = result.invoices;
+            setFees(result.invoices);
+          })
+        );
       }
       if (mode !== "PARENT") {
         tasks.push(api.notifications(accessToken).then((result) => setNotifications(result.notifications)));
       }
       await Promise.all(tasks);
+      onLoaded?.({ announcements: loadedAnnouncements, fees: loadedFees });
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
