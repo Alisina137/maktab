@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test --test-concurrency=1 src/**/*.test.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts"
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "demo:parent-dashboard": "tsx src/seed-parent-dashboard-demo.ts"
   },
   "dependencies": {
     "@maktablink/contracts": "workspace:*",
