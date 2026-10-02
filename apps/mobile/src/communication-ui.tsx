@@ -32,6 +32,7 @@ type Props = {
   accessToken: string;
   mode: "PARENT" | "TEACHER" | "STUDENT";
   studentId?: string;
+  selectedClassId?: string;
   supervisedClasses?: Array<{ classId: string; className: string; classCode: string }>;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
@@ -44,6 +45,7 @@ export function CommunicationPanel({
   accessToken,
   mode,
   studentId,
+  selectedClassId,
   supervisedClasses = [],
   locale,
   textDirection,
@@ -163,6 +165,16 @@ export function CommunicationPanel({
     [fees]
   );
 
+  const visibleAnnouncements = useMemo(
+    () =>
+      mode === "PARENT" && selectedClassId
+        ? announcements.filter(
+            (item) => item.audienceScope !== "CLASS" || item.classId === selectedClassId
+          )
+        : announcements,
+    [announcements, mode, selectedClassId]
+  );
+
   return (
     <View style={styles.stack}>
       {mode === "TEACHER" && supervisedClasses.length > 0 ? (
@@ -219,14 +231,14 @@ export function CommunicationPanel({
           </View>
           <Text style={[styles.sectionTitle, textDirection]}>{translate(locale, "communication.announcements")}</Text>
         </View>
-        {announcements.slice(0, 10).map((item) => (
+        {visibleAnnouncements.slice(0, 10).map((item) => (
           <View key={item.id} style={styles.listItem}>
             <Text style={[styles.itemTitle, textDirection]}>{item.title}</Text>
             <Text style={[styles.body, textDirection]}>{item.content}</Text>
             <Text style={[styles.muted, textDirection]}>{item.publishAt.slice(0, 10)}</Text>
           </View>
         ))}
-        {announcements.length === 0 ? (
+        {visibleAnnouncements.length === 0 ? (
           <Text style={[styles.muted, textDirection]}>{translate(locale, "communication.noAnnouncements")}</Text>
         ) : null}
       </View>
