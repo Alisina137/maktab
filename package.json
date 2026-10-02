@@ -18,7 +18,8 @@
     "db:migrate": "pnpm --filter @maktablink/database db:migrate",
     "backup:db": "node scripts/backup-database.mjs",
     "restore:db": "node scripts/restore-database.mjs",
-    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs"
+    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs",
+    "demo:parent-dashboard": "pnpm --filter @maktablink/database demo:parent-dashboard"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
