@@ -1,8 +1,10 @@
 import * as SecureStore from "expo-secure-store";
+import { isSupportedLocale, type SupportedLocale } from "@maktablink/localization";
 import type { SchoolOption, SessionPayload } from "./api";
 
 const KEY = "maktablink.phase2.session";
 const PARENT_CHILD_KEY = "maktablink.parent.selected-child";
+const LOCALE_KEY = "maktablink.locale";
 
 export interface StoredSession {
   auth: SessionPayload;
@@ -64,4 +66,14 @@ export async function savePreferredParentChild(
   const preferences = await loadParentChildPreferences();
   preferences[parentChildPreferenceKey(schoolId, parentUserId)] = studentId;
   await SecureStore.setItemAsync(PARENT_CHILD_KEY, JSON.stringify(preferences));
+}
+
+
+export async function loadPreferredLocale(): Promise<SupportedLocale | null> {
+  const value = await SecureStore.getItemAsync(LOCALE_KEY);
+  return value && isSupportedLocale(value) ? value : null;
+}
+
+export async function savePreferredLocale(locale: SupportedLocale): Promise<void> {
+  await SecureStore.setItemAsync(LOCALE_KEY, locale);
 }
