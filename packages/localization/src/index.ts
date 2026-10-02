@@ -879,7 +879,7 @@ export function formatLocalizedDate(value: string, locale: SupportedLocale): str
     timeZone: "Asia/Kabul"
   });
   const parts = formatter.formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
+  const part = (type: "year" | "month" | "day") =>
     parts.find((item) => item.type === type)?.value ?? "";
 
   return `${part("year")}/${part("month")}/${part("day")}`;
