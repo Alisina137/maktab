@@ -60,11 +60,13 @@ export function ParentBottomNavigation({
               pressed && styles.pressed
             ]}
           >
-            <Ionicons
-              name={active ? tab.activeIcon : tab.icon}
-              size={21}
-              color={active ? tokens.color.brandStrong : tokens.color.textMuted}
-            />
+            <View style={[styles.navIconShell, active && styles.navIconShellActive]}>
+              <Ionicons
+                name={active ? tab.activeIcon : tab.icon}
+                size={20}
+                color={active ? tokens.color.brandStrong : tokens.color.textMuted}
+              />
+            </View>
             <Text style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>
               {translate(locale, tab.label)}
             </Text>
@@ -84,11 +86,12 @@ export function ParentHomeworkContent({
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
-  if (!learning) return <ActivityIndicator color={tokens.color.brand} />;
+  const rtl = getDirection(locale) === "rtl";
+  if (!learning) return <ParentLoadingCard locale={locale} />;
 
   return (
     <View style={styles.card}>
-      <View style={styles.headingRow}>
+      <View style={[styles.headingRow, rtl && styles.rowRtl]}>
         <View style={styles.iconShell}>
           <Ionicons name="document-text-outline" size={20} color={tokens.color.brandStrong} />
         </View>
@@ -98,7 +101,7 @@ export function ParentHomeworkContent({
       </View>
 
       {learning.homework.map((item) => (
-        <View key={item.homework.id} style={styles.listItem}>
+        <View key={item.homework.id} style={styles.contentItem}>
           <Text style={[styles.itemTitle, textDirection]}>{item.homework.title}</Text>
           <Text style={[styles.muted, textDirection]}>
             {item.subjectName} · {translate(locale, "learning.due")} {item.homework.dueAt.slice(0, 10)}
@@ -137,7 +140,7 @@ export function ParentAnnouncementsContent({
     (item) => item.audienceScope !== "CLASS" || item.classId === classId
   );
 
-  if (!ready) return <ActivityIndicator color={tokens.color.brand} />;
+  if (!ready) return <ParentLoadingCard locale={locale} />;
 
   return (
     <View style={styles.card}>
@@ -151,10 +154,18 @@ export function ParentAnnouncementsContent({
       </View>
 
       {visible.slice(0, 20).map((item) => (
-        <View key={item.id} style={styles.listItem}>
-          <Text style={[styles.itemTitle, textDirection]}>{item.title}</Text>
+        <View key={item.id} style={styles.contentItem}>
+          <View style={[styles.contentMetaRow, rtl && styles.rowRtl]}>
+            <View style={styles.miniIconShell}>
+              <Ionicons name="megaphone-outline" size={15} color={tokens.color.brandStrong} />
+            </View>
+            <Text style={[styles.itemTitle, styles.flex, textDirection]}>{item.title}</Text>
+          </View>
           <Text style={[styles.body, textDirection]}>{item.content}</Text>
-          <Text style={[styles.muted, textDirection]}>{item.publishAt.slice(0, 10)}</Text>
+          <View style={[styles.datePill, rtl && styles.selfEndRtl]}>
+            <Ionicons name="calendar-outline" size={13} color={tokens.color.textMuted} />
+            <Text style={styles.datePillText}>{item.publishAt.slice(0, 10)}</Text>
+          </View>
         </View>
       ))}
 
@@ -197,7 +208,7 @@ export function ParentMoreAcademicContent({
 
         {!learning ? <ActivityIndicator color={tokens.color.brand} /> : null}
         {learning?.results.map((item) => (
-          <View key={item.grade.id} style={[styles.resultRow, rtl && styles.rowRtl]}>
+          <View key={item.grade.id} style={[styles.resultCard, rtl && styles.rowRtl]}>
             <View style={styles.flex}>
               <Text style={[styles.itemTitle, textDirection]}>
                 {item.exam.name} · {item.subjectName}
@@ -234,9 +245,14 @@ export function ParentMoreAcademicContent({
           </View>
         </View>
 
-        {!communicationReady ? <ActivityIndicator color={tokens.color.brand} /> : null}
+        {!communicationReady ? (
+          <View style={styles.inlineLoading}>
+            <ActivityIndicator size="small" color={tokens.color.brand} />
+            <Text style={styles.inlineLoadingText}>{translate(locale, "common.loading")}</Text>
+          </View>
+        ) : null}
         {communicationReady ? fees.map((item) => (
-          <View key={item.invoice.id} style={styles.listItem}>
+          <View key={item.invoice.id} style={styles.contentItem}>
             <View style={[styles.headingRow, rtl && styles.rowRtl]}>
               <View style={styles.flex}>
                 <Text style={[styles.itemTitle, textDirection]}>
@@ -275,33 +291,57 @@ export function ParentMoreAcademicContent({
   );
 }
 
+function ParentLoadingCard({ locale }: { locale: SupportedLocale }) {
+  const rtl = getDirection(locale) === "rtl";
+  return (
+    <View style={styles.loadingCard}>
+      <View style={[styles.inlineLoading, rtl && styles.rowRtl]}>
+        <ActivityIndicator size="small" color={tokens.color.brand} />
+        <Text style={styles.inlineLoadingText}>{translate(locale, "common.loading")}</Text>
+      </View>
+      <View style={styles.loadingLineWide} />
+      <View style={styles.loadingLineShort} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   bottomBar: {
     flexDirection: "row",
     alignItems: "stretch",
     paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
-    gap: 4,
+    paddingTop: 7,
+    paddingBottom: 9,
+    gap: 3,
     backgroundColor: tokens.color.surface,
     borderTopWidth: 1,
-    borderTopColor: "#dfe6f0",
+    borderTopColor: "#e2e8f0",
     shadowColor: "#172033",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 10
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -5 },
+    elevation: 12
   },
   bottomTab: {
     flex: 1,
-    minHeight: 54,
+    minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
-    borderRadius: 14
+    borderRadius: 16
   },
   bottomTabActive: {
-    backgroundColor: "#edf3ff"
+    backgroundColor: "#f3f6fc"
+  },
+  navIconShell: {
+    width: 32,
+    height: 28,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  navIconShellActive: {
+    backgroundColor: "#e7efff"
   },
   bottomTabText: {
     color: tokens.color.textMuted,
@@ -314,12 +354,17 @@ const styles = StyleSheet.create({
   },
   stack: { gap: 14 },
   card: {
-    padding: 16,
+    padding: 17,
     backgroundColor: tokens.color.surface,
-    borderRadius: 19,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: "#e1e7f0",
-    gap: 12
+    gap: 13,
+    shadowColor: "#172033",
+    shadowOpacity: 0.045,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1
   },
   headingRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   rowRtl: { flexDirection: "row-reverse" },
@@ -335,15 +380,45 @@ const styles = StyleSheet.create({
   itemTitle: { color: tokens.color.text, fontSize: 14.5, fontWeight: "900" },
   body: { color: tokens.color.text, fontSize: 13.5, lineHeight: 20 },
   muted: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 18 },
-  listItem: { gap: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#eef1f5" },
+  contentItem: {
+    gap: 8,
+    padding: 13,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e8edf4",
+    backgroundColor: "#f9fbfe"
+  },
+  contentMetaRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+  miniIconShell: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff"
+  },
+  datePill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#eef2f7"
+  },
+  selfEndRtl: { alignSelf: "flex-end" },
+  datePillText: { color: tokens.color.textMuted, fontSize: 11, fontWeight: "700" },
   linkText: { color: tokens.color.brandStrong, fontSize: 12, fontWeight: "700" },
-  resultRow: {
+  resultCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#edf0f5"
+    padding: 13,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e8edf4",
+    backgroundColor: "#f9fbfe"
   },
   flex: { flex: 1, gap: 3 },
   scoreBadge: {
@@ -363,5 +438,17 @@ const styles = StyleSheet.create({
     gap: 8
   },
   paymentList: { gap: 3, paddingTop: 5 },
+  inlineLoading: { flexDirection: "row", alignItems: "center", gap: 9 },
+  inlineLoadingText: { color: tokens.color.textMuted, fontSize: 12.5, fontWeight: "700" },
+  loadingCard: {
+    padding: 17,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#e1e7f0",
+    backgroundColor: tokens.color.surface,
+    gap: 11
+  },
+  loadingLineWide: { height: 11, width: "78%", borderRadius: 999, backgroundColor: "#edf1f6" },
+  loadingLineShort: { height: 11, width: "48%", borderRadius: 999, backgroundColor: "#edf1f6" },
   pressed: { opacity: 0.72 }
 });
