@@ -948,3 +948,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Parent Home now resolves the current/remembered child before publishing the refreshed Home payload to the UI, eliminating a brief first-child fallback flash during refresh/restore.
 - Added API regression coverage proving an authenticated Parent cannot read the timetable of a student linked to another Parent account.
 - Step 10.3 is ready for local `pnpm verify` and manual multi-child Android/Expo validation.
+
+
+### Testing Step 10.4 — Parent visibility and permissions
+- Re-audited Parent permissions against Product Specification V1: Parents may view their own active children's attendance, timetable, published homework/results, announcements, and fee balances; Parent is a read-only family role for these domains and cannot perform Teacher/Admin mutations.
+- Tightened relationship authorization consistently across Parent child reads. Attendance, learning/results, fees, and timetable now expose only students that are both linked to the authenticated Parent and ACTIVE. Withdrawn children are removed from Parent Home and direct requests using an old withdrawn student ID return not found.
+- Expanded the multi-child API regression to verify a Parent cannot read another Parent's child through timetable, attendance, learning, or fee endpoints.
+- Added explicit RBAC regression checks proving a Parent token is rejected from Teacher Today, Teacher Learning, Teacher homework creation, Negaran attendance submission, Student Home, Admin family data, Admin communication data, announcement creation, fee creation, and Admin attendance correction.
+- Existing Phase 6 regressions continue to enforce that draft homework/grades remain invisible to Parent/Student until publication, while existing Phase 7 regressions enforce class-scoped announcement isolation and child-scoped fee visibility.
+- Existing school-scoped authentication and tenant predicates remain the cross-school boundary: a Parent session is bound to one school and all Parent child queries include the authenticated school ID in addition to relationship checks.
+- Parent mobile UI remains read-only for attendance, learning/results, and fees; Teacher/Admin action controls are not rendered in Parent mode.
+- Step 10.4 is ready for local `pnpm verify` and a short manual Parent-role permission smoke test before proceeding to Step 10.5.
