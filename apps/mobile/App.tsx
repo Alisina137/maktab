@@ -707,10 +707,14 @@ function AppContent() {
       const result = await api.parentHome(accessToken);
       setParentHome(result);
 
-      const rememberedChildId =
-        school && session?.user.role === "PARENT"
-          ? await loadPreferredParentChild(school.id, session.user.id)
-          : null;
+      let rememberedChildId: string | null = null;
+      if (school && session?.user.role === "PARENT") {
+        try {
+          rememberedChildId = await loadPreferredParentChild(school.id, session.user.id);
+        } catch {
+          // Child preference is convenience state; Parent Home must still work if device storage is unavailable.
+        }
+      }
       const currentChildId = selectedChildIdRef.current;
       const nextChildId = result.children.some((item) => item.student.id === currentChildId)
         ? currentChildId
@@ -722,7 +726,9 @@ function AppContent() {
       setSelectedChildId(nextChildId);
 
       if (nextChildId && school && session?.user.role === "PARENT") {
-        await savePreferredParentChild(school.id, session.user.id, nextChildId);
+        void savePreferredParentChild(school.id, session.user.id, nextChildId).catch(() => {
+          // The current selection still works even if preference persistence fails.
+        });
       }
     } catch (cause) {
       showCause(cause);
@@ -738,7 +744,9 @@ function AppContent() {
     setNotice(null);
     setSelectedChildId(studentId);
     if (school && session?.user.role === "PARENT") {
-      void savePreferredParentChild(school.id, session.user.id, studentId);
+      void savePreferredParentChild(school.id, session.user.id, studentId).catch(() => {
+        // Do not block switching when secure preference storage is unavailable.
+      });
     }
   }
 
