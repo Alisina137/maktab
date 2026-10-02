@@ -276,6 +276,11 @@ async function main() {
   const yesterday = plusDays(-1);
   const feeDue = plusDays(7);
   const weekday = weekdayFor(today);
+  const alternateChild = (requestedStudentIndex ?? 1) > 1;
+  const todayAttendanceStatus = alternateChild ? "ABSENT" as const : "PRESENT" as const;
+  const previousAttendanceStatus = alternateChild ? "PRESENT" as const : "LATE" as const;
+  const resultScore = alternateChild ? 74 : 86;
+  const feeOutstanding = alternateChild ? 1800 : 2500;
 
   async function upsertAttendance(
     date: string,
@@ -322,8 +327,16 @@ async function main() {
       });
   }
 
-  await upsertAttendance(today, "PRESENT", "Demo: present today");
-  await upsertAttendance(yesterday, "LATE", "Demo: late on the previous day");
+  await upsertAttendance(
+    today,
+    todayAttendanceStatus,
+    alternateChild ? "Demo: absent today for second-child switching test" : "Demo: present today"
+  );
+  await upsertAttendance(
+    yesterday,
+    previousAttendanceStatus,
+    alternateChild ? "Demo: present on the previous day" : "Demo: late on the previous day"
+  );
 
   const homeworkTitle = "Parent Dashboard Demo Homework";
   const [existingHomework] = await db
@@ -426,7 +439,7 @@ async function main() {
       schoolId: target.schoolId,
       examSubjectId: examSubject.id,
       studentId: target.studentId,
-      score: 86,
+      score: resultScore,
       remark: "Strong demo result for the Parent dashboard.",
       status: "PUBLISHED",
       updatedBy: admin.id,
@@ -435,7 +448,7 @@ async function main() {
     .onConflictDoUpdate({
       target: [gradeRecords.examSubjectId, gradeRecords.studentId],
       set: {
-        score: 86,
+        score: resultScore,
         remark: "Strong demo result for the Parent dashboard.",
         status: "PUBLISHED",
         updatedBy: admin.id,
@@ -463,7 +476,7 @@ async function main() {
         id: randomUUID(),
         schoolId: target.schoolId,
         studentId: target.studentId,
-        amount: 2500,
+        amount: feeOutstanding,
         currency: "AFN",
         description: feeDescription,
         dueDate: feeDue,
@@ -485,7 +498,7 @@ async function main() {
       0
     );
     await db.update(feeInvoices).set({
-      amount: paid + 2500,
+      amount: paid + feeOutstanding,
       dueDate: feeDue,
       status: paid > 0 ? "PARTIALLY_PAID" : "ISSUED",
       issuedAt: new Date(),
@@ -593,11 +606,11 @@ async function main() {
   console.log("Parent: " + target.parentUsername);
   console.log("Student: " + target.studentName + " (" + target.studentCode + ")");
   console.log("Class: " + target.className + " (" + target.classCode + ")");
-  console.log("Today attendance (" + today + "): PRESENT");
-  console.log("Previous attendance (" + yesterday + "): LATE");
+  console.log("Today attendance (" + today + "): " + todayAttendanceStatus);
+  console.log("Previous attendance (" + yesterday + "): " + previousAttendanceStatus);
   console.log("Homework: " + homeworkTitle + " - due in 2 days");
-  console.log("Published result: " + examName + " - 86/100");
-  console.log("Fee: " + feeDescription + " - AFN 2500 outstanding");
+  console.log("Published result: " + examName + " - " + resultScore + "/100");
+  console.log("Fee: " + feeDescription + " - AFN " + feeOutstanding + " outstanding");
   console.log("Announcement: " + announcementTitle);
   console.log("Today timetable (" + weekday + "): " + assignment.subjectName + " · " + scheduleLabel);
   console.log("");
