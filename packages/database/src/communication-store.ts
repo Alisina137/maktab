@@ -447,7 +447,9 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
     async getParentFees(schoolId, parentUserId, studentId) {
       const student = await getStudent(schoolId, studentId);
-      if (student.parentUserId !== parentUserId) throw new CommunicationNotFoundError("Student not found for this parent account.");
+      if (student.parentUserId !== parentUserId || student.status !== "ACTIVE") {
+        throw new CommunicationNotFoundError("Student not found for this parent account.");
+      }
       const rows = await db.select().from(feeInvoices)
         .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.studentId, studentId), ne(feeInvoices.status, "DRAFT")))
         .orderBy(desc(feeInvoices.dueDate));
