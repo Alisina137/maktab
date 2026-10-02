@@ -1297,6 +1297,60 @@ test("parent account can own three students and sees all three through one login
   });
   const classId = classResponse.json<{ class: { id: string } }>().class.id;
 
+  const subjectResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/subjects",
+    headers: auth,
+    payload: { code: "MATH7", name: "Mathematics 7" }
+  });
+  assert.equal(subjectResponse.statusCode, 201);
+  const subjectId = subjectResponse.json<{ subject: { id: string } }>().subject.id;
+
+  const teacherAccount = await app.inject({
+    method: "POST",
+    url: "/v1/admin/users",
+    headers: auth,
+    payload: { username: "familyteacher", role: "TEACHER" }
+  });
+  assert.equal(teacherAccount.statusCode, 201);
+  const teacherUserId = teacherAccount.json<{ user: { id: string } }>().user.id;
+
+  const teacherProfile = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/teachers",
+    headers: auth,
+    payload: {
+      userId: teacherUserId,
+      employeeCode: "TFAMILY",
+      fullName: "Family Teacher"
+    }
+  });
+  assert.equal(teacherProfile.statusCode, 201);
+
+  const assignment = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/assignments",
+    headers: auth,
+    payload: { academicYearId: yearId, classId, subjectId, teacherUserId }
+  });
+  assert.equal(assignment.statusCode, 201);
+
+  const timetablePeriod = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/timetable",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      classId,
+      subjectId,
+      teacherUserId,
+      weekday: "SATURDAY",
+      startsAt: "08:00",
+      endsAt: "08:45"
+    }
+  });
+  assert.equal(timetablePeriod.statusCode, 201);
+
   const parentResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/families/parents",
@@ -1309,6 +1363,7 @@ test("parent account can own three students and sees all three through one login
     temporaryPassword: string;
   }>();
 
+  const studentIds: string[] = [];
   for (let index = 1; index <= 3; index += 1) {
     const student = await app.inject({
       method: "POST",
@@ -1323,6 +1378,7 @@ test("parent account can own three students and sees all three through one login
       }
     });
     assert.equal(student.statusCode, 201);
+    studentIds.push(student.json<{ student: { id: string } }>().student.id);
   }
 
   const login = await app.inject({
@@ -1356,6 +1412,25 @@ test("parent account can own three students and sees all three through one login
   const body = home.json<{ children: Array<{ student: { studentCode: string } }> }>();
   assert.equal(body.children.length, 3);
   assert.deepEqual(body.children.map((item) => item.student.studentCode), ["S-001", "S-002", "S-003"]);
+
+  const timetable = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentIds[0]}/timetable`,
+    headers: { authorization: `Bearer ${parentAccess}` }
+  });
+  assert.equal(timetable.statusCode, 200);
+  const timetableBody = timetable.json<{
+    periods: Array<{
+      period: { weekday: string; startsAt: string; endsAt: string };
+      subjectName: string;
+      teacherName: string;
+    }>;
+  }>();
+  assert.equal(timetableBody.periods.length, 1);
+  assert.equal(timetableBody.periods[0]?.period.weekday, "SATURDAY");
+  assert.equal(timetableBody.periods[0]?.period.startsAt, "08:00");
+  assert.equal(timetableBody.periods[0]?.subjectName, "Mathematics 7");
+  assert.equal(timetableBody.periods[0]?.teacherName, "Family Teacher");
 
   const familyOverview = await app.inject({
     method: "GET",
