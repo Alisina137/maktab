@@ -165,6 +165,7 @@ function AppContent() {
   const [connectionRecovered, setConnectionRecovered] = useState(false);
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const errorKeyRef = useRef<TranslationKey | null>(null);
   const errorKindRef = useRef<AppErrorKind | null>(null);
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
@@ -247,7 +248,7 @@ function AppContent() {
         setPreferCachedReads(false);
         await saveStoredSession({ auth: refreshed, school: activeSchool });
 
-        if (errorKey === "common.sessionExpired") {
+        if (errorKeyRef.current === "common.sessionExpired") {
           setAppError(null);
         }
 
@@ -575,6 +576,7 @@ function AppContent() {
 
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
     const nextKind = key ? kind : null;
+    errorKeyRef.current = key;
     errorKindRef.current = nextKind;
     setErrorKey(key);
     setErrorKind(nextKind);
@@ -608,6 +610,8 @@ function AppContent() {
     await clearStoredSession();
     setReadCacheScope(null);
     setPreferCachedReads(false);
+    sessionRef.current = null;
+    sessionRefreshPromiseRef.current = null;
     setSession(null);
     clearOperationalHomeData();
     setScreen("login");
@@ -639,6 +643,7 @@ function AppContent() {
 
   function finishConnectionRecovery() {
     setPreferCachedReads(false);
+    errorKeyRef.current = null;
     errorKindRef.current = null;
     setErrorKey(null);
     setErrorKind(null);
@@ -749,6 +754,8 @@ function AppContent() {
 
       // Render the stored session immediately. Cached GET data can now populate
       // the home screen without waiting for a dead API tunnel to time out.
+      sessionRef.current = stored.auth;
+      schoolRef.current = stored.school;
       setSession(stored.auth);
       setScreen(screenForSession(stored.auth));
       setBusy(false);
@@ -770,6 +777,7 @@ function AppContent() {
           user: me.user,
           mustChangePassword: me.mustChangePassword
         };
+        sessionRef.current = restored;
         setSession(restored);
         await saveStoredSession({ auth: restored, school: stored.school });
         setScreen(screenForSession(restored));
@@ -791,6 +799,7 @@ function AppContent() {
       try {
         const refreshed = await api.refresh(stored.auth.refreshToken);
         await saveStoredSession({ auth: refreshed, school: stored.school });
+        sessionRef.current = refreshed;
         setSession(refreshed);
         setScreen(screenForSession(refreshed));
         setReconnectEpoch((current) => current + 1);
@@ -811,6 +820,7 @@ function AppContent() {
         await clearStoredSession();
         setReadCacheScope(null);
         setPreferCachedReads(false);
+        sessionRef.current = null;
         setSession(null);
         setSchool(stored.school);
         setScreen("login");
@@ -1073,6 +1083,8 @@ function AppContent() {
         username,
         password
       });
+      sessionRef.current = next;
+      schoolRef.current = school;
       setSession(next);
       setReadCacheScope(`${school.id}:${next.user.id}`);
       await saveStoredSession({ auth: next, school });
@@ -1107,6 +1119,7 @@ function AppContent() {
     setAppError(null);
     try {
       const next = await api.changeTemporaryPassword(session.accessToken, newPassword);
+      sessionRef.current = next;
       setSession(next);
       if (school) {
         setReadCacheScope(`${school.id}:${next.user.id}`);
