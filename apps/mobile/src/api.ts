@@ -392,14 +392,16 @@ async function request<T>(
     const baseUrl = apiBaseUrl();
     let response: Response;
     try {
+      const headers = new Headers(init?.headers);
+      if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+      if (!headers.has("ngrok-skip-browser-warning")) {
+        headers.set("ngrok-skip-browser-warning", "true");
+      }
+
       response = await fetch(`${baseUrl}${path}`, {
         ...init,
         signal: init?.signal ?? controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-          ...(init?.headers ?? {})
-        }
+        headers
       });
     } catch {
       if (cacheable) {
