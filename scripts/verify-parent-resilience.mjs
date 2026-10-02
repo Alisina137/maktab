@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = process.cwd();
-const read = (path) => readFileSync(resolve(root, path), "utf8");
+const read = (path) =>
+  readFileSync(resolve(root, path), "utf8").replace(/\r\n?/g, "\n");
 
 const app = read("apps/mobile/App.tsx");
 const api = read("apps/mobile/src/api.ts");
