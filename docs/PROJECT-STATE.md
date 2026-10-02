@@ -982,3 +982,17 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Each tab exposes accessibility tab semantics and selected state.
 - Parent navigation resets to Home when the authenticated Parent account changes, preventing the previous account's tab state from leaking into a new login.
 - Step 10.5 automated verification is green: GitHub CI passed on commit `f2cf9858c4105293289c5cde19e00b23d8a46823`. Remaining validation is the Android/Expo Parent navigation smoke test before moving to Step 10.6.
+
+
+### Mobile session continuity fix
+- Root cause: API access sessions expire after 15 minutes while refresh sessions remain valid for 30 days. The mobile app previously refreshed only during cold-start restore, so a Parent/Teacher/Student who kept the app open eventually continued sending the expired access token and saw the session-expired popup until logout/restart.
+- Added a centralized authenticated-request recovery path in the mobile API client. When an authenticated request receives `401 session_invalid`, the app performs one refresh-token rotation and retries the original request once with the new access token.
+- Refresh is single-flight: simultaneous Parent/Teacher/Student requests share one refresh promise so parallel requests cannot rotate the same refresh token against each other.
+- Mobile sessions also refresh proactively one minute before access-token expiry.
+- Android/iOS app foregrounding now checks the access expiry and refreshes immediately when the app returns from background with an expired/nearly-expired access token.
+- Rotated access/refresh tokens are written back to SecureStore and live refs before dependent requests continue.
+- Account-status polling reads the latest rotated session before updating user status so it cannot overwrite fresh tokens with the expired token captured at the start of a poll.
+- Retried requests preserve the refreshed Authorization header using the Headers API.
+- Logout reads the latest rotated refresh token rather than a stale token captured before push-device cleanup.
+- Invalid/expired 30-day refresh sessions still move the user safely to login with the normal session-expired message; network failures do not destroy the stored session.
+- The change applies to Parent, Teacher, and Student mobile experiences, not only Parent navigation.
