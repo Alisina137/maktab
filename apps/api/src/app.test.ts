@@ -2807,6 +2807,29 @@ test("Phase 8 subscription suspension blocks end users and operational admin wri
   assert.equal(parentMe.statusCode, 503);
   assert.equal(parentMe.json<{ error: string }>().error, "school_service_unavailable");
 
+  const blockedParentLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "suspendparent",
+      password: "SuspendedParent2026!"
+    }
+  });
+  assert.equal(blockedParentLogin.statusCode, 503);
+  assert.equal(
+    blockedParentLogin.json<{ error: string }>().error,
+    "school_service_unavailable"
+  );
+
+  const contactDuringSubscriptionSuspension = await app.inject({
+    method: "GET",
+    url: "/v1/school/admin-contact",
+    headers: { authorization: `Bearer ${parentAccess}` }
+  });
+  assert.equal(contactDuringSubscriptionSuspension.statusCode, 200);
+
   const adminWrite = await app.inject({
     method: "POST",
     url: "/v1/admin/users",
