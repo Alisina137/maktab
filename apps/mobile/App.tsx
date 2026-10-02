@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  AppState,
   Animated,
   Easing,
   Image,
@@ -29,6 +30,7 @@ import {
   api,
   isNetworkApiError,
   setPreferCachedReads,
+  setSessionRefreshHandler,
   type AdminContactPayload,
   type AnnouncementPayload,
   type AttendanceSheetPayload,
@@ -167,6 +169,9 @@ function AppContent() {
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
+  const sessionRef = useRef<SessionPayload | null>(null);
+  const schoolRef = useRef<SchoolOption | null>(null);
+  const sessionRefreshPromiseRef = useRef<Promise<SessionPayload | null> | null>(null);
   const onboardingScrollRef = useRef<ScrollView>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
@@ -204,10 +209,125 @@ function AppContent() {
   }, [selectedChildId]);
 
   useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    schoolRef.current = school;
+  }, [school]);
+
+  useEffect(() => {
     if (session?.user.role === "PARENT") {
       setParentTab("HOME");
     }
   }, [session?.user.id]);
+
+  async function refreshActiveSession(): Promise<SessionPayload | null> {
+    if (sessionRefreshPromiseRef.current) return sessionRefreshPromiseRef.current;
+
+    const activeSession = sessionRef.current;
+    const activeSchool = schoolRef.current;
+    if (!activeSession || !activeSchool) return null;
+
+    const promise = (async () => {
+      try {
+        const refreshed = await api.refresh(activeSession.refreshToken);
+
+        // Ignore a refresh result if the user logged out or changed accounts while it was in flight.
+        if (
+          sessionRef.current?.user.id !== activeSession.user.id ||
+          schoolRef.current?.id !== activeSchool.id
+        ) {
+          return null;
+        }
+
+        sessionRef.current = refreshed;
+        setSession(refreshed);
+        setReadCacheScope(`${activeSchool.id}:${refreshed.user.id}`);
+        setPreferCachedReads(false);
+        await saveStoredSession({ auth: refreshed, school: activeSchool });
+
+        if (errorKey === "common.sessionExpired") {
+          setAppError(null);
+        }
+
+        return refreshed;
+      } catch (cause) {
+        if (isNetworkApiError(cause)) {
+          setPreferCachedReads(true);
+          return null;
+        }
+
+        if (
+          cause instanceof ApiRequestError &&
+          cause.code === "school_service_unavailable"
+        ) {
+          await moveToServiceUnavailableLogin();
+          return null;
+        }
+
+        if (
+          cause instanceof ApiRequestError &&
+          (cause.code === "refresh_invalid" || cause.code === "session_invalid")
+        ) {
+          await clearStoredSession();
+          setReadCacheScope(null);
+          setPreferCachedReads(false);
+          sessionRef.current = null;
+          setSession(null);
+          clearOperationalHomeData();
+          setSchool(activeSchool);
+          schoolRef.current = activeSchool;
+          setScreen("login");
+          setAppError("common.sessionExpired");
+          return null;
+        }
+
+        return null;
+      } finally {
+        sessionRefreshPromiseRef.current = null;
+      }
+    })();
+
+    sessionRefreshPromiseRef.current = promise;
+    return promise;
+  }
+
+  useEffect(() => {
+    setSessionRefreshHandler(async () => {
+      const refreshed = await refreshActiveSession();
+      return refreshed?.accessToken ?? null;
+    });
+    return () => setSessionRefreshHandler(null);
+  }, [school?.id, session?.user.id]);
+
+  useEffect(() => {
+    const activeSession = session;
+    if (!activeSession || !school) return;
+
+    const refreshAt = new Date(activeSession.accessExpiresAt).getTime() - 60_000;
+    const delay = Math.max(0, refreshAt - Date.now());
+    const timeout = setTimeout(() => {
+      void refreshActiveSession();
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [session?.accessExpiresAt, session?.user.id, school?.id]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      const activeSession = sessionRef.current;
+      if (!activeSession) return;
+
+      const expiresAt = new Date(activeSession.accessExpiresAt).getTime();
+      if (expiresAt - Date.now() <= 60_000) {
+        void refreshActiveSession();
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     setReadCacheFallbackListener(() => {
@@ -398,6 +518,13 @@ function AppContent() {
           setReconnectEpoch((current) => current + 1);
         }
       } catch (cause) {
+        if (
+          cause instanceof ApiRequestError &&
+          cause.code === "session_invalid"
+        ) {
+          await refreshActiveSession();
+          return;
+        }
         if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
           setSession((current) =>
             current
@@ -560,6 +687,13 @@ function AppContent() {
             return true;
           }
         } catch (cause) {
+          if (cause instanceof ApiRequestError && cause.code === "session_invalid") {
+            const refreshed = await refreshActiveSession();
+            if (!refreshed) return false;
+            setReconnectEpoch((current) => current + 1);
+            if (errorKindRef.current === "network") setErrorExitRequested(true);
+            return true;
+          }
           if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
             setPreferCachedReads(false);
             setAppError("auth.accountSuspended");
@@ -985,10 +1119,12 @@ function AppContent() {
   }
 
   async function logout() {
-    const refreshToken = session?.refreshToken;
     setBusy(true);
     try {
-      if (session?.accessToken) await deactivatePushForSession(session.accessToken);
+      if (sessionRef.current?.accessToken) {
+        await deactivatePushForSession(sessionRef.current.accessToken);
+      }
+      const refreshToken = sessionRef.current?.refreshToken;
       if (refreshToken) await api.logout(refreshToken);
     } catch {
       // Local logout still succeeds if the network is unavailable.
@@ -996,6 +1132,9 @@ function AppContent() {
       await clearStoredSession();
       setReadCacheScope(null);
       setPreferCachedReads(false);
+      sessionRef.current = null;
+      sessionRefreshPromiseRef.current = null;
+      setSessionRefreshHandler(null);
       setSession(null);
       setParentHome(null);
       setSelectedChildId("");
