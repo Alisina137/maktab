@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -151,7 +151,9 @@ export function ParentDashboardPanel({
   return (
     <View style={styles.section}>
       <View style={[styles.headingRow, rtl && styles.rowRtl]}>
-        <Ionicons name="grid-outline" size={20} color={tokens.color.brandStrong} />
+        <View style={styles.headingIconShell}>
+          <Ionicons name="grid-outline" size={18} color={tokens.color.brandStrong} />
+        </View>
         <Text style={[styles.sectionTitle, textDirection]}>{translate(locale, "parent.dashboard")}</Text>
       </View>
 
@@ -160,6 +162,16 @@ export function ParentDashboardPanel({
           icon="calendar-outline"
           label={translate(locale, "attendance.today")}
           primary={attendanceLabel}
+          loading={!todayDate}
+          tone={
+            todayAttendance === "PRESENT"
+              ? "success"
+              : todayAttendance === "ABSENT"
+                ? "danger"
+                : todayAttendance === "LATE"
+                  ? "warning"
+                  : "brand"
+          }
           textDirection={textDirection}
         />
         <DashboardCard
@@ -167,6 +179,7 @@ export function ParentDashboardPanel({
           label={translate(locale, "parent.todaySchedule")}
           primary={schedulePrimary}
           detail={scheduleDetail}
+          loading={!timetableReady}
           textDirection={textDirection}
         />
         <DashboardCard
@@ -174,6 +187,7 @@ export function ParentDashboardPanel({
           label={translate(locale, "parent.homeworkDue")}
           primary={homeworkPrimary}
           detail={homeworkDetail}
+          loading={!learning}
           textDirection={textDirection}
         />
         <DashboardCard
@@ -187,12 +201,16 @@ export function ParentDashboardPanel({
           label={translate(locale, "parent.latestResult")}
           primary={resultPrimary}
           detail={resultDetail}
+          loading={!learning}
+          tone={dashboard.latestResult ? "success" : "brand"}
           textDirection={textDirection}
         />
         <DashboardCard
           icon="wallet-outline"
           label={translate(locale, "parent.feeStatus")}
           primary={feePrimary}
+          loading={!communicationReady}
+          tone={communicationReady && dashboard.outstanding > 0 ? "warning" : "brand"}
           textDirection={textDirection}
         />
         <DashboardCard
@@ -200,6 +218,7 @@ export function ParentDashboardPanel({
           label={translate(locale, "parent.latestAnnouncement")}
           primary={announcementPrimary}
           detail={announcementDetail}
+          loading={!communicationReady}
           wide
           textDirection={textDirection}
         />
@@ -213,6 +232,8 @@ function DashboardCard({
   label,
   primary,
   detail,
+  loading = false,
+  tone = "brand",
   wide = false,
   textDirection
 }: {
@@ -220,49 +241,105 @@ function DashboardCard({
   label: string;
   primary: string;
   detail?: string;
+  loading?: boolean;
+  tone?: "brand" | "success" | "warning" | "danger";
   wide?: boolean;
   textDirection: TextDirectionStyle;
 }) {
+  const iconStyle =
+    tone === "success"
+      ? styles.iconShellSuccess
+      : tone === "warning"
+        ? styles.iconShellWarning
+        : tone === "danger"
+          ? styles.iconShellDanger
+          : styles.iconShellBrand;
+  const iconColor =
+    tone === "success"
+      ? "#207a4c"
+      : tone === "warning"
+        ? "#9a6500"
+        : tone === "danger"
+          ? "#b43a3a"
+          : tokens.color.brandStrong;
+
   return (
     <View style={[styles.card, wide && styles.cardWide]}>
-      <View style={styles.iconShell}>
-        <Ionicons name={icon} size={18} color={tokens.color.brandStrong} />
+      <View style={[styles.cardTopRow, textDirection.writingDirection === "rtl" && styles.rowRtl]}>
+        <View style={[styles.iconShell, iconStyle]}>
+          <Ionicons name={icon} size={18} color={iconColor} />
+        </View>
+        <Text style={[styles.label, styles.cardLabelFlex, textDirection]}>{label}</Text>
       </View>
-      <Text style={[styles.label, textDirection]}>{label}</Text>
-      <Text style={[styles.primary, textDirection]} numberOfLines={3}>{primary}</Text>
-      {detail ? <Text style={[styles.detail, textDirection]} numberOfLines={3}>{detail}</Text> : null}
+
+      {loading ? (
+        <View style={styles.loadingBlock}>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={tokens.color.brand} />
+            <View style={styles.loadingLinePrimary} />
+          </View>
+          <View style={styles.loadingLineDetail} />
+        </View>
+      ) : (
+        <>
+          <Text style={[styles.primary, textDirection]} numberOfLines={3}>{primary}</Text>
+          {detail ? <Text style={[styles.detail, textDirection]} numberOfLines={3}>{detail}</Text> : null}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 12 },
+  section: { gap: 13 },
   headingRow: { flexDirection: "row", alignItems: "center", gap: 9 },
   rowRtl: { flexDirection: "row-reverse" },
+  headingIconShell: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff"
+  },
   sectionTitle: { color: tokens.color.text, fontSize: 17, fontWeight: "900" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   card: {
     flexGrow: 1,
     flexBasis: "47%",
     minWidth: 145,
-    minHeight: 142,
+    minHeight: 132,
     padding: 14,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#e1e7f0",
     backgroundColor: tokens.color.surface,
-    gap: 6
+    gap: 8,
+    shadowColor: "#172033",
+    shadowOpacity: 0.035,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1
   },
   cardWide: { flexBasis: "100%" },
+  cardTopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardLabelFlex: { flex: 1 },
   iconShell: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#edf3ff"
+    justifyContent: "center"
   },
+  iconShellBrand: { backgroundColor: "#edf3ff" },
+  iconShellSuccess: { backgroundColor: "#e9f7ef" },
+  iconShellWarning: { backgroundColor: "#fff5df" },
+  iconShellDanger: { backgroundColor: "#fff0f0" },
   label: { color: tokens.color.textMuted, fontSize: 11.5, fontWeight: "800" },
-  primary: { color: tokens.color.text, fontSize: 14, lineHeight: 19, fontWeight: "900" },
-  detail: { color: tokens.color.textMuted, fontSize: 11.5, lineHeight: 17 }
+  primary: { color: tokens.color.text, fontSize: 14.5, lineHeight: 20, fontWeight: "900" },
+  detail: { color: tokens.color.textMuted, fontSize: 11.5, lineHeight: 17 },
+  loadingBlock: { gap: 9, paddingTop: 3 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  loadingLinePrimary: { height: 11, flex: 1, borderRadius: 999, backgroundColor: "#edf1f6" },
+  loadingLineDetail: { height: 9, width: "62%", borderRadius: 999, backgroundColor: "#f0f3f7" }
 });
