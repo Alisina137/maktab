@@ -996,3 +996,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Logout reads the latest rotated refresh token rather than a stale token captured before push-device cleanup.
 - Invalid/expired 30-day refresh sessions still move the user safely to login with the normal session-expired message; network failures do not destroy the stored session.
 - The change applies to Parent, Teacher, and Student mobile experiences, not only Parent navigation.
+
+
+### Mobile language header selector
+- Replaced the three always-visible language pills in the mobile header with a compact language select/dropdown.
+- Dari (`fa-AF`) remains the default mobile language.
+- The header layout is intentionally anchored independently of content direction: MaktabLink logo/name stays at the top-left and the language selector stays at the top-right in Dari, Pashto, and English.
+- The selector shows Dari, Pashto, and English, marks the active language, closes after selection, and closes when the main page starts scrolling.
+- The dropdown uses elevated/z-indexed styling so it stays above the main mobile content.
