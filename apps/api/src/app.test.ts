@@ -1470,16 +1470,102 @@ test("parent account can own three students and sees all three through one login
   assert.equal(otherStudentResponse.statusCode, 201);
   const otherStudentId = otherStudentResponse.json<{ student: { id: string } }>().student.id;
 
-  const blockedOtherChildTimetable = await app.inject({
-    method: "GET",
-    url: `/v1/parent/children/${otherStudentId}/timetable`,
-    headers: { authorization: `Bearer ${parentAccess}` }
+  const blockedOtherChildRequests = await Promise.all([
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${otherStudentId}/timetable`,
+      headers: { authorization: `Bearer ${parentAccess}` }
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${otherStudentId}/attendance`,
+      headers: { authorization: `Bearer ${parentAccess}` }
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${otherStudentId}/learning`,
+      headers: { authorization: `Bearer ${parentAccess}` }
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${otherStudentId}/fees`,
+      headers: { authorization: `Bearer ${parentAccess}` }
+    })
+  ]);
+  for (const response of blockedOtherChildRequests) {
+    assert.equal(response.statusCode, 404);
+    assert.equal(
+      response.json<{ message: string }>().message,
+      "Student not found for this parent account."
+    );
+  }
+
+  const parentAuth = { authorization: `Bearer ${parentAccess}` };
+  const forbiddenRoleRequests = await Promise.all([
+    app.inject({ method: "GET", url: "/v1/teacher/today", headers: parentAuth }),
+    app.inject({ method: "GET", url: "/v1/teacher/learning", headers: parentAuth }),
+    app.inject({ method: "POST", url: "/v1/teacher/homework", headers: parentAuth, payload: {} }),
+    app.inject({ method: "GET", url: "/v1/student/home", headers: parentAuth }),
+    app.inject({ method: "GET", url: "/v1/admin/families", headers: parentAuth }),
+    app.inject({ method: "GET", url: "/v1/admin/communication", headers: parentAuth }),
+    app.inject({ method: "POST", url: "/v1/admin/announcements", headers: parentAuth, payload: {} }),
+    app.inject({ method: "POST", url: "/v1/admin/fees/invoices", headers: parentAuth, payload: {} })
+  ]);
+  for (const response of forbiddenRoleRequests) {
+    assert.equal(response.statusCode, 403);
+  }
+
+  const withdrawnChildId = studentIds[2]!;
+  const withdrawChild = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/families/students/${withdrawnChildId}`,
+    headers: auth,
+    payload: { status: "WITHDRAWN" }
   });
-  assert.equal(blockedOtherChildTimetable.statusCode, 404);
-  assert.equal(
-    blockedOtherChildTimetable.json<{ message: string }>().message,
-    "Student not found for this parent account."
+  assert.equal(withdrawChild.statusCode, 200);
+
+  const homeAfterWithdrawal = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: parentAuth
+  });
+  assert.equal(homeAfterWithdrawal.statusCode, 200);
+  assert.deepEqual(
+    homeAfterWithdrawal
+      .json<{ children: Array<{ student: { id: string } }> }>()
+      .children.map((item) => item.student.id),
+    studentIds.slice(0, 2)
   );
+
+  const withdrawnChildRequests = await Promise.all([
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${withdrawnChildId}/timetable`,
+      headers: parentAuth
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${withdrawnChildId}/attendance`,
+      headers: parentAuth
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${withdrawnChildId}/learning`,
+      headers: parentAuth
+    }),
+    app.inject({
+      method: "GET",
+      url: `/v1/parent/children/${withdrawnChildId}/fees`,
+      headers: parentAuth
+    })
+  ]);
+  for (const response of withdrawnChildRequests) {
+    assert.equal(response.statusCode, 404);
+    assert.equal(
+      response.json<{ message: string }>().message,
+      "Student not found for this parent account."
+    );
+  }
 });
 
 
