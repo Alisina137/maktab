@@ -102,6 +102,12 @@ const roleIcon: Record<MobileRole, keyof typeof Ionicons.glyphMap> = {
 
 const attendanceStatuses: AttendanceStatus[] = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
 
+const languageLabel: Record<SupportedLocale, string> = {
+  "fa-AF": "دری",
+  "ps-AF": "پښتو",
+  en: "English"
+};
+
 const attendanceKey: Record<AttendanceStatus, TranslationKey> = {
   PRESENT: "attendance.present",
   ABSENT: "attendance.absent",
@@ -125,6 +131,7 @@ function screenForSession(next: SessionPayload): Screen {
 
 function AppContent() {
   const [locale, setLocale] = useState<SupportedLocale>("fa-AF");
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>("role");
   const [role, setRole] = useState<MobileRole | null>(null);
   const [school, setSchool] = useState<SchoolOption | null>(null);
@@ -1228,6 +1235,7 @@ function AppContent() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => setLanguageMenuOpen(false)}
         contentContainerStyle={[styles.content, showParentNavigation && styles.contentWithParentNav]}
       >
         <View style={styles.topbar}>
@@ -1235,30 +1243,64 @@ function AppContent() {
             <View style={styles.brandMark}>
               <Ionicons name="school-outline" size={21} color="#fff" />
             </View>
-            <View>
+            <View style={styles.brandCopy}>
               <Text style={styles.brand}>{translate(locale, "app.name")}</Text>
               <Text style={styles.brandCaption}>{translate(locale, "onboarding.caption")}</Text>
             </View>
           </View>
-          <View style={styles.languageRow}>
-            {supportedLocales.map((item) => (
-              <Pressable
-                key={item}
-                accessibilityRole="button"
-                accessibilityState={{ selected: item === locale }}
-                accessibilityLabel={item === "fa-AF" ? "دری" : item === "ps-AF" ? "پښتو" : "English"}
-                onPress={() => setLocale(item)}
-                style={({ pressed }) => [
-                  styles.languageButton,
-                  item === locale && styles.languageButtonActive,
-                  pressed && styles.pressed
-                ]}
-              >
-                <Text style={item === locale ? styles.languageTextActive : styles.languageText}>
-                  {item === "fa-AF" ? "دری" : item === "ps-AF" ? "پښتو" : "EN"}
-                </Text>
-              </Pressable>
-            ))}
+
+          <View style={styles.languageSelectWrap}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Language: ${languageLabel[locale]}`}
+              accessibilityState={{ expanded: languageMenuOpen }}
+              onPress={() => setLanguageMenuOpen((current) => !current)}
+              style={({ pressed }) => [
+                styles.languageSelect,
+                languageMenuOpen && styles.languageSelectOpen,
+                pressed && styles.pressed
+              ]}
+            >
+              <Ionicons name="language-outline" size={17} color={tokens.color.brandStrong} />
+              <Text style={styles.languageSelectText}>{languageLabel[locale]}</Text>
+              <Ionicons
+                name={languageMenuOpen ? "chevron-up-outline" : "chevron-down-outline"}
+                size={16}
+                color={tokens.color.textMuted}
+              />
+            </Pressable>
+
+            {languageMenuOpen ? (
+              <View style={styles.languageMenu}>
+                {supportedLocales.map((item) => {
+                  const active = item === locale;
+                  return (
+                    <Pressable
+                      key={item}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={languageLabel[item]}
+                      onPress={() => {
+                        setLocale(item);
+                        setLanguageMenuOpen(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.languageOption,
+                        active && styles.languageOptionActive,
+                        pressed && styles.pressed
+                      ]}
+                    >
+                      <Text style={[styles.languageOptionText, active && styles.languageOptionTextActive]}>
+                        {languageLabel[item]}
+                      </Text>
+                      {active ? (
+                        <Ionicons name="checkmark-outline" size={17} color={tokens.color.brandStrong} />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -2500,8 +2542,23 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 52, gap: 16 },
   contentWithParentNav: { paddingBottom: 28 },
   center: { flex: 1, minHeight: 500, alignItems: "center", justifyContent: "center", gap: 12 },
-  topbar: { gap: 14, marginBottom: 2 },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
+  topbar: {
+    position: "relative",
+    zIndex: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 2
+  },
+  brandRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    minWidth: 0
+  },
+  brandCopy: { flex: 1, minWidth: 0 },
   brandMark: {
     width: 44,
     height: 44,
@@ -2517,30 +2574,78 @@ const styles = StyleSheet.create({
   },
   brand: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 22, letterSpacing: -0.4 },
   brandCaption: { color: tokens.color.textMuted, fontSize: 11, marginTop: 1 },
-  languageRow: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    padding: 4,
-    borderRadius: 999,
-    backgroundColor: "#edf1f7",
-    gap: 3
+  languageSelectWrap: {
+    position: "relative",
+    zIndex: 30,
+    alignItems: "flex-end"
   },
-  languageButton: {
+  languageSelect: {
     minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: 13,
-    borderRadius: 999
-  },
-  languageButtonActive: {
+    minWidth: 112,
+    paddingHorizontal: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#dce3ed",
     backgroundColor: tokens.color.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 7,
     shadowColor: "#172033",
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 1
+    elevation: 2
   },
-  languageText: { color: tokens.color.textMuted, fontWeight: "700", fontSize: 12 },
-  languageTextActive: { color: tokens.color.brandStrong, fontWeight: "900", fontSize: 12 },
+  languageSelectOpen: {
+    borderColor: "#b9ccef",
+    backgroundColor: "#f8faff"
+  },
+  languageSelectText: {
+    flex: 1,
+    color: tokens.color.text,
+    fontSize: 12.5,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  languageMenu: {
+    position: "absolute",
+    top: 50,
+    right: 0,
+    width: 142,
+    padding: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#dce3ed",
+    backgroundColor: tokens.color.surface,
+    gap: 2,
+    shadowColor: "#172033",
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 12
+  },
+  languageOption: {
+    minHeight: 42,
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8
+  },
+  languageOptionActive: {
+    backgroundColor: "#edf3ff"
+  },
+  languageOptionText: {
+    color: tokens.color.text,
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  languageOptionTextActive: {
+    color: tokens.color.brandStrong,
+    fontWeight: "900"
+  },
   passwordRulesCard: {
     gap: 10,
     padding: 14,
