@@ -911,3 +911,15 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Applied the same service-suspension transition to manual network-recovery checks and stored-session restoration, preventing a recovered network connection from dismissing the error and exposing stale cached Parent data while the subscription is still unavailable.
 - Suspended individual Parent accounts keep the dedicated suspended-account screen and school administrator contact card; this remains intentionally distinct from school subscription suspension.
 - Step 10.1 is ready for local `pnpm verify` plus manual Android/Expo validation before proceeding to Step 10.2.
+
+
+### Testing Step 10.2 — Parent dashboard
+- Added an "At a glance" Parent dashboard for the selected child while preserving the existing detailed attendance, homework/results, announcements, fees and notification sections below it.
+- Dashboard cards now summarize today's attendance, today's timetable, upcoming published homework, latest published result, outstanding fee balance, and the latest announcement relevant to the selected child.
+- Added a parent-safe timetable endpoint at `GET /v1/parent/children/:studentId/timetable`. It first verifies the requested student belongs to the authenticated Parent account, then returns the child's class timetable with subject and teacher names.
+- Added an AcademicStore class-timetable read model. Timetable reads intentionally do not reuse mutable-year validation, so historical/closed-year read behavior is not accidentally blocked by admin write rules.
+- Added API regression coverage proving a Parent can read the timetable of a linked child and receives the expected weekday, time, subject and teacher.
+- The dashboard reuses learner and communication data already fetched by the detailed Parent panels instead of issuing duplicate homework/results/announcements/fee requests. Only the timetable requires a new dashboard-specific read, preserving the low-bandwidth direction of the mobile app.
+- Child-specific dashboard state is cleared immediately when the selected child changes, preventing the previous child's attendance, homework, results, fees or announcements from flashing while the new child data loads.
+- Product Specification V1 lists "next exam" as a Parent Home primary card, but the current approved MVP data model has no exam date field and the specification places richer exam scheduling in V1.1. The dashboard therefore shows an explicit exam-scheduling-unavailable state rather than inventing a date or mislabeling exam creation order as the "next exam."
+- Step 10.2 is ready for local `pnpm verify` and Android/Expo visual validation before moving to Step 10.3.
