@@ -172,6 +172,9 @@ async function main() {
     .limit(1);
   if (!admin) throw new Error("The selected school has no school administrator account.");
 
+  const demoTarget = target;
+  const demoAdmin = admin;
+
   let [assignment] = await db
     .select({
       id: teacherAssignments.id,
@@ -291,19 +294,19 @@ async function main() {
       .insert(dailyAttendances)
       .values({
         id: randomUUID(),
-        schoolId: target.schoolId,
-        academicYearId: target.academicYearId,
-        classId: target.classId,
+        schoolId: demoTarget.schoolId,
+        academicYearId: demoTarget.academicYearId,
+        classId: demoTarget.classId,
         date,
         status: "SUBMITTED",
-        submittedBy: admin.id,
-        updatedBy: admin.id
+        submittedBy: demoAdmin.id,
+        updatedBy: demoAdmin.id
       })
       .onConflictDoUpdate({
         target: [dailyAttendances.schoolId, dailyAttendances.classId, dailyAttendances.date],
         set: {
-          academicYearId: target.academicYearId,
-          updatedBy: admin.id,
+          academicYearId: demoTarget.academicYearId,
+          updatedBy: demoAdmin.id,
           updatedAt: new Date()
         }
       })
@@ -315,9 +318,9 @@ async function main() {
       .insert(studentAttendances)
       .values({
         id: randomUUID(),
-        schoolId: target.schoolId,
+        schoolId: demoTarget.schoolId,
         attendanceId: attendance.id,
-        studentId: target.studentId,
+        studentId: demoTarget.studentId,
         status,
         note
       })
