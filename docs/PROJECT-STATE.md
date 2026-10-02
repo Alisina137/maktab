@@ -1004,3 +1004,21 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - The header layout is intentionally anchored independently of content direction: MaktabLink logo/name stays at the top-left and the language selector stays at the top-right in Dari, Pashto, and English.
 - The selector shows Dari, Pashto, and English, marks the active language, closes after selection, and closes when the main page starts scrolling.
 - The dropdown uses elevated/z-indexed styling so it stays above the main mobile content.
+
+
+### Testing Step 10.6 — Parent styling and UI polish
+- Refined the Parent mobile experience around the product principles of mobile-first, RTL-first, low-density, action-oriented family visibility without adding decorative charts or changing Parent business logic.
+- Parent Home now uses a compact family hero instead of separate title/account cards, reducing vertical repetition while keeping Parent, school, and username context visible.
+- Multi-child selection now uses larger touch targets, child initials, an explicit selected-state checkmark, and RTL-aware wrapping.
+- The selected-child profile is more compact: identity/class context appears together and student code, class code, and academic year use a three-cell metadata grid instead of three full-width rows.
+- Parent dashboard cards now use lightweight skeleton/loading treatments instead of displaying “Loading…” as a large primary value. Attendance/result/fee states receive restrained semantic icon treatments while preserving the same data.
+- Dashboard cards, Parent section cards, Homework, Announcements, Results, and Fees now share a more consistent radius, border, spacing, shadow, and icon treatment.
+- Recent Attendance and Notifications now have icon-backed section headers plus clearer empty states.
+- Homework, Announcements, and More now use a shared page-heading pattern with selected-child context directly under the tab title.
+- Homework heading direction now mirrors correctly in RTL.
+- Homework/announcement/fee/result rows now use inset content cards rather than long divider-only lists for stronger mobile scanning.
+- Announcement dates now use compact date pills.
+- Parent bottom navigation has refined active-state icon treatment, spacing, shadow, and touch sizing while preserving Home / Homework / Announcements / More and RTL ordering.
+- Loading states in Parent tab content now use contained loading cards/rows rather than isolated spinners.
+- No Parent permissions, API contracts, data loading semantics, or child-switching behavior were changed during this styling pass.
+- Step 10.6 requires local Expo visual validation on a small Android device in Dari, Pashto, and English before moving to Step 10.7.
