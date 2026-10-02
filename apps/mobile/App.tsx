@@ -42,6 +42,7 @@ import {
 import { AdminContactCard } from "./src/admin-contact-card";
 import { CommunicationPanel } from "./src/communication-ui";
 import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
+import { ParentDashboardPanel } from "./src/parent-dashboard";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
@@ -1298,21 +1299,19 @@ function AppContent() {
 
             {selectedChild ? (
               <>
-                <View style={styles.phaseCard}>
-                  <View style={[styles.phaseCardHeader, direction === "rtl" && styles.rowRtl]}>
-                    <View style={styles.smallIconShell}>
-                      <Ionicons name="calendar-outline" size={20} color={tokens.color.brandStrong} />
-                    </View>
-                    <View style={styles.flexCopy}>
-                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.today")}</Text>
-                      <Text style={[styles.muted, textDirection]}>
-                        {parentAttendance.find((item) => item.date === parentToday)
-                          ? translate(locale, attendanceKey[parentAttendance.find((item) => item.date === parentToday)!.status])
-                          : translate(locale, "attendance.notRecorded")}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+                <ParentDashboardPanel
+                  key={`parent-dashboard-${reconnectEpoch}-${selectedChild.student.id}`}
+                  accessToken={session.accessToken}
+                  studentId={selectedChild.student.id}
+                  classId={selectedChild.student.classId}
+                  todayDate={parentToday}
+                  todayAttendance={
+                    parentAttendance.find((item) => item.date === parentToday)?.status ?? null
+                  }
+                  locale={locale}
+                  textDirection={textDirection}
+                  onError={setAppError}
+                />
 
                 <View style={styles.phaseCard}>
                   <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.recent")}</Text>
