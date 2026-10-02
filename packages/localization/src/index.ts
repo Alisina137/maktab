@@ -74,6 +74,20 @@ export type TranslationKey =
   | "parent.studentCode"
   | "parent.class"
   | "parent.academicYear"
+  | "parent.dashboard"
+  | "parent.todaySchedule"
+  | "parent.noClassesToday"
+  | "parent.homeworkDue"
+  | "parent.noHomeworkDue"
+  | "parent.nextExam"
+  | "parent.examScheduleUnavailable"
+  | "parent.latestResult"
+  | "parent.noPublishedResult"
+  | "parent.feeStatus"
+  | "parent.noOutstandingFees"
+  | "parent.latestAnnouncement"
+  | "parent.noAnnouncements"
+  | "parent.moreItems"
   | "auth.logout"
   | "common.loading"
   | "common.errorTitle"
@@ -243,6 +257,20 @@ const en: Record<TranslationKey, string> = {
   "parent.studentCode": "Student code",
   "parent.class": "Class",
   "parent.academicYear": "Academic year",
+  "parent.dashboard": "At a glance",
+  "parent.todaySchedule": "Today's schedule",
+  "parent.noClassesToday": "No classes scheduled today",
+  "parent.homeworkDue": "Homework due",
+  "parent.noHomeworkDue": "No upcoming homework",
+  "parent.nextExam": "Next exam",
+  "parent.examScheduleUnavailable": "Exam dates are not scheduled in the current MVP",
+  "parent.latestResult": "Latest result",
+  "parent.noPublishedResult": "No published result yet",
+  "parent.feeStatus": "Fee status",
+  "parent.noOutstandingFees": "No outstanding balance",
+  "parent.latestAnnouncement": "Latest announcement",
+  "parent.noAnnouncements": "No announcement for this child",
+  "parent.moreItems": "more",
   "auth.logout": "Log out",
   "common.loading": "Loading…",
   "common.errorTitle": "Something needs your attention",
@@ -424,6 +452,20 @@ const dari: Record<TranslationKey, string> = {
   "parent.studentCode": "کد شاگرد",
   "parent.class": "صنف",
   "parent.academicYear": "سال تعلیمی",
+  "parent.dashboard": "در یک نگاه",
+  "parent.todaySchedule": "برنامه امروز",
+  "parent.noClassesToday": "امروز درسی برنامه‌ریزی نشده است",
+  "parent.homeworkDue": "کارخانگی پیش‌رو",
+  "parent.noHomeworkDue": "کارخانگی پیش‌رو وجود ندارد",
+  "parent.nextExam": "امتحان بعدی",
+  "parent.examScheduleUnavailable": "تاریخ امتحان در نسخه فعلی MVP برنامه‌ریزی نمی‌شود",
+  "parent.latestResult": "آخرین نتیجه",
+  "parent.noPublishedResult": "هنوز نتیجه‌ای نشر نشده است",
+  "parent.feeStatus": "وضعیت فیس",
+  "parent.noOutstandingFees": "باقی‌مانده فیس وجود ندارد",
+  "parent.latestAnnouncement": "آخرین اعلان",
+  "parent.noAnnouncements": "برای این شاگرد اعلانی وجود ندارد",
+  "parent.moreItems": "مورد دیگر",
   "auth.logout": "خروج",
   "common.loading": "در حال بارگذاری…",
   "common.errorTitle": "یک مورد نیاز به توجه شما دارد",
@@ -605,6 +647,20 @@ const pashto: Record<TranslationKey, string> = {
   "parent.studentCode": "د زده کوونکي کوډ",
   "parent.class": "ټولګی",
   "parent.academicYear": "تعلیمي کال",
+  "parent.dashboard": "په یوه نظر",
+  "parent.todaySchedule": "د نن ورځې مهالویش",
+  "parent.noClassesToday": "نن درس نه دی ټاکل شوی",
+  "parent.homeworkDue": "راتلونکی کورنی کار",
+  "parent.noHomeworkDue": "راتلونکی کورنی کار نشته",
+  "parent.nextExam": "راتلونکې ازموینه",
+  "parent.examScheduleUnavailable": "د ازموینو نېټې په اوسني MVP کې نه مهالویش کېږي",
+  "parent.latestResult": "وروستۍ پایله",
+  "parent.noPublishedResult": "تر اوسه کومه پایله نه ده خپره شوې",
+  "parent.feeStatus": "د فیس حالت",
+  "parent.noOutstandingFees": "پاتې فیس نشته",
+  "parent.latestAnnouncement": "وروستی اعلان",
+  "parent.noAnnouncements": "د دې زده‌کوونکي لپاره اعلان نشته",
+  "parent.moreItems": "نور",
   "auth.logout": "وتل",
   "common.loading": "بارېږي…",
   "common.errorTitle": "یو څه ستاسو پاملرنې ته اړتیا لري",
