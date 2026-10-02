@@ -256,6 +256,15 @@ export function ParentMoreAcademicContent({
                 {translate(locale, "fees.paid")} AFN {item.paid}
               </Text>
             </View>
+            {item.payments.length > 0 ? (
+              <View style={styles.paymentList}>
+                {item.payments.map((payment) => (
+                  <Text key={payment.id} style={[styles.muted, textDirection]}>
+                    {payment.recordedAt.slice(0, 10)} · {payment.kind} · AFN {payment.amount} · {payment.method}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </View>
         )) : null}
         {communicationReady && fees.length === 0 ? (
@@ -353,5 +362,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8
   },
+  paymentList: { gap: 3, paddingTop: 5 },
   pressed: { opacity: 0.72 }
 });
