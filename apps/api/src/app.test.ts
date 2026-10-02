@@ -384,7 +384,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const homeAfterPasswordChange = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
-    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+    headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
   assert.equal(homeAfterPasswordChange.statusCode, 200);
 
@@ -394,14 +394,14 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: { refreshToken: parentSession.refreshToken }
   });
   assert.equal(refreshedParent.statusCode, 200);
-  assert.equal(
-    refreshedParent.json<{ user: { role: string }; mustChangePassword: boolean }>().user.role,
-    "PARENT"
-  );
-  assert.equal(
-    refreshedParent.json<{ mustChangePassword: boolean }>().mustChangePassword,
-    false
-  );
+  const refreshedParentBody = refreshedParent.json<{
+    accessToken: string;
+    user: { role: string };
+    mustChangePassword: boolean;
+  }>();
+  assert.equal(refreshedParentBody.user.role, "PARENT");
+  assert.equal(refreshedParentBody.mustChangePassword, false);
+  const activeParentAccessToken = refreshedParentBody.accessToken;
 
   const suspend = await app.inject({
     method: "POST",
@@ -413,7 +413,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const meAfterSuspend = await app.inject({
     method: "GET",
     url: "/v1/auth/me",
-    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+    headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
   assert.equal(meAfterSuspend.statusCode, 200);
   assert.equal(meAfterSuspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
@@ -421,7 +421,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const blockedHome = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
-    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+    headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
   assert.equal(blockedHome.statusCode, 403);
   assert.equal(blockedHome.json<{ error: string }>().error, "account_suspended");
@@ -429,7 +429,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const contactWhileSuspended = await app.inject({
     method: "GET",
     url: "/v1/school/admin-contact",
-    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+    headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
   assert.equal(contactWhileSuspended.statusCode, 200);
 
@@ -456,7 +456,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const homeAfterReactivate = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
-    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+    headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
   assert.equal(homeAfterReactivate.statusCode, 200);
 });
