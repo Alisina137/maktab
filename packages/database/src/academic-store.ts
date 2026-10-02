@@ -348,7 +348,13 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
     },
 
     async getClassTimetable(schoolId, academicYearId, classId) {
-      await validateClassYear(schoolId, academicYearId, classId);
+      const [year, classSection] = await Promise.all([
+        getYear(schoolId, academicYearId),
+        getClass(schoolId, classId)
+      ]);
+      if (classSection.academicYearId !== year.id) {
+        throw new AcademicValidationError("The selected class does not belong to the selected academic year.");
+      }
       return db
         .select({
           period: timetablePeriods,
