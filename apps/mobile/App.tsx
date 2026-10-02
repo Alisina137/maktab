@@ -55,7 +55,9 @@ import {
 } from "./src/read-cache";
 import {
   clearStoredSession,
+  loadPreferredParentChild,
   loadStoredSession,
+  savePreferredParentChild,
   saveStoredSession
 } from "./src/session";
 
@@ -155,6 +157,8 @@ function AppContent() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const errorKindRef = useRef<AppErrorKind | null>(null);
   const schoolSearchRequestId = useRef(0);
+  const parentChildLoadRequestId = useRef(0);
+  const selectedChildIdRef = useRef("");
   const onboardingScrollRef = useRef<ScrollView>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
@@ -186,6 +190,10 @@ function AppContent() {
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    selectedChildIdRef.current = selectedChildId;
+  }, [selectedChildId]);
 
   useEffect(() => {
     setReadCacheFallbackListener(() => {
@@ -298,6 +306,7 @@ function AppContent() {
   ]);
 
   useEffect(() => {
+    const requestId = ++parentChildLoadRequestId.current;
     if (
       screen === "home" &&
       session?.user.role === "PARENT" &&
@@ -312,8 +321,8 @@ function AppContent() {
       setParentAnnouncements([]);
       setParentFees([]);
       setParentCommunicationReady(false);
-      void loadParentAttendance(session.accessToken, selectedChildId);
-      void loadParentTimetable(session.accessToken, selectedChildId);
+      void loadParentAttendance(session.accessToken, selectedChildId, requestId);
+      void loadParentTimetable(session.accessToken, selectedChildId, requestId);
     }
   }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
@@ -697,11 +706,24 @@ function AppContent() {
     try {
       const result = await api.parentHome(accessToken);
       setParentHome(result);
-      setSelectedChildId((current) =>
-        result.children.some((item) => item.student.id === current)
-          ? current
-          : result.children[0]?.student.id ?? ""
-      );
+
+      const rememberedChildId =
+        school && session?.user.role === "PARENT"
+          ? await loadPreferredParentChild(school.id, session.user.id)
+          : null;
+      const currentChildId = selectedChildIdRef.current;
+      const nextChildId = result.children.some((item) => item.student.id === currentChildId)
+        ? currentChildId
+        : rememberedChildId && result.children.some((item) => item.student.id === rememberedChildId)
+          ? rememberedChildId
+          : result.children[0]?.student.id ?? "";
+
+      selectedChildIdRef.current = nextChildId;
+      setSelectedChildId(nextChildId);
+
+      if (nextChildId && school && session?.user.role === "PARENT") {
+        await savePreferredParentChild(school.id, session.user.id, nextChildId);
+      }
     } catch (cause) {
       showCause(cause);
     } finally {
@@ -709,23 +731,44 @@ function AppContent() {
     }
   }
 
-  async function loadParentAttendance(accessToken: string, studentId: string) {
-    try {
-      const result = await api.parentAttendance(accessToken, studentId);
-      setParentToday(result.today);
-      setParentAttendance(result.days);
-    } catch (cause) {
-      showCause(cause);
+  function selectParentChild(studentId: string) {
+    if (selectedChildIdRef.current === studentId) return;
+    selectedChildIdRef.current = studentId;
+    parentChildLoadRequestId.current += 1;
+    setNotice(null);
+    setSelectedChildId(studentId);
+    if (school && session?.user.role === "PARENT") {
+      void savePreferredParentChild(school.id, session.user.id, studentId);
     }
   }
 
-  async function loadParentTimetable(accessToken: string, studentId: string) {
+  async function loadParentAttendance(
+    accessToken: string,
+    studentId: string,
+    requestId: number
+  ) {
+    try {
+      const result = await api.parentAttendance(accessToken, studentId);
+      if (requestId !== parentChildLoadRequestId.current) return;
+      setParentToday(result.today);
+      setParentAttendance(result.days);
+    } catch (cause) {
+      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+    }
+  }
+
+  async function loadParentTimetable(
+    accessToken: string,
+    studentId: string,
+    requestId: number
+  ) {
     try {
       const result = await api.parentTimetable(accessToken, studentId);
+      if (requestId !== parentChildLoadRequestId.current) return;
       setParentTimetable(result.periods);
       setParentTimetableReady(true);
     } catch (cause) {
-      showCause(cause);
+      if (requestId === parentChildLoadRequestId.current) showCause(cause);
     }
   }
 
@@ -1297,23 +1340,29 @@ function AppContent() {
 
                 {parentHome.children.length > 0 ? (
                   <>
-                    <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
-                    <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
-                      {parentHome.children.map((item) => {
-                        const active = item.student.id === selectedChild?.student.id;
-                        return (
-                          <Pressable
-                            key={item.student.id}
-                            onPress={() => setSelectedChildId(item.student.id)}
-                            style={[styles.childChip, active && styles.childChipActive]}
-                          >
-                            <Text style={active ? styles.childChipTextActive : styles.childChipText}>
-                              {item.student.fullName}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
+                    {parentHome.children.length > 1 ? (
+                      <>
+                        <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
+                        <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
+                          {parentHome.children.map((item) => {
+                            const active = item.student.id === selectedChild?.student.id;
+                            return (
+                              <Pressable
+                                key={item.student.id}
+                                onPress={() => selectParentChild(item.student.id)}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: active }}
+                                style={[styles.childChip, active && styles.childChipActive]}
+                              >
+                                <Text style={active ? styles.childChipTextActive : styles.childChipText}>
+                                  {item.student.fullName}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </>
+                    ) : null}
 
                     {selectedChild ? (
                       <Animated.View
@@ -1391,7 +1440,11 @@ function AppContent() {
                   textDirection={textDirection}
                   onError={setAppError}
                   onNotice={setNotice}
-                  onLoaded={setParentLearning}
+                  onLoaded={(view) => {
+                    if (selectedChildIdRef.current === selectedChild.student.id) {
+                      setParentLearning(view);
+                    }
+                  }}
                 />
 
                 <CommunicationPanel
@@ -1399,11 +1452,13 @@ function AppContent() {
                   accessToken={session.accessToken}
                   mode="PARENT"
                   studentId={selectedChild.student.id}
+                  selectedClassId={selectedChild.student.classId}
                   locale={locale}
                   textDirection={textDirection}
                   onError={setAppError}
                   onNotice={setNotice}
                   onLoaded={({ announcements, fees }) => {
+                    if (selectedChildIdRef.current !== selectedChild.student.id) return;
                     setParentAnnouncements(announcements);
                     setParentFees(fees);
                     setParentCommunicationReady(true);
