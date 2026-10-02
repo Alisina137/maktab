@@ -119,6 +119,22 @@ export interface ParentAttendanceDay {
   className: string;
 }
 
+export interface ParentTimetablePeriod {
+  period: {
+    id: string;
+    academicYearId: string;
+    classId: string;
+    subjectId: string;
+    teacherUserId: string;
+    weekday: "SATURDAY" | "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
+    startsAt: string;
+    endsAt: string;
+  };
+  subjectName: string;
+  subjectCode: string;
+  teacherName: string;
+}
+
 export interface ParentNotification {
   id: string;
   type: string;
@@ -472,6 +488,12 @@ export const api = {
 
   parentAttendance(accessToken: string, studentId: string) {
     return request<{ today: string; days: ParentAttendanceDay[] }>(`/v1/parent/children/${studentId}/attendance`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  parentTimetable(accessToken: string, studentId: string) {
+    return request<{ periods: ParentTimetablePeriod[] }>(`/v1/parent/children/${studentId}/timetable`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
