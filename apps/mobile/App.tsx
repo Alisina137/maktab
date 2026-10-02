@@ -705,7 +705,6 @@ function AppContent() {
     setAppError(null);
     try {
       const result = await api.parentHome(accessToken);
-      setParentHome(result);
 
       let rememberedChildId: string | null = null;
       if (school && session?.user.role === "PARENT") {
@@ -723,6 +722,7 @@ function AppContent() {
           : result.children[0]?.student.id ?? "";
 
       selectedChildIdRef.current = nextChildId;
+      setParentHome(result);
       setSelectedChildId(nextChildId);
 
       if (nextChildId && school && session?.user.role === "PARENT") {
@@ -979,9 +979,7 @@ function AppContent() {
   }
 
   const selectedChild =
-    parentHome?.children.find((item) => item.student.id === selectedChildId) ??
-    parentHome?.children[0] ??
-    null;
+    parentHome?.children.find((item) => item.student.id === selectedChildId) ?? null;
   const attendanceMarkedCount = attendanceSheet
     ? attendanceSheet.students.filter((item) => attendanceDraft[item.student.id]).length
     : 0;
