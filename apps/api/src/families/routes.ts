@@ -259,6 +259,43 @@ export function registerFamilyRoutes(
     }
   });
 
+  app.get<{ Params: { studentId: string } }>(
+    "/v1/parent/children/:studentId/timetable",
+    async (request, reply) => {
+      const context = await requireAccess(request, reply, accounts);
+      if (!context) return;
+      if (context.user.mustChangePassword) {
+        return reply.code(403).send({
+          error: "password_change_required",
+          message: "Change the temporary password before using parent features."
+        });
+      }
+      if (context.user.role !== "PARENT") {
+        return reply.code(403).send({ error: "forbidden", message: "Parent access is required." });
+      }
+
+      try {
+        const home = await families.getParentHome(context.user.schoolId, context.user.id);
+        const child = home.children.find((item) => item.student.id === request.params.studentId);
+        if (!child) {
+          return reply.code(404).send({
+            error: "not_found",
+            message: "Student not found for this parent account."
+          });
+        }
+
+        const periods = await academics.getClassTimetable(
+          context.user.schoolId,
+          child.student.academicYearId,
+          child.student.classId
+        );
+        return { periods };
+      } catch (error) {
+        return sendFamilyError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/admin/families/import/preview", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
