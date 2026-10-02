@@ -26,9 +26,11 @@ type Props = {
   todayDate: string;
   todayAttendance: AttendanceStatus | null;
   timetable: ParentTimetablePeriod[];
+  timetableReady: boolean;
   learning: LearnerAcademicPayload | null;
   announcements: AnnouncementPayload[];
   fees: FeeInvoiceViewPayload[];
+  communicationReady: boolean;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 };
@@ -62,9 +64,11 @@ export function ParentDashboardPanel({
   todayDate,
   todayAttendance,
   timetable,
+  timetableReady,
   learning,
   announcements,
   fees,
+  communicationReady,
   locale,
   textDirection
 }: Props) {
@@ -97,39 +101,51 @@ export function ParentDashboardPanel({
     };
   }, [announcements, classId, fees, learning, timetable, todayDate]);
 
-  const attendanceLabel = todayAttendance
-    ? translate(locale, {
-        PRESENT: "attendance.present",
-        ABSENT: "attendance.absent",
-        LATE: "attendance.late",
-        EXCUSED: "attendance.excused"
-      }[todayAttendance] as TranslationKey)
-    : translate(locale, "attendance.notRecorded");
+  const attendanceLabel = !todayDate
+    ? translate(locale, "common.loading")
+    : todayAttendance
+      ? translate(locale, {
+          PRESENT: "attendance.present",
+          ABSENT: "attendance.absent",
+          LATE: "attendance.late",
+          EXCUSED: "attendance.excused"
+        }[todayAttendance] as TranslationKey)
+      : translate(locale, "attendance.notRecorded");
 
-  const schedulePrimary = dashboard.todayPeriods[0]
-    ? dashboard.todayPeriods[0].subjectName
-    : translate(locale, "parent.noClassesToday");
+  const schedulePrimary = !timetableReady
+    ? translate(locale, "common.loading")
+    : dashboard.todayPeriods[0]
+      ? dashboard.todayPeriods[0].subjectName
+      : translate(locale, "parent.noClassesToday");
   const scheduleDetail = dashboard.todayPeriods[0]
     ? `${dashboard.todayPeriods[0].period.startsAt}–${dashboard.todayPeriods[0].period.endsAt} · ${dashboard.todayPeriods[0].teacherName}${dashboard.todayPeriods.length > 1 ? ` · +${dashboard.todayPeriods.length - 1} ${translate(locale, "parent.moreItems")}` : ""}`
     : "";
 
-  const homeworkPrimary = dashboard.homework?.homework.title ?? translate(locale, "parent.noHomeworkDue");
+  const homeworkPrimary = !learning
+    ? translate(locale, "common.loading")
+    : dashboard.homework?.homework.title ?? translate(locale, "parent.noHomeworkDue");
   const homeworkDetail = dashboard.homework
     ? `${dashboard.homework.subjectName} · ${translate(locale, "learning.due")} ${dashboard.homework.homework.dueAt.slice(0, 10)}`
     : "";
 
-  const resultPrimary = dashboard.latestResult
-    ? `${dashboard.latestResult.grade.score}/${dashboard.latestResult.examSubject.maxScore}`
-    : translate(locale, "parent.noPublishedResult");
+  const resultPrimary = !learning
+    ? translate(locale, "common.loading")
+    : dashboard.latestResult
+      ? `${dashboard.latestResult.grade.score}/${dashboard.latestResult.examSubject.maxScore}`
+      : translate(locale, "parent.noPublishedResult");
   const resultDetail = dashboard.latestResult
     ? `${dashboard.latestResult.exam.name} · ${dashboard.latestResult.subjectName}`
     : "";
 
-  const feePrimary = dashboard.outstanding > 0
-    ? formatAfn(dashboard.outstanding)
-    : translate(locale, "parent.noOutstandingFees");
+  const feePrimary = !communicationReady
+    ? translate(locale, "common.loading")
+    : dashboard.outstanding > 0
+      ? formatAfn(dashboard.outstanding)
+      : translate(locale, "parent.noOutstandingFees");
 
-  const announcementPrimary = dashboard.latestAnnouncement?.title ?? translate(locale, "parent.noAnnouncements");
+  const announcementPrimary = !communicationReady
+    ? translate(locale, "common.loading")
+    : dashboard.latestAnnouncement?.title ?? translate(locale, "parent.noAnnouncements");
   const announcementDetail = dashboard.latestAnnouncement?.publishAt.slice(0, 10) ?? "";
 
   return (
