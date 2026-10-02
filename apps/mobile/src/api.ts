@@ -364,6 +364,17 @@ function withAuthorization(init: RequestInit | undefined, accessToken: string): 
   return { ...init, headers };
 }
 
+async function cachedReadFallback<T>(
+  path: string,
+  cacheable: boolean
+): Promise<T | null> {
+  if (!cacheable) return null;
+  const cached = await readReadCache<T>(path);
+  if (!cached) return null;
+  notifyReadCacheFallback(cached.savedAt);
+  return cached.data;
+}
+
 function apiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
   if (configured) return configured;
@@ -404,13 +415,8 @@ async function request<T>(
         headers
       });
     } catch {
-      if (cacheable) {
-        const cached = await readReadCache<T>(path);
-        if (cached) {
-          notifyReadCacheFallback(cached.savedAt);
-          return cached.data;
-        }
-      }
+      const cached = await cachedReadFallback<T>(path, cacheable);
+      if (cached !== null) return cached;
       throw new ApiRequestError("Network unavailable.", { network: true });
     }
 
@@ -420,6 +426,11 @@ async function request<T>(
       try {
         body = JSON.parse(text);
       } catch {
+        // Tunnels/proxies can return an HTML outage page even though this is an
+        // API request. For read-only requests, keep the Parent experience usable
+        // with the last scoped cache instead of replacing it with a blank screen.
+        const cached = await cachedReadFallback<T>(path, cacheable);
+        if (cached !== null) return cached;
         throw new ApiRequestError("MaktabLink service unavailable.", {
           status: response.status,
           code: "api_unavailable",
