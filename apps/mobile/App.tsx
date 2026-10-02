@@ -1597,21 +1597,40 @@ function AppContent() {
           <View style={styles.section}>
             {parentTab === "HOME" ? (
               <>
-                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.homeTitle")}</Text>
-                <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.homeSubtitle")}</Text>
+                <View style={[styles.parentHeroCard, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.parentHeroIcon}>
+                    <Ionicons name="people-outline" size={24} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.parentHeroEyebrow, textDirection]}>
+                      {translate(locale, "parent.homeTitle")}
+                    </Text>
+                    <Text style={[styles.parentHeroName, textDirection]}>
+                      {parentHome?.parent.fullName ?? session.user.username}
+                    </Text>
+                    <Text style={[styles.parentHeroMeta, textDirection]}>
+                      {school?.name}{parentHome ? ` · ${session.user.username}` : ""}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.parentIntro, textDirection]}>
+                  {translate(locale, "parent.homeSubtitle")}
+                </Text>
 
                 {parentHome ? (
                   <>
-                    <View style={styles.accountCard}>
-                      <Text style={[styles.accountName, textDirection]}>{parentHome.parent.fullName}</Text>
-                      <Text style={[styles.muted, textDirection]}>{school?.name} · {session.user.username}</Text>
-                    </View>
-
                     {parentHome.children.length > 0 ? (
                       <>
                         {parentHome.children.length > 1 ? (
                           <>
-                            <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
+                            <View style={[styles.parentSectionHeading, direction === "rtl" && styles.rowRtl]}>
+                              <View style={styles.parentSectionIcon}>
+                                <Ionicons name="swap-horizontal-outline" size={17} color={tokens.color.brandStrong} />
+                              </View>
+                              <Text style={[styles.sectionLabel, styles.flexCopy, textDirection]}>
+                                {translate(locale, "parent.switchChild")}
+                              </Text>
+                            </View>
                             <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
                               {parentHome.children.map((item) => {
                                 const active = item.student.id === selectedChild?.student.id;
@@ -1623,9 +1642,17 @@ function AppContent() {
                                     accessibilityState={{ selected: active }}
                                     style={[styles.childChip, active && styles.childChipActive]}
                                   >
+                                    <View style={[styles.childChipDot, active && styles.childChipDotActive]}>
+                                      <Text style={[styles.childChipDotText, active && styles.childChipDotTextActive]}>
+                                        {item.student.fullName.slice(0, 1)}
+                                      </Text>
+                                    </View>
                                     <Text style={active ? styles.childChipTextActive : styles.childChipText}>
                                       {item.student.fullName}
                                     </Text>
+                                    {active ? (
+                                      <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                    ) : null}
                                   </Pressable>
                                 );
                               })}
@@ -1643,21 +1670,30 @@ function AppContent() {
                               }
                             ]}
                           >
-                            <View style={styles.childBadge}>
-                              <Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text>
+                            <View style={[styles.childIdentityRow, direction === "rtl" && styles.rowRtl]}>
+                              <View style={styles.childBadge}>
+                                <Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text>
+                              </View>
+                              <View style={styles.flexCopy}>
+                                <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
+                                <Text style={[styles.childIdentityMeta, textDirection]}>
+                                  {selectedChild.classSection.name} · {selectedChild.classSection.code}
+                                </Text>
+                              </View>
                             </View>
-                            <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
-                            <View style={styles.childDetailRow}>
-                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
-                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.student.studentCode}</Text>
-                            </View>
-                            <View style={styles.childDetailRow}>
-                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
-                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.classSection.name} · {selectedChild.classSection.code}</Text>
-                            </View>
-                            <View style={styles.childDetailRow}>
-                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
-                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.academicYear.name}</Text>
+                            <View style={[styles.childMetaGrid, direction === "rtl" && styles.childMetaGridRtl]}>
+                              <View style={styles.childMetaCell}>
+                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
+                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={1}>{selectedChild.student.studentCode}</Text>
+                              </View>
+                              <View style={styles.childMetaCell}>
+                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
+                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>{selectedChild.classSection.code}</Text>
+                              </View>
+                              <View style={styles.childMetaCell}>
+                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
+                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>{selectedChild.academicYear.name}</Text>
+                              </View>
                             </View>
                           </Animated.View>
                         ) : null}
@@ -1689,8 +1725,15 @@ function AppContent() {
                       textDirection={textDirection}
                     />
 
-                    <View style={styles.phaseCard}>
-                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.recent")}</Text>
+                    <View style={styles.parentSectionCard}>
+                      <View style={[styles.parentSectionHeading, direction === "rtl" && styles.rowRtl]}>
+                        <View style={styles.parentSectionIcon}>
+                          <Ionicons name="calendar-outline" size={17} color={tokens.color.brandStrong} />
+                        </View>
+                        <Text style={[styles.sectionLabel, styles.flexCopy, textDirection]}>
+                          {translate(locale, "attendance.recent")}
+                        </Text>
+                      </View>
                       {parentAttendance.slice(0, 7).map((day) => (
                         <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
                           <Text style={[styles.historyDate, textDirection]}>{day.date}</Text>
@@ -1698,12 +1741,22 @@ function AppContent() {
                         </View>
                       ))}
                       {parentAttendance.length === 0 ? (
-                        <Text style={[styles.muted, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
+                        <View style={styles.parentEmptyState}>
+                          <Ionicons name="calendar-clear-outline" size={22} color={tokens.color.textMuted} />
+                          <Text style={[styles.muted, styles.flexCopy, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
+                        </View>
                       ) : null}
                     </View>
 
-                    <View style={styles.phaseCard}>
-                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
+                    <View style={styles.parentSectionCard}>
+                      <View style={[styles.parentSectionHeading, direction === "rtl" && styles.rowRtl]}>
+                        <View style={styles.parentSectionIcon}>
+                          <Ionicons name="notifications-outline" size={17} color={tokens.color.brandStrong} />
+                        </View>
+                        <Text style={[styles.sectionLabel, styles.flexCopy, textDirection]}>
+                          {translate(locale, "notifications.title")}
+                        </Text>
+                      </View>
                       {parentNotifications.slice(0, 5).map((notification) => (
                         <Pressable
                           key={notification.id}
@@ -1736,7 +1789,10 @@ function AppContent() {
                         </Pressable>
                       ))}
                       {parentNotifications.length === 0 ? (
-                        <Text style={[styles.muted, textDirection]}>{translate(locale, "notifications.empty")}</Text>
+                        <View style={styles.parentEmptyState}>
+                          <Ionicons name="notifications-off-outline" size={22} color={tokens.color.textMuted} />
+                          <Text style={[styles.muted, styles.flexCopy, textDirection]}>{translate(locale, "notifications.empty")}</Text>
+                        </View>
                       ) : null}
                     </View>
                   </>
@@ -1746,12 +1802,21 @@ function AppContent() {
 
             {parentTab === "HOMEWORK" ? (
               <>
-                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.navHomework")}</Text>
+                <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.parentPageHeadingIcon}>
+                    <Ionicons name="document-text-outline" size={22} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.parentPageTitle, textDirection]}>{translate(locale, "parent.navHomework")}</Text>
+                    {selectedChild ? (
+                      <Text style={[styles.parentPageContext, textDirection]}>
+                        {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
                 {selectedChild ? (
                   <>
-                    <Text style={[styles.subtitle, textDirection]}>
-                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
-                    </Text>
                     <ParentHomeworkContent
                       learning={parentLearning}
                       locale={locale}
@@ -1768,12 +1833,21 @@ function AppContent() {
 
             {parentTab === "ANNOUNCEMENTS" ? (
               <>
-                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.navAnnouncements")}</Text>
+                <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.parentPageHeadingIcon}>
+                    <Ionicons name="megaphone-outline" size={22} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.parentPageTitle, textDirection]}>{translate(locale, "parent.navAnnouncements")}</Text>
+                    {selectedChild ? (
+                      <Text style={[styles.parentPageContext, textDirection]}>
+                        {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
                 {selectedChild ? (
                   <>
-                    <Text style={[styles.subtitle, textDirection]}>
-                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
-                    </Text>
                     <ParentAnnouncementsContent
                       announcements={parentAnnouncements}
                       classId={selectedChild.student.classId}
@@ -1792,12 +1866,21 @@ function AppContent() {
 
             {parentTab === "MORE" ? (
               <>
-                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.moreTitle")}</Text>
+                <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.parentPageHeadingIcon}>
+                    <Ionicons name="grid-outline" size={22} color={tokens.color.brandStrong} />
+                  </View>
+                  <View style={styles.flexCopy}>
+                    <Text style={[styles.parentPageTitle, textDirection]}>{translate(locale, "parent.moreTitle")}</Text>
+                    {selectedChild ? (
+                      <Text style={[styles.parentPageContext, textDirection]}>
+                        {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
                 {selectedChild ? (
                   <>
-                    <Text style={[styles.subtitle, textDirection]}>
-                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
-                    </Text>
                     <ParentMoreAcademicContent
                       learning={parentLearning}
                       fees={parentFees}
@@ -2853,54 +2936,138 @@ const styles = StyleSheet.create({
     paddingVertical: 7
   },
   schoolPillText: { color: tokens.color.brandStrong, fontWeight: "800", fontSize: 12 },
-  accountCard: {
-    padding: 18,
-    backgroundColor: tokens.color.surface,
-    borderRadius: 18,
+  parentHeroCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "#e1e7f0",
-    gap: 5,
-    shadowColor: "#172033",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 1
+    borderColor: "#dfe7f2",
+    backgroundColor: "#f8faff"
   },
-  accountName: { color: tokens.color.text, fontSize: 18, fontWeight: "900" },
+  parentHeroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#e8f0ff"
+  },
+  parentHeroEyebrow: { color: tokens.color.brandStrong, fontSize: 11.5, fontWeight: "900" },
+  parentHeroName: { color: tokens.color.text, fontSize: 20, lineHeight: 25, fontWeight: "900" },
+  parentHeroMeta: { color: tokens.color.textMuted, fontSize: 11.5, lineHeight: 17 },
+  parentIntro: { color: tokens.color.textMuted, fontSize: 13, lineHeight: 20 },
+  parentSectionHeading: { flexDirection: "row", alignItems: "center", gap: 9 },
+  parentSectionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff"
+  },
   sectionLabel: { color: tokens.color.text, fontSize: 15, fontWeight: "900" },
   childSelector: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   childSelectorRtl: { flexDirection: "row-reverse" },
   childChip: {
-    minHeight: 40,
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
     justifyContent: "center",
-    paddingHorizontal: 13,
+    paddingHorizontal: 10,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#dbe3ee",
     backgroundColor: tokens.color.surface
   },
   childChipActive: { backgroundColor: tokens.color.brand, borderColor: tokens.color.brand },
+  childChipDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff"
+  },
+  childChipDotActive: { backgroundColor: "rgba(255,255,255,0.18)" },
+  childChipDotText: { color: tokens.color.brandStrong, fontSize: 11, fontWeight: "900" },
+  childChipDotTextActive: { color: "#fff" },
   childChipText: { color: tokens.color.text, fontWeight: "700" },
   childChipTextActive: { color: "#fff", fontWeight: "900" },
   childCard: {
-    padding: 19,
+    padding: 16,
     backgroundColor: tokens.color.surface,
-    borderRadius: 21,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#dfe6ef",
+    gap: 14,
+    shadowColor: "#172033",
+    shadowOpacity: 0.045,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 1
+  },
+  childIdentityRow: { flexDirection: "row", alignItems: "center", gap: 11 },
+  childBadge: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#edf3ff" },
+  childBadgeText: { color: tokens.color.brandStrong, fontSize: 20, fontWeight: "900" },
+  childName: { color: tokens.color.text, fontSize: 20, lineHeight: 25, fontWeight: "900" },
+  childIdentityMeta: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 18 },
+  childMetaGrid: { flexDirection: "row", gap: 8 },
+  childMetaGridRtl: { flexDirection: "row-reverse" },
+  childMetaCell: {
+    flex: 1,
+    minHeight: 64,
+    padding: 10,
+    borderRadius: 14,
+    backgroundColor: "#f7f9fc",
+    borderWidth: 1,
+    borderColor: "#edf0f4",
+    gap: 4
+  },
+  childDetailLabel: { color: tokens.color.textMuted, fontSize: 10.5, fontWeight: "700" },
+  childDetailValue: { color: tokens.color.text, fontSize: 13, lineHeight: 17, fontWeight: "900" },
+  parentSectionCard: {
+    padding: 16,
+    backgroundColor: tokens.color.surface,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: "#e1e7f0",
     gap: 12,
     shadowColor: "#172033",
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2
+    shadowOpacity: 0.035,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1
   },
-  childBadge: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#edf3ff" },
-  childBadgeText: { color: tokens.color.brandStrong, fontSize: 20, fontWeight: "900" },
-  childName: { color: tokens.color.text, fontSize: 22, fontWeight: "900" },
-  childDetailRow: { gap: 3, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#e9edf3" },
-  childDetailLabel: { color: tokens.color.textMuted, fontSize: 12, fontWeight: "700" },
-  childDetailValue: { color: tokens.color.text, fontSize: 15, fontWeight: "800" },
+  parentEmptyState: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#f7f9fc"
+  },
+  parentPageHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingBottom: 2
+  },
+  parentPageHeadingIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#edf3ff",
+    borderWidth: 1,
+    borderColor: "#dfe9ff"
+  },
+  parentPageTitle: { color: tokens.color.text, fontSize: 24, lineHeight: 30, fontWeight: "900" },
+  parentPageContext: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 18 },
   emptyCard: { padding: 18, borderRadius: 17, backgroundColor: "#eef3fa" },
   successMark: { width: 58, height: 58, borderRadius: 18, backgroundColor: "#e8f5ee", alignItems: "center", justifyContent: "center" },
   successMarkText: { color: tokens.color.success, fontSize: 28, fontWeight: "900" },
