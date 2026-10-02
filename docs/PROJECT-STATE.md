@@ -933,3 +933,17 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Optional environment selectors `DEMO_SCHOOL_CODE`, `DEMO_PARENT_USERNAME`, and `DEMO_STUDENT_CODE` can target a specific existing family; otherwise the first eligible active Parent + Student is used.
 - The seed is designed to be rerun safely: the same demo attendance, homework, exam/result, fee and announcement records are updated instead of duplicated.
 - Fixed the dedicated Admin Accounts directory list at exactly 500px height with internal vertical scrolling, hidden horizontal overflow, stable scrollbar space and contained overscroll.
+
+
+### Testing Step 10.3 — Parent child switching
+- Implemented device persistence for the Parent's last selected child using Expo SecureStore. The preference is scoped by both school ID and Parent user ID, so different Parent accounts and different schools cannot overwrite each other's remembered child.
+- Parent Home now restores the remembered child when that child is still linked and active. If the remembered/current child is no longer available, the app safely falls back to the first active linked child and refreshes the stored preference.
+- Parent Home now returns only ACTIVE students. Withdrawn students no longer remain selectable in the current Parent Home child switcher.
+- The child selector is shown only when the Parent has more than one active linked child. A single-child Parent goes directly to that child's information without unnecessary switcher controls; the existing no-child state continues to instruct the Parent to contact school administration.
+- Switching children now invalidates in-flight child-specific requests. Attendance, timetable, learning, fees and communication responses from the previous child are ignored if they arrive after a newer child selection.
+- Learner and communication panels now use request-generation guards so stale async responses and stale errors cannot surface after rapid child switching or component replacement.
+- Detailed Parent announcements are now child-aware: school-wide and Parent-role announcements remain visible, while CLASS announcements are filtered to the selected child's class.
+- Child switch controls expose selected accessibility state, and the selected child is updated immediately before persistence so rapid repeated switching remains deterministic.
+- Preference-storage failures are treated as non-blocking convenience failures; Parent Home and manual switching continue to work even if device preference storage is temporarily unavailable.
+- Added API regression coverage proving an authenticated Parent cannot read the timetable of a student linked to another Parent account.
+- Step 10.3 is ready for local `pnpm verify` and manual multi-child Android/Expo validation.
