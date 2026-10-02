@@ -661,7 +661,8 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
           and(
             eq(students.schoolId, schoolId),
             eq(students.id, studentId),
-            eq(students.parentUserId, parentUserId)
+            eq(students.parentUserId, parentUserId),
+            eq(students.status, "ACTIVE")
           )
         )
         .limit(1);
