@@ -900,3 +900,14 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Updated the teacher-assignment regression expectation to account for the intentionally created second teacher profile while still verifying that the duplicate class+subject assignment is rejected.
 - Updated the legacy administrator-password regression test to enforce the current email-verification requirement instead of expecting the superseded direct password-change behavior.
 - The Step 9 bulk credential regression itself was already passing in the reported run; these fixes address the six unrelated API failures that prevented `pnpm verify` from completing.
+
+
+### Testing Step 10.1 — Parent authentication and entry
+- Re-audited the Parent first-login journey against Product Specification V1: role selection → active school selection → school-issued credentials → backend role validation → mandatory temporary-password replacement → Parent Home.
+- Existing API coverage already verifies school-scoped credentials, wrong-school rejection, role mismatch, account suspension, parent-only feature enforcement, and reactivation.
+- Expanded the Parent authentication regression to cover an incorrect password, `mustChangePassword` visibility through `/v1/auth/me`, Parent Home being blocked until the temporary password is replaced, successful Parent Home entry afterward, and refresh-token rotation preserving the Parent role and completed-password state.
+- Expanded subscription-suspension coverage so a Parent cannot start a new login while the school's subscription is suspended, while the public administrator contact endpoint remains available for recovery/contact purposes.
+- Fixed the mobile background session-status check: when an active Parent session encounters `school_service_unavailable` because the school subscription was suspended, the app now clears operational Parent/Teacher data, removes the stored authenticated session, disables cached authenticated reads, returns to the selected-school login screen, and shows the service-unavailable message instead of leaving stale home data visible.
+- Applied the same service-suspension transition to manual network-recovery checks and stored-session restoration, preventing a recovered network connection from dismissing the error and exposing stale cached Parent data while the subscription is still unavailable.
+- Suspended individual Parent accounts keep the dedicated suspended-account screen and school administrator contact card; this remains intentionally distinct from school subscription suspension.
+- Step 10.1 is ready for local `pnpm verify` plus manual Android/Expo validation before proceeding to Step 10.2.
