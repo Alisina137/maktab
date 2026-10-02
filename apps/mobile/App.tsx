@@ -1391,68 +1391,168 @@ function AppContent() {
 
         {screen === "home" && session?.user.role === "PARENT" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
-            <Text style={[styles.title, textDirection]}>{translate(locale, "parent.homeTitle")}</Text>
-            <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.homeSubtitle")}</Text>
-
-            {parentHome ? (
+            {parentTab === "HOME" ? (
               <>
-                <View style={styles.accountCard}>
-                  <Text style={[styles.accountName, textDirection]}>{parentHome.parent.fullName}</Text>
-                  <Text style={[styles.muted, textDirection]}>{school?.name} · {session.user.username}</Text>
-                </View>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.homeTitle")}</Text>
+                <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.homeSubtitle")}</Text>
 
-                {parentHome.children.length > 0 ? (
+                {parentHome ? (
                   <>
-                    {parentHome.children.length > 1 ? (
-                      <>
-                        <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
-                        <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
-                          {parentHome.children.map((item) => {
-                            const active = item.student.id === selectedChild?.student.id;
-                            return (
-                              <Pressable
-                                key={item.student.id}
-                                onPress={() => selectParentChild(item.student.id)}
-                                accessibilityRole="button"
-                                accessibilityState={{ selected: active }}
-                                style={[styles.childChip, active && styles.childChipActive]}
-                              >
-                                <Text style={active ? styles.childChipTextActive : styles.childChipText}>
-                                  {item.student.fullName}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                      </>
-                    ) : null}
+                    <View style={styles.accountCard}>
+                      <Text style={[styles.accountName, textDirection]}>{parentHome.parent.fullName}</Text>
+                      <Text style={[styles.muted, textDirection]}>{school?.name} · {session.user.username}</Text>
+                    </View>
 
-                    {selectedChild ? (
-                      <Animated.View
-                        style={[
-                          styles.childCard,
-                          {
-                            opacity: childOpacity,
-                            transform: [{ scale: childScale }]
-                          }
-                        ]}
-                      >
-                        <View style={styles.childBadge}><Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text></View>
-                        <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
-                        <View style={styles.childDetailRow}>
-                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
-                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.student.studentCode}</Text>
+                    {parentHome.children.length > 0 ? (
+                      <>
+                        {parentHome.children.length > 1 ? (
+                          <>
+                            <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "parent.switchChild")}</Text>
+                            <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
+                              {parentHome.children.map((item) => {
+                                const active = item.student.id === selectedChild?.student.id;
+                                return (
+                                  <Pressable
+                                    key={item.student.id}
+                                    onPress={() => selectParentChild(item.student.id)}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: active }}
+                                    style={[styles.childChip, active && styles.childChipActive]}
+                                  >
+                                    <Text style={active ? styles.childChipTextActive : styles.childChipText}>
+                                      {item.student.fullName}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </>
+                        ) : null}
+
+                        {selectedChild ? (
+                          <Animated.View
+                            style={[
+                              styles.childCard,
+                              {
+                                opacity: childOpacity,
+                                transform: [{ scale: childScale }]
+                              }
+                            ]}
+                          >
+                            <View style={styles.childBadge}>
+                              <Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text>
+                            </View>
+                            <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
+                            <View style={styles.childDetailRow}>
+                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
+                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.student.studentCode}</Text>
+                            </View>
+                            <View style={styles.childDetailRow}>
+                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
+                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.classSection.name} · {selectedChild.classSection.code}</Text>
+                            </View>
+                            <View style={styles.childDetailRow}>
+                              <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
+                              <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.academicYear.name}</Text>
+                            </View>
+                          </Animated.View>
+                        ) : null}
+                      </>
+                    ) : (
+                      <View style={styles.emptyCard}>
+                        <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
+                      </View>
+                    )}
+                  </>
+                ) : null}
+
+                {selectedChild ? (
+                  <>
+                    <ParentDashboardPanel
+                      key={`parent-dashboard-${reconnectEpoch}-${selectedChild.student.id}`}
+                      classId={selectedChild.student.classId}
+                      todayDate={parentToday}
+                      todayAttendance={
+                        parentAttendance.find((item) => item.date === parentToday)?.status ?? null
+                      }
+                      timetable={parentTimetable}
+                      timetableReady={parentTimetableReady}
+                      learning={parentLearning}
+                      announcements={parentAnnouncements}
+                      fees={parentFees}
+                      communicationReady={parentCommunicationReady}
+                      locale={locale}
+                      textDirection={textDirection}
+                    />
+
+                    <View style={styles.phaseCard}>
+                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.recent")}</Text>
+                      {parentAttendance.slice(0, 7).map((day) => (
+                        <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
+                          <Text style={[styles.historyDate, textDirection]}>{day.date}</Text>
+                          <AttendanceBadge locale={locale} status={day.status} />
                         </View>
-                        <View style={styles.childDetailRow}>
-                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
-                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.classSection.name} · {selectedChild.classSection.code}</Text>
-                        </View>
-                        <View style={styles.childDetailRow}>
-                          <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
-                          <Text style={[styles.childDetailValue, textDirection]}>{selectedChild.academicYear.name}</Text>
-                        </View>
-                      </Animated.View>
-                    ) : null}
+                      ))}
+                      {parentAttendance.length === 0 ? (
+                        <Text style={[styles.muted, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
+                      ) : null}
+                    </View>
+
+                    <View style={styles.phaseCard}>
+                      <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
+                      {parentNotifications.slice(0, 5).map((notification) => (
+                        <Pressable
+                          key={notification.id}
+                          onPress={() => void readNotification(notification.id)}
+                          style={[
+                            styles.notificationRow,
+                            direction === "rtl" && styles.rowRtl,
+                            !notification.readAt && styles.notificationUnread
+                          ]}
+                        >
+                          <View style={styles.notificationDotWrap}>
+                            {!notification.readAt ? <View style={styles.notificationDot} /> : null}
+                          </View>
+                          <View style={styles.flexCopy}>
+                            <Text style={[styles.notificationTitle, textDirection]}>
+                              {notification.type === "ATTENDANCE_ABSENT"
+                                ? translate(locale, "notifications.absent")
+                                : notification.type === "ATTENDANCE_LATE"
+                                  ? translate(locale, "notifications.late")
+                                  : notification.type === "HOMEWORK_PUBLISHED"
+                                    ? translate(locale, "notifications.homework")
+                                    : notification.type === "RESULTS_PUBLISHED"
+                                      ? translate(locale, "notifications.results")
+                                      : notification.title}
+                            </Text>
+                            <Text style={[styles.muted, textDirection]}>
+                              {String(notification.metadata.date ?? notification.metadata.dueAt ?? notification.message ?? "")}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      ))}
+                      {parentNotifications.length === 0 ? (
+                        <Text style={[styles.muted, textDirection]}>{translate(locale, "notifications.empty")}</Text>
+                      ) : null}
+                    </View>
+                  </>
+                ) : null}
+              </>
+            ) : null}
+
+            {parentTab === "HOMEWORK" ? (
+              <>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.navHomework")}</Text>
+                {selectedChild ? (
+                  <>
+                    <Text style={[styles.subtitle, textDirection]}>
+                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                    </Text>
+                    <ParentHomeworkContent
+                      learning={parentLearning}
+                      locale={locale}
+                      textDirection={textDirection}
+                    />
                   </>
                 ) : (
                   <View style={styles.emptyCard}>
@@ -1462,117 +1562,62 @@ function AppContent() {
               </>
             ) : null}
 
-            {selectedChild ? (
+            {parentTab === "ANNOUNCEMENTS" ? (
               <>
-                <ParentDashboardPanel
-                  key={`parent-dashboard-${reconnectEpoch}-${selectedChild.student.id}`}
-                  classId={selectedChild.student.classId}
-                  todayDate={parentToday}
-                  todayAttendance={
-                    parentAttendance.find((item) => item.date === parentToday)?.status ?? null
-                  }
-                  timetable={parentTimetable}
-                  timetableReady={parentTimetableReady}
-                  learning={parentLearning}
-                  announcements={parentAnnouncements}
-                  fees={parentFees}
-                  communicationReady={parentCommunicationReady}
-                  locale={locale}
-                  textDirection={textDirection}
-                />
-
-                <View style={styles.phaseCard}>
-                  <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "attendance.recent")}</Text>
-                  {parentAttendance.slice(0, 7).map((day) => (
-                    <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
-                      <Text style={[styles.historyDate, textDirection]}>{day.date}</Text>
-                      <AttendanceBadge locale={locale} status={day.status} />
-                    </View>
-                  ))}
-                  {parentAttendance.length === 0 ? (
-                    <Text style={[styles.muted, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
-                  ) : null}
-                </View>
-
-                <LearnerLearningPanel
-                  key={`parent-learning-${reconnectEpoch}-${selectedChild.student.id}`}
-                  accessToken={session.accessToken}
-                  studentId={selectedChild.student.id}
-                  mode="PARENT"
-                  locale={locale}
-                  textDirection={textDirection}
-                  onError={setAppError}
-                  onNotice={setNotice}
-                  onLoaded={(view) => {
-                    if (selectedChildIdRef.current === selectedChild.student.id) {
-                      setParentLearning(view);
-                    }
-                  }}
-                />
-
-                <CommunicationPanel
-                  key={`parent-communication-${reconnectEpoch}-${selectedChild.student.id}`}
-                  accessToken={session.accessToken}
-                  mode="PARENT"
-                  studentId={selectedChild.student.id}
-                  selectedClassId={selectedChild.student.classId}
-                  locale={locale}
-                  textDirection={textDirection}
-                  onError={setAppError}
-                  onNotice={setNotice}
-                  onLoaded={({ announcements, fees }) => {
-                    if (selectedChildIdRef.current !== selectedChild.student.id) return;
-                    setParentAnnouncements(announcements);
-                    setParentFees(fees);
-                    setParentCommunicationReady(true);
-                  }}
-                />
-
-                <View style={styles.phaseCard}>
-                  <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "notifications.title")}</Text>
-                  {parentNotifications.slice(0, 5).map((notification) => (
-                    <Pressable
-                      key={notification.id}
-                      onPress={() => void readNotification(notification.id)}
-                      style={[
-                        styles.notificationRow,
-                        direction === "rtl" && styles.rowRtl,
-                        !notification.readAt && styles.notificationUnread
-                      ]}
-                    >
-                      <View style={styles.notificationDotWrap}>
-                        {!notification.readAt ? <View style={styles.notificationDot} /> : null}
-                      </View>
-                      <View style={styles.flexCopy}>
-                        <Text style={[styles.notificationTitle, textDirection]}>
-                          {notification.type === "ATTENDANCE_ABSENT"
-                            ? translate(locale, "notifications.absent")
-                            : notification.type === "ATTENDANCE_LATE"
-                              ? translate(locale, "notifications.late")
-                              : notification.type === "HOMEWORK_PUBLISHED"
-                                ? translate(locale, "notifications.homework")
-                                : notification.type === "RESULTS_PUBLISHED"
-                                  ? translate(locale, "notifications.results")
-                                  : notification.title}
-                        </Text>
-                        <Text style={[styles.muted, textDirection]}>
-                          {String(notification.metadata.date ?? notification.metadata.dueAt ?? notification.message ?? "")}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                  {parentNotifications.length === 0 ? (
-                    <Text style={[styles.muted, textDirection]}>{translate(locale, "notifications.empty")}</Text>
-                  ) : null}
-                </View>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.navAnnouncements")}</Text>
+                {selectedChild ? (
+                  <>
+                    <Text style={[styles.subtitle, textDirection]}>
+                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                    </Text>
+                    <ParentAnnouncementsContent
+                      announcements={parentAnnouncements}
+                      classId={selectedChild.student.classId}
+                      ready={parentCommunicationReady}
+                      locale={locale}
+                      textDirection={textDirection}
+                    />
+                  </>
+                ) : (
+                  <View style={styles.emptyCard}>
+                    <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
+                  </View>
+                )}
               </>
             ) : null}
 
-            <AdminContactCard contact={adminContact} locale={locale} />
+            {parentTab === "MORE" ? (
+              <>
+                <Text style={[styles.title, textDirection]}>{translate(locale, "parent.moreTitle")}</Text>
+                {selectedChild ? (
+                  <>
+                    <Text style={[styles.subtitle, textDirection]}>
+                      {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                    </Text>
+                    <ParentMoreAcademicContent
+                      learning={parentLearning}
+                      fees={parentFees}
+                      communicationReady={parentCommunicationReady}
+                      locale={locale}
+                      textDirection={textDirection}
+                    />
+                  </>
+                ) : (
+                  <View style={styles.emptyCard}>
+                    <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
+                  </View>
+                )}
 
-            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
-              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
-            </Pressable>
+                <AdminContactCard contact={adminContact} locale={locale} />
+
+                <Pressable
+                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                  onPress={() => void logout()}
+                >
+                  <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         )}
 
@@ -1809,6 +1854,14 @@ function AppContent() {
         </Animated.View>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      {showParentNavigation ? (
+        <ParentBottomNavigation
+          activeTab={parentTab}
+          locale={locale}
+          onSelect={selectParentTab}
+        />
+      ) : null}
 
       {connectionRecovered ? (
         <ConnectionSuccessPopup
@@ -2283,6 +2336,7 @@ const styles = StyleSheet.create({
     opacity: 0.85
   },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 52, gap: 16 },
+  contentWithParentNav: { paddingBottom: 28 },
   center: { flex: 1, minHeight: 500, alignItems: "center", justifyContent: "center", gap: 12 },
   topbar: { gap: 14, marginBottom: 2 },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
