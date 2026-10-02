@@ -2,9 +2,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
+  formatAfn,
+  formatLocalizedDate,
+  formatLocalizedNumber,
   getDirection,
   translate,
-  type SupportedLocale
+  type SupportedLocale,
+  type TranslationKey
 } from "@maktablink/localization";
 import type {
   AnnouncementPayload,
@@ -17,6 +21,20 @@ export type ParentTab = "HOME" | "HOMEWORK" | "ANNOUNCEMENTS" | "MORE";
 type TextDirectionStyle = {
   textAlign: "right" | "left";
   writingDirection: "rtl" | "ltr";
+};
+
+const feeStatusKey: Record<FeeInvoiceViewPayload["invoice"]["status"], TranslationKey> = {
+  DRAFT: "fees.statusDraft",
+  ISSUED: "fees.statusIssued",
+  PARTIALLY_PAID: "fees.statusPartiallyPaid",
+  PAID: "fees.statusPaid",
+  OVERDUE: "fees.statusOverdue",
+  CANCELLED: "fees.statusCancelled"
+};
+
+const paymentKindKey: Record<FeeInvoiceViewPayload["payments"][number]["kind"], TranslationKey> = {
+  PAYMENT: "fees.payment",
+  REVERSAL: "fees.reversal"
 };
 
 export function ParentBottomNavigation({
@@ -41,11 +59,9 @@ export function ParentBottomNavigation({
     { key: "MORE", label: "parent.navMore", icon: "grid-outline", activeIcon: "grid" }
   ];
 
-  const ordered = rtl ? [...tabs].reverse() : tabs;
-
   return (
-    <View style={styles.bottomBar} accessibilityRole="tablist">
-      {ordered.map((tab) => {
+    <View style={[styles.bottomBar, rtl && styles.bottomBarRtl]} accessibilityRole="tablist">
+      {tabs.map((tab) => {
         const active = activeTab === tab.key;
         return (
           <Pressable
@@ -104,7 +120,7 @@ export function ParentHomeworkContent({
         <View key={item.homework.id} style={styles.contentItem}>
           <Text style={[styles.itemTitle, textDirection]}>{item.homework.title}</Text>
           <Text style={[styles.muted, textDirection]}>
-            {item.subjectName} · {translate(locale, "learning.due")} {item.homework.dueAt.slice(0, 10)}
+            {item.subjectName} · {translate(locale, "learning.due")} {formatLocalizedDate(item.homework.dueAt, locale)}
           </Text>
           <Text style={[styles.body, textDirection]}>{item.homework.content}</Text>
           {item.homework.attachmentUrl ? (
@@ -164,7 +180,7 @@ export function ParentAnnouncementsContent({
           <Text style={[styles.body, textDirection]}>{item.content}</Text>
           <View style={[styles.datePill, rtl && styles.selfEndRtl]}>
             <Ionicons name="calendar-outline" size={13} color={tokens.color.textMuted} />
-            <Text style={styles.datePillText}>{item.publishAt.slice(0, 10)}</Text>
+            <Text style={styles.datePillText}>{formatLocalizedDate(item.publishAt, locale)}</Text>
           </View>
         </View>
       ))}
@@ -220,7 +236,7 @@ export function ParentMoreAcademicContent({
             </View>
             <View style={styles.scoreBadge}>
               <Text style={styles.scoreText}>
-                {item.grade.score}/{item.examSubject.maxScore}
+                {formatLocalizedNumber(item.grade.score, locale)}/{formatLocalizedNumber(item.examSubject.maxScore, locale)}
               </Text>
             </View>
           </View>
@@ -240,7 +256,7 @@ export function ParentMoreAcademicContent({
           <View style={styles.flex}>
             <Text style={[styles.sectionTitle, textDirection]}>{translate(locale, "fees.title")}</Text>
             <Text style={[styles.muted, textDirection]}>
-              {translate(locale, "fees.outstanding")} · AFN {outstanding}
+              {translate(locale, "fees.outstanding")} · {formatAfn(outstanding, locale)}
             </Text>
           </View>
         </View>
@@ -259,25 +275,33 @@ export function ParentMoreAcademicContent({
                   {item.invoice.description || translate(locale, "fees.invoice")}
                 </Text>
                 <Text style={[styles.muted, textDirection]}>
-                  {translate(locale, "fees.due")} {item.invoice.dueDate} · {item.invoice.status}
+                  {translate(locale, "fees.due")} {formatLocalizedDate(item.invoice.dueDate, locale)} · {translate(locale, feeStatusKey[item.invoice.status])}
                 </Text>
               </View>
-              <Text style={styles.amountText}>AFN {item.outstanding}</Text>
+              <Text style={styles.amountText}>{formatAfn(item.outstanding, locale)}</Text>
             </View>
             <View style={[styles.moneyRow, rtl && styles.rowRtl]}>
               <Text style={[styles.muted, textDirection]}>
-                {translate(locale, "fees.amount")} AFN {item.invoice.amount}
+                {translate(locale, "fees.amount")} {formatAfn(item.invoice.amount, locale)}
               </Text>
               <Text style={[styles.muted, textDirection]}>
-                {translate(locale, "fees.paid")} AFN {item.paid}
+                {translate(locale, "fees.paid")} {formatAfn(item.paid, locale)}
               </Text>
             </View>
             {item.payments.length > 0 ? (
               <View style={styles.paymentList}>
                 {item.payments.map((payment) => (
-                  <Text key={payment.id} style={[styles.muted, textDirection]}>
-                    {payment.recordedAt.slice(0, 10)} · {payment.kind} · AFN {payment.amount} · {payment.method}
-                  </Text>
+                  <View key={payment.id} style={[styles.paymentRow, rtl && styles.rowRtl]}>
+                    <View style={styles.flex}>
+                      <Text style={[styles.paymentKind, textDirection]}>
+                        {translate(locale, paymentKindKey[payment.kind])}
+                      </Text>
+                      <Text style={[styles.muted, textDirection]}>
+                        {formatLocalizedDate(payment.recordedAt, locale)} · {payment.method}
+                      </Text>
+                    </View>
+                    <Text style={styles.paymentAmount}>{formatAfn(payment.amount, locale)}</Text>
+                  </View>
                 ))}
               </View>
             ) : null}
@@ -322,6 +346,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -5 },
     elevation: 12
   },
+  bottomBarRtl: { flexDirection: "row-reverse" },
   bottomTab: {
     flex: 1,
     minHeight: 58,
@@ -437,7 +462,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8
   },
-  paymentList: { gap: 3, paddingTop: 5 },
+  paymentList: { gap: 6, paddingTop: 5 },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderTopColor: "#eef1f5"
+  },
+  paymentKind: { color: tokens.color.text, fontSize: 12.5, fontWeight: "800" },
+  paymentAmount: { color: tokens.color.brandStrong, fontSize: 12, fontWeight: "900" },
   inlineLoading: { flexDirection: "row", alignItems: "center", gap: 9 },
   inlineLoadingText: { color: tokens.color.textMuted, fontSize: 12.5, fontWeight: "700" },
   loadingCard: {
