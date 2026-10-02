@@ -133,9 +133,11 @@ function AppContent() {
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
   const [parentToday, setParentToday] = useState("");
   const [parentTimetable, setParentTimetable] = useState<ParentTimetablePeriod[]>([]);
+  const [parentTimetableReady, setParentTimetableReady] = useState(false);
   const [parentLearning, setParentLearning] = useState<LearnerAcademicPayload | null>(null);
   const [parentAnnouncements, setParentAnnouncements] = useState<AnnouncementPayload[]>([]);
   const [parentFees, setParentFees] = useState<FeeInvoiceViewPayload[]>([]);
+  const [parentCommunicationReady, setParentCommunicationReady] = useState(false);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
@@ -305,9 +307,11 @@ function AppContent() {
       setParentAttendance([]);
       setParentToday("");
       setParentTimetable([]);
+      setParentTimetableReady(false);
       setParentLearning(null);
       setParentAnnouncements([]);
       setParentFees([]);
+      setParentCommunicationReady(false);
       void loadParentAttendance(session.accessToken, selectedChildId);
       void loadParentTimetable(session.accessToken, selectedChildId);
     }
@@ -352,9 +356,11 @@ function AppContent() {
           setSelectedChildId("");
           setParentAttendance([]);
           setParentTimetable([]);
+          setParentTimetableReady(false);
           setParentLearning(null);
           setParentAnnouncements([]);
           setParentFees([]);
+          setParentCommunicationReady(false);
           setParentNotifications([]);
           setTeacherToday(null);
           setAttendanceSheet(null);
@@ -429,9 +435,11 @@ function AppContent() {
     setParentAttendance([]);
     setParentToday("");
     setParentTimetable([]);
+    setParentTimetableReady(false);
     setParentLearning(null);
     setParentAnnouncements([]);
     setParentFees([]);
+    setParentCommunicationReady(false);
     setParentNotifications([]);
     setTeacherToday(null);
     setAdminContact(null);
@@ -512,9 +520,11 @@ function AppContent() {
             setSelectedChildId("");
             setParentAttendance([]);
             setParentTimetable([]);
+            setParentTimetableReady(false);
             setParentLearning(null);
             setParentAnnouncements([]);
             setParentFees([]);
+            setParentCommunicationReady(false);
             setParentNotifications([]);
             setTeacherToday(null);
             setAttendanceSheet(null);
@@ -713,6 +723,7 @@ function AppContent() {
     try {
       const result = await api.parentTimetable(accessToken, studentId);
       setParentTimetable(result.periods);
+      setParentTimetableReady(true);
     } catch (cause) {
       showCause(cause);
     }
@@ -891,9 +902,11 @@ function AppContent() {
       setParentAttendance([]);
       setParentToday("");
       setParentTimetable([]);
+      setParentTimetableReady(false);
       setParentLearning(null);
       setParentAnnouncements([]);
       setParentFees([]);
+      setParentCommunicationReady(false);
       setParentNotifications([]);
       setTeacherToday(null);
       setAdminContact(null);
@@ -1347,9 +1360,11 @@ function AppContent() {
                     parentAttendance.find((item) => item.date === parentToday)?.status ?? null
                   }
                   timetable={parentTimetable}
+                  timetableReady={parentTimetableReady}
                   learning={parentLearning}
                   announcements={parentAnnouncements}
                   fees={parentFees}
+                  communicationReady={parentCommunicationReady}
                   locale={locale}
                   textDirection={textDirection}
                 />
@@ -1391,6 +1406,7 @@ function AppContent() {
                   onLoaded={({ announcements, fees }) => {
                     setParentAnnouncements(announcements);
                     setParentFees(fees);
+                    setParentCommunicationReady(true);
                   }}
                 />
 
