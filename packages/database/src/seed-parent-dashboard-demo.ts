@@ -41,6 +41,17 @@ if (!connectionString) {
 const requestedSchoolCode = process.env.DEMO_SCHOOL_CODE?.trim() || null;
 const requestedParentUsername = process.env.DEMO_PARENT_USERNAME?.trim().toLowerCase() || null;
 const requestedStudentCode = process.env.DEMO_STUDENT_CODE?.trim().toUpperCase() || null;
+const requestedStudentIndexText = process.env.DEMO_STUDENT_INDEX?.trim() || "";
+const requestedStudentIndex = requestedStudentIndexText
+  ? Number.parseInt(requestedStudentIndexText, 10)
+  : null;
+
+if (
+  requestedStudentIndex !== null &&
+  (!Number.isInteger(requestedStudentIndex) || requestedStudentIndex < 1)
+) {
+  throw new Error("DEMO_STUDENT_INDEX must be a positive integer starting from 1.");
+}
 
 function schoolLocalDate(instant: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -99,7 +110,11 @@ async function main() {
   ];
   if (requestedSchoolCode) conditions.push(eq(schools.code, requestedSchoolCode));
   if (requestedParentUsername) conditions.push(eq(users.username, requestedParentUsername));
-  if (requestedStudentCode) conditions.push(eq(students.studentCode, requestedStudentCode));
+  if (!requestedStudentIndex && requestedStudentCode) {
+    conditions.push(eq(students.studentCode, requestedStudentCode));
+  }
+
+  const targetOffset = requestedStudentIndex ? requestedStudentIndex - 1 : 0;
 
   const [target] = await db
     .select({
@@ -136,11 +151,12 @@ async function main() {
     ))
     .where(and(...conditions))
     .orderBy(asc(schools.createdAt), asc(users.createdAt), asc(students.createdAt))
-    .limit(1);
+    .limit(1)
+    .offset(targetOffset);
 
   if (!target) {
     throw new Error(
-      "No active Parent + Student in an active academic year was found. Create/link them first, or set DEMO_SCHOOL_CODE / DEMO_PARENT_USERNAME / DEMO_STUDENT_CODE."
+      "No matching active Parent + Student in an active academic year was found. Check DEMO_SCHOOL_CODE / DEMO_PARENT_USERNAME / DEMO_STUDENT_CODE / DEMO_STUDENT_INDEX."
     );
   }
 
@@ -570,6 +586,9 @@ async function main() {
 
   console.log("");
   console.log("Parent dashboard demo data is ready.");
+  if (requestedStudentIndex) {
+    console.log("Selected child index: " + requestedStudentIndex);
+  }
   console.log("School: " + target.schoolName + " (" + target.schoolCode + ")");
   console.log("Parent: " + target.parentUsername);
   console.log("Student: " + target.studentName + " (" + target.studentCode + ")");
