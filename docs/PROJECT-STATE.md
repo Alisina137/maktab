@@ -959,3 +959,11 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Existing school-scoped authentication and tenant predicates remain the cross-school boundary: a Parent session is bound to one school and all Parent child queries include the authenticated school ID in addition to relationship checks.
 - Parent mobile UI remains read-only for attendance, learning/results, and fees; Teacher/Admin action controls are not rendered in Parent mode.
 - Step 10.4 is ready for local `pnpm verify` and a short manual Parent-role permission smoke test before proceeding to Step 10.5.
+
+
+### Admin student withdrawal control
+- Added an explicit student enrollment action in the Admin Student list for `ACTIVE ↔ WITHDRAWN`.
+- `Withdraw` updates the student record to `WITHDRAWN` without deleting historical attendance, grades, fees, enrollment history, or other school records.
+- Withdrawn students can be restored with `Reactivate enrollment`.
+- Student account suspension/reactivation remains a separate account-security action and is now labeled separately from enrollment status to avoid confusion.
+- Added Dari and Pashto labels for the new enrollment controls and confirmation message.
