@@ -2750,7 +2750,14 @@ button,
 }
 
 .admin-user-list-premium {
+  height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
   gap: 8px;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .admin-user-row-premium {
