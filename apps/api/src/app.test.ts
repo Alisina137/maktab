@@ -290,6 +290,19 @@ test("school-scoped credentials, forced password change, role matching, and susp
     temporaryPassword: string;
   }>();
 
+  const wrongPassword = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId: schoolA,
+      expectedRole: "PARENT",
+      username: "parentone",
+      password: "DefinitelyWrong2026!"
+    }
+  });
+  assert.equal(wrongPassword.statusCode, 401);
+  assert.equal(wrongPassword.json<{ error: string }>().error, "invalid_credentials");
+
   const wrongSchool = await app.inject({
     method: "POST",
     url: "/v1/auth/login",
@@ -329,6 +342,28 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const parentLoginBody = parentLogin.json<{ accessToken: string; mustChangePassword: boolean }>();
   assert.equal(parentLoginBody.mustChangePassword, true);
 
+  const meBeforePasswordChange = await app.inject({
+    method: "GET",
+    url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${parentLoginBody.accessToken}` }
+  });
+  assert.equal(meBeforePasswordChange.statusCode, 200);
+  assert.equal(
+    meBeforePasswordChange.json<{ mustChangePassword: boolean }>().mustChangePassword,
+    true
+  );
+
+  const blockedHomeBeforePasswordChange = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${parentLoginBody.accessToken}` }
+  });
+  assert.equal(blockedHomeBeforePasswordChange.statusCode, 403);
+  assert.equal(
+    blockedHomeBeforePasswordChange.json<{ error: string }>().error,
+    "password_change_required"
+  );
+
   const parentChange = await app.inject({
     method: "POST",
     url: "/v1/auth/change-temporary-password",
@@ -336,7 +371,37 @@ test("school-scoped credentials, forced password change, role matching, and susp
     payload: { newPassword: "ParentSecure2026!" }
   });
   assert.equal(parentChange.statusCode, 200);
-  const parentSession = parentChange.json<{ accessToken: string }>();
+  const parentSession = parentChange.json<{
+    accessToken: string;
+    refreshToken: string;
+    mustChangePassword: boolean;
+    user: { status: string; role: string };
+  }>();
+  assert.equal(parentSession.mustChangePassword, false);
+  assert.equal(parentSession.user.status, "ACTIVE");
+  assert.equal(parentSession.user.role, "PARENT");
+
+  const homeAfterPasswordChange = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
+  });
+  assert.equal(homeAfterPasswordChange.statusCode, 200);
+
+  const refreshedParent = await app.inject({
+    method: "POST",
+    url: "/v1/auth/refresh",
+    payload: { refreshToken: parentSession.refreshToken }
+  });
+  assert.equal(refreshedParent.statusCode, 200);
+  assert.equal(
+    refreshedParent.json<{ user: { role: string }; mustChangePassword: boolean }>().user.role,
+    "PARENT"
+  );
+  assert.equal(
+    refreshedParent.json<{ mustChangePassword: boolean }>().mustChangePassword,
+    false
+  );
 
   const suspend = await app.inject({
     method: "POST",
