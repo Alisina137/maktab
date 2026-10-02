@@ -356,6 +356,11 @@ function AppContent() {
           setScreen("home");
           setAppError("auth.accountSuspended");
           void loadAdminContact(activeSession.accessToken);
+        } else if (
+          cause instanceof ApiRequestError &&
+          cause.code === "school_service_unavailable"
+        ) {
+          await moveToServiceUnavailableLogin();
         }
       } finally {
         checking = false;
@@ -396,6 +401,29 @@ function AppContent() {
       setErrorExitRequested(false);
       setErrorMinimized(false);
     }
+  }
+
+  function clearOperationalHomeData() {
+    setParentHome(null);
+    setSelectedChildId("");
+    setParentAttendance([]);
+    setParentToday("");
+    setParentNotifications([]);
+    setTeacherToday(null);
+    setAdminContact(null);
+    setAttendanceSheet(null);
+    setAttendanceDraft({});
+    setNotice(null);
+  }
+
+  async function moveToServiceUnavailableLogin() {
+    await clearStoredSession();
+    setReadCacheScope(null);
+    setPreferCachedReads(false);
+    setSession(null);
+    clearOperationalHomeData();
+    setScreen("login");
+    setAppError("common.serviceUnavailable");
   }
 
   function showCause(cause: unknown, fallback: TranslationKey = "common.requestFailed") {
@@ -474,6 +502,13 @@ function AppContent() {
             setAppError("auth.accountSuspended");
             return true;
           }
+          if (
+            cause instanceof ApiRequestError &&
+            cause.code === "school_service_unavailable"
+          ) {
+            await moveToServiceUnavailableLogin();
+            return true;
+          }
           if (isNetworkApiError(cause)) throw cause;
         }
       }
@@ -547,9 +582,7 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
-          setAppError("common.serviceUnavailable");
-          setSession(null);
-          setScreen("login");
+          await moveToServiceUnavailableLogin();
           return;
         }
       }
@@ -570,9 +603,7 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "school_service_unavailable") {
-          setAppError("common.serviceUnavailable");
-          setSession(null);
-          setScreen("login");
+          await moveToServiceUnavailableLogin();
           return;
         }
 
