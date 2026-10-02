@@ -384,7 +384,7 @@ test("school-scoped credentials, forced password change, role matching, and susp
   const homeAfterPasswordChange = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
-    headers: { authorization: `Bearer ${activeParentAccessToken}` }
+    headers: { authorization: `Bearer ${parentSession.accessToken}` }
   });
   assert.equal(homeAfterPasswordChange.statusCode, 200);
 
