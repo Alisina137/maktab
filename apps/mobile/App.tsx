@@ -888,6 +888,10 @@ function AppContent() {
       setSelectedChildId("");
       setParentAttendance([]);
       setParentToday("");
+      setParentTimetable([]);
+      setParentLearning(null);
+      setParentAnnouncements([]);
+      setParentFees([]);
       setParentNotifications([]);
       setTeacherToday(null);
       setAdminContact(null);
