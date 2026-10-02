@@ -65,9 +65,21 @@ export interface TeacherAcademicView {
   timetable: TimetablePeriod[];
 }
 
+export interface ClassTimetableView {
+  period: TimetablePeriod;
+  subjectName: string;
+  subjectCode: string;
+  teacherName: string;
+}
+
 export interface AcademicStore {
   getOverview(schoolId: string): Promise<AcademicOverview>;
   getTeacherView(schoolId: string, teacherUserId: string): Promise<TeacherAcademicView>;
+  getClassTimetable(
+    schoolId: string,
+    academicYearId: string,
+    classId: string
+  ): Promise<ClassTimetableView[]>;
   createAcademicYear(schoolId: string, input: CreateAcademicYearInput): Promise<AcademicYear>;
   updateAcademicYear(schoolId: string, yearId: string, input: UpdateAcademicYearInput): Promise<AcademicYear>;
   setAcademicYearStatus(schoolId: string, yearId: string, status: AcademicYearStatus): Promise<AcademicYear>;
@@ -333,6 +345,40 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt))
       ]);
       return { assignments, negaranAssignments: negarans, timetable };
+    },
+
+    async getClassTimetable(schoolId, academicYearId, classId) {
+      await validateClassYear(schoolId, academicYearId, classId);
+      return db
+        .select({
+          period: timetablePeriods,
+          subjectName: subjects.name,
+          subjectCode: subjects.code,
+          teacherName: teacherProfiles.fullName
+        })
+        .from(timetablePeriods)
+        .innerJoin(
+          subjects,
+          and(
+            eq(subjects.id, timetablePeriods.subjectId),
+            eq(subjects.schoolId, timetablePeriods.schoolId)
+          )
+        )
+        .innerJoin(
+          teacherProfiles,
+          and(
+            eq(teacherProfiles.userId, timetablePeriods.teacherUserId),
+            eq(teacherProfiles.schoolId, timetablePeriods.schoolId)
+          )
+        )
+        .where(
+          and(
+            eq(timetablePeriods.schoolId, schoolId),
+            eq(timetablePeriods.academicYearId, academicYearId),
+            eq(timetablePeriods.classId, classId)
+          )
+        )
+        .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt));
     },
 
     async createAcademicYear(schoolId, input) {
