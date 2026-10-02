@@ -479,18 +479,22 @@ function AppContent() {
       checking = true;
       try {
         const me = await api.me(activeSession.accessToken);
-        const wasSuspended = activeSession.user.status === "SUSPENDED";
+        const latestSession = sessionRef.current;
+        if (!latestSession || latestSession.user.id !== activeSession.user.id) return;
+
+        const wasSuspended = latestSession.user.status === "SUSPENDED";
         const isSuspended = me.user.status === "SUSPENDED";
         const next: SessionPayload = {
-          ...activeSession,
+          ...latestSession,
           user: me.user,
           mustChangePassword: me.mustChangePassword
         };
 
         if (
-          me.user.status !== activeSession.user.status ||
-          me.mustChangePassword !== activeSession.mustChangePassword
+          me.user.status !== latestSession.user.status ||
+          me.mustChangePassword !== latestSession.mustChangePassword
         ) {
+          sessionRef.current = next;
           setSession(next);
           await saveStoredSession({ auth: next, school: activeSchool });
         }
