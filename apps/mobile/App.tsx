@@ -204,6 +204,12 @@ function AppContent() {
   }, [selectedChildId]);
 
   useEffect(() => {
+    if (session?.user.role === "PARENT") {
+      setParentTab("HOME");
+    }
+  }, [session?.user.id]);
+
+  useEffect(() => {
     setReadCacheFallbackListener(() => {
       if (session?.user.status === "SUSPENDED") {
         setPreferCachedReads(false);
