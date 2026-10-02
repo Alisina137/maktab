@@ -1505,11 +1505,18 @@ test("parent account can own three students and sees all three through one login
     app.inject({ method: "GET", url: "/v1/teacher/today", headers: parentAuth }),
     app.inject({ method: "GET", url: "/v1/teacher/learning", headers: parentAuth }),
     app.inject({ method: "POST", url: "/v1/teacher/homework", headers: parentAuth, payload: {} }),
+    app.inject({ method: "POST", url: "/v1/teacher/negaran/attendance", headers: parentAuth, payload: {} }),
     app.inject({ method: "GET", url: "/v1/student/home", headers: parentAuth }),
     app.inject({ method: "GET", url: "/v1/admin/families", headers: parentAuth }),
     app.inject({ method: "GET", url: "/v1/admin/communication", headers: parentAuth }),
     app.inject({ method: "POST", url: "/v1/admin/announcements", headers: parentAuth, payload: {} }),
-    app.inject({ method: "POST", url: "/v1/admin/fees/invoices", headers: parentAuth, payload: {} })
+    app.inject({ method: "POST", url: "/v1/admin/fees/invoices", headers: parentAuth, payload: {} }),
+    app.inject({
+      method: "PATCH",
+      url: `/v1/admin/attendance/${studentIds[0]}/students/${studentIds[0]}`,
+      headers: parentAuth,
+      payload: { status: "ABSENT" }
+    })
   ]);
   for (const response of forbiddenRoleRequests) {
     assert.equal(response.statusCode, 403);
