@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -61,9 +61,14 @@ export function CommunicationPanel({
   const [classId, setClassId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const loadRequestId = useRef(0);
 
   useEffect(() => {
-    void load();
+    const requestId = ++loadRequestId.current;
+    void load(requestId);
+    return () => {
+      if (loadRequestId.current === requestId) loadRequestId.current += 1;
+    };
   }, [accessToken, mode, studentId]);
 
   useEffect(() => {
@@ -76,7 +81,7 @@ export function CommunicationPanel({
     }
   }, [mode, supervisedClasses.map((item) => item.classId).join("|")]);
 
-  async function load() {
+  async function load(requestId: number) {
     setBusy(true);
     try {
       let loadedAnnouncements: AnnouncementPayload[] = [];
@@ -84,14 +89,12 @@ export function CommunicationPanel({
       const tasks: Array<Promise<unknown>> = [
         api.announcements(accessToken).then((result) => {
           loadedAnnouncements = result.announcements;
-          setAnnouncements(result.announcements);
         })
       ];
       if (mode === "PARENT" && studentId) {
         tasks.push(
           api.parentFees(accessToken, studentId).then((result) => {
             loadedFees = result.invoices;
-            setFees(result.invoices);
           })
         );
       }
@@ -99,20 +102,29 @@ export function CommunicationPanel({
         tasks.push(
           api.studentFees(accessToken).then((result) => {
             loadedFees = result.invoices;
-            setFees(result.invoices);
           })
         );
       }
+      let loadedNotifications: ParentNotification[] | null = null;
       if (mode !== "PARENT") {
-        tasks.push(api.notifications(accessToken).then((result) => setNotifications(result.notifications)));
+        tasks.push(
+          api.notifications(accessToken).then((result) => {
+            loadedNotifications = result.notifications;
+          })
+        );
       }
       await Promise.all(tasks);
+      if (requestId !== loadRequestId.current) return;
+      setAnnouncements(loadedAnnouncements);
+      setFees(loadedFees);
+      if (loadedNotifications) setNotifications(loadedNotifications);
       onLoaded?.({ announcements: loadedAnnouncements, fees: loadedFees });
     } catch (cause) {
+      if (requestId !== loadRequestId.current) return;
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
     } finally {
-      setBusy(false);
+      if (requestId === loadRequestId.current) setBusy(false);
     }
   }
 
@@ -133,7 +145,7 @@ export function CommunicationPanel({
       setTitle("");
       setContent("");
       onNotice(translate(locale, "communication.announcementSent"));
-      await load();
+      await load(++loadRequestId.current);
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
