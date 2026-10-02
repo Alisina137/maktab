@@ -374,7 +374,7 @@ function AppContent() {
 
       setPreferCachedReads(true);
       setNotice(null);
-      setAppError("common.apiUnavailable", "network");
+      setAppError("common.cachedOffline", "network");
     });
     return () => setReadCacheFallbackListener(null);
   }, [locale, session?.user.status]);
@@ -732,6 +732,7 @@ function AppContent() {
           if (cause instanceof ApiRequestError && cause.code === "session_invalid") {
             const refreshed = await refreshActiveSession();
             if (!refreshed) return false;
+            setPreferCachedReads(false);
             setReconnectEpoch((current) => current + 1);
             if (errorKindRef.current === "network") setErrorExitRequested(true);
             return true;
@@ -752,6 +753,9 @@ function AppContent() {
         }
       }
 
+      // Connectivity is confirmed. Network-backed refreshes triggered by the
+      // reconnect epoch must not short-circuit back to stale cached reads.
+      setPreferCachedReads(false);
       setReconnectEpoch((current) => current + 1);
 
       // A health check that started for a network error must not dismiss a
