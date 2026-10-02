@@ -440,15 +440,16 @@ async function request<T>(
 
       const headers = new Headers(init?.headers);
       const hasBearerToken = headers.get("Authorization")?.startsWith("Bearer ") ?? false;
-      const canRefresh =
+      const refreshHandler = sessionRefreshHandler;
+
+      if (
         options.allowSessionRefresh !== false &&
         response.status === 401 &&
         code === "session_invalid" &&
         hasBearerToken &&
-        sessionRefreshHandler;
-
-      if (canRefresh) {
-        const nextAccessToken = await sessionRefreshHandler();
+        refreshHandler
+      ) {
+        const nextAccessToken = await refreshHandler();
         if (nextAccessToken) {
           return request<T>(
             path,
