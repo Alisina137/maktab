@@ -302,6 +302,8 @@ function AppContent() {
       session.user.status !== "SUSPENDED" &&
       selectedChildId
     ) {
+      setParentAttendance([]);
+      setParentToday("");
       setParentTimetable([]);
       setParentLearning(null);
       setParentAnnouncements([]);
