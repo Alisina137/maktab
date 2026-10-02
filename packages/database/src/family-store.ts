@@ -298,7 +298,13 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
         .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
         .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
-        .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, parentUserId)))
+        .where(
+          and(
+            eq(students.schoolId, schoolId),
+            eq(students.parentUserId, parentUserId),
+            eq(students.status, "ACTIVE")
+          )
+        )
         .orderBy(asc(students.fullName));
       return { parent: profile, children };
     },
