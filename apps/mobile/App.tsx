@@ -66,8 +66,10 @@ import {
 } from "./src/read-cache";
 import {
   clearStoredSession,
+  loadPreferredLocale,
   loadPreferredParentChild,
   loadStoredSession,
+  savePreferredLocale,
   savePreferredParentChild,
   saveStoredSession
 } from "./src/session";
@@ -220,6 +222,13 @@ function AppContent() {
   );
 
   useEffect(() => {
+    void loadPreferredLocale()
+      .then((preferred) => {
+        if (preferred) setLocale(preferred);
+      })
+      .catch(() => {
+        // Dari remains the first-run/default locale if preference storage is unavailable.
+      });
     void restore();
   }, []);
 
@@ -1201,6 +1210,14 @@ function AppContent() {
     }
   }
 
+  function chooseLocale(value: SupportedLocale) {
+    setLocale(value);
+    setLanguageMenuOpen(false);
+    void savePreferredLocale(value).catch(() => {
+      // Language changes immediately even when device preference storage is unavailable.
+    });
+  }
+
   function chooseRole(value: MobileRole) {
     setRole(value);
     setAppError(null);
@@ -1297,10 +1314,7 @@ function AppContent() {
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
                       accessibilityLabel={languageLabel[item]}
-                      onPress={() => {
-                        setLocale(item);
-                        setLanguageMenuOpen(false);
-                      }}
+                      onPress={() => chooseLocale(item)}
                       style={({ pressed }) => [
                         styles.languageOption,
                         active && styles.languageOptionActive,
