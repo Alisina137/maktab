@@ -461,6 +461,109 @@ test("school-scoped credentials, forced password change, role matching, and susp
   assert.equal(homeAfterReactivate.statusCode, 200);
 });
 
+test("refresh sessions rotate once and logout revokes the current session", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "SESSION-ROTATION");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminAccessToken}` },
+    payload: {
+      username: "session.parent",
+      fullName: "Session Parent"
+    }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parent = parentResponse.json<{
+    user: { id: string };
+    temporaryPassword: string;
+  }>();
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "session.parent",
+      password: parent.temporaryPassword
+    }
+  });
+  assert.equal(login.statusCode, 200);
+
+  const loginBody = login.json<{ accessToken: string }>();
+  const changed = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${loginBody.accessToken}` },
+    payload: { newPassword: "SessionParent2026!" }
+  });
+  assert.equal(changed.statusCode, 200);
+
+  const initial = changed.json<{
+    accessToken: string;
+    refreshToken: string;
+  }>();
+
+  const firstRefresh = await app.inject({
+    method: "POST",
+    url: "/v1/auth/refresh",
+    payload: { refreshToken: initial.refreshToken }
+  });
+  assert.equal(firstRefresh.statusCode, 200);
+  const rotated = firstRefresh.json<{
+    accessToken: string;
+    refreshToken: string;
+  }>();
+  assert.notEqual(rotated.refreshToken, initial.refreshToken);
+  assert.notEqual(rotated.accessToken, initial.accessToken);
+
+  const replayOldRefresh = await app.inject({
+    method: "POST",
+    url: "/v1/auth/refresh",
+    payload: { refreshToken: initial.refreshToken }
+  });
+  assert.equal(replayOldRefresh.statusCode, 401);
+  assert.equal(replayOldRefresh.json<{ error: string }>().error, "refresh_invalid");
+
+  const meWithRotatedAccess = await app.inject({
+    method: "GET",
+    url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${rotated.accessToken}` }
+  });
+  assert.equal(meWithRotatedAccess.statusCode, 200);
+
+  const logout = await app.inject({
+    method: "POST",
+    url: "/v1/auth/logout",
+    payload: { refreshToken: rotated.refreshToken }
+  });
+  assert.equal(logout.statusCode, 204);
+
+  const refreshAfterLogout = await app.inject({
+    method: "POST",
+    url: "/v1/auth/refresh",
+    payload: { refreshToken: rotated.refreshToken }
+  });
+  assert.equal(refreshAfterLogout.statusCode, 401);
+  assert.equal(refreshAfterLogout.json<{ error: string }>().error, "refresh_invalid");
+
+  const meAfterLogout = await app.inject({
+    method: "GET",
+    url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${rotated.accessToken}` }
+  });
+  assert.equal(meAfterLogout.statusCode, 401);
+  assert.equal(meAfterLogout.json<{ error: string }>().error, "session_invalid");
+});
+
 test("school admin can model teacher assignments, Negaran responsibility, and timetable", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
