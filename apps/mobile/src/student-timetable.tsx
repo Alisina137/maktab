@@ -3,7 +3,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatLocalizedNumber,
-  formatLocalizedTime,
   getDirection,
   localizeDigits,
   translate,
@@ -36,6 +35,11 @@ const weekdayKey: Record<Exclude<Weekday, "FRIDAY">, TranslationKey> = {
   WEDNESDAY: "weekday.wednesday",
   THURSDAY: "weekday.thursday"
 };
+
+function formatStartTime(value: string, locale: SupportedLocale): string {
+  const compact = value.trim().replace(/^0(?=\d:)/, "");
+  return localizeDigits(compact, locale);
+}
 
 function currentAfghanistanWeekday(): Weekday {
   const label = new Intl.DateTimeFormat("en-US", {
@@ -145,7 +149,7 @@ export function StudentTimetableAgenda({
                   >
                     <View style={styles.timePill}>
                       <Text style={styles.timeText}>
-                        {formatLocalizedTime(item.period.startsAt, locale)}
+                        {formatStartTime(item.period.startsAt, locale)}
                       </Text>
                     </View>
                     <View style={styles.flex}>
