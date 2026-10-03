@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -109,7 +109,8 @@ export function StudentDashboard({
   notifications,
   communicationReady,
   locale,
-  textDirection
+  textDirection,
+  onOpenTimetable
 }: {
   timetable: StudentTimetablePayload | null;
   timetableReady: boolean;
@@ -120,6 +121,7 @@ export function StudentDashboard({
   communicationReady: boolean;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
+  onOpenTimetable: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const student = timetable?.student ?? learning?.student ?? null;
@@ -230,6 +232,34 @@ export function StudentDashboard({
           <LoadingValue locale={locale} />
         )}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={translate(locale, "student.viewTimetable")}
+        onPress={onOpenTimetable}
+        style={({ pressed }) => [
+          styles.timetableAction,
+          rtl && styles.rowRtl,
+          pressed && styles.pressed
+        ]}
+      >
+        <View style={styles.timetableActionIcon}>
+          <Ionicons name="calendar-outline" size={20} color={tokens.color.brandStrong} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={[styles.timetableActionTitle, textDirection]}>
+            {translate(locale, "student.viewTimetable")}
+          </Text>
+          <Text style={[styles.timetableActionSubtitle, textDirection]}>
+            {translate(locale, "student.timetableSubtitle")}
+          </Text>
+        </View>
+        <Ionicons
+          name={rtl ? "chevron-back" : "chevron-forward"}
+          size={18}
+          color={tokens.color.textMuted}
+        />
+      </Pressable>
 
       <View style={[styles.sectionHeading, rtl && styles.rowRtl]}>
         <View style={styles.sectionIcon}>
@@ -342,6 +372,36 @@ const styles = StyleSheet.create({
   metaValue: { color: tokens.color.text, fontSize: 12.5, lineHeight: 17, fontWeight: "900" },
   identifierValue: { writingDirection: "ltr", textAlign: "left" },
   identifierValueRtl: { textAlign: "right" },
+  timetableAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 72,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#dbe5f5",
+    backgroundColor: "#f7faff"
+  },
+  timetableActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#eaf1ff"
+  },
+  timetableActionTitle: {
+    color: tokens.color.text,
+    fontSize: 14.5,
+    fontWeight: "900"
+  },
+  timetableActionSubtitle: {
+    color: tokens.color.textMuted,
+    fontSize: 11.5,
+    lineHeight: 17
+  },
+  pressed: { opacity: 0.76 },
   sectionHeading: { flexDirection: "row", alignItems: "center", gap: 9 },
   sectionIcon: {
     width: 34,
