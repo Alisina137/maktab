@@ -1086,3 +1086,23 @@ Planned verification slices:
 - Reactivating the Student enrollment clears the unavailable state automatically and refreshes Student data.
 - Added English/Dari/Pashto title text for the unavailable Student state.
 - Extended the Student entry regression test to verify ACTIVE status, withdrawn `account_unavailable`, and successful reactivation.
+
+
+#### 11.2 — Student Home academic summary
+- Replaced the previous Student Home full-detail dump with a purpose-built academic summary, matching Product Specification V1 where `/student/home` is the Student academic-summary page and Timetable/Homework/Results/Announcements remain separate Student destinations.
+- Added active Student timetable context in the academic store and `GET /v1/student/timetable`. The response contains the active student, class, academic year, and class timetable periods and returns `account_unavailable` when the Student enrollment is no longer active.
+- Added a dedicated mobile `StudentDashboard` component.
+- Student Home now shows:
+  - Student identity and protected Student code;
+  - current class;
+  - academic year;
+  - today's timetable snapshot with teacher and localized time range;
+  - next/upcoming published homework;
+  - latest published result;
+  - latest visible school/role/class announcement;
+  - unread notification count.
+- Student Home loads timetable, learning, announcements, and notifications once at App level and keeps separate readiness state for the summary cards. This provides reusable state for later Student detail/navigation slices without duplicate initial fetches.
+- Student Home request generation is guarded so reconnect/session changes cannot paint stale Student data from an older request.
+- Full Homework, Results, Timetable, and Announcement lists are intentionally not rendered on Home; they remain planned for 11.3–11.6.
+- Added English/Dari/Pashto Student Home summary labels and kept code identifiers LTR while academic-year digits and dates follow the selected locale.
+- Extended API regression coverage so the Student timetable/context route is available for an ACTIVE Student and returns `account_unavailable` after withdrawal.
