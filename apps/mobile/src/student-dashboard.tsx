@@ -61,6 +61,7 @@ function SummaryCard({
   loading,
   wide = false,
   rtl,
+  locale,
   textDirection
 }: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -70,6 +71,7 @@ function SummaryCard({
   loading: boolean;
   wide?: boolean;
   rtl: boolean;
+  locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
   return (
@@ -81,7 +83,7 @@ function SummaryCard({
         <Text style={[styles.cardLabel, styles.flex, textDirection]}>{label}</Text>
       </View>
       {loading ? (
-        <LoadingValue locale={rtl ? "fa-AF" : "en"} />
+        <LoadingValue locale={locale} />
       ) : (
         <>
           <Text style={[styles.cardPrimary, textDirection]} numberOfLines={3}>
@@ -246,6 +248,7 @@ export function StudentDashboard({
           detail={scheduleDetail}
           loading={!timetableReady}
           rtl={rtl}
+          locale={locale}
           textDirection={textDirection}
         />
         <SummaryCard
@@ -255,6 +258,7 @@ export function StudentDashboard({
           detail={homeworkDetail}
           loading={!learningReady}
           rtl={rtl}
+          locale={locale}
           textDirection={textDirection}
         />
         <SummaryCard
@@ -264,6 +268,7 @@ export function StudentDashboard({
           detail={resultDetail}
           loading={!learningReady}
           rtl={rtl}
+          locale={locale}
           textDirection={textDirection}
         />
         <SummaryCard
@@ -272,6 +277,7 @@ export function StudentDashboard({
           primary={notificationPrimary}
           loading={!communicationReady}
           rtl={rtl}
+          locale={locale}
           textDirection={textDirection}
         />
         <SummaryCard
@@ -282,6 +288,7 @@ export function StudentDashboard({
           loading={!communicationReady}
           wide
           rtl={rtl}
+          locale={locale}
           textDirection={textDirection}
         />
       </View>
