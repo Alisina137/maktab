@@ -45,12 +45,14 @@ import {
   type ParentTimetablePeriod,
   type SchoolOption,
   type SessionPayload,
+  type StudentTimetablePayload,
   type TeacherTodayPayload
 } from "./src/api";
 import { AdminContactCard } from "./src/admin-contact-card";
 import { CommunicationPanel } from "./src/communication-ui";
-import { LearnerLearningPanel, TeacherLearningPanel } from "./src/learning-ui";
+import { TeacherLearningPanel } from "./src/learning-ui";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
+import { StudentDashboard } from "./src/student-dashboard";
 import {
   ParentAnnouncementsContent,
   ParentBottomNavigation,
@@ -179,6 +181,13 @@ function AppContent() {
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [studentEnrollmentUnavailable, setStudentEnrollmentUnavailable] = useState(false);
+  const [studentTimetable, setStudentTimetable] = useState<StudentTimetablePayload | null>(null);
+  const [studentTimetableReady, setStudentTimetableReady] = useState(false);
+  const [studentLearning, setStudentLearning] = useState<LearnerAcademicPayload | null>(null);
+  const [studentLearningReady, setStudentLearningReady] = useState(false);
+  const [studentAnnouncements, setStudentAnnouncements] = useState<AnnouncementPayload[]>([]);
+  const [studentNotifications, setStudentNotifications] = useState<ParentNotification[]>([]);
+  const [studentCommunicationReady, setStudentCommunicationReady] = useState(false);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
@@ -196,6 +205,7 @@ function AppContent() {
   const errorKindRef = useRef<AppErrorKind | null>(null);
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
+  const studentHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
@@ -498,6 +508,34 @@ function AppContent() {
   }, [screen, session?.accessToken, session?.user.role, selectedChildId, reconnectEpoch]);
 
   useEffect(() => {
+    const requestId = ++studentHomeLoadRequestId.current;
+    if (
+      screen === "home" &&
+      session?.user.role === "STUDENT" &&
+      session.user.status !== "SUSPENDED" &&
+      !session.mustChangePassword &&
+      !studentEnrollmentUnavailable
+    ) {
+      setStudentTimetable(null);
+      setStudentTimetableReady(false);
+      setStudentLearning(null);
+      setStudentLearningReady(false);
+      setStudentAnnouncements([]);
+      setStudentNotifications([]);
+      setStudentCommunicationReady(false);
+      void loadStudentHomeData(session.accessToken, requestId);
+    }
+  }, [
+    screen,
+    session?.accessToken,
+    session?.user.role,
+    session?.user.status,
+    session?.mustChangePassword,
+    studentEnrollmentUnavailable,
+    reconnectEpoch
+  ]);
+
+  useEffect(() => {
     if (!session || session.mustChangePassword || session.user.status === "SUSPENDED") return;
     void registerPushForSession(session.accessToken);
   }, [session?.accessToken, session?.mustChangePassword, session?.user.status]);
@@ -670,6 +708,13 @@ function AppContent() {
     setParentCommunicationReady(false);
     setParentNotifications([]);
     setTeacherToday(null);
+    setStudentTimetable(null);
+    setStudentTimetableReady(false);
+    setStudentLearning(null);
+    setStudentLearningReady(false);
+    setStudentAnnouncements([]);
+    setStudentNotifications([]);
+    setStudentCommunicationReady(false);
     setAdminContact(null);
     setAttendanceSheet(null);
     setAttendanceDraft({});
@@ -906,6 +951,31 @@ function AppContent() {
       setPreferCachedReads(false);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadStudentHomeData(accessToken: string, requestId: number) {
+    try {
+      const [timetableResult, learningResult, announcementResult, notificationResult] =
+        await Promise.all([
+          api.studentTimetable(accessToken),
+          api.studentHome(accessToken),
+          api.announcements(accessToken),
+          api.notifications(accessToken)
+        ]);
+
+      if (requestId !== studentHomeLoadRequestId.current) return;
+
+      setStudentTimetable(timetableResult);
+      setStudentTimetableReady(true);
+      setStudentLearning(learningResult);
+      setStudentLearningReady(true);
+      setStudentAnnouncements(announcementResult.announcements);
+      setStudentNotifications(notificationResult.notifications);
+      setStudentCommunicationReady(true);
+    } catch (cause) {
+      if (requestId !== studentHomeLoadRequestId.current) return;
+      showCause(cause);
     }
   }
 
@@ -1241,6 +1311,13 @@ function AppContent() {
       setParentNotifications([]);
       setTeacherToday(null);
       setStudentEnrollmentUnavailable(false);
+      setStudentTimetable(null);
+      setStudentTimetableReady(false);
+      setStudentLearning(null);
+      setStudentLearningReady(false);
+      setStudentAnnouncements([]);
+      setStudentNotifications([]);
+      setStudentCommunicationReady(false);
       setAdminContact(null);
       setAttendanceSheet(null);
       setAttendanceDraft({});
@@ -2136,28 +2213,25 @@ function AppContent() {
                 <Text style={[styles.subtitle, textDirection]}>{translate(locale, "student.homeSubtitle")}</Text>
               </View>
             </View>
-            <LearnerLearningPanel
-              key={`student-learning-${reconnectEpoch}`}
-              accessToken={session.accessToken}
-              mode="STUDENT"
+
+            <StudentDashboard
+              timetable={studentTimetable}
+              timetableReady={studentTimetableReady}
+              learning={studentLearning}
+              learningReady={studentLearningReady}
+              announcements={studentAnnouncements}
+              notifications={studentNotifications}
+              communicationReady={studentCommunicationReady}
               locale={locale}
               textDirection={textDirection}
-              onError={setAppError}
-              onNotice={setNotice}
             />
 
-            <CommunicationPanel
-              key={`student-communication-${reconnectEpoch}`}
-              accessToken={session.accessToken}
-              mode="STUDENT"
-              locale={locale}
-              textDirection={textDirection}
-              onError={setAppError}
-              onNotice={setNotice}
-            />
             <AdminContactCard contact={adminContact} locale={locale} />
 
-            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+              onPress={() => void logout()}
+            >
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
