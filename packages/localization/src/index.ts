@@ -158,6 +158,14 @@ export type TranslationKey =
   | "student.timetableSubtitle"
   | "student.noTimetable"
   | "student.noClassesForDay"
+  | "student.today"
+  | "student.viewHomework"
+  | "student.homeworkTitle"
+  | "student.homeworkSubtitle"
+  | "student.upcomingHomework"
+  | "student.pastHomework"
+  | "student.openAttachment"
+  | "student.noHomework"
   | "weekday.saturday"
   | "weekday.sunday"
   | "weekday.monday"
@@ -376,6 +384,14 @@ const en: Record<TranslationKey, string> = {
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
   "student.noClassesForDay": "No classes",
+  "student.today": "Today",
+  "student.viewHomework": "View homework",
+  "student.homeworkTitle": "My homework",
+  "student.homeworkSubtitle": "Published assignments from your teachers.",
+  "student.upcomingHomework": "Upcoming",
+  "student.pastHomework": "Past",
+  "student.openAttachment": "Open attachment",
+  "student.noHomework": "No published homework yet.",
   "weekday.saturday": "Saturday",
   "weekday.sunday": "Sunday",
   "weekday.monday": "Monday",
@@ -610,6 +626,14 @@ const dari: Record<TranslationKey, string> = {
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
   "student.noClassesForDay": "درسی وجود ندارد",
+  "student.today": "امروز",
+  "student.viewHomework": "دیدن کارخانگی",
+  "student.homeworkTitle": "کارخانگی من",
+  "student.homeworkSubtitle": "کارهای نشرشده از طرف آموزگاران شما.",
+  "student.upcomingHomework": "پیش‌رو",
+  "student.pastHomework": "گذشته",
+  "student.openAttachment": "باز کردن ضمیمه",
+  "student.noHomework": "هنوز کارخانگی نشرشده‌ای وجود ندارد.",
   "weekday.saturday": "شنبه",
   "weekday.sunday": "یکشنبه",
   "weekday.monday": "دوشنبه",
@@ -844,6 +868,14 @@ const pashto: Record<TranslationKey, string> = {
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
   "student.noClassesForDay": "درس نشته",
+  "student.today": "نن",
+  "student.viewHomework": "کورنۍ دنده وګورئ",
+  "student.homeworkTitle": "زما کورنۍ دنده",
+  "student.homeworkSubtitle": "ستاسو د ښوونکو له خوا خپرې شوې دندې.",
+  "student.upcomingHomework": "راتلونکې",
+  "student.pastHomework": "تېرې شوې",
+  "student.openAttachment": "ضمیمه پرانیزئ",
+  "student.noHomework": "تر اوسه خپره شوې کورنۍ دنده نشته.",
   "weekday.saturday": "شنبه",
   "weekday.sunday": "یکشنبه",
   "weekday.monday": "دوشنبه",
