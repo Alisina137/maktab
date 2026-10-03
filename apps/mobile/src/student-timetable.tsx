@@ -5,6 +5,7 @@ import {
   formatLocalizedNumber,
   formatLocalizedTimeRange,
   getDirection,
+  localizeDigits,
   translate,
   type SupportedLocale,
   type TranslationKey
@@ -18,7 +19,7 @@ type TextDirectionStyle = {
 
 type Weekday = StudentTimetablePayload["periods"][number]["period"]["weekday"];
 
-const schoolWeek: Weekday[] = [
+const schoolWeek: Array<Exclude<Weekday, "FRIDAY">> = [
   "SATURDAY",
   "SUNDAY",
   "MONDAY",
@@ -93,7 +94,7 @@ export function StudentTimetableAgenda({
             {timetable.classSection.name}
           </Text>
           <Text style={[styles.muted, textDirection]}>
-            {timetable.academicYear.name}
+            {localizeDigits(timetable.academicYear.name, locale)}
           </Text>
         </View>
       </View>
