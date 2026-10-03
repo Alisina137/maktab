@@ -55,6 +55,7 @@ import { ParentDashboardPanel } from "./src/parent-dashboard";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
 import { StudentHomeworkContent } from "./src/student-homework";
+import { StudentResultsContent } from "./src/student-results";
 import {
   ParentAnnouncementsContent,
   ParentBottomNavigation,
@@ -87,6 +88,7 @@ type Screen =
   | "home"
   | "student-timetable"
   | "student-homework"
+  | "student-results"
   | "teacher-attendance";
 
 const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student"> = {
@@ -2242,6 +2244,11 @@ function AppContent() {
                 setAppError(null);
                 setScreen("student-homework");
               }}
+              onOpenResults={() => {
+                setNotice(null);
+                setAppError(null);
+                setScreen("student-results");
+              }}
             />
 
             <AdminContactCard contact={adminContact} locale={locale} />
@@ -2321,6 +2328,43 @@ function AppContent() {
             </View>
 
             <StudentHomeworkContent
+              learning={studentLearning}
+              ready={studentLearningReady}
+              locale={locale}
+              textDirection={textDirection}
+            />
+          </View>
+        ) : null}
+
+        {screen === "student-results" &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        !studentEnrollmentUnavailable ? (
+          <View style={styles.section}>
+            <BackButton
+              locale={locale}
+              onPress={() => {
+                setNotice(null);
+                setAppError(null);
+                setScreen("home");
+              }}
+            />
+
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="ribbon-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>
+                  {translate(locale, "student.resultsTitle")}
+                </Text>
+                <Text style={[styles.subtitle, textDirection]}>
+                  {translate(locale, "student.resultsSubtitle")}
+                </Text>
+              </View>
+            </View>
+
+            <StudentResultsContent
               learning={studentLearning}
               ready={studentLearningReady}
               locale={locale}
