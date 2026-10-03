@@ -1106,3 +1106,19 @@ Planned verification slices:
 - Full Homework, Results, Timetable, and Announcement lists are intentionally not rendered on Home; they remain planned for 11.3–11.6.
 - Added English/Dari/Pashto Student Home summary labels and kept code identifiers LTR while academic-year digits and dates follow the selected locale.
 - Extended API regression coverage so the Student timetable/context route is available for an ACTIVE Student and returns `account_unavailable` after withdrawal.
+
+
+#### 11.3 — Student timetable
+- Fixed the missing Student timetable UI discovered during manual 11.2 review.
+- Student Home keeps the compact "Today's schedule" summary, but now also exposes a clear "View timetable" action.
+- Added a dedicated Student timetable screen using the existing `GET /v1/student/timetable` payload.
+- The Student timetable is rendered as a mobile agenda, not a desktop grid, matching the product specification.
+- The weekly agenda covers Saturday through Thursday and intentionally omits Friday.
+- Each day shows localized day name, number of periods, subject, teacher, and localized start/end time.
+- The current Afghanistan weekday is visually highlighted.
+- Empty days show a localized no-classes state. If the class has no timetable at all, a dedicated localized empty state is shown.
+- Student/class/academic-year context is shown at the top of the timetable screen.
+- Student code remains LTR-safe, while academic-year digits and timetable times follow the selected locale.
+- Opening the timetable reuses the already-loaded Student timetable state; Student data loading is no longer tied to the Home screen itself, so navigating Home → Timetable does not trigger a duplicate initial fetch or blank the timetable.
+- Withdrawal/suspension/session status checks remain active while the Student timetable screen is open; a withdrawn or suspended Student is returned to the protected unavailable state.
+- The complete timetable UI integration passed typecheck, tests, and build in GitHub CI.
