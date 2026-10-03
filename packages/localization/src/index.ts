@@ -166,6 +166,13 @@ export type TranslationKey =
   | "student.pastHomework"
   | "student.openAttachment"
   | "student.noHomework"
+  | "student.viewResults"
+  | "student.resultsTitle"
+  | "student.resultsSubtitle"
+  | "student.examTotal"
+  | "student.publishedOn"
+  | "student.teacherRemark"
+  | "student.noResults"
   | "weekday.saturday"
   | "weekday.sunday"
   | "weekday.monday"
@@ -392,6 +399,13 @@ const en: Record<TranslationKey, string> = {
   "student.pastHomework": "Past",
   "student.openAttachment": "Open attachment",
   "student.noHomework": "No published homework yet.",
+  "student.viewResults": "View results",
+  "student.resultsTitle": "My results",
+  "student.resultsSubtitle": "Published exam results from your school.",
+  "student.examTotal": "Exam total",
+  "student.publishedOn": "Published",
+  "student.teacherRemark": "Teacher remark",
+  "student.noResults": "No published results yet.",
   "weekday.saturday": "Saturday",
   "weekday.sunday": "Sunday",
   "weekday.monday": "Monday",
@@ -634,6 +648,13 @@ const dari: Record<TranslationKey, string> = {
   "student.pastHomework": "گذشته",
   "student.openAttachment": "باز کردن ضمیمه",
   "student.noHomework": "هنوز کارخانگی نشرشده‌ای وجود ندارد.",
+  "student.viewResults": "دیدن نتایج",
+  "student.resultsTitle": "نتایج من",
+  "student.resultsSubtitle": "نتایج امتحان‌های نشرشده مکتب شما.",
+  "student.examTotal": "مجموع امتحان",
+  "student.publishedOn": "نشرشده",
+  "student.teacherRemark": "ملاحظه آموزگار",
+  "student.noResults": "هنوز نتیجه‌ای نشر نشده است.",
   "weekday.saturday": "شنبه",
   "weekday.sunday": "یکشنبه",
   "weekday.monday": "دوشنبه",
@@ -876,6 +897,13 @@ const pashto: Record<TranslationKey, string> = {
   "student.pastHomework": "تېرې شوې",
   "student.openAttachment": "ضمیمه پرانیزئ",
   "student.noHomework": "تر اوسه خپره شوې کورنۍ دنده نشته.",
+  "student.viewResults": "پایلې وګورئ",
+  "student.resultsTitle": "زما پایلې",
+  "student.resultsSubtitle": "ستاسو د ښوونځي خپرې شوې ازموینې پایلې.",
+  "student.examTotal": "د ازموینې ټولټال",
+  "student.publishedOn": "خپره شوې",
+  "student.teacherRemark": "د ښوونکي یادونه",
+  "student.noResults": "تر اوسه پایله نه ده خپره شوې.",
   "weekday.saturday": "شنبه",
   "weekday.sunday": "یکشنبه",
   "weekday.monday": "دوشنبه",
