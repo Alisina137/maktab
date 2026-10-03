@@ -135,6 +135,29 @@ export interface ParentTimetablePeriod {
   teacherName: string;
 }
 
+export interface StudentTimetablePayload {
+  student: {
+    id: string;
+    studentCode: string;
+    fullName: string;
+    status: "ACTIVE" | "WITHDRAWN";
+    academicYearId: string;
+    classId: string;
+  };
+  classSection: {
+    id: string;
+    code: string;
+    name: string;
+    academicYearId: string;
+  };
+  academicYear: {
+    id: string;
+    name: string;
+    status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+  };
+  periods: ParentTimetablePeriod[];
+}
+
 export interface ParentNotification {
   id: string;
   type: string;
@@ -705,6 +728,12 @@ export const api = {
 
   studentStatus(accessToken: string) {
     return request<{ studentId: string; status: "ACTIVE" }>("/v1/student/status", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  studentTimetable(accessToken: string) {
+    return request<StudentTimetablePayload>("/v1/student/timetable", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
