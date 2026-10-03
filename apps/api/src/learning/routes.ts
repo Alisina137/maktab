@@ -194,6 +194,25 @@ export function registerLearningRoutes(
     }
   );
 
+  app.get("/v1/student/status", async (request, reply) => {
+    const context = await requireRole(request, reply, accounts, "STUDENT");
+    if (!context) return;
+    try {
+      return await learning.getStudentEnrollmentStatus(
+        context.user.schoolId,
+        context.user.id
+      );
+    } catch (error) {
+      if (error instanceof LearningNotFoundError) {
+        return reply.code(403).send({
+          error: "account_unavailable",
+          message: "This student is no longer actively enrolled. Contact the school administration."
+        });
+      }
+      return sendLearningError(reply, error);
+    }
+  });
+
   app.get("/v1/student/home", async (request, reply) => {
     const context = await requireRole(request, reply, accounts, "STUDENT");
     if (!context) return;
