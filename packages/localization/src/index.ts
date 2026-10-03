@@ -153,6 +153,17 @@ export type TranslationKey =
   | "student.noAnnouncements"
   | "student.unreadNotifications"
   | "student.noUnreadNotifications"
+  | "student.viewTimetable"
+  | "student.timetableTitle"
+  | "student.timetableSubtitle"
+  | "student.noTimetable"
+  | "student.noClassesForDay"
+  | "weekday.saturday"
+  | "weekday.sunday"
+  | "weekday.monday"
+  | "weekday.tuesday"
+  | "weekday.wednesday"
+  | "weekday.thursday"
   | "learning.homework"
   | "learning.homeworkHint"
   | "learning.assignments"
@@ -360,6 +371,17 @@ const en: Record<TranslationKey, string> = {
   "student.noAnnouncements": "No announcement available",
   "student.unreadNotifications": "Unread notifications",
   "student.noUnreadNotifications": "You're all caught up",
+  "student.viewTimetable": "View timetable",
+  "student.timetableTitle": "My timetable",
+  "student.timetableSubtitle": "Your weekly class agenda.",
+  "student.noTimetable": "No timetable has been created for your class yet.",
+  "student.noClassesForDay": "No classes",
+  "weekday.saturday": "Saturday",
+  "weekday.sunday": "Sunday",
+  "weekday.monday": "Monday",
+  "weekday.tuesday": "Tuesday",
+  "weekday.wednesday": "Wednesday",
+  "weekday.thursday": "Thursday",
   "learning.homework": "Homework",
   "learning.homeworkHint": "Create work only for your active subject and class assignments.",
   "learning.assignments": "Teaching assignments",
@@ -583,6 +605,17 @@ const dari: Record<TranslationKey, string> = {
   "student.noAnnouncements": "اعلانی موجود نیست",
   "student.unreadNotifications": "اعلان‌های ناخوانده",
   "student.noUnreadNotifications": "اعلان ناخوانده‌ای ندارید",
+  "student.viewTimetable": "دیدن تقسیم اوقات",
+  "student.timetableTitle": "تقسیم اوقات من",
+  "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
+  "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
+  "student.noClassesForDay": "درسی وجود ندارد",
+  "weekday.saturday": "شنبه",
+  "weekday.sunday": "یکشنبه",
+  "weekday.monday": "دوشنبه",
+  "weekday.tuesday": "سه‌شنبه",
+  "weekday.wednesday": "چهارشنبه",
+  "weekday.thursday": "پنجشنبه",
   "learning.homework": "وظیفه",
   "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
   "learning.assignments": "تکالیف تدریس",
@@ -806,6 +839,17 @@ const pashto: Record<TranslationKey, string> = {
   "student.noAnnouncements": "اعلان نشته",
   "student.unreadNotifications": "نه لوستل شوې خبرتیاوې",
   "student.noUnreadNotifications": "ټولې خبرتیاوې مو لوستې دي",
+  "student.viewTimetable": "مهالویش وګورئ",
+  "student.timetableTitle": "زما مهالویش",
+  "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
+  "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
+  "student.noClassesForDay": "درس نشته",
+  "weekday.saturday": "شنبه",
+  "weekday.sunday": "یکشنبه",
+  "weekday.monday": "دوشنبه",
+  "weekday.tuesday": "سې‌شنبه",
+  "weekday.wednesday": "چهارشنبه",
+  "weekday.thursday": "پنجشنبه",
   "learning.homework": "کورنۍ دنده",
   "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
   "learning.assignments": "د تدریس دندې",
