@@ -200,6 +200,12 @@ export function registerLearningRoutes(
     try {
       return await learning.getStudentAcademicView(context.user.schoolId, context.user.id);
     } catch (error) {
+      if (error instanceof LearningNotFoundError) {
+        return reply.code(403).send({
+          error: "account_unavailable",
+          message: "This student is no longer actively enrolled. Contact the school administration."
+        });
+      }
       return sendLearningError(reply, error);
     }
   });
