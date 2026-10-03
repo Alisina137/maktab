@@ -1122,3 +1122,21 @@ Planned verification slices:
 - Opening the timetable reuses the already-loaded Student timetable state; Student data loading is no longer tied to the Home screen itself, so navigating Home → Timetable does not trigger a duplicate initial fetch or blank the timetable.
 - Withdrawal/suspension/session status checks remain active while the Student timetable screen is open; a withdrawn or suspended Student is returned to the protected unavailable state.
 - The complete timetable UI integration passed typecheck, tests, and build in GitHub CI.
+
+
+#### 11.3 refinement — Student timetable readability
+- Student timetable period rows now show only the class start time (for example 09:45) instead of a start→end range, matching the requested quick-scan mobile behavior.
+- The current Afghanistan weekday is now visibly emphasized with a 2px brand border, tinted card background, subtle elevation, stronger count pill, and a localized Today/امروز/نن badge rather than relying only on calendar-icon color.
+- Day grouping remains Saturday through Thursday, with Friday omitted.
+
+#### 11.4 — Student homework
+- Added a dedicated Student Homework screen reachable from Student Home through a clear View homework action.
+- The screen reuses the Student learning payload already loaded at App level, avoiding a duplicate initial request when Home → Homework is opened.
+- Student Homework remains read-only and uses the existing server visibility contract: draft homework is hidden; published/closed homework is available to the linked active Student.
+- Assignments are grouped into Upcoming and Past sections. Upcoming contains published assignments whose due date has not passed; closed or expired assignments appear under Past.
+- Each homework card shows title, subject, class, localized due date, and teacher instructions.
+- Optional HTTP(S) homework attachments expose an Open attachment action using the device link handler. Attachment-open failure is non-blocking.
+- Homework counts, dates, labels, direction, and empty states are localized for English, Dari, and Pashto.
+- Student withdrawal/suspension/session protections remain active on the Homework screen and return the Student to the protected unavailable state when necessary.
+- Existing API regression coverage already proves Student draft homework is hidden and becomes visible only after the assigned teacher publishes it.
+- The combined timetable refinement + Student Homework implementation passed typecheck, tests, and build in GitHub CI.
