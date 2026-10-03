@@ -3040,6 +3040,22 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     parentCorrected.json<{ results: Array<{ grade: { score: number } }> }>().results[0]?.grade.score,
     91
   );
+
+  const studentCorrected = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: studentAuth
+  });
+  const correctedStudentResult = studentCorrected.json<{
+    results: Array<{
+      grade: { score: number; remark: string | null; status: string };
+      exam: { status: string };
+    }>;
+  }>().results[0];
+  assert.equal(correctedStudentResult?.grade.score, 91);
+  assert.equal(correctedStudentResult?.grade.remark, "Reviewed");
+  assert.equal(correctedStudentResult?.grade.status, "PUBLISHED");
+  assert.equal(correctedStudentResult?.exam.status, "PUBLISHED");
 });
 
 
