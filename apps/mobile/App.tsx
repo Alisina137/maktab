@@ -178,6 +178,7 @@ function AppContent() {
   const [parentCommunicationReady, setParentCommunicationReady] = useState(false);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
+  const [studentEnrollmentUnavailable, setStudentEnrollmentUnavailable] = useState(false);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
@@ -534,6 +535,7 @@ function AppContent() {
         }
 
         if (isSuspended) {
+          setStudentEnrollmentUnavailable(false);
           setScreen("home");
           setParentHome(null);
           setSelectedChildId("");
@@ -550,10 +552,23 @@ function AppContent() {
           setAttendanceDraft({});
           void loadAdminContact(latestSession.accessToken);
           if (!wasSuspended) setAppError("auth.accountSuspended");
-        } else if (wasSuspended) {
-          setAppError(null);
-          setScreen(screenForSession(next));
-          setReconnectEpoch((current) => current + 1);
+        } else {
+          if (next.user.role === "STUDENT" && !next.mustChangePassword) {
+            await api.studentStatus(latestSession.accessToken);
+            if (studentEnrollmentUnavailable) {
+              setStudentEnrollmentUnavailable(false);
+              if (errorKeyRef.current === "auth.accountUnavailable") {
+                setAppError(null);
+              }
+              setReconnectEpoch((current) => current + 1);
+            }
+          }
+
+          if (wasSuspended) {
+            setAppError(null);
+            setScreen(screenForSession(next));
+            setReconnectEpoch((current) => current + 1);
+          }
         }
       } catch (cause) {
         if (
@@ -569,9 +584,21 @@ function AppContent() {
               ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
               : current
           );
+          setStudentEnrollmentUnavailable(false);
           setScreen("home");
           setAppError("auth.accountSuspended");
           void loadAdminContact(activeSession.accessToken);
+        } else if (
+          cause instanceof ApiRequestError &&
+          cause.code === "account_unavailable" &&
+          sessionRef.current?.user.role === "STUDENT"
+        ) {
+          setStudentEnrollmentUnavailable(true);
+          setPreferCachedReads(false);
+          setNotice(null);
+          setScreen("home");
+          setAppError("auth.accountUnavailable");
+          void loadAdminContact(sessionRef.current.accessToken);
         } else if (
           cause instanceof ApiRequestError &&
           cause.code === "school_service_unavailable"
@@ -591,7 +618,8 @@ function AppContent() {
     school?.id,
     session?.accessToken,
     session?.user.status,
-    session?.mustChangePassword
+    session?.mustChangePassword,
+    studentEnrollmentUnavailable
   ]);
 
   useEffect(() => {
@@ -608,6 +636,15 @@ function AppContent() {
   }, [errorKind, retryingConnection, errorExitRequested, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
 
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
+    if (key === "auth.accountUnavailable" && sessionRef.current?.user.role === "STUDENT") {
+      setStudentEnrollmentUnavailable(true);
+      setPreferCachedReads(false);
+      setNotice(null);
+      if (sessionRef.current?.accessToken) {
+        void loadAdminContact(sessionRef.current.accessToken);
+      }
+    }
+
     const nextKind = key ? kind : null;
     errorKeyRef.current = key;
     errorKindRef.current = nextKind;
@@ -1122,6 +1159,7 @@ function AppContent() {
       });
       sessionRef.current = next;
       schoolRef.current = school;
+      setStudentEnrollmentUnavailable(false);
       setSession(next);
       setReadCacheScope(`${school.id}:${next.user.id}`);
       await saveStoredSession({ auth: next, school });
@@ -1202,6 +1240,7 @@ function AppContent() {
       setParentCommunicationReady(false);
       setParentNotifications([]);
       setTeacherToday(null);
+      setStudentEnrollmentUnavailable(false);
       setAdminContact(null);
       setAttendanceSheet(null);
       setAttendanceDraft({});
@@ -2052,7 +2091,41 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session?.user.role === "STUDENT" && session.user.status !== "SUSPENDED" && (
+        {screen === "home" &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        studentEnrollmentUnavailable ? (
+          <View style={styles.section}>
+            <View style={styles.suspendedCard}>
+              <View style={styles.suspendedIcon}>
+                <Ionicons name="school-outline" size={26} color={tokens.color.warning} />
+              </View>
+              <Text style={[styles.title, textDirection]}>
+                {translate(locale, "student.accountUnavailableTitle")}
+              </Text>
+              <Text style={[styles.subtitle, textDirection]}>
+                {translate(locale, "auth.accountUnavailable")}
+              </Text>
+              <Text style={[styles.suspendedHint, textDirection]}>
+                {translate(locale, "suspension.contactHint")}
+              </Text>
+            </View>
+
+            <AdminContactCard contact={adminContact} locale={locale} />
+
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+              onPress={() => void logout()}
+            >
+              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {screen === "home" &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        !studentEnrollmentUnavailable ? (
           <View style={styles.section}>
             <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
               <View style={styles.heroIcon}>
@@ -2088,7 +2161,7 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
           </View>
-        )}
+        ) : null}
 
         {screen === "teacher-attendance" && session?.user.role === "TEACHER" && session.user.status !== "SUSPENDED" && attendanceSheet && (
           <View style={styles.section}>
