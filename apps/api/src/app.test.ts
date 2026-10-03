@@ -614,6 +614,17 @@ test("student entry enforces role, temporary password, active enrollment, and su
   assert.equal(activeSession.user.status, "ACTIVE");
   assert.equal(activeSession.mustChangePassword, false);
 
+  const studentStatus = await app.inject({
+    method: "GET",
+    url: "/v1/student/status",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(studentStatus.statusCode, 200);
+  assert.deepEqual(
+    studentStatus.json<{ studentId: string; status: string }>(),
+    { studentId, status: "ACTIVE" }
+  );
+
   const studentHome = await app.inject({
     method: "GET",
     url: "/v1/student/home",
@@ -648,6 +659,14 @@ test("student entry enforces role, temporary password, active enrollment, and su
   });
   assert.equal(withdraw.statusCode, 200);
 
+  const withdrawnStatus = await app.inject({
+    method: "GET",
+    url: "/v1/student/status",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(withdrawnStatus.statusCode, 403);
+  assert.equal(withdrawnStatus.json<{ error: string }>().error, "account_unavailable");
+
   const withdrawnHome = await app.inject({
     method: "GET",
     url: "/v1/student/home",
@@ -663,6 +682,17 @@ test("student entry enforces role, temporary password, active enrollment, and su
     payload: { status: "ACTIVE" }
   });
   assert.equal(reactivateEnrollment.statusCode, 200);
+
+  const reactivatedStatus = await app.inject({
+    method: "GET",
+    url: "/v1/student/status",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(reactivatedStatus.statusCode, 200);
+  assert.equal(
+    reactivatedStatus.json<{ studentId: string; status: string }>().status,
+    "ACTIVE"
+  );
 
   const suspend = await app.inject({
     method: "POST",
