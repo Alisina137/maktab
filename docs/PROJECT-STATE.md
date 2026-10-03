@@ -1075,3 +1075,14 @@ Planned verification slices:
 - Account suspension independently blocks Student academic access with `account_suspended`.
 - The Student entry test creates the school-issued Parent/Student relationship and Student account through public admin APIs only; no direct database manipulation is used.
 - Automated typecheck/tests passed for the completed 11.1 changes; final workflow build verification is tracked before device acceptance.
+
+
+#### 11.1 follow-up — live withdrawal detection
+- Fixed a live Student withdrawal UX gap found during manual testing.
+- Root cause: the mobile 3-second account-status poll checked only the user account status. Student withdrawal changes enrollment status in the students table, so an already-open Student session remained visually active until an academic request reloaded.
+- Added a lightweight `GET /v1/student/status` route backed by an ACTIVE-enrollment lookup.
+- Mobile Student status sync now checks that route alongside account status. A withdrawn enrollment immediately enters the localized `auth.accountUnavailable` state without logout/restart.
+- Withdrawn Student academic panels are hidden and replaced with a localized unavailable/contact-school screen, administrator contact, and logout.
+- Reactivating the Student enrollment clears the unavailable state automatically and refreshes Student data.
+- Added English/Dari/Pashto title text for the unavailable Student state.
+- Extended the Student entry regression test to verify ACTIVE status, withdrawn `account_unavailable`, and successful reactivation.
