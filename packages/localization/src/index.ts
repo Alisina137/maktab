@@ -139,6 +139,20 @@ export type TranslationKey =
   | "student.homeTitle"
   | "student.homeSubtitle"
   | "student.accountUnavailableTitle"
+  | "student.dashboard"
+  | "student.studentCode"
+  | "student.class"
+  | "student.academicYear"
+  | "student.todaySchedule"
+  | "student.noClassesToday"
+  | "student.homeworkDue"
+  | "student.noHomeworkDue"
+  | "student.latestResult"
+  | "student.noPublishedResult"
+  | "student.latestAnnouncement"
+  | "student.noAnnouncements"
+  | "student.unreadNotifications"
+  | "student.noUnreadNotifications"
   | "learning.homework"
   | "learning.homeworkHint"
   | "learning.assignments"
@@ -330,8 +344,22 @@ const en: Record<TranslationKey, string> = {
   "notifications.homework": "New homework",
   "notifications.results": "Results published",
   "student.homeTitle": "Student home",
-  "student.homeSubtitle": "Your published homework and results from this school.",
+  "student.homeSubtitle": "Your academic summary for this school.",
   "student.accountUnavailableTitle": "Student access unavailable",
+  "student.dashboard": "At a glance",
+  "student.studentCode": "Student code",
+  "student.class": "Class",
+  "student.academicYear": "Academic year",
+  "student.todaySchedule": "Today's schedule",
+  "student.noClassesToday": "No classes scheduled today",
+  "student.homeworkDue": "Homework due",
+  "student.noHomeworkDue": "No upcoming homework",
+  "student.latestResult": "Latest result",
+  "student.noPublishedResult": "No published result yet",
+  "student.latestAnnouncement": "Latest announcement",
+  "student.noAnnouncements": "No announcement available",
+  "student.unreadNotifications": "Unread notifications",
+  "student.noUnreadNotifications": "You're all caught up",
   "learning.homework": "Homework",
   "learning.homeworkHint": "Create work only for your active subject and class assignments.",
   "learning.assignments": "Teaching assignments",
@@ -539,8 +567,22 @@ const dari: Record<TranslationKey, string> = {
   "notifications.homework": "وظیفه جدید",
   "notifications.results": "نتایج نشر شد",
   "student.homeTitle": "خانه شاگرد",
-  "student.homeSubtitle": "وظایف و نتایج نشرشده شما در این مکتب.",
+  "student.homeSubtitle": "خلاصه معلومات درسی شما در این مکتب.",
   "student.accountUnavailableTitle": "دسترسی شاگرد غیرفعال است",
+  "student.dashboard": "در یک نگاه",
+  "student.studentCode": "کد شاگرد",
+  "student.class": "صنف",
+  "student.academicYear": "سال تعلیمی",
+  "student.todaySchedule": "برنامه امروز",
+  "student.noClassesToday": "امروز درسی برنامه‌ریزی نشده است",
+  "student.homeworkDue": "کارخانگی پیش‌رو",
+  "student.noHomeworkDue": "کارخانگی پیش‌رو وجود ندارد",
+  "student.latestResult": "آخرین نتیجه",
+  "student.noPublishedResult": "هنوز نتیجه‌ای نشر نشده است",
+  "student.latestAnnouncement": "آخرین اعلان",
+  "student.noAnnouncements": "اعلانی موجود نیست",
+  "student.unreadNotifications": "اعلان‌های ناخوانده",
+  "student.noUnreadNotifications": "اعلان ناخوانده‌ای ندارید",
   "learning.homework": "وظیفه",
   "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
   "learning.assignments": "تکالیف تدریس",
@@ -748,8 +790,22 @@ const pashto: Record<TranslationKey, string> = {
   "notifications.homework": "نوې کورنۍ دنده",
   "notifications.results": "پایلې خپرې شوې",
   "student.homeTitle": "د زده کوونکي کور",
-  "student.homeSubtitle": "په دې ښوونځي کې ستاسو خپرې شوې دندې او پایلې.",
+  "student.homeSubtitle": "په دې ښوونځي کې ستاسو د زده کړو لنډیز.",
   "student.accountUnavailableTitle": "د زده کوونکي لاسرسی فعال نه دی",
+  "student.dashboard": "په یوه نظر",
+  "student.studentCode": "د زده کوونکي کوډ",
+  "student.class": "ټولګی",
+  "student.academicYear": "تعلیمي کال",
+  "student.todaySchedule": "د نن ورځې مهالویش",
+  "student.noClassesToday": "نن درس نشته",
+  "student.homeworkDue": "راتلونکې کورنۍ دنده",
+  "student.noHomeworkDue": "راتلونکې کورنۍ دنده نشته",
+  "student.latestResult": "وروستۍ پایله",
+  "student.noPublishedResult": "تر اوسه پایله نه ده خپره شوې",
+  "student.latestAnnouncement": "وروستی اعلان",
+  "student.noAnnouncements": "اعلان نشته",
+  "student.unreadNotifications": "نه لوستل شوې خبرتیاوې",
+  "student.noUnreadNotifications": "ټولې خبرتیاوې مو لوستې دي",
   "learning.homework": "کورنۍ دنده",
   "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
   "learning.assignments": "د تدریس دندې",
