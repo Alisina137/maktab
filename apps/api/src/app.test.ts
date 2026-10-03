@@ -637,6 +637,26 @@ test("student entry enforces role, temporary password, active enrollment, and su
   assert.equal(studentHomeBody.student.id, studentId);
   assert.equal(studentHomeBody.student.studentCode, "S-STUDENT-ENTRY");
 
+  const studentTimetable = await app.inject({
+    method: "GET",
+    url: "/v1/student/timetable",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(studentTimetable.statusCode, 200);
+  const timetableBody = studentTimetable.json<{
+    student: { id: string; classId: string; academicYearId: string };
+    classSection: { id: string; code: string };
+    academicYear: { id: string; name: string };
+    periods: unknown[];
+  }>();
+  assert.equal(timetableBody.student.id, studentId);
+  assert.equal(timetableBody.student.classId, classId);
+  assert.equal(timetableBody.student.academicYearId, yearId);
+  assert.equal(timetableBody.classSection.id, classId);
+  assert.equal(timetableBody.classSection.code, "10STUDENT");
+  assert.equal(timetableBody.academicYear.id, yearId);
+  assert.deepEqual(timetableBody.periods, []);
+
   const forbiddenParentHome = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
@@ -674,6 +694,14 @@ test("student entry enforces role, temporary password, active enrollment, and su
   });
   assert.equal(withdrawnHome.statusCode, 403);
   assert.equal(withdrawnHome.json<{ error: string }>().error, "account_unavailable");
+
+  const withdrawnTimetable = await app.inject({
+    method: "GET",
+    url: "/v1/student/timetable",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(withdrawnTimetable.statusCode, 403);
+  assert.equal(withdrawnTimetable.json<{ error: string }>().error, "account_unavailable");
 
   const reactivateEnrollment = await app.inject({
     method: "PATCH",
