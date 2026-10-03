@@ -1140,3 +1140,17 @@ Planned verification slices:
 - Student withdrawal/suspension/session protections remain active on the Homework screen and return the Student to the protected unavailable state when necessary.
 - Existing API regression coverage already proves Student draft homework is hidden and becomes visible only after the assigned teacher publishes it.
 - The combined timetable refinement + Student Homework implementation passed typecheck, tests, and build in GitHub CI.
+
+
+#### 11.5 — Student exams and published results
+- Added a dedicated Student Results screen reachable from Student Home through a View results action.
+- The screen reuses the Student learning payload already loaded at App level, so Home → Results does not trigger a duplicate initial request.
+- Result visibility follows Product Specification V1 rules exactly: draft grades and exams that have not been published remain invisible; only grades whose grade status and exam status are both PUBLISHED are rendered.
+- Published results are grouped by exam. Each exam card shows exam name/type, publication date when available, aggregate score/max for the visible subjects, and individual subject results.
+- Each subject row shows subject, class, localized score/max, and the teacher remark when one exists.
+- No pass/fail judgment or ranking is inferred because the current product model does not define a universal passing threshold.
+- The current Exam model does not contain an exam schedule/date field, so Student 11.5 does not invent an upcoming exam date/calendar. The page represents published exam/result records from the data the product actually stores.
+- Empty, loading, date, number, score, and remark states are localized for English, Dari, and Pashto and preserve RTL behavior.
+- Withdrawal, suspension, session refresh, reconnect, and stale-response protections remain active on the Results screen.
+- Existing API regression coverage already proves draft/RESULTS_READY data is hidden from Students and becomes visible only after Admin publishes the exam.
+- Extended that regression to prove a correction to an already-published grade is also reflected in the Student view, including the corrected score and remark while remaining PUBLISHED.
