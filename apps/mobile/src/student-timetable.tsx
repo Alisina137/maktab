@@ -3,7 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatLocalizedNumber,
-  formatLocalizedTimeRange,
+  formatLocalizedTime,
   getDirection,
   localizeDigits,
   translate,
@@ -118,7 +118,14 @@ export function StudentTimetableAgenda({
               <Text style={[styles.dayTitle, textDirection]}>
                 {translate(locale, weekdayKey[day])}
               </Text>
-              <View style={styles.countPill}>
+              {isToday ? (
+                <View style={styles.todayPill}>
+                  <Text style={styles.todayPillText}>
+                    {translate(locale, "student.today")}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={[styles.countPill, isToday && styles.countPillToday]}>
                 <Text style={styles.countText}>
                   {formatLocalizedNumber(periods.length, locale)}
                 </Text>
@@ -138,11 +145,7 @@ export function StudentTimetableAgenda({
                   >
                     <View style={styles.timePill}>
                       <Text style={styles.timeText}>
-                        {formatLocalizedTimeRange(
-                          item.period.startsAt,
-                          item.period.endsAt,
-                          locale
-                        )}
+                        {formatLocalizedTime(item.period.startsAt, locale)}
                       </Text>
                     </View>
                     <View style={styles.flex}>
@@ -237,8 +240,14 @@ const styles = StyleSheet.create({
     gap: 12
   },
   dayCardToday: {
-    borderColor: "#cfdfff",
-    backgroundColor: "#fbfdff"
+    borderWidth: 2,
+    borderColor: tokens.color.brand,
+    backgroundColor: "#edf4ff",
+    shadowColor: "#1d4ca8",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2
   },
   dayHeading: {
     flexDirection: "row",
@@ -260,6 +269,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900"
   },
+  todayPill: {
+    minHeight: 26,
+    paddingHorizontal: 9,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.color.brand
+  },
+  todayPillText: {
+    color: "#fff",
+    fontSize: 10.5,
+    fontWeight: "900"
+  },
   countPill: {
     minWidth: 30,
     height: 28,
@@ -268,6 +290,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#edf3ff"
+  },
+  countPillToday: {
+    backgroundColor: "#dbe8ff"
   },
   countText: {
     color: tokens.color.brandStrong,
