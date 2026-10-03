@@ -42,6 +42,7 @@ import {
   type ClassSection,
   type GradeLevel,
   type NegaranAssignment,
+  type Student,
   type Subject,
   type TeacherAssignment,
   type TeacherProfile,
@@ -72,6 +73,13 @@ export interface ClassTimetableView {
   teacherName: string;
 }
 
+export interface StudentTimetableView {
+  student: Student;
+  classSection: ClassSection;
+  academicYear: AcademicYear;
+  periods: ClassTimetableView[];
+}
+
 export interface AcademicStore {
   getOverview(schoolId: string): Promise<AcademicOverview>;
   getTeacherView(schoolId: string, teacherUserId: string): Promise<TeacherAcademicView>;
@@ -80,6 +88,7 @@ export interface AcademicStore {
     academicYearId: string,
     classId: string
   ): Promise<ClassTimetableView[]>;
+  getStudentTimetable(schoolId: string, studentUserId: string): Promise<StudentTimetableView>;
   createAcademicYear(schoolId: string, input: CreateAcademicYearInput): Promise<AcademicYear>;
   updateAcademicYear(schoolId: string, yearId: string, input: UpdateAcademicYearInput): Promise<AcademicYear>;
   setAcademicYearStatus(schoolId: string, yearId: string, status: AcademicYearStatus): Promise<AcademicYear>;
@@ -385,6 +394,75 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           )
         )
         .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt));
+    },
+
+    async getStudentTimetable(schoolId, studentUserId) {
+      const [enrollment] = await db
+        .select({
+          student: students,
+          classSection: classSections,
+          academicYear: academicYears
+        })
+        .from(students)
+        .innerJoin(
+          classSections,
+          and(
+            eq(classSections.id, students.classId),
+            eq(classSections.schoolId, students.schoolId)
+          )
+        )
+        .innerJoin(
+          academicYears,
+          and(
+            eq(academicYears.id, students.academicYearId),
+            eq(academicYears.schoolId, students.schoolId)
+          )
+        )
+        .where(
+          and(
+            eq(students.schoolId, schoolId),
+            eq(students.userId, studentUserId),
+            eq(students.status, "ACTIVE")
+          )
+        )
+        .limit(1);
+
+      if (!enrollment) {
+        throw new AcademicNotFoundError("No active student enrollment is linked to this account.");
+      }
+
+      const periods = await db
+        .select({
+          period: timetablePeriods,
+          subjectName: subjects.name,
+          subjectCode: subjects.code,
+          teacherName: teacherProfiles.fullName
+        })
+        .from(timetablePeriods)
+        .innerJoin(
+          subjects,
+          and(
+            eq(subjects.id, timetablePeriods.subjectId),
+            eq(subjects.schoolId, timetablePeriods.schoolId)
+          )
+        )
+        .innerJoin(
+          teacherProfiles,
+          and(
+            eq(teacherProfiles.userId, timetablePeriods.teacherUserId),
+            eq(teacherProfiles.schoolId, timetablePeriods.schoolId)
+          )
+        )
+        .where(
+          and(
+            eq(timetablePeriods.schoolId, schoolId),
+            eq(timetablePeriods.academicYearId, enrollment.student.academicYearId),
+            eq(timetablePeriods.classId, enrollment.student.classId)
+          )
+        )
+        .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt));
+
+      return { ...enrollment, periods };
     },
 
     async createAcademicYear(schoolId, input) {
