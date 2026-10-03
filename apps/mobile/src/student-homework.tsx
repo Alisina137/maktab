@@ -3,6 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatLocalizedDate,
+  formatLocalizedNumber,
   getDirection,
   translate,
   type SupportedLocale
@@ -103,7 +104,7 @@ function HomeworkSection({
       <View style={[styles.sectionHeading, rtl && styles.rowRtl]}>
         <Text style={[styles.sectionTitle, textDirection]}>{title}</Text>
         <View style={styles.countPill}>
-          <Text style={styles.countText}>{items.length}</Text>
+          <Text style={styles.countText}>{formatLocalizedNumber(items.length, locale)}</Text>
         </View>
       </View>
 
@@ -143,9 +144,17 @@ export function StudentHomeworkContent({
   const all = [...(learning?.homework ?? [])].sort(
     (a, b) => new Date(a.homework.dueAt).getTime() - new Date(b.homework.dueAt).getTime()
   );
-  const upcoming = all.filter((item) => new Date(item.homework.dueAt).getTime() >= now);
+  const upcoming = all.filter(
+    (item) =>
+      item.homework.status === "PUBLISHED" &&
+      new Date(item.homework.dueAt).getTime() >= now
+  );
   const past = all
-    .filter((item) => new Date(item.homework.dueAt).getTime() < now)
+    .filter(
+      (item) =>
+        item.homework.status === "CLOSED" ||
+        new Date(item.homework.dueAt).getTime() < now
+    )
     .sort(
       (a, b) => new Date(b.homework.dueAt).getTime() - new Date(a.homework.dueAt).getTime()
     );
