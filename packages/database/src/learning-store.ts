@@ -112,6 +112,10 @@ export interface LearningStore {
   getGradeSheet(schoolId: string, teacherUserId: string, examSubjectId: string): Promise<GradeSheet>;
   saveDraftGrades(schoolId: string, teacherUserId: string, examSubjectId: string, entries: GradeEntryInput[]): Promise<GradeSheet>;
   getParentAcademicView(schoolId: string, parentUserId: string, studentId: string): Promise<LearnerAcademicView>;
+  getStudentEnrollmentStatus(
+    schoolId: string,
+    studentUserId: string
+  ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
   createExam(schoolId: string, input: CreateExamInput): Promise<Exam>;
@@ -603,6 +607,18 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         .limit(1);
       if (!student) throw new LearningNotFoundError("Student not found for this parent account.");
       return visibleView(schoolId, student);
+    },
+
+    async getStudentEnrollmentStatus(schoolId, studentUserId) {
+      const [student] = await db
+        .select({ id: students.id, status: students.status })
+        .from(students)
+        .where(and(eq(students.schoolId, schoolId), eq(students.userId, studentUserId)))
+        .limit(1);
+      if (!student || student.status !== "ACTIVE") {
+        throw new LearningNotFoundError("No active student record is linked to this student account.");
+      }
+      return { studentId: student.id, status: student.status };
     },
 
     async getStudentAcademicView(schoolId, studentUserId) {
