@@ -138,6 +138,7 @@ export type TranslationKey =
   | "notifications.results"
   | "student.homeTitle"
   | "student.homeSubtitle"
+  | "student.accountUnavailableTitle"
   | "learning.homework"
   | "learning.homeworkHint"
   | "learning.assignments"
@@ -330,6 +331,7 @@ const en: Record<TranslationKey, string> = {
   "notifications.results": "Results published",
   "student.homeTitle": "Student home",
   "student.homeSubtitle": "Your published homework and results from this school.",
+  "student.accountUnavailableTitle": "Student access unavailable",
   "learning.homework": "Homework",
   "learning.homeworkHint": "Create work only for your active subject and class assignments.",
   "learning.assignments": "Teaching assignments",
@@ -538,6 +540,7 @@ const dari: Record<TranslationKey, string> = {
   "notifications.results": "نتایج نشر شد",
   "student.homeTitle": "خانه شاگرد",
   "student.homeSubtitle": "وظایف و نتایج نشرشده شما در این مکتب.",
+  "student.accountUnavailableTitle": "دسترسی شاگرد غیرفعال است",
   "learning.homework": "وظیفه",
   "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
   "learning.assignments": "تکالیف تدریس",
@@ -746,6 +749,7 @@ const pashto: Record<TranslationKey, string> = {
   "notifications.results": "پایلې خپرې شوې",
   "student.homeTitle": "د زده کوونکي کور",
   "student.homeSubtitle": "په دې ښوونځي کې ستاسو خپرې شوې دندې او پایلې.",
+  "student.accountUnavailableTitle": "د زده کوونکي لاسرسی فعال نه دی",
   "learning.homework": "کورنۍ دنده",
   "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
   "learning.assignments": "د تدریس دندې",
