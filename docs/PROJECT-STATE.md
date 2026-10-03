@@ -1052,3 +1052,26 @@ Phase 8 is the final planned implementation phase from Product Specification V1.
 - Push registration/deactivation failures remain non-blocking; Parent login/home/logout do not depend on push-provider connectivity.
 - Added `scripts/verify-parent-resilience.mjs` and root `pnpm verify:parent-resilience`. Normal `pnpm verify` now checks Parent localization + resilience invariants before typecheck/tests/build.
 - Manual acceptance still requires an Expo device outage/reconnect smoke test: warm cache online, disconnect API/network, confirm cached Parent reads remain visible with an offline notice, restore connectivity, confirm fresh server data replaces cache automatically, background/resume across access-token expiry, and confirm logout/login is not required.
+
+
+### Testing Step 11 — Student mobile experience
+Student testing follows the Product Specification Student information architecture and recommended bottom navigation.
+
+Planned verification slices:
+- 11.1 — Student authentication and entry/security
+- 11.2 — Student Home academic summary
+- 11.3 — Student timetable
+- 11.4 — Student homework
+- 11.5 — Student exams and published results
+- 11.6 — Student announcements and notifications
+- 11.7 — Student navigation, styling, RTL, and localization
+- 11.8 — Student permissions, withdrawn/suspended behavior, session, offline, and resilience regression
+
+#### 11.1 — Student authentication and entry/security
+- The shared mobile authentication flow already supports Student role selection, school selection, school-issued credentials, forced temporary-password replacement, secure session restore/refresh, suspension handling, and role-safe rendering.
+- Added explicit API regression coverage for Student entry: wrong-role login is rejected; temporary credentials cannot access academic features until the password is changed; the resulting session remains STUDENT; Student access cannot open Parent or Teacher routes.
+- Student academic lookup now requires an ACTIVE student enrollment in addition to the school-scoped Student account.
+- A withdrawn enrollment remains separate from account suspension/history, but Student academic entry now returns the localized-compatible `account_unavailable` condition instead of exposing academic data or a generic request failure.
+- Account suspension independently blocks Student academic access with `account_suspended`.
+- The Student entry test creates the school-issued Parent/Student relationship and Student account through public admin APIs only; no direct database manipulation is used.
+- Automated typecheck/tests passed for the completed 11.1 changes; final workflow build verification is tracked before device acceptance.
