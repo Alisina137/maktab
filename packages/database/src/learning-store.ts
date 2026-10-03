@@ -609,9 +609,17 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       const [student] = await db
         .select()
         .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.userId, studentUserId)))
+        .where(
+          and(
+            eq(students.schoolId, schoolId),
+            eq(students.userId, studentUserId),
+            eq(students.status, "ACTIVE")
+          )
+        )
         .limit(1);
-      if (!student) throw new LearningNotFoundError("No student record is linked to this student account.");
+      if (!student) {
+        throw new LearningNotFoundError("No active student record is linked to this student account.");
+      }
       return visibleView(schoolId, student);
     },
 
