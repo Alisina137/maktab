@@ -110,7 +110,8 @@ export function StudentDashboard({
   communicationReady,
   locale,
   textDirection,
-  onOpenTimetable
+  onOpenTimetable,
+  onOpenHomework
 }: {
   timetable: StudentTimetablePayload | null;
   timetableReady: boolean;
@@ -122,6 +123,7 @@ export function StudentDashboard({
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
   onOpenTimetable: () => void;
+  onOpenHomework: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const student = timetable?.student ?? learning?.student ?? null;
@@ -233,33 +235,63 @@ export function StudentDashboard({
         )}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={translate(locale, "student.viewTimetable")}
-        onPress={onOpenTimetable}
-        style={({ pressed }) => [
-          styles.timetableAction,
-          rtl && styles.rowRtl,
-          pressed && styles.pressed
-        ]}
-      >
-        <View style={styles.timetableActionIcon}>
-          <Ionicons name="calendar-outline" size={20} color={tokens.color.brandStrong} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={[styles.timetableActionTitle, textDirection]}>
-            {translate(locale, "student.viewTimetable")}
-          </Text>
-          <Text style={[styles.timetableActionSubtitle, textDirection]}>
-            {translate(locale, "student.timetableSubtitle")}
-          </Text>
-        </View>
-        <Ionicons
-          name={rtl ? "chevron-back" : "chevron-forward"}
-          size={18}
-          color={tokens.color.textMuted}
-        />
-      </Pressable>
+      <View style={styles.quickActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "student.viewTimetable")}
+          onPress={onOpenTimetable}
+          style={({ pressed }) => [
+            styles.timetableAction,
+            rtl && styles.rowRtl,
+            pressed && styles.pressed
+          ]}
+        >
+          <View style={styles.timetableActionIcon}>
+            <Ionicons name="calendar-outline" size={20} color={tokens.color.brandStrong} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.timetableActionTitle, textDirection]}>
+              {translate(locale, "student.viewTimetable")}
+            </Text>
+            <Text style={[styles.timetableActionSubtitle, textDirection]}>
+              {translate(locale, "student.timetableSubtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={18}
+            color={tokens.color.textMuted}
+          />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "student.viewHomework")}
+          onPress={onOpenHomework}
+          style={({ pressed }) => [
+            styles.timetableAction,
+            rtl && styles.rowRtl,
+            pressed && styles.pressed
+          ]}
+        >
+          <View style={styles.timetableActionIcon}>
+            <Ionicons name="document-text-outline" size={20} color={tokens.color.brandStrong} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.timetableActionTitle, textDirection]}>
+              {translate(locale, "student.viewHomework")}
+            </Text>
+            <Text style={[styles.timetableActionSubtitle, textDirection]}>
+              {translate(locale, "student.homeworkSubtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={18}
+            color={tokens.color.textMuted}
+          />
+        </Pressable>
+      </View>
 
       <View style={[styles.sectionHeading, rtl && styles.rowRtl]}>
         <View style={styles.sectionIcon}>
@@ -372,6 +404,7 @@ const styles = StyleSheet.create({
   metaValue: { color: tokens.color.text, fontSize: 12.5, lineHeight: 17, fontWeight: "900" },
   identifierValue: { writingDirection: "ltr", textAlign: "left" },
   identifierValueRtl: { textAlign: "right" },
+  quickActions: { gap: 9 },
   timetableAction: {
     flexDirection: "row",
     alignItems: "center",
