@@ -111,7 +111,8 @@ export function StudentDashboard({
   locale,
   textDirection,
   onOpenTimetable,
-  onOpenHomework
+  onOpenHomework,
+  onOpenResults
 }: {
   timetable: StudentTimetablePayload | null;
   timetableReady: boolean;
@@ -124,6 +125,7 @@ export function StudentDashboard({
   textDirection: TextDirectionStyle;
   onOpenTimetable: () => void;
   onOpenHomework: () => void;
+  onOpenResults: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const student = timetable?.student ?? learning?.student ?? null;
@@ -283,6 +285,34 @@ export function StudentDashboard({
             </Text>
             <Text style={[styles.timetableActionSubtitle, textDirection]}>
               {translate(locale, "student.homeworkSubtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={18}
+            color={tokens.color.textMuted}
+          />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "student.viewResults")}
+          onPress={onOpenResults}
+          style={({ pressed }) => [
+            styles.timetableAction,
+            rtl && styles.rowRtl,
+            pressed && styles.pressed
+          ]}
+        >
+          <View style={styles.timetableActionIcon}>
+            <Ionicons name="ribbon-outline" size={20} color={tokens.color.brandStrong} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.timetableActionTitle, textDirection]}>
+              {translate(locale, "student.viewResults")}
+            </Text>
+            <Text style={[styles.timetableActionSubtitle, textDirection]}>
+              {translate(locale, "student.resultsSubtitle")}
             </Text>
           </View>
           <Ionicons
