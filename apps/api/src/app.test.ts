@@ -461,6 +461,225 @@ test("school-scoped credentials, forced password change, role matching, and susp
   assert.equal(homeAfterReactivate.statusCode, 200);
 });
 
+test("student entry enforces role, temporary password, active enrollment, and suspension", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const schoolId = await provisionSchool(app, "STUDENT-ENTRY");
+  const adminAccessToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminAccessToken}` };
+
+  const yearResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/years",
+    headers: auth,
+    payload: { name: "1406 Student Entry", startDate: "2027-03-21", endDate: "2028-03-19" }
+  });
+  assert.equal(yearResponse.statusCode, 201);
+  const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
+  assert.equal(
+    (await app.inject({
+      method: "POST",
+      url: `/v1/admin/academics/years/${yearId}/activate`,
+      headers: auth
+    })).statusCode,
+    200
+  );
+
+  const gradeResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/grades",
+    headers: auth,
+    payload: { code: "G10STUDENT", name: "Grade 10 Student Entry", sortOrder: 10 }
+  });
+  assert.equal(gradeResponse.statusCode, 201);
+  const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
+
+  const classResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/academics/classes",
+    headers: auth,
+    payload: {
+      academicYearId: yearId,
+      gradeLevelId: gradeId,
+      code: "10STUDENT",
+      name: "Grade 10 Student Entry"
+    }
+  });
+  assert.equal(classResponse.statusCode, 201);
+  const classId = classResponse.json<{ class: { id: string } }>().class.id;
+
+  const parentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/parents",
+    headers: auth,
+    payload: {
+      username: "studententryparent",
+      fullName: "Student Entry Parent",
+      phone: "0700000010"
+    }
+  });
+  assert.equal(parentResponse.statusCode, 201);
+  const parentUserId = parentResponse.json<{ user: { id: string } }>().user.id;
+
+  const studentResponse = await app.inject({
+    method: "POST",
+    url: "/v1/admin/families/students",
+    headers: auth,
+    payload: {
+      parentUserId,
+      studentCode: "S-STUDENT-ENTRY",
+      fullName: "Student Entry Learner",
+      academicYearId: yearId,
+      classId
+    }
+  });
+  assert.equal(studentResponse.statusCode, 201);
+  const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+
+  const accountResponse = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentId}/account`,
+    headers: auth,
+    payload: {
+      username: "studententry",
+      phone: "0700000011"
+    }
+  });
+  assert.equal(accountResponse.statusCode, 201);
+  const studentAccount = accountResponse.json<{
+    user: { id: string };
+    temporaryPassword: string;
+  }>();
+
+  const wrongRoleLogin = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "PARENT",
+      username: "studententry",
+      password: studentAccount.temporaryPassword
+    }
+  });
+  assert.equal(wrongRoleLogin.statusCode, 403);
+  assert.equal(wrongRoleLogin.json<{ error: string }>().error, "role_mismatch");
+
+  const login = await app.inject({
+    method: "POST",
+    url: "/v1/auth/login",
+    payload: {
+      schoolId,
+      expectedRole: "STUDENT",
+      username: "studententry",
+      password: studentAccount.temporaryPassword
+    }
+  });
+  assert.equal(login.statusCode, 200);
+  const loginBody = login.json<{
+    accessToken: string;
+    mustChangePassword: boolean;
+    user: { role: string; status: string };
+  }>();
+  assert.equal(loginBody.user.role, "STUDENT");
+  assert.equal(loginBody.mustChangePassword, true);
+
+  const blockedBeforePasswordChange = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: { authorization: `Bearer ${loginBody.accessToken}` }
+  });
+  assert.equal(blockedBeforePasswordChange.statusCode, 403);
+  assert.equal(
+    blockedBeforePasswordChange.json<{ error: string }>().error,
+    "password_change_required"
+  );
+
+  const passwordChange = await app.inject({
+    method: "POST",
+    url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${loginBody.accessToken}` },
+    payload: { newPassword: "StudentEntry2026!" }
+  });
+  assert.equal(passwordChange.statusCode, 200);
+  const activeSession = passwordChange.json<{
+    accessToken: string;
+    user: { role: string; status: string };
+    mustChangePassword: boolean;
+  }>();
+  assert.equal(activeSession.user.role, "STUDENT");
+  assert.equal(activeSession.user.status, "ACTIVE");
+  assert.equal(activeSession.mustChangePassword, false);
+
+  const studentHome = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(studentHome.statusCode, 200);
+  const studentHomeBody = studentHome.json<{
+    student: { id: string; studentCode: string; fullName: string };
+  }>();
+  assert.equal(studentHomeBody.student.id, studentId);
+  assert.equal(studentHomeBody.student.studentCode, "S-STUDENT-ENTRY");
+
+  const forbiddenParentHome = await app.inject({
+    method: "GET",
+    url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(forbiddenParentHome.statusCode, 403);
+
+  const forbiddenTeacherHome = await app.inject({
+    method: "GET",
+    url: "/v1/teacher/today",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(forbiddenTeacherHome.statusCode, 403);
+
+  const withdraw = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/families/students/${studentId}`,
+    headers: auth,
+    payload: { status: "WITHDRAWN" }
+  });
+  assert.equal(withdraw.statusCode, 200);
+
+  const withdrawnHome = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(withdrawnHome.statusCode, 403);
+  assert.equal(withdrawnHome.json<{ error: string }>().error, "account_unavailable");
+
+  const reactivateEnrollment = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/families/students/${studentId}`,
+    headers: auth,
+    payload: { status: "ACTIVE" }
+  });
+  assert.equal(reactivateEnrollment.statusCode, 200);
+
+  const suspend = await app.inject({
+    method: "POST",
+    url: `/v1/admin/users/${studentAccount.user.id}/suspend`,
+    headers: auth
+  });
+  assert.equal(suspend.statusCode, 200);
+
+  const suspendedHome = await app.inject({
+    method: "GET",
+    url: "/v1/student/home",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(suspendedHome.statusCode, 403);
+  assert.equal(suspendedHome.json<{ error: string }>().error, "account_suspended");
+});
+
 test("refresh sessions rotate once and logout revokes the current session", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
