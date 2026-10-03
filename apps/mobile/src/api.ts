@@ -703,6 +703,12 @@ export const api = {
     });
   },
 
+  studentStatus(accessToken: string) {
+    return request<{ studentId: string; status: "ACTIVE" }>("/v1/student/status", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
   studentHome(accessToken: string) {
     return request<LearnerAcademicPayload>("/v1/student/home", {
       headers: { Authorization: `Bearer ${accessToken}` }
