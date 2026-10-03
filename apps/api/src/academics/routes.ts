@@ -705,6 +705,35 @@ export function registerAcademicRoutes(
     }
   );
 
+  app.get("/v1/student/timetable", async (request, reply) => {
+    const context = await requireAccess(request, reply, accounts);
+    if (!context) return;
+    if (context.user.mustChangePassword) {
+      return reply.code(403).send({
+        error: "password_change_required",
+        message: "Change the temporary password before using student features."
+      });
+    }
+    if (context.user.role !== "STUDENT") {
+      return reply.code(403).send({
+        error: "forbidden",
+        message: "Student access is required."
+      });
+    }
+
+    try {
+      return await academics.getStudentTimetable(context.user.schoolId, context.user.id);
+    } catch (error) {
+      if (error instanceof AcademicNotFoundError) {
+        return reply.code(403).send({
+          error: "account_unavailable",
+          message: "This student is no longer actively enrolled. Contact the school administration."
+        });
+      }
+      return sendAcademicError(reply, error);
+    }
+  });
+
   app.get("/v1/teacher/academics", async (request, reply) => {
     const context = await requireAccess(request, reply, accounts);
     if (!context) return;
