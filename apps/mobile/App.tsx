@@ -53,6 +53,7 @@ import { CommunicationPanel } from "./src/communication-ui";
 import { TeacherLearningPanel } from "./src/learning-ui";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
 import { StudentDashboard } from "./src/student-dashboard";
+import { StudentTimetableAgenda } from "./src/student-timetable";
 import {
   ParentAnnouncementsContent,
   ParentBottomNavigation,
@@ -77,7 +78,14 @@ import {
 } from "./src/session";
 
 type MobileRole = "PARENT" | "TEACHER" | "STUDENT";
-type Screen = "role" | "school" | "login" | "change-password" | "home" | "teacher-attendance";
+type Screen =
+  | "role"
+  | "school"
+  | "login"
+  | "change-password"
+  | "home"
+  | "student-timetable"
+  | "teacher-attendance";
 
 const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student"> = {
   PARENT: "role.parent",
@@ -510,7 +518,6 @@ function AppContent() {
   useEffect(() => {
     const requestId = ++studentHomeLoadRequestId.current;
     if (
-      screen === "home" &&
       session?.user.role === "STUDENT" &&
       session.user.status !== "SUSPENDED" &&
       !session.mustChangePassword &&
@@ -526,7 +533,6 @@ function AppContent() {
       void loadStudentHomeData(session.accessToken, requestId);
     }
   }, [
-    screen,
     session?.accessToken,
     session?.user.role,
     session?.user.status,
@@ -2224,6 +2230,11 @@ function AppContent() {
               communicationReady={studentCommunicationReady}
               locale={locale}
               textDirection={textDirection}
+              onOpenTimetable={() => {
+                setNotice(null);
+                setAppError(null);
+                setScreen("student-timetable");
+              }}
             />
 
             <AdminContactCard contact={adminContact} locale={locale} />
@@ -2234,6 +2245,43 @@ function AppContent() {
             >
               <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
             </Pressable>
+          </View>
+        ) : null}
+
+        {screen === "student-timetable" &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        !studentEnrollmentUnavailable ? (
+          <View style={styles.section}>
+            <BackButton
+              locale={locale}
+              onPress={() => {
+                setNotice(null);
+                setAppError(null);
+                setScreen("home");
+              }}
+            />
+
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="calendar-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>
+                  {translate(locale, "student.timetableTitle")}
+                </Text>
+                <Text style={[styles.subtitle, textDirection]}>
+                  {translate(locale, "student.timetableSubtitle")}
+                </Text>
+              </View>
+            </View>
+
+            <StudentTimetableAgenda
+              timetable={studentTimetable}
+              ready={studentTimetableReady}
+              locale={locale}
+              textDirection={textDirection}
+            />
           </View>
         ) : null}
 
