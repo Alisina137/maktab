@@ -64,7 +64,6 @@ export function TeacherTodayInsights({
   onNotifications: () => void;
   onAttendance: (classId: string, date: string) => void;
   onRetry: () => void;
-  onOpenNotification: (notification: ParentNotification) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const pending = teacherTaskCounts(today, learning);
@@ -208,6 +207,7 @@ export function TeacherInboxModal({
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   onRetry: () => void;
+  onOpenNotification: (item: ParentNotification) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const unreadCount = notifications.filter((item) => !item.readAt).length;
