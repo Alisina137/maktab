@@ -800,6 +800,12 @@ export const api = {
     });
   },
 
+  markAllNotificationsRead(accessToken: string) {
+    return request<{ changed: number }>("/v1/notifications/read-all", {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
   teacherMarkAllNotificationsRead(accessToken: string) {
     return request<{ changed: number }>("/v1/teacher/notifications/read-all", {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}` }
