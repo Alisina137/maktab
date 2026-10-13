@@ -387,7 +387,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return this.createAnnouncement(schoolId, teacherUserId, input);
     },
 
-    async archiveAnnouncement(schoolId, announcementId) {
+    async archiveAnnouncement(schoolId, actorUserId, announcementId) {
       const [updated] = await db.update(announcements).set({ archivedAt: new Date(), updatedAt: new Date() })
         .where(and(eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId))).returning();
       if (!updated) throw new CommunicationNotFoundError("Announcement not found.");
