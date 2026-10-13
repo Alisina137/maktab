@@ -122,7 +122,7 @@ export interface LearningStore {
   createExam(schoolId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
   setExamStatus(schoolId: string, actorUserId: string, examId: string, status: ExamStatus): Promise<Exam>;
-  publishExam(schoolId: string, examId: string): Promise<{ exam: Exam; notificationCount: number }>;
+  publishExam(schoolId: string, actorUserId: string, examId: string): Promise<{ exam: Exam; notificationCount: number }>;
   correctPublishedGrade(
     schoolId: string,
     actorUserId: string,
@@ -858,58 +858,79 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       });
     },
 
-    async publishExam(schoolId, examId) {
-      const exam = await getExam(schoolId, examId);
-      if (exam.status !== "RESULTS_READY") {
-        throw new LearningConflictError("Exam results can be published only from RESULTS_READY.");
-      }
+    async publishExam(schoolId, actorUserId, examId) {
       const publishedAt = new Date();
-      const subjectIds = (
-        await db
-          .select({ id: examSubjects.id })
-          .from(examSubjects)
-          .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)))
-      ).map((item) => item.id);
-      if (subjectIds.length === 0) throw new LearningConflictError("Exam has no subjects to publish.");
-
-      const result = await db.transaction(async (tx) => {
-        await tx
-          .update(gradeRecords)
-          .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })
-          .where(and(eq(gradeRecords.schoolId, schoolId), inArray(gradeRecords.examSubjectId, subjectIds)));
-        const [published] = await tx
-          .update(exams)
-          .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })
-          .where(and(eq(exams.schoolId, schoolId), eq(exams.id, examId)))
-          .returning();
-        if (!published) throw new LearningNotFoundError("Exam not found.");
-        return published;
-      });
-
-      const classRows = await db
-        .select({ classId: examSubjects.classId })
-        .from(examSubjects)
-        .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)));
-      const classIds = Array.from(new Set(classRows.map((item) => item.classId)));
-      let notificationCount = 0;
-      for (const classId of classIds) {
-        const recipients = await recipientUserIds(schoolId, classId);
-        for (const userId of recipients) {
-          if (
-            await createNotification(
-              schoolId,
-              userId,
-              `results:${examId}:${userId}`,
-              "RESULTS_PUBLISHED",
-              "Results published",
-              result.name,
-              `/results/${examId}`,
-              { examId, academicYearId: result.academicYearId }
-            )
-          ) notificationCount += 1;
+      return db.transaction(async (tx) => {
+        const [exam] = await tx.select().from(exams).where(and(
+          eq(exams.schoolId, schoolId), eq(exams.id, examId)
+        )).limit(1).for("update");
+        if (!exam) throw new LearningNotFoundError("Exam not found.");
+        if (exam.status !== "RESULTS_READY") {
+          throw new LearningConflictError("Exam results can be published only from RESULTS_READY.");
         }
-      }
-      return { exam: result, notificationCount };
+        const configured = await tx.select().from(examSubjects).where(and(
+          eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)
+        ));
+        if (!configured.length) throw new LearningConflictError("Exam has no subjects to publish.");
+
+        const recipientIds = new Set<string>();
+        for (const subject of configured) {
+          const roster = await tx.select({
+            id: students.id, parentUserId: students.parentUserId,
+            userId: students.userId
+          }).from(students).where(and(
+            eq(students.schoolId, schoolId), eq(students.classId, subject.classId),
+            eq(students.academicYearId, exam.academicYearId), eq(students.status, "ACTIVE")
+          ));
+          if (!roster.length) {
+            throw new LearningConflictError("Cannot publish results for a class without active students.");
+          }
+          const grades = await tx.select().from(gradeRecords).where(and(
+            eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.examSubjectId, subject.id)
+          ));
+          const marks = new Map(grades.map(grade => [grade.studentId, grade]));
+          if (roster.some(student => {
+            const grade = marks.get(student.id);
+            return !grade || grade.status !== "DRAFT" ||
+              grade.score < 0 || grade.score > subject.maxScore;
+          })) {
+            throw new LearningConflictError("Result marks changed after readiness. Recheck the roster before publishing.");
+          }
+          for (const student of roster) {
+            recipientIds.add(student.parentUserId);
+            if (student.userId) recipientIds.add(student.userId);
+          }
+        }
+        await tx.update(gradeRecords)
+          .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })
+          .where(and(eq(gradeRecords.schoolId, schoolId),
+            inArray(gradeRecords.examSubjectId, configured.map(subject => subject.id)),
+            eq(gradeRecords.status, "DRAFT")));
+        const [published] = await tx.update(exams)
+          .set({ status: "PUBLISHED", publishedAt, updatedAt: publishedAt })
+          .where(and(eq(exams.schoolId, schoolId), eq(exams.id, examId),
+            eq(exams.status, "RESULTS_READY"))).returning();
+        if (!published) throw new LearningConflictError("Exam changed. Refresh and retry.");
+
+        let notificationCount = 0;
+        for (const userId of recipientIds) {
+          const rows = await tx.insert(notifications).values({
+            id: randomUUID(), schoolId, userId,
+            dedupKey: `results:${examId}:${userId}`,
+            type: "RESULTS_PUBLISHED", title: "Results published",
+            message: published.name, deepLink: `/results/${examId}`,
+            metadata: { examId, academicYearId: published.academicYearId },
+            deliveryStatus: "PENDING"
+          }).onConflictDoNothing().returning({ id: notifications.id });
+          notificationCount += rows.length;
+        }
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId,
+          action: "exam.results_published", entityType: "exam", entityId: examId,
+          metadata: { notificationCount, academicYearId: published.academicYearId }
+        });
+        return { exam: published, notificationCount };
+      });
     },
 
     async correctPublishedGrade(schoolId, actorUserId, gradeId, input) {
