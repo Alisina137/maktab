@@ -1502,3 +1502,13 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Corrected parent/student account username placeholders to match the already-enforced alphanumeric-only family username contract; no backend validation or permissions were changed.
 - Added a source-level `pnpm verify:release` guard and `docs/ADMIN-ACCOUNTS-PHASES.md` acceptance guide. Follow-on details, credential safety, lifecycle and pagination work remain for Phases 2–6.
 - CI checks and browser visual acceptance are tracked separately; this styling phase adds no database migrations.
+
+
+### Admin Accounts — Phase 2: Guided provisioning and one-time credentials (2026-10-14)
+
+- Added inline role-specific username, parent-name/phone, existing-school duplicate, and student eligibility validation aligned with the current API contracts. The API retains final authority and unchanged access restrictions.
+- Added clear parent, student, teacher, staff and admin form guidance. Student selection now explicitly requires an eligible active/unlinked student; students can be searched by name, code and class.
+- Replaced raw temporary password text with an ephemeral, concealed-by-default credential panel. Admin can reveal/hide, copy username/password, or close and discard; the panel receives keyboard focus upon creation and is not backed by local/session storage. The browser clipboard may retain copies; the UI includes a warning and an unavailable-clipboard fallback.
+- Extended English/Dari/Pashto translations; added executable client-rule regressions in the API's cross-platform test suite and release source gates.
+- Retained school-scoped provisioning endpoints and existing reset/suspend/reactivate security rules; no migrations. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
+- Actual browser, clipboard, and screen-reader visual acceptance remain user/operator checks; confirm exact-commit CI separately.
