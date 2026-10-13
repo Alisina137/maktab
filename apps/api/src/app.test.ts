@@ -1287,7 +1287,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
 
   const createdParent = await app.inject({
     method: "POST", url: "/v1/admin/families/parents", headers: auth,
-    payload: { username: "parent.classroster", fullName: "Roster Parent" }
+    payload: { username: "parentclassroster", fullName: "Roster Parent" }
   });
   assert.equal(createdParent.statusCode, 201, createdParent.body);
   const parentId = createdParent.json<{ user: { id: string } }>().user.id;
