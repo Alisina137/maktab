@@ -350,7 +350,24 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
   ): Promise<AttendanceSheet> {
     const classSection = await getClass(schoolId, classId);
     const attendance = await getAttendance(schoolId, classId, date);
-    const classStudents = await activeStudents(schoolId, classId, classSection.academicYearId);
+    // Historical read-only sheets must use the students who were actually
+    // marked on that date. A student withdrawn/transferred later must not
+    // disappear from archived attendance; today's editable sheet continues
+    // to use the active current roster.
+    const classStudents = attendance && !canEdit
+      ? (await db.select({ student: students })
+          .from(studentAttendances)
+          .innerJoin(students, and(
+            eq(students.id, studentAttendances.studentId),
+            eq(students.schoolId, schoolId),
+            eq(students.academicYearId, classSection.academicYearId)
+          ))
+          .where(and(
+            eq(studentAttendances.schoolId, schoolId),
+            eq(studentAttendances.attendanceId, attendance.id)
+          ))
+          .orderBy(asc(students.fullName))).map((row) => row.student)
+      : await activeStudents(schoolId, classId, classSection.academicYearId);
     const marks = attendance
       ? await db
           .select()

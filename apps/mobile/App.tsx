@@ -1368,7 +1368,7 @@ function AppContent() {
     ];
     Alert.alert(
       translate(locale, "attendance.confirmTitle"),
-      `${translate(locale, "attendance.confirmMessage")}\n\n${rows.join("\n")}`,
+      `${attendanceSheet.classSection.name} · ${formatLocalizedDate(attendanceSheet.date, locale)}\n${translate(locale, "attendance.confirmMessage")}\n\n${rows.join("\n")}`,
       [
         { text: translate(locale, "attendance.cancel"), style: "cancel" },
         { text: translate(locale, "attendance.confirmSubmit"), onPress: () => void submitAttendance() }

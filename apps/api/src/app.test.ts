@@ -2710,6 +2710,45 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     headers: parentAuth
   });
   assert.equal(parentAfterCorrection.json<{ days: Array<{ status: string }> }>().days[0]?.status, "PRESENT");
+
+  // Preserve the originally marked students on historical sheets even when
+  // their present-day enrollment has since been withdrawn. Admin corrections
+  // remain the only way to change locked historical marks.
+  const withdrawnResponse = await app.inject({
+    method: "PATCH", url: `/v1/admin/families/students/${studentId}`,
+    headers: admin, payload: { status: "WITHDRAWN" }
+  });
+  assert.equal(withdrawnResponse.statusCode, 200);
+  const yesterdayDate = new Date(today.date + "T12:00:00Z");
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterday = yesterdayDate.toISOString().slice(0, 10);
+  await client.query(
+    "UPDATE daily_attendances SET date = $1 WHERE id = $2",
+    [yesterday, submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id]
+  );
+  const historicalSheet = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/attendance?date=${yesterday}`,
+    headers: teacherAuth
+  });
+  assert.equal(historicalSheet.statusCode, 200);
+  const historicalData = historicalSheet.json<{
+    canEdit: boolean; locked: boolean;
+    students: Array<{ student: { id: string }; status: string }>
+  }>();
+  assert.equal(historicalData.canEdit, false);
+  assert.equal(historicalData.locked, true);
+  assert.deepEqual(historicalData.students.map((row) => ({
+    id: row.student.id, status: row.status
+  })), [{ id: studentId, status: "PRESENT" }]);
+
+  const historicalSummary = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/history?from=${yesterday}&to=${today.date}`,
+    headers: teacherAuth
+  });
+  assert.equal(historicalSummary.statusCode, 200);
+  assert.equal(historicalSummary.json<{ summary: { present: number } }>().summary.present, 1);
 });
 
 test("teacher without Negaran assignment cannot access another class attendance", async (t) => {
