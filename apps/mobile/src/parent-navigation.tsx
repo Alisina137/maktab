@@ -245,7 +245,7 @@ export function ParentMoreAcademicContent({
           <View key={item.grade.id} style={[styles.resultCard, rtl && styles.rowRtl]}>
             <View style={styles.flex}>
               <Text style={[styles.itemTitle, textDirection]}>
-                {item.exam.name} · {item.subjectName}
+                {item.exam.name} · {item.subjectName}{item.examSubject.examDate ? ` · ${formatLocalizedDate(item.examSubject.examDate, locale)}` : ""}
               </Text>
               <Text style={[styles.muted, textDirection]}>{item.className}</Text>
               {item.grade.remark ? (
