@@ -29,7 +29,7 @@ function groupPublishedResults(results: ResultItem[]): ExamGroup[] {
   const groups = new Map<string, ExamGroup>();
 
   for (const result of results) {
-    if (result.exam.status !== "PUBLISHED" || result.grade.status !== "PUBLISHED") {
+    if (!["PUBLISHED", "ARCHIVED"].includes(result.exam.status) || result.grade.status !== "PUBLISHED") {
       continue;
     }
 
@@ -77,7 +77,7 @@ function SubjectResultRow({
         </View>
         <View style={styles.flex}>
           <Text style={[styles.subjectName, textDirection]}>{result.subjectName}</Text>
-          <Text style={[styles.className, textDirection]}>{result.className}</Text>
+          <Text style={[styles.className, textDirection]}>{result.className}{result.examSubject.examDate ? ` · ${formatLocalizedDate(result.examSubject.examDate, locale)}` : ""}</Text>
         </View>
         <View style={styles.scorePill}>
           <Text style={styles.scoreText}>
