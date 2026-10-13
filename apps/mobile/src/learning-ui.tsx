@@ -25,6 +25,7 @@ import {
   type TeacherLearningPayload
 } from "./api";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
+import { HomeworkDueDatePicker } from "./homework-date-picker";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -331,11 +332,12 @@ export function TeacherLearningPanel(props: CommonProps) {
               style={[styles.input, styles.multiline, textDirection]}
             />
             <View style={[styles.twoColumns, rtl && styles.rowRtl]}>
-              <TextInput
+              <HomeworkDueDatePicker
                 value={dueDate}
-                onChangeText={setDueDate}
-                placeholder={translate(locale, "learning.dueDate")}
-                style={[styles.input, styles.flexInput, textDirection]}
+                onChange={setDueDate}
+                locale={locale}
+                textDirection={textDirection}
+                disabled={busy}
               />
               <TextInput
                 value={dueTime}

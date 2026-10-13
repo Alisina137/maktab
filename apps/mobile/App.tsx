@@ -726,12 +726,14 @@ function AppContent() {
       }
     }
 
+    // Repeated fetch failures while offline must not expand a minimized banner.
+    const repeatedNetworkError = key !== null && kind === "network" && errorKindRef.current === "network";
     const nextKind = key ? kind : null;
     errorKeyRef.current = key;
     errorKindRef.current = nextKind;
     setErrorKey(key);
     setErrorKind(nextKind);
-    if (key) {
+    if (key && !repeatedNetworkError) {
       setConnectionRecovered(false);
       setErrorExitRequested(false);
       setErrorMinimized(false);

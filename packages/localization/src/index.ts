@@ -222,6 +222,10 @@ export type TranslationKey =
   | "learning.homeworkTitle"
   | "learning.instructions"
   | "learning.dueDate"
+  | "learning.pickDueDate"
+  | "learning.previousMonth"
+  | "learning.nextMonth"
+  | "learning.closeCalendar"
   | "learning.dueTime"
   | "learning.attachmentUrl"
   | "learning.saveDraft"
@@ -489,7 +493,11 @@ const en: Record<TranslationKey, string> = {
   "learning.editHomework": "Edit draft homework",
   "learning.homeworkTitle": "Homework title",
   "learning.instructions": "Instructions",
-  "learning.dueDate": "Due date · YYYY-MM-DD",
+  "learning.dueDate": "Select due date",
+  "learning.pickDueDate": "Select due date",
+  "learning.previousMonth": "Previous month",
+  "learning.nextMonth": "Next month",
+  "learning.closeCalendar": "Close calendar",
   "learning.dueTime": "Time · HH:mm",
   "learning.attachmentUrl": "Optional attachment URL",
   "learning.saveDraft": "Save draft",
@@ -773,7 +781,11 @@ const dari: Record<TranslationKey, string> = {
   "learning.editHomework": "ویرایش وظیفه پیش‌نویس",
   "learning.homeworkTitle": "عنوان وظیفه",
   "learning.instructions": "دستورالعمل",
-  "learning.dueDate": "تاریخ تحویل · YYYY-MM-DD",
+  "learning.dueDate": "انتخاب تاریخ تحویل",
+  "learning.pickDueDate": "انتخاب تاریخ تحویل",
+  "learning.previousMonth": "ماه قبل",
+  "learning.nextMonth": "ماه بعد",
+  "learning.closeCalendar": "بستن تقویم",
   "learning.dueTime": "زمان · HH:mm",
   "learning.attachmentUrl": "لینک اختیاری ضمیمه",
   "learning.saveDraft": "ذخیره پیش‌نویس",
@@ -1057,7 +1069,11 @@ const pashto: Record<TranslationKey, string> = {
   "learning.editHomework": "مسوده دنده سمول",
   "learning.homeworkTitle": "د دندې سرلیک",
   "learning.instructions": "لارښوونې",
-  "learning.dueDate": "د سپارلو نېټه · YYYY-MM-DD",
+  "learning.dueDate": "د سپارلو نېټه وټاکئ",
+  "learning.pickDueDate": "د سپارلو نېټه وټاکئ",
+  "learning.previousMonth": "تېره میاشت",
+  "learning.nextMonth": "راتلونکې میاشت",
+  "learning.closeCalendar": "کلیز بندول",
   "learning.dueTime": "وخت · HH:mm",
   "learning.attachmentUrl": "اختیاري ضمیمه لینک",
   "learning.saveDraft": "مسوده ساتل",
