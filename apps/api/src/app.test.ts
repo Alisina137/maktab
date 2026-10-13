@@ -3694,6 +3694,48 @@ test("homework stays private as draft, then becomes visible to parent and linked
       .homework.some(x => x.homework.id === homeworkId && x.homework.status === "CLOSED"));
   }
 
+  // 14.9–14.12: Archived homework is retained for teacher historical review
+  // but hidden from learner feeds under the Phase 6 visibility contract.
+  const archived = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/archive`, headers: teacherAuth });
+  assert.equal(archived.statusCode, 200);
+  assert.equal(archived.json<{ homework: { status: string } }>().homework.status, "ARCHIVED");
+  const repeatArchive = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/archive`, headers: teacherAuth });
+  assert.equal(repeatArchive.statusCode, 409);
+  const editArchived = await app.inject({ method: "PATCH",
+    url: `/v1/teacher/homework/${homeworkId}`, headers: teacherAuth,
+    payload: { title: "Cannot rewrite an archive" } });
+  assert.equal(editArchived.statusCode, 409);
+  const teacherHistory = await app.inject({ method: "GET",
+    url: "/v1/teacher/learning", headers: teacherAuth });
+  assert.equal(teacherHistory.statusCode, 200);
+  assert.ok(teacherHistory.json<{ homeworks: Array<{ id: string; status: string }> }>()
+    .homeworks.some(h => h.id === homeworkId && h.status === "ARCHIVED"));
+  const historicalSubmissions = await app.inject({ method: "GET",
+    url: `/v1/teacher/homework/${homeworkId}/submissions`, headers: teacherAuth });
+  assert.equal(historicalSubmissions.statusCode, 200);
+  assert.equal(historicalSubmissions.json<{ submissions: unknown[] }>().submissions.length, 1);
+  for (const [headers, url] of [
+    [parentAuth, `/v1/parent/children/${studentId}/learning`],
+    [studentAuth, "/v1/student/home"]
+  ] as const) {
+    const result = await app.inject({ method: "GET", url, headers });
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.json<{ homework: Array<{ homework: { id: string } }> }>()
+      .homework.some(x => x.homework.id === homeworkId), false);
+  }
+  const archiveFile = await app.inject({ method: "GET",
+    url: `/v1/learning/files/${fileId}`, headers: parentAuth });
+  assert.equal(archiveFile.statusCode, 404);
+  const lifecycleAudit = await client.query<{ action: string }>(
+    "SELECT action FROM audit_logs WHERE school_id = $1 AND entity_id = $2",
+    [schoolId, homeworkId]
+  );
+  for (const action of ["homework.published", "homework.closed", "homework.archived"]) {
+    assert.equal(lifecycleAudit.rows.filter(x => x.action === action).length, 1);
+  }
+
 });
 
 test("draft grades are hidden until admin publishes the complete exam, and unrelated teachers cannot grade", async (t) => {
