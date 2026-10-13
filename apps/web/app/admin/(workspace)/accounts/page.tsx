@@ -3,12 +3,24 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type User } from "../../admin-client";
 import { adminFormat } from "../../admin-i18n";
+import { validateAccountCreation } from "../../account-create-rules";
+import { AccountTemporaryCredentialPanel } from "../../account-temporary-credential";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 type AccountView = "DIRECTORY" | "CREATE";
 type AccountHighlight = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
+
+function roleCreationHelp(role: User["role"]): string {
+  switch (role) {
+    case "PARENT": return "Create a parent login and parent profile together.";
+    case "STUDENT": return "Select an existing active student without a login. Family linking stays in Families.";
+    case "TEACHER": return "Create a teacher login here, then complete the teacher profile in Academics.";
+    case "SCHOOL_STAFF": return "Create a school staff login with school-scoped access.";
+    case "SCHOOL_ADMIN": return "Create another administrator only when school-wide administrative access is necessary.";
+  }
+}
 
 function needsActivation(user: User): boolean {
   return user.status === "INVITED" || (user.status === "ACTIVE" && user.mustChangePassword);
@@ -39,6 +51,8 @@ export default function AccountsPage() {
   const [parentPhone, setParentPhone] = useState("");
   const [familyStudents, setFamilyStudents] = useState<FamilyStudent[]>([]);
   const [studentRecordId, setStudentRecordId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [creationAttempted, setCreationAttempted] = useState(false);
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
   const [group, setGroup] = useState<AccountGroup>("ALL");
   const [view, setView] = useState<AccountView>("DIRECTORY");
@@ -68,9 +82,7 @@ export default function AccountsPage() {
         const available = familyResult.students.filter(
           (item) => item.student.userId === null && item.student.status === "ACTIVE"
         );
-        return available.some((item) => item.student.id === current)
-          ? current
-          : available[0]?.student.id ?? "";
+        return available.some((item) => item.student.id === current) ? current : "";
       });
     } catch (cause) {
       showToast({
@@ -85,8 +97,17 @@ export default function AccountsPage() {
 
   async function createUser(event: FormEvent) {
     event.preventDefault();
+    setCreationAttempted(true);
+    if (Object.keys(creationIssues).length > 0) return;
+    if (credential) {
+      showToast({
+        kind: "error",
+        title: t("Create account"),
+        message: t("Close the temporary credential panel before creating another account.")
+      });
+      return;
+    }
     setBusy(true);
-    setCredential(null);
     try {
       let result: { user: User; temporaryPassword: string };
 
@@ -128,7 +149,10 @@ export default function AccountsPage() {
       setNewUsername("");
       setParentFullName("");
       setParentPhone("");
+      setStudentSearch("");
+      setCreationAttempted(false);
       setCredential({ username: result.user.username, password: result.temporaryPassword });
+      setView("DIRECTORY");
       await loadUsers();
       showToast({
         kind: "success",
@@ -183,6 +207,22 @@ export default function AccountsPage() {
   const availableStudentRecords = familyStudents.filter(
     (item) => item.student.userId === null && item.student.status === "ACTIVE"
   );
+  const studentSearchTerm = studentSearch.trim().toLowerCase();
+  const matchingStudentRecords = availableStudentRecords.filter((item) =>
+    [item.student.fullName, item.student.studentCode, item.classSection.name]
+      .some((value) => value.toLowerCase().includes(studentSearchTerm))
+  );
+  const creationIssues = validateAccountCreation({
+    role: newRole,
+    username: newUsername,
+    parentFullName,
+    parentPhone,
+    studentRecordId
+  }, users.map((user) => user.username), availableStudentRecords.map((item) => item.student.id));
+  const showUsernameIssue = creationAttempted || newUsername.trim().length > 0;
+  const showNameIssue = creationAttempted || parentFullName.trim().length > 0;
+  const showPhoneIssue = creationAttempted || parentPhone.length > 0;
+
   const staffCount = users.filter((u) => u.role === "SCHOOL_ADMIN" || u.role === "SCHOOL_STAFF").length;
   const counts: Record<AccountGroup, number> = {
     ALL: users.length,
@@ -245,19 +285,17 @@ export default function AccountsPage() {
   return (
     <section className="admin-dashboard-section admin-page-enter">
       {credential ? (
-        <section className="credential-card credential-card-premium" aria-live="polite">
-          <div className="credential-heading">
-            <span className="credential-icon" aria-hidden="true">✓</span>
-            <div>
-              <strong>{t("Temporary credential created")}</strong>
-              <p>{t("Show, copy, or print this once. The user must replace the temporary password after first login.")}</p>
-            </div>
-          </div>
-          <div className="credential-values">
-            <div><span>{t("Username")}</span><code>{credential.username}</code></div>
-            <div><span>{t("Temporary password")}</span><code>{credential.password}</code></div>
-          </div>
-        </section>
+        <AccountTemporaryCredentialPanel
+          key={credential.username}
+          credential={credential}
+          t={t}
+          onClose={() => setCredential(null)}
+          onCopyError={() => showToast({
+            kind: "error",
+            title: t("Temporary credential created"),
+            message: t("Clipboard access is unavailable. Reveal the password and copy it manually.")
+          })}
+        />
       ) : null}
 
       <div className="admin-account-overview">
@@ -307,7 +345,8 @@ export default function AccountsPage() {
           <div className="admin-panel-icon" aria-hidden="true">+</div>
           <h3>{t("Create account")}</h3>
           <p className="admin-copy">{t("Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.")}</p>
-          <form className="admin-form" onSubmit={createUser}>
+          <form className="admin-form account-create-form" noValidate onSubmit={createUser}>
+            <div className="account-form-kicker">{t("Step 1 · Account role")}</div>
             <label>
               {t("Role")}
               <select
@@ -316,8 +355,13 @@ export default function AccountsPage() {
                   const role = e.target.value as User["role"];
                   setNewRole(role);
                   setNewUsername("");
-                  setCredential(null);
+                  setParentFullName("");
+                  setParentPhone("");
+                  setStudentRecordId("");
+                  setStudentSearch("");
+                  setCreationAttempted(false);
                 }}
+                aria-describedby="account-create-role-help"
               >
                 <option value="TEACHER">{t("Teacher")}</option>
                 <option value="PARENT">{t("Parent")}</option>
@@ -326,45 +370,81 @@ export default function AccountsPage() {
                 <option value="SCHOOL_ADMIN">{t("School admin")}</option>
               </select>
             </label>
+            <p id="account-create-role-help" className="account-create-role-help">{t(roleCreationHelp(newRole))}</p>
+            <div className="account-form-kicker">{t("Step 2 · Account information")}</div>
 
             {newRole === "PARENT" ? (
               <>
                 <label>
                   {t("Parent full name")}
-                  <input value={parentFullName} onChange={(e) => setParentFullName(e.target.value)} required />
+                  <input
+                    value={parentFullName}
+                    onChange={(e) => setParentFullName(e.target.value)}
+                    aria-invalid={showNameIssue && Boolean(creationIssues.parentFullName)}
+                    aria-describedby={creationIssues.parentFullName && showNameIssue ? "account-create-parent-name-error" : undefined}
+                    maxLength={160}
+                    autoComplete="name"
+                    required
+                  />
+                  {creationIssues.parentFullName && showNameIssue ? <span id="account-create-parent-name-error" className="account-create-field-error" role="alert">{t(creationIssues.parentFullName)}</span> : null}
                 </label>
                 <label>
                   {t("Phone")}
-                  <input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="07xxxxxxxx" />
+                  <input
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    aria-invalid={showPhoneIssue && Boolean(creationIssues.parentPhone)}
+                    aria-describedby={creationIssues.parentPhone && showPhoneIssue ? "account-create-parent-phone-error" : undefined}
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="07xxxxxxxx"
+                  />
+                  {creationIssues.parentPhone && showPhoneIssue ? <span id="account-create-parent-phone-error" className="account-create-field-error" role="alert">{t(creationIssues.parentPhone)}</span> : null}
                 </label>
               </>
             ) : null}
 
             {newRole === "STUDENT" ? (
-              <label>
-                {t("Student record")}
-                <select
-                  value={studentRecordId}
-                  onChange={(e) => setStudentRecordId(e.target.value)}
-                  required
-                  disabled={availableStudentRecords.length === 0}
-                >
-                  {availableStudentRecords.length === 0 ? (
-                    <option value="">{t("No students without login")}</option>
-                  ) : (
-                    availableStudentRecords.map((item) => (
+              <>
+                <label>
+                  {t("Search student records")}
+                  <input
+                    value={studentSearch}
+                    onChange={(e) => { setStudentSearch(e.target.value); setStudentRecordId(""); }}
+                    type="search"
+                    placeholder={t("Search by student name, code or class")}
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
+                  {t("Student record")}
+                  <select
+                    value={studentRecordId}
+                    onChange={(e) => setStudentRecordId(e.target.value)}
+                    required
+                    aria-invalid={creationAttempted && Boolean(creationIssues.studentRecordId)}
+                    aria-describedby={creationAttempted && creationIssues.studentRecordId ? "account-create-student-error" : undefined}
+                    disabled={availableStudentRecords.length === 0}
+                  >
+                    <option value="">{t(availableStudentRecords.length === 0 ? "No students without login" : "Select an eligible student")}</option>
+                    {matchingStudentRecords.map((item) => (
                       <option key={item.student.id} value={item.student.id}>
                         {item.student.fullName} · {item.student.studentCode} · {item.classSection.name}
                       </option>
-                    ))
-                  )}
-                </select>
-                {availableStudentRecords.length === 0 ? (
-                  <span className="admin-field-hint">
-                    {t("Create the student record in Families first, then return here to generate the login.")}
-                  </span>
-                ) : null}
-              </label>
+                    ))}
+                  </select>
+                  {availableStudentRecords.length === 0 ? (
+                    <span className="admin-field-hint">
+                      {t("Create the student record in Families first, then return here to generate the login.")}
+                    </span>
+                  ) : matchingStudentRecords.length === 0 ? (
+                    <span className="admin-field-hint">{t("No eligible students match your search.")}</span>
+                  ) : null}
+                  {creationAttempted && creationIssues.studentRecordId ? (
+                    <span id="account-create-student-error" className="account-create-field-error" role="alert">{t(creationIssues.studentRecordId)}</span>
+                  ) : null}
+                </label>
+              </>
             ) : null}
 
             <label>
@@ -373,13 +453,26 @@ export default function AccountsPage() {
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder={newRole === "PARENT" ? "parent001" : newRole === "STUDENT" ? "student001" : "teacher001"}
+                minLength={3}
+                maxLength={64}
+                dir="ltr"
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={showUsernameIssue && Boolean(creationIssues.username)}
+                aria-describedby={showUsernameIssue && creationIssues.username ? "account-create-username-error" : "account-create-username-help"}
                 required
               />
+              {showUsernameIssue && creationIssues.username ? (
+                <span id="account-create-username-error" className="account-create-field-error" role="alert">{t(creationIssues.username)}</span>
+              ) : (
+                <span id="account-create-username-help" className="admin-field-hint">{t(newRole === "PARENT" || newRole === "STUDENT" ? "Use English letters and numbers only." : "Use English letters, numbers, dots, underscores, @, + or hyphens.")}</span>
+              )}
             </label>
-
+            <div className="account-create-notice">{t("A temporary password will be generated. The account holder must change it on first login.")}</div>
             <button
               className="admin-primary"
-              disabled={busy || (newRole === "STUDENT" && !studentRecordId)}
+              disabled={busy || (newRole === "STUDENT" && availableStudentRecords.length === 0)}
               type="submit"
             >
               {t(busy ? "Working…" : "Generate account")}
