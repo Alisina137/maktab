@@ -284,10 +284,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     let created = 0;
     for (const userId of recipients) {
       const dedupKey = `announcement:${announcement.id}:${userId}`;
-      const [existing] = await db.select({ id: notifications.id }).from(notifications)
-        .where(and(eq(notifications.schoolId, announcement.schoolId), eq(notifications.dedupKey, dedupKey))).limit(1);
-      if (existing) continue;
-      await db.insert(notifications).values({
+      const inserted = await db.insert(notifications).values({
         id: randomUUID(),
         schoolId: announcement.schoolId,
         userId,
@@ -296,9 +293,10 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         message: announcement.content,
         deepLink: "/announcements",
         dedupKey,
-        metadata: { announcementId: announcement.id, audienceScope: announcement.audienceScope, classId: announcement.classId }
-      });
-      created += 1;
+        metadata: { announcementId: announcement.id, audienceScope: announcement.audienceScope,
+          classId: announcement.classId, audienceRole: announcement.audienceRole }
+      }).onConflictDoNothing().returning({ id: notifications.id });
+      created += inserted.length;
     }
     return created;
   }
