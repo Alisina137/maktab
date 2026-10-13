@@ -18,6 +18,7 @@ const css = read("apps/web/app/globals.css");
 const mobile = read("apps/mobile/App.tsx");
 const landing = read("apps/web/app/page.tsx");
 const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const accountPage = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
 const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
 const ci = read(".github/workflows/ci.yml");
 const pkg = JSON.parse(read("package.json"));
@@ -87,6 +88,32 @@ assert.ok(css.includes(".pilot-onboarding-card .pilot-check-list") && css.includ
 for (const key of ['"Setup progress":', '"{done} of {total} checks complete":', '"Onboarding progress":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Onboarding copy is missing a Dari or Pashto translation: ${key}`);
+}
+
+/* Phase 1 Accounts: safeguard directory-first layout, status filters and locale coverage. */
+assert.ok(accountPage.includes('useState<AccountView>("DIRECTORY")') &&
+  accountPage.includes('admin-account-grid-directory') &&
+  accountPage.includes('admin-account-grid-creating'),
+  "Accounts must default to the directory and retain the two adaptive layouts");
+assert.ok(accountPage.includes('const summaries = [') &&
+  accountPage.includes('users.filter(needsActivation)') &&
+  accountPage.includes('onClick={() => selectSummary(summary.id)}'),
+  "Account overview status cards must be derived from users and be actionable");
+assert.ok(accountPage.includes('role="group" aria-label={t("Account role")}') &&
+  accountPage.includes('aria-pressed={group === value}'),
+  "Role filters must expose their selection to assistive technology");
+assert.ok(accountPage.includes('placeholder={newRole === "PARENT" ? "parent001"') &&
+  !accountPage.includes('"parent.001"'),
+  "Parent and student username examples must comply with the alphanumeric-only contract");
+assert.ok(css.includes(".admin-account-stat-selected") &&
+  css.includes(".admin-account-view-button:focus-visible") &&
+  css.includes(".admin-account-grid-creating .admin-users-panel"),
+  "Accounts overview focus, selected state or responsive directory/form layout missing");
+for (const key of ['"Account overview":', '"Total accounts":', '"Active accounts":',
+                   '"Pending activation":', '"Suspended accounts":', '"Search accounts":',
+                   '"Filter by status":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Accounts Phase1 is missing a Dari or Pashto translation: ${key}`);
 }
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
