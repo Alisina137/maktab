@@ -25,7 +25,7 @@ The latest CI status must be verified on GitHub for the **exact release SHA**. A
 2. Added a full 20-entry migration journal replay test, including migration `0013_teacher_assignment_slot_unique` omitted from earlier API test fixtures. Checks critical exam-date, fee idempotency and assignment unique constraints.
 3. Added an executable release-evidence guard for workflows 20.1–20.18 and required localized/client/CI source markers; prior checks cannot silently vanish without a CI failure.
 4. Added the missing parent localization and resilience steps to Ubuntu/Windows CI so the release pipeline matches local verification more closely.
-5. **Security:** Existing session tokens were not checked against an INACTIVE school's status and ARCHIVED users on every request/refresh. Added access and refresh safeguards with reactivation regression. This addresses a cross-role access-control gap rather than merely test data.
+5. **Security:** Confirmed the shared session authenticator already rejects INACTIVE schools and ARCHIVED users for existing access and refresh credentials. Added a regression covering Admin and Parent tokens, reactivation, and archive revocation so this protection cannot regress.
 6. Preserved Step 19 Windows/Node24 test execution and the quoted cross-platform TypeScript test globs that were previously masking failures on Ubuntu.
 
 ## 3. Remaining blockers
