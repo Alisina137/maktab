@@ -4199,6 +4199,14 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: admin
   });
   assert.equal(publish.statusCode, 200);
+  assert.equal(publish.json<{ notificationCount: number }>().notificationCount, 2);
+  for (const headers of [parentAuth, studentAuth]) {
+    const inbox = await app.inject({ method: "GET", url: "/v1/notifications", headers });
+    assert.equal(inbox.statusCode, 200);
+    assert.equal(inbox.json<{ notifications: Array<{ type: string; metadata: { examId?: string } }> }>()
+      .notifications.filter(x => x.type === "RESULTS_PUBLISHED" && x.metadata.examId === examId).length, 1);
+  }
+
   const publishAgain = await app.inject({ method: "POST",
     url: `/v1/admin/exams/${examId}/publish`, headers: admin });
   assert.equal(publishAgain.statusCode, 409);
