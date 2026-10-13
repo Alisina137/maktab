@@ -35,10 +35,15 @@ requireText(app, "parentChildLoadRequestId", "Selected-child stale response prot
 requireText(app, 'setAppError("common.cachedOffline", "network")', "Cached/offline state is not surfaced accurately");
 requireText(app, "setReadCacheScope(null)", "Cache scope cleanup on logout/session loss is missing");
 
-const reconnectMarker = "// Connectivity is confirmed. Network-backed refreshes triggered by the";
-const reconnectStart = app.indexOf(reconnectMarker);
-if (reconnectStart < 0) throw new Error("Reconnect cache/network handoff marker is missing");
-const reconnectBlock = app.slice(reconnectStart, reconnectStart + 900);
+// Anchor this invariant to the recovery function rather than a comment.
+// The recovery logic was refactored to handle unstable ngrok tunnels, so the
+// old comment marker no longer exists even though the handoff still does.
+const reconnectStart = app.indexOf("async function retryServiceConnection(");
+const reconnectEnd = app.indexOf("async function restore()", reconnectStart);
+if (reconnectStart < 0 || reconnectEnd <= reconnectStart) {
+  throw new Error("Connection recovery implementation is missing");
+}
+const reconnectBlock = app.slice(reconnectStart, reconnectEnd);
 requireOrder(
   reconnectBlock,
   "setPreferCachedReads(false);",
