@@ -73,7 +73,7 @@ async function check(name, value) {
 }
 
 if (process.env.DATABASE_URL) {
-  await check("DATABASE_URL (application)", process.env.DATABASE_URL);
+  await check("DATABASE_URL", process.env.DATABASE_URL);
   const direct = process.env.DATABASE_URL_UNPOOLED;
   if (direct && direct !== process.env.DATABASE_URL) {
     await check("DATABASE_URL_UNPOOLED (migrations)", direct);
