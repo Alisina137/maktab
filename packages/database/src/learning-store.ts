@@ -431,6 +431,9 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (!current) throw new LearningNotFoundError("Homework not found.");
       if (current.status !== "DRAFT") throw new LearningConflictError("Only draft homework can be edited.");
       await getAssignment(schoolId, teacherUserId, current.assignmentId);
+      if (input.dueAt && current.scheduledAt && new Date(input.dueAt) <= current.scheduledAt) {
+        throw new LearningValidationError("Due date must remain after the scheduled publication.");
+      }
 
       const [updated] = await db
         .update(homeworks)
@@ -478,6 +481,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         .set({
           status,
           publishedAt: status === "PUBLISHED" ? now : current.publishedAt,
+          scheduledAt: status === "PUBLISHED" ? null : current.scheduledAt,
           updatedAt: now
         })
         .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId)))

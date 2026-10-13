@@ -2204,6 +2204,7 @@ function AppContent() {
                 {selectedChild ? (
                   <>
                     <ParentHomeworkContent
+                      accessToken={session.accessToken}
                       learning={parentLearning}
                       locale={locale}
                       textDirection={textDirection}

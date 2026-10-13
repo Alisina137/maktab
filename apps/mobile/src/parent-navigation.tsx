@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { shareLearningFile } from "./learning-files";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatAfn,
@@ -95,10 +96,12 @@ export function ParentBottomNavigation({
 
 export function ParentHomeworkContent({
   learning,
+  accessToken,
   locale,
   textDirection
 }: {
   learning: LearnerAcademicPayload | null;
+  accessToken: string;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
@@ -123,6 +126,12 @@ export function ParentHomeworkContent({
             {item.subjectName} · {translate(locale, "learning.due")} {formatLocalizedDate(item.homework.dueAt, locale)}
           </Text>
           <Text style={[styles.body, textDirection]}>{item.homework.content}</Text>
+          {item.homework.attachmentFileId ? (
+            <Pressable accessibilityRole="button"
+              onPress={() => void shareLearningFile(accessToken,item.homework.attachmentFileId!).catch(() => {})}>
+              <Text style={[styles.linkText,textDirection]}>{translate(locale,"learning.openAttachment")}</Text>
+            </Pressable>
+          ) : null}
           {item.homework.attachmentUrl ? (
             <Text style={[styles.linkText, textDirection]}>{item.homework.attachmentUrl}</Text>
           ) : null}

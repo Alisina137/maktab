@@ -53,7 +53,9 @@ const app = buildApp({
   logger: process.env.NODE_ENV === "production" || process.env.API_STRUCTURED_LOGS === "true"
 });
 
+let scheduleTimer: ReturnType<typeof setInterval> | null = null;
 const close = async () => {
+  if (scheduleTimer) clearInterval(scheduleTimer);
   await app.close();
   await database.close();
 };
@@ -73,6 +75,5 @@ async function publishScheduled() {
   }
 }
 void publishScheduled();
-const scheduleTimer = setInterval(() => void publishScheduled(), 60_000);
+scheduleTimer = setInterval(() => void publishScheduled(), 60_000);
 scheduleTimer.unref();
-app.addHook("onClose", async () => clearInterval(scheduleTimer));

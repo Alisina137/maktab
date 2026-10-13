@@ -613,6 +613,19 @@ export function TeacherLearningPanel(props: CommonProps & {
           </View>
         </View>
 
+        <Text style={[styles.label,textDirection]}>{translate(locale,"learning.assignments")}</Text>
+        <View style={[styles.chips,rtl&&styles.rowRtl]}>
+          {visibleAssignments.map(assignment=>(
+            <Pressable key={assignment.assignmentId} accessibilityRole="button"
+              accessibilityState={{selected:assignmentId===assignment.assignmentId}}
+              onPress={()=>{setAssignmentId(assignment.assignmentId);setGradeSheet(null);}}
+              style={[styles.chip,assignmentId===assignment.assignmentId&&styles.chipActive]}>
+              <Text style={assignmentId===assignment.assignmentId?styles.chipTextActive:styles.chipText}>
+                {assignment.subjectName} · {assignment.classCode}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
         {visibleExamSubjects.map((item) => (
           <Pressable
             key={item.examSubject.id}

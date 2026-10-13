@@ -120,13 +120,21 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
             eq(homeworks.attachmentFileId, fileId)))
           .where(and(eq(students.schoolId, schoolId), eq(students.userId, userId),
             eq(students.status, "ACTIVE"))).limit(1);
+        const [parentAccess] = await db.select({ id: students.id }).from(students)
+          .innerJoin(homeworks, and(eq(homeworks.schoolId, students.schoolId),
+            eq(homeworks.classId, students.classId),
+            eq(homeworks.academicYearId, students.academicYearId),
+            inArray(homeworks.status, ["PUBLISHED", "CLOSED"]),
+            eq(homeworks.attachmentFileId, fileId)))
+          .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, userId),
+            eq(students.status, "ACTIVE"))).limit(1);
         const [reviewAccess] = await db.select({ id: homeworkSubmissions.id }).from(homeworkSubmissions)
           .innerJoin(homeworks, and(eq(homeworks.id, homeworkSubmissions.homeworkId),
             eq(homeworks.schoolId, homeworkSubmissions.schoolId),
             eq(homeworks.teacherUserId, userId)))
           .where(and(eq(homeworkSubmissions.schoolId, schoolId),
             eq(homeworkSubmissions.attachmentFileId, fileId))).limit(1);
-        if (!teacherAccess && !studentAccess && !reviewAccess) throw new LearningNotFoundError("File unavailable.");
+        if (!teacherAccess && !studentAccess && !parentAccess && !reviewAccess) throw new LearningNotFoundError("File unavailable.");
       }
       return { fileName: file.fileName, mimeType: file.mimeType, base64: file.base64Data };
     },
@@ -166,31 +174,36 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
             .where(and(eq(teacherAssignments.id, item.assignmentId),
               eq(teacherAssignments.schoolId, item.schoolId))).limit(1);
           if (!assignment) continue;
-          const [changed] = await db.update(homeworks)
-            .set({ status: "PUBLISHED", publishedAt: now, scheduledAt: null, updatedAt: now })
-            .where(and(eq(homeworks.id, item.id), eq(homeworks.schoolId, item.schoolId),
-              eq(homeworks.status, "DRAFT"), lte(homeworks.scheduledAt, now),
-              gt(homeworks.dueAt, now)))
-            .returning({ id: homeworks.id, schoolId: homeworks.schoolId, classId: homeworks.classId,
-              title: homeworks.title, subjectId: homeworks.subjectId, dueAt: homeworks.dueAt });
-          if (!changed) continue; // Atomic claim: two schedulers cannot publish twice.
-          completed++;
-          const recipients = await db.select({ parentId: students.parentUserId, userId: students.userId })
-            .from(students).where(and(eq(students.schoolId, changed.schoolId),
-              eq(students.classId, changed.classId), eq(students.status, "ACTIVE")));
-          for (const userId of new Set(recipients.flatMap(x => [x.parentId, x.userId].filter((id): id is string => !!id)))) {
-            await db.insert(notifications).values({
-              id: randomUUID(), schoolId: changed.schoolId, userId,
-              type: "HOMEWORK_PUBLISHED", title: "New homework", message: changed.title,
-              deepLink: `/homework/${changed.id}`,
-              metadata: { homeworkId: changed.id, classId: changed.classId, subjectId: changed.subjectId,
-                dueAt: changed.dueAt.toISOString() },
-              dedupKey: `homework:${changed.id}:${userId}`, deliveryStatus: "PENDING"
-            }).onConflictDoNothing();
-          }
+          const published = await db.transaction(async (tx) => {
+            // Publication and fan-out are ONE atomic transaction. If notifying
+            // recipients fails, the draft remains scheduled and is retried.
+            const [changed] = await tx.update(homeworks)
+              .set({ status: "PUBLISHED", publishedAt: now, scheduledAt: null, updatedAt: now })
+              .where(and(eq(homeworks.id, item.id), eq(homeworks.schoolId, item.schoolId),
+                eq(homeworks.status, "DRAFT"), lte(homeworks.scheduledAt, now),
+                gt(homeworks.dueAt, now)))
+              .returning({ id: homeworks.id, schoolId: homeworks.schoolId, classId: homeworks.classId,
+                title: homeworks.title, subjectId: homeworks.subjectId, dueAt: homeworks.dueAt });
+            if (!changed) return false; // Atomic claim across API workers.
+            const recipients = await tx.select({ parentId: students.parentUserId, userId: students.userId })
+              .from(students).where(and(eq(students.schoolId, changed.schoolId),
+                eq(students.classId, changed.classId), eq(students.status, "ACTIVE")));
+            for (const userId of new Set(recipients.flatMap(x => [x.parentId, x.userId].filter((id): id is string => !!id)))) {
+              await tx.insert(notifications).values({
+                id: randomUUID(), schoolId: changed.schoolId, userId,
+                type: "HOMEWORK_PUBLISHED", title: "New homework", message: changed.title,
+                deepLink: `/homework/${changed.id}`,
+                metadata: { homeworkId: changed.id, classId: changed.classId, subjectId: changed.subjectId,
+                  dueAt: changed.dueAt.toISOString() },
+                dedupKey: `homework:${changed.id}:${userId}`, deliveryStatus: "PENDING"
+              }).onConflictDoNothing();
+            }
+            return true;
+          });
+          if (published) completed++;
         } catch {
-          // Retry pending notifications on the next run is handled by deduped
-          // notifications elsewhere; publishing itself is atomic.
+          // A rolled-back transaction leaves this scheduled draft eligible
+          // for the next run; no visible partial publication is exposed.
         }
       }
       return completed;
