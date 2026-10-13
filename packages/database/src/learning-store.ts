@@ -562,6 +562,14 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       }
 
       await db.transaction(async (tx) => {
+        // Serialize mark saves against results-ready/publish lifecycle changes.
+        const [lockedExam] = await tx.select({ status: exams.status }).from(exams)
+          .where(and(eq(exams.schoolId, schoolId), eq(exams.id, row.exam.id)))
+          .limit(1).for("update");
+        if (lockedExam?.status !== "IN_PROGRESS") {
+          throw new LearningConflictError("Mark entry closed because the exam status changed.");
+        }
+        let changed = 0;
         for (const entry of entries) {
           const [existing] = await tx
             .select()
@@ -576,6 +584,8 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
             .limit(1);
           if (existing) {
             if (existing.status === "PUBLISHED") throw new LearningConflictError("Published grade records require administrator correction.");
+            if (existing.score === entry.score && (existing.remark ?? null) === (entry.remark ?? null)) continue;
+            changed += 1;
             await tx
               .update(gradeRecords)
               .set({
@@ -586,6 +596,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
               })
               .where(eq(gradeRecords.id, existing.id));
           } else {
+            changed += 1;
             await tx.insert(gradeRecords).values({
               id: randomUUID(),
               schoolId,
@@ -597,6 +608,13 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
               updatedBy: teacherUserId
             });
           }
+        }
+        if (changed > 0) {
+          await tx.insert(auditLogs).values({
+            id: randomUUID(), schoolId, actorUserId: teacherUserId,
+            action: "grades.draft_saved", entityType: "exam_subject", entityId: examSubjectId,
+            metadata: { entryCount: changed, examId: row.exam.id }
+          });
         }
       });
       const refreshed = await requireTeacherExamSubject(schoolId, teacherUserId, examSubjectId);
