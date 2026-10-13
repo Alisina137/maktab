@@ -750,12 +750,14 @@ export const examSubjects = pgTable(
       .notNull()
       .references(() => classSections.id, { onDelete: "restrict" }),
     maxScore: integer("max_score").notNull(),
+    examDate: date("exam_date"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => [
     uniqueIndex("exam_subjects_unique").on(table.schoolId, table.examId, table.classId, table.subjectId),
     index("exam_subjects_exam_idx").on(table.schoolId, table.examId),
-    index("exam_subjects_class_idx").on(table.schoolId, table.classId)
+    index("exam_subjects_class_idx").on(table.schoolId, table.classId),
+    index("exam_subjects_date_idx").on(table.schoolId, table.examDate)
   ]
 );
 
