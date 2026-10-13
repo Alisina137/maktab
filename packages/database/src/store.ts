@@ -203,6 +203,20 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
     async updateSubscription(schoolId, input) {
       const existing = await context(schoolId);
       if (!existing) return null;
+      if (existing.subscription.status === "CANCELLED" &&
+          input.status !== undefined && input.status !== "CANCELLED") {
+        throw new SchoolConflictError("Cancelled subscriptions cannot be reactivated.");
+      }
+      // Validate the effective persisted date range, not only pairs of fields
+      // sent together in one PATCH. Otherwise a partial edit can create
+      // impossible start/expiry/grace ordering.
+      const startsOn = input.startsOn === undefined ? existing.subscription.startsOn : input.startsOn;
+      const expiresOn = input.expiresOn === undefined ? existing.subscription.expiresOn : input.expiresOn;
+      const graceEndsOn = input.graceEndsOn === undefined ? existing.subscription.graceEndsOn : input.graceEndsOn;
+      if ((startsOn && expiresOn && startsOn > expiresOn) ||
+          (expiresOn && graceEndsOn && expiresOn > graceEndsOn)) {
+        throw new SchoolConflictError("Subscription dates must follow start, expiry, then grace end.");
+      }
       await db
         .update(subscriptions)
         .set({
