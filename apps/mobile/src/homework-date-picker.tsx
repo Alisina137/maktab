@@ -100,7 +100,7 @@ export function HomeworkDueDatePicker({
         onRequestClose={() => setOpen(false)}
       >
         <View style={styles.overlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setOpen(false)}
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}
             accessibilityLabel={translate(locale, "learning.closeCalendar")} accessibilityRole="button" />
           <View style={styles.calendarCard} accessibilityViewIsModal testID="teacher-homework-calendar">
             <View style={[styles.dialogHeader, rtl && styles.rowRtl]}>
