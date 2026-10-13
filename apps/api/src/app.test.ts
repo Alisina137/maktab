@@ -3716,6 +3716,19 @@ test("homework stays private as draft, then becomes visible to parent and linked
     url: `/v1/teacher/homework/${homeworkId}/submissions`, headers: teacherAuth });
   assert.equal(historicalSubmissions.statusCode, 200);
   assert.equal(historicalSubmissions.json<{ submissions: unknown[] }>().submissions.length, 1);
+  const archivedReviewDenied = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/submissions/${submissionId}/review`,
+    headers: teacherAuth, payload: { status: "REVIEWED", feedback: "No edits to archives" }
+  });
+  assert.equal(archivedReviewDenied.statusCode, 409);
+  // Closing the academic year must not erase the teacher's historical
+  // archived submissions or make historical files disappear.
+  await client.query("UPDATE academic_years SET status = 'CLOSED' WHERE id = $1", [yearId]);
+  const archivedYearHistory = await app.inject({ method: "GET",
+    url: `/v1/teacher/homework/${homeworkId}/submissions`, headers: teacherAuth });
+  assert.equal(archivedYearHistory.statusCode, 200);
+  assert.equal(archivedYearHistory.json<{ submissions: unknown[] }>().submissions.length, 1);
+
   for (const [headers, url] of [
     [parentAuth, `/v1/parent/children/${studentId}/learning`],
     [studentAuth, "/v1/student/home"]
