@@ -1346,3 +1346,17 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 
 - Historical read-only sheets now reconstruct the roster from the actual saved attendance marks, not today\'s current enrollment. Withdrawn/transferred students remain visible on the historical day they were marked. Added a dedicated regression for this alongside the API history summary check.
 - Confirmation dialog explicitly displays the selected class and attendance date before the status breakdown, reducing accidental submission to the wrong class/day.
+
+
+### Teacher Workspace Expansion — Phase 5: Lesson Planning, Curriculum Tracking and Reports (2026-10-13)
+
+**Implementation in progress; Android acceptance pending.**
+
+- Added school/admin-defined curriculum units scoped to the active academic year + class + subject, with unique order per class/subject. A Teacher cannot create or redefine the school's official curriculum. Teaching-unit progress is recorded against the authorized teacher assignment, separated from official marks and exams.
+- Teachers now have a Teaching section on each authorized class detail, organized into Lesson Plans, Curriculum and Teaching Reports. Lesson plans record date, topic, learning objective, materials and notes; save/edit status Planned / Completed / Postponed. Optional links to school-created units ensure teachers cannot attach lessons to another class's curriculum.
+- Subject-level curriculum can be marked Not Started / In Progress / Completed. Teacher-facing reports aggregate completed, postponed, planned lessons, unit progress, published/draft homework and continuous-assessment counts. Lessons, homework and assessments in reports use the requested date interval; unit-progress snapshot is explicitly current, not historical.
+- New tenant-scoped API and database authorization checks require exact school, teacher, active year, class and subject assignment. Users cannot access colleagues' lessons/units/reports by guessing identifiers; write validation includes calendar-valid ISO dates, input limits, and class-aligned optional unit references.
+- New migration `0016_teacher_teaching_plans.sql` creates the three tables and indexes. Requires `pnpm --filter @maktablink/database db:migrate` on the deployed development database before testing.
+- Regression coverage validates school-only curriculum creation, duplicate position conflicts, cross-teacher denial, lesson creation and status updates, invalid dates, curriculum progress, and report aggregates. Real Android acceptance for Teacher class detail and admin browser curriculum requires manual verification before marking the phase closed.
+- School Admin → Academics → Curriculum now has an authorized browser module to choose a class and subject in the selected active academic year, create official ordered chapters, and review chapters. The mobile Teacher curriculum tab deliberately cannot add official curriculum chapters.
+- The lesson/academic reports backend and Android Teacher Teaching panel are wired through the class detail page. Status transitions and notes remain editable only by the assigned Teacher; reports are generated on demand for a selected date interval and do not publish official examination grades.

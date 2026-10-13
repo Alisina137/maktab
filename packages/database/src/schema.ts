@@ -625,6 +625,50 @@ export const homeworkSubmissions = pgTable("homework_submissions", {
   index("homework_submissions_class_idx").on(table.schoolId, table.homeworkId)
 ]);
 
+export const curriculumUnits = pgTable("curriculum_units", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  academicYearId: uuid("academic_year_id").notNull().references(() => academicYears.id, { onDelete: "restrict" }),
+  classId: uuid("class_id").notNull().references(() => classSections.id, { onDelete: "restrict" }),
+  subjectId: uuid("subject_id").notNull().references(() => subjects.id, { onDelete: "restrict" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("curriculum_unit_order_unique").on(table.schoolId, table.academicYearId, table.classId, table.subjectId, table.sortOrder),
+  index("curriculum_unit_class_idx").on(table.schoolId, table.academicYearId, table.classId)
+]);
+
+export const teacherUnitProgress = pgTable("teacher_unit_progress", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  assignmentId: uuid("assignment_id").notNull().references(() => teacherAssignments.id, { onDelete: "cascade" }),
+  unitId: uuid("unit_id").notNull().references(() => curriculumUnits.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("NOT_STARTED"),
+  updatedBy: uuid("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("teacher_unit_progress_unique").on(table.assignmentId, table.unitId)
+]);
+
+export const teacherLessonPlans = pgTable("teacher_lesson_plans", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  assignmentId: uuid("assignment_id").notNull().references(() => teacherAssignments.id, { onDelete: "cascade" }),
+  unitId: uuid("unit_id").references(() => curriculumUnits.id, { onDelete: "set null" }),
+  lessonDate: date("lesson_date").notNull(),
+  topic: varchar("topic", { length: 160 }).notNull(),
+  objective: text("objective").notNull(),
+  materials: varchar("materials", { length: 500 }).notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  status: varchar("status", { length: 20 }).notNull().default("PLANNED"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("teacher_lesson_plans_assignment_date_idx").on(table.schoolId, table.assignmentId, table.lessonDate)
+]);
+
 export const continuousAssessments = pgTable("continuous_assessments", {
   id: uuid("id").primaryKey(),
   schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
@@ -876,6 +920,9 @@ export const databaseSchema = {
   homeworkSubmissions,
   continuousAssessments,
   continuousScores,
+  curriculumUnits,
+  teacherUnitProgress,
+  teacherLessonPlans,
   exams,
   examSubjects,
   gradeRecords,
@@ -915,6 +962,9 @@ export type Homework = typeof homeworks.$inferSelect;
 export type LearningFile = typeof learningFiles.$inferSelect;
 export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
 export type ContinuousAssessment = typeof continuousAssessments.$inferSelect;
+export type CurriculumUnit = typeof curriculumUnits.$inferSelect;
+export type TeacherUnitProgress = typeof teacherUnitProgress.$inferSelect;
+export type TeacherLessonPlan = typeof teacherLessonPlans.$inferSelect;
 export type Exam = typeof exams.$inferSelect;
 export type ExamSubject = typeof examSubjects.$inferSelect;
 export type GradeRecord = typeof gradeRecords.$inferSelect;

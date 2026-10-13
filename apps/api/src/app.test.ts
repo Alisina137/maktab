@@ -11,6 +11,7 @@ import {
   createFamilyStore,
   createLearningStore,
   createLearningExtensionsStore,
+  createTeacherTeachingStore,
   createPilotStore,
   createSchoolStore,
   type PushProvider,
@@ -39,7 +40,8 @@ async function createTestApp() {
     "0011_admin_contact_profile.sql",
     "0012_admin_password_2fa.sql",
     "0014_student_phone.sql",
-    "0015_teacher_learning_workflows.sql"
+    "0015_teacher_learning_workflows.sql",
+    "0016_teacher_teaching_plans.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -76,6 +78,7 @@ async function createTestApp() {
     attendanceStore: createAttendanceStore(db),
     learningStore: createLearningStore(db),
     learningExtensionsStore,
+    teacherTeachingStore: createTeacherTeachingStore(db),
     communicationStore: createCommunicationStore(db),
     pilotStore: createPilotStore(db),
     pushProvider,
@@ -1083,6 +1086,102 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().schedule, []);
   // Phase 2: class details derive from exact active teacher assignment.
   const ownAssignmentId = assignmentResponse.json<{ assignment: { id: string } }>().assignment.id;
+
+  // Phase 5: only school administration defines official curriculum units.
+  const curriculumUnitCreate = await app.inject({
+    method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
+    payload: { academicYearId: yearId, classId, subjectId, title: "Fractions", sortOrder: 1 }
+  });
+  assert.equal(curriculumUnitCreate.statusCode, 201, curriculumUnitCreate.body);
+  const unitId = curriculumUnitCreate.json<{ unit: { id: string } }>().unit.id;
+  const duplicateUnit = await app.inject({
+    method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
+    payload: { academicYearId: yearId, classId, subjectId, title: "Another chapter", sortOrder: 1 }
+  });
+  assert.equal(duplicateUnit.statusCode, 409);
+  const teacherCannotDefineCurriculum = await app.inject({
+    method: "POST", url: "/v1/admin/teaching/curriculum", headers: teacherHeaders,
+    payload: { academicYearId: yearId, classId, subjectId, title: "Unauthorized", sortOrder: 2 }
+  });
+  assert.equal(teacherCannotDefineCurriculum.statusCode, 403);
+  const curriculum = await app.inject({
+    method: "GET",
+    url: `/v1/admin/teaching/curriculum?academicYearId=${yearId}&classId=${classId}&subjectId=${subjectId}`,
+    headers: auth
+  });
+  assert.equal(curriculum.statusCode, 200);
+  assert.deepEqual(curriculum.json<{ units: Array<{ title: string }> }>().units.map((x) => x.title), ["Fractions"]);
+
+  const teacherWorkspace = await app.inject({
+    method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}`, headers: teacherHeaders
+  });
+  assert.equal(teacherWorkspace.statusCode, 200, teacherWorkspace.body);
+  assert.equal(teacherWorkspace.json<{ units: Array<{ status: string }> }>().units[0]?.status, "NOT_STARTED");
+  const otherTeacherDeniedTeaching = await app.inject({
+    method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}`,
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(otherTeacherDeniedTeaching.statusCode, 404);
+  const adminDeniedTeaching = await app.inject({
+    method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}`, headers: auth
+  });
+  assert.equal(adminDeniedTeaching.statusCode, 403);
+  const createLesson = await app.inject({
+    method: "POST", url: `/v1/teacher/teaching/${ownAssignmentId}/lessons`, headers: teacherHeaders,
+    payload: {
+      lessonDate: "2026-10-13", topic: "Fraction addition",
+      objective: "Students add fractions with different denominators.",
+      materials: "Textbook chapter 4", notes: "Prepare sample questions.", unitId
+    }
+  });
+  assert.equal(createLesson.statusCode, 201, createLesson.body);
+  const lessonId = createLesson.json<{ lesson: { id: string } }>().lesson.id;
+  const otherTeacherLessonDenied = await app.inject({
+    method: "PATCH", url: `/v1/teacher/teaching/${ownAssignmentId}/lessons/${lessonId}`,
+    headers: { authorization: `Bearer ${otherToken}` }, payload: { status: "COMPLETED" }
+  });
+  assert.equal(otherTeacherLessonDenied.statusCode, 404);
+  const invalidLessonDate = await app.inject({
+    method: "POST", url: `/v1/teacher/teaching/${ownAssignmentId}/lessons`, headers: teacherHeaders,
+    payload: { lessonDate: "2026-02-30", topic: "Invalid", objective: "Invalid", materials: "", notes: "" }
+  });
+  assert.equal(invalidLessonDate.statusCode, 400);
+  const completedLesson = await app.inject({
+    method: "PATCH", url: `/v1/teacher/teaching/${ownAssignmentId}/lessons/${lessonId}`,
+    headers: teacherHeaders, payload: { status: "COMPLETED", notes: "Taught successfully." }
+  });
+  assert.equal(completedLesson.statusCode, 200);
+  const invalidProgress = await app.inject({
+    method: "PUT", url: `/v1/teacher/teaching/${ownAssignmentId}/units/${unitId}`,
+    headers: teacherHeaders, payload: { status: "PUBLISHED" }
+  });
+  assert.equal(invalidProgress.statusCode, 400);
+  const completedUnit = await app.inject({
+    method: "PUT", url: `/v1/teacher/teaching/${ownAssignmentId}/units/${unitId}`,
+    headers: teacherHeaders, payload: { status: "COMPLETED" }
+  });
+  assert.equal(completedUnit.statusCode, 200);
+  assert.equal(completedUnit.json<{ status: string }>().status, "COMPLETED");
+  const report = await app.inject({
+    method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-01&to=2026-10-31`,
+    headers: teacherHeaders
+  });
+  assert.equal(report.statusCode, 200, report.body);
+  const reportBody = report.json<{ summary: {
+    lessonCompleted: number; unitsCompleted: number; unitsTotal: number; assessmentCount: number;
+  }; lessons: Array<{ topic: string }> }>();
+  assert.equal(reportBody.summary.lessonCompleted, 1);
+  assert.equal(reportBody.summary.unitsCompleted, 1);
+  assert.equal(reportBody.summary.unitsTotal, 1);
+  assert.equal(reportBody.summary.assessmentCount, 0);
+  assert.deepEqual(reportBody.lessons.map((x) => x.topic), ["Fraction addition"]);
+  const invalidReport = await app.inject({
+    method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-31&to=2026-10-01`,
+    headers: teacherHeaders
+  });
+  assert.equal(invalidReport.statusCode, 400);
+
+
   const createdParent = await app.inject({
     method: "POST", url: "/v1/admin/families/parents", headers: auth,
     payload: { username: "parent.classroster", fullName: "Roster Parent" }

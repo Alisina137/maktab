@@ -140,6 +140,40 @@ export type TranslationKey =
   | "teacher.noActiveStudents"
   | "teacher.supervisionHint"
   | "teacher.supervisionUnavailable"
+  | "teaching.workspace"
+  | "teaching.lessons"
+  | "teaching.curriculum"
+  | "teaching.report"
+  | "teaching.planned"
+  | "teaching.completed"
+  | "teaching.postponed"
+  | "teaching.notStarted"
+  | "teaching.inProgress"
+  | "teaching.newLesson"
+  | "teaching.editLesson"
+  | "teaching.topic"
+  | "teaching.objective"
+  | "teaching.materials"
+  | "teaching.notes"
+  | "teaching.relatedUnit"
+  | "teaching.noUnit"
+  | "teaching.saveLesson"
+  | "teaching.cancelEdit"
+  | "teaching.noLessons"
+  | "teaching.invalidLesson"
+  | "teaching.lessonSaved"
+  | "teaching.progressSaved"
+  | "teaching.curriculumHint"
+  | "teaching.noUnits"
+  | "teaching.unitsComplete"
+  | "teaching.reportHint"
+  | "teaching.from"
+  | "teaching.to"
+  | "teaching.generateReport"
+  | "teaching.invalidRange"
+  | "teaching.homeworkPublished"
+  | "teaching.assessments"
+  | "teaching.progressAsOfToday"
   | "teacher.workspace"
   | "teacher.navSchedule"
   | "teacher.navClasses"
@@ -516,6 +550,40 @@ const en: Record<TranslationKey, string> = {
   "teacher.noActiveStudents": "No active students in this class.",
   "teacher.supervisionHint": "Only active Negaran assignments can record attendance or publish class announcements.",
   "teacher.supervisionUnavailable": "Supervision permissions are not active for today's date. Refresh or contact the school administrator.",
+  "teaching.workspace": "Teaching",
+  "teaching.lessons": "Lesson plans",
+  "teaching.curriculum": "Curriculum",
+  "teaching.report": "Teaching report",
+  "teaching.planned": "Planned",
+  "teaching.completed": "Completed",
+  "teaching.postponed": "Postponed",
+  "teaching.notStarted": "Not started",
+  "teaching.inProgress": "In progress",
+  "teaching.newLesson": "Plan a lesson",
+  "teaching.editLesson": "Edit lesson",
+  "teaching.topic": "Lesson topic",
+  "teaching.objective": "Learning objective",
+  "teaching.materials": "Teaching materials",
+  "teaching.notes": "Teaching notes",
+  "teaching.relatedUnit": "Curriculum unit (optional)",
+  "teaching.noUnit": "No unit",
+  "teaching.saveLesson": "Save lesson",
+  "teaching.cancelEdit": "Cancel editing",
+  "teaching.noLessons": "No lesson plans yet.",
+  "teaching.invalidLesson": "Enter a valid lesson date, topic and learning objective.",
+  "teaching.lessonSaved": "Lesson plan saved.",
+  "teaching.progressSaved": "Curriculum progress updated.",
+  "teaching.curriculumHint": "Curriculum units are created by your school. Update only your teaching progress.",
+  "teaching.noUnits": "No curriculum units for this class and subject. Ask the school administrator to add them.",
+  "teaching.unitsComplete": "Units completed",
+  "teaching.reportHint": "Select a period to summarize your teaching. Curriculum progress reflects its current status.",
+  "teaching.from": "From date",
+  "teaching.to": "To date",
+  "teaching.generateReport": "Generate report",
+  "teaching.invalidRange": "Choose valid report dates, no more than one year apart.",
+  "teaching.homeworkPublished": "Homework posted",
+  "teaching.assessments": "Assessments",
+  "teaching.progressAsOfToday": "Curriculum progress shows the current status; other figures use the selected date range.",
   "teacher.workspace": "Teacher workspace",
   "teacher.navSchedule": "Schedule",
   "teacher.navClasses": "Classes",
@@ -908,6 +976,40 @@ const dari: Record<TranslationKey, string> = {
   "teacher.noActiveStudents": "در این صنف شاگرد فعال موجود نیست.",
   "teacher.supervisionHint": "فقط نگران فعال می‌تواند حاضری ثبت کند یا اعلان صنفی نشر کند.",
   "teacher.supervisionUnavailable": "اجازه نظارت برای امروز فعال نیست. تازه‌سازی کنید یا با اداره مکتب تماس بگیرید.",
+  "teaching.workspace": "تدریس",
+  "teaching.lessons": "پلان‌های درسی",
+  "teaching.curriculum": "نصاب تعلیمی",
+  "teaching.report": "گزارش تدریس",
+  "teaching.planned": "برنامه‌ریزی‌شده",
+  "teaching.completed": "تکمیل‌شده",
+  "teaching.postponed": "به تعویق افتاده",
+  "teaching.notStarted": "آغاز نشده",
+  "teaching.inProgress": "در جریان",
+  "teaching.newLesson": "پلان درس جدید",
+  "teaching.editLesson": "ویرایش پلان درس",
+  "teaching.topic": "موضوع درس",
+  "teaching.objective": "هدف آموزشی",
+  "teaching.materials": "مواد تدریسی",
+  "teaching.notes": "یادداشت‌های تدریس",
+  "teaching.relatedUnit": "بخش نصاب (اختیاری)",
+  "teaching.noUnit": "بدون بخش",
+  "teaching.saveLesson": "ذخیره پلان درس",
+  "teaching.cancelEdit": "لغو ویرایش",
+  "teaching.noLessons": "هنوز پلان درسی ایجاد نشده است.",
+  "teaching.invalidLesson": "تاریخ، موضوع و هدف آموزشی معتبر وارد کنید.",
+  "teaching.lessonSaved": "پلان درسی ذخیره شد.",
+  "teaching.progressSaved": "پیشرفت نصاب به‌روزرسانی شد.",
+  "teaching.curriculumHint": "بخش‌های نصاب توسط اداره مکتب تعیین می‌شوند. فقط پیشرفت تدریس خود را ثبت کنید.",
+  "teaching.noUnits": "برای این صنف و مضمون بخش نصاب تعیین نشده است. از اداره مکتب درخواست کنید.",
+  "teaching.unitsComplete": "بخش‌های تکمیل‌شده",
+  "teaching.reportHint": "یک دوره انتخاب کنید. پیشرفت نصاب وضعیت فعلی را نشان می‌دهد.",
+  "teaching.from": "از تاریخ",
+  "teaching.to": "تا تاریخ",
+  "teaching.generateReport": "تهیه گزارش",
+  "teaching.invalidRange": "تاریخ‌های معتبر در محدوده یک سال انتخاب کنید.",
+  "teaching.homeworkPublished": "وظایف نشرشده",
+  "teaching.assessments": "ارزیابی‌ها",
+  "teaching.progressAsOfToday": "پیشرفت نصاب وضعیت فعلی است؛ سایر ارقام مربوط به دوره انتخاب‌شده اند.",
   "teacher.workspace": "بخش آموزگار",
   "teacher.navSchedule": "تقسیم اوقات",
   "teacher.navClasses": "صنف‌ها",
@@ -1300,6 +1402,40 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.noActiveStudents": "په دې ټولګي کې فعال زده کوونکي نشته.",
   "teacher.supervisionHint": "یوازې فعال نګران حاضري ثبتولای او د ټولګي اعلان خپرولای شي.",
   "teacher.supervisionUnavailable": "د نن ورځې د څارنې اجازه فعاله نه ده. تازه یې کړئ یا له ادارې سره اړیکه ونیسئ.",
+  "teaching.workspace": "تدریس",
+  "teaching.lessons": "درسي پلانونه",
+  "teaching.curriculum": "تعلیمي نصاب",
+  "teaching.report": "د تدریس راپور",
+  "teaching.planned": "پلان شوی",
+  "teaching.completed": "بشپړ شوی",
+  "teaching.postponed": "ځنډېدلی",
+  "teaching.notStarted": "نه دی پیل شوی",
+  "teaching.inProgress": "روان دی",
+  "teaching.newLesson": "د درس نوی پلان",
+  "teaching.editLesson": "د درس پلان سمول",
+  "teaching.topic": "د درس موضوع",
+  "teaching.objective": "د زده کړې موخه",
+  "teaching.materials": "درسي توکي",
+  "teaching.notes": "د تدریس یادښتونه",
+  "teaching.relatedUnit": "د نصاب برخه (اختیاري)",
+  "teaching.noUnit": "بې برخې",
+  "teaching.saveLesson": "د درس پلان خوندي کړئ",
+  "teaching.cancelEdit": "سمون لغوه کړئ",
+  "teaching.noLessons": "تراوسه درسي پلان نشته.",
+  "teaching.invalidLesson": "د درس نېټه، موضوع او د زده کړې موخه سمه ولیکئ.",
+  "teaching.lessonSaved": "درسي پلان خوندي شو.",
+  "teaching.progressSaved": "د نصاب پرمختګ تازه شو.",
+  "teaching.curriculumHint": "د نصاب برخې اداره ټاکي. یوازې خپل تدریسي پرمختګ ثبت کړئ.",
+  "teaching.noUnits": "د دې ټولګي او مضمون لپاره د نصاب برخې نشته. له ادارې یې وغواړئ.",
+  "teaching.unitsComplete": "بشپړې شوې برخې",
+  "teaching.reportHint": "یوه موده وټاکئ. د نصاب پرمختګ اوسنی حالت ښيي.",
+  "teaching.from": "له نېټې",
+  "teaching.to": "تر نېټې",
+  "teaching.generateReport": "راپور جوړ کړئ",
+  "teaching.invalidRange": "د راپور سمې نېټې وټاکئ، تر یوه کال پورې.",
+  "teaching.homeworkPublished": "خپرې شوې دندې",
+  "teaching.assessments": "ارزونې",
+  "teaching.progressAsOfToday": "د نصاب پرمختګ اوسنی حالت دی؛ نورې شمېرې د ټاکلې مودې دي.",
   "teacher.workspace": "د ښوونکي برخه",
   "teacher.navSchedule": "مهالویش",
   "teacher.navClasses": "ټولګي",

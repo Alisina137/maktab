@@ -10,3 +10,4 @@ export * from "./schema.js";
 export * from "./store.js";
 
 export * from "./learning-extensions-store.js";
+export * from "./teacher-teaching-store.js";

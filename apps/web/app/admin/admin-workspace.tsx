@@ -83,7 +83,8 @@ const yearScopedRoutes = new Set([
   "/admin/academics/classes",
   "/admin/academics/assignments",
   "/admin/academics/negaran",
-  "/admin/academics/timetable"
+  "/admin/academics/timetable",
+  "/admin/academics/curriculum"
 ]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {
@@ -146,6 +147,10 @@ const pageCopy: Record<string, { title: string; description: string }> = {
   "/admin/academics/timetable": {
     title: "Timetable periods",
     description: "Create and maintain timetable periods and weekly teacher/class views."
+  },
+  "/admin/academics/curriculum": {
+    title: "Curriculum units",
+    description: "Define official subject chapters for the active school year. Teachers track their assigned progress."
   },
   "/admin/profile": {
     title: "Administrator profile",

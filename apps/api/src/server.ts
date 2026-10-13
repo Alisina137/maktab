@@ -10,6 +10,7 @@ import {
   createExpoPushProvider,
   createLearningStore,
   createLearningExtensionsStore,
+  createTeacherTeachingStore,
   createPilotStore,
   createSchoolStore
 } from "@maktablink/database";
@@ -43,6 +44,7 @@ const app = buildApp({
   attendanceStore: createAttendanceStore(database.db),
   learningStore: createLearningStore(database.db),
   learningExtensionsStore,
+  teacherTeachingStore: createTeacherTeachingStore(database.db),
   communicationStore: createCommunicationStore(database.db),
   pilotStore: createPilotStore(database.db),
   pushProvider: createExpoPushProvider(),

@@ -8,9 +8,10 @@ import { TeacherLearningPanel } from "./learning-ui";
 import { CommunicationPanel } from "./communication-ui";
 import { teacherTime12 } from "./teacher-hub-data";
 import { NegaranHistoryPanel } from "./negaran-history";
+import { TeacherTeachingPanel } from "./teacher-teaching";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
-type Section = "OVERVIEW" | "STUDENTS" | "HOMEWORK" | "GRADES" | "SUPERVISION";
+type Section = "OVERVIEW" | "STUDENTS" | "HOMEWORK" | "GRADES" | "TEACHING" | "SUPERVISION";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
 const tabs: Array<[Section, TranslationKey, Icon]> = [
@@ -18,6 +19,7 @@ const tabs: Array<[Section, TranslationKey, Icon]> = [
   ["STUDENTS", "teacher.classStudents", "people-outline"],
   ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
   ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
+  ["TEACHING", "teaching.workspace", "school-outline"],
   ["SUPERVISION", "teacher.classSupervision", "shield-checkmark-outline"]
 ];
 const weekdayKey: Record<string, TranslationKey> = {
@@ -153,6 +155,18 @@ export function TeacherClassDetailPage({
               section={section} assignmentContext={{ assignmentId: current.assignmentId, academicYearId: current.academicYearId,
                 classId: current.classId, subjectId: current.subjectId }}
               accessToken={accessToken} locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice} onScrollTop={onScrollTop} />
+          ) : null}
+          {section === "TEACHING" ? (
+            <TeacherTeachingPanel
+              key={`${assignmentId}-teaching-${reconnectEpoch}`}
+              accessToken={accessToken}
+              assignmentId={current.assignmentId}
+              locale={locale}
+              textDirection={textDirection}
+              reconnectEpoch={reconnectEpoch}
+              onError={onError}
+              onNotice={onNotice}
+            />
           ) : null}
           {section === "SUPERVISION" && detail.canSuperviseToday ? (
             <View style={styles.stack}>

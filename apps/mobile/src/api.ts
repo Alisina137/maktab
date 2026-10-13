@@ -142,6 +142,29 @@ export interface TeacherClassDetailPayload {
   canSuperviseToday: boolean;
 }
 
+export type LessonState = "PLANNED" | "COMPLETED" | "POSTPONED";
+export type UnitState = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+export interface TeachingUnit {
+  unit: { id: string; title: string; sortOrder: number };
+  status: UnitState;
+}
+export interface TeachingLesson {
+  id: string; assignmentId: string;
+  unitId: string | null; lessonDate: string; topic: string; objective: string;
+  materials: string; notes: string; status: LessonState;
+}
+export interface TeachingSummary {
+  lessonPlanned: number; lessonCompleted: number; lessonPostponed: number;
+  unitsTotal: number; unitsCompleted: number; unitsInProgress: number;
+  homeworksPublished: number; homeworkDrafts: number; assessmentCount: number;
+}
+export interface TeacherTeachingPayload {
+  lessons: TeachingLesson[]; units: TeachingUnit[]; summary: TeachingSummary;
+}
+export interface TeacherTeachingReport extends TeacherTeachingPayload {
+  from: string; to: string;
+}
+
 export interface AttendanceSheetPayload {
   date: string;
   classSection: { id: string; name: string; code: string; academicYearId: string };
@@ -825,6 +848,45 @@ export const api = {
     return request<TeacherAcademicsPayload>("/v1/teacher/academics", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+  },
+
+  teacherTeaching(accessToken: string, assignmentId: string) {
+    return request<TeacherTeachingPayload>(
+      `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+  },
+  createTeachingLesson(accessToken: string, assignmentId: string, input: {
+    lessonDate: string; topic: string; objective: string; materials: string;
+    notes: string; unitId?: string | null;
+  }) {
+    return request<{ lesson: TeachingLesson }>(
+      `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}/lessons`,
+      { method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(input) }
+    );
+  },
+  updateTeachingLesson(accessToken: string, assignmentId: string, lessonId: string,
+    input: Partial<{ lessonDate: string; topic: string; objective: string;
+      materials: string; notes: string; status: LessonState; unitId: string | null }>) {
+    return request<{ lesson: TeachingLesson }>(
+      `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}/lessons/${encodeURIComponent(lessonId)}`,
+      { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(input) }
+    );
+  },
+  setTeachingUnit(accessToken: string, assignmentId: string, unitId: string, status: UnitState) {
+    return request<{ status: UnitState }>(
+      `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}/units/${encodeURIComponent(unitId)}`,
+      { method: "PUT", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ status }) }
+    );
+  },
+  teacherTeachingReport(accessToken: string, assignmentId: string, from: string, to: string) {
+    return request<TeacherTeachingReport>(
+      `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}/report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
   },
 
   teacherClassDetail(accessToken: string, assignmentId: string) {

@@ -7,6 +7,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText, type AdminLocale } from "./admin-i18n";
+import { CurriculumAdminPanel } from "./curriculum-admin";
 
 export const academicSectionNames = [
   "years",
@@ -16,7 +17,8 @@ export const academicSectionNames = [
   "teachers",
   "assignments",
   "negaran",
-  "timetable"
+  "timetable",
+  "curriculum"
 ] as const;
 
 export type AcademicSection = (typeof academicSectionNames)[number] | "overview";
@@ -233,7 +235,8 @@ export function AcademicPanel({
       { key: "teachers", title: "Teacher profiles", description: "Attach academic teacher profiles to teacher accounts.", count: overview.teachers.length },
       { key: "assignments", title: "Teacher assignments", description: "Assign teachers to subjects and classes in the selected year.", count: selectedAssignments.length },
       { key: "negaran", title: "Negaran assignments", description: "Manage class-supervisor responsibility and history.", count: selectedNegaranAssignments.length },
-      { key: "timetable", title: "Timetable periods", description: "Create periods and review weekly teacher/class timetables.", count: selectedTimetable.length }
+      { key: "timetable", title: "Timetable periods", description: "Create periods and review weekly teacher/class timetables.", count: selectedTimetable.length },
+      { key: "curriculum", title: "Curriculum units", description: "Define official subject chapters for each class. Teachers record their own progress.", count: 0 }
     ] as const;
 
     return (
@@ -271,7 +274,8 @@ export function AcademicPanel({
     teachers: "Teacher profiles",
     assignments: "Teacher assignments",
     negaran: "Negaran assignments",
-    timetable: "Timetable periods"
+    timetable: "Timetable periods",
+    curriculum: "Curriculum units"
   };
 
   const historicalNotice = ["classes", "assignments", "negaran", "timetable"].includes(section) && selectedYearHistorical ? (
@@ -280,6 +284,19 @@ export function AcademicPanel({
       <div>{t("Year-bound academic structure is shown for reference. Switch to a draft or active year to make operational changes.")}</div>
     </div>
   ) : null;
+
+  if (section === "curriculum") {
+    return <CurriculumAdminPanel
+      accessToken={accessToken} yearId={effectiveYearId}
+      active={effectiveYear?.status === "ACTIVE"}
+      classes={selectedClasses}
+      subjects={overview.subjects}
+      locale={locale}
+      onNotice={(success, message) => showToast({
+        kind: success ? "success" : "error", title: t("Curriculum units"), message
+      })}
+    />;
+  }
 
   if (section === "years") {
     const editing = overview.academicYears.find((item) => item.id === editingId) ?? null;
@@ -702,7 +719,8 @@ const academicPaneLabels: Record<Exclude<AcademicSection, "overview">, { form: s
   teachers: { form: "Create teacher profile", list: "List of teacher profiles" },
   assignments: { form: "Assign teacher", list: "List of teacher assignments" },
   negaran: { form: "Assign Negaran", list: "List of Negaran assignments" },
-  timetable: { form: "Add timetable period", list: "List of timetable periods" }
+  timetable: { form: "Add timetable period", list: "List of timetable periods" },
+  curriculum: { form: "Create curriculum unit", list: "List of curriculum units" }
 };
 
 function AcademicEntityPage({
