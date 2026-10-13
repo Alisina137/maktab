@@ -727,6 +727,15 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (exam.status !== "DRAFT" && exam.status !== "SCHEDULED") {
         throw new LearningConflictError("Exam subjects can be configured only before the exam starts.");
       }
+      const [year] = await db.select().from(academicYears).where(and(
+        eq(academicYears.schoolId, schoolId), eq(academicYears.id, exam.academicYearId)
+      )).limit(1);
+      if (!year || year.status !== "ACTIVE") {
+        throw new LearningConflictError("Exam setup requires the active academic year.");
+      }
+      if (input.examDate < year.startDate || input.examDate > year.endDate) {
+        throw new LearningValidationError("Exam date must fall within the selected academic year.");
+      }
       const [classSection, subject] = await Promise.all([
         db.select().from(classSections).where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, input.classId))).limit(1),
         db.select().from(subjects).where(and(eq(subjects.schoolId, schoolId), eq(subjects.id, input.subjectId))).limit(1)
