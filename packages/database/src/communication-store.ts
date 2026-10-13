@@ -387,6 +387,49 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return this.createAnnouncement(schoolId, teacherUserId, input);
     },
 
+    async updateScheduledAnnouncement(schoolId, actorUserId, announcementId, input) {
+      return db.transaction(async tx => {
+        const [current] = await tx.select().from(announcements).where(and(
+          eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId)
+        )).limit(1).for("update");
+        if (!current) throw new CommunicationNotFoundError("Announcement not found.");
+        if (current.archivedAt || current.publishAt.getTime() <= Date.now()) {
+          throw new CommunicationConflictError("Only scheduled, unpublished announcements can be edited.");
+        }
+        const next = {
+          title: input.title ?? current.title, content: input.content ?? current.content,
+          audienceScope: input.audienceScope ?? current.audienceScope,
+          classId: input.classId === undefined ? current.classId : input.classId,
+          audienceRole: input.audienceRole === undefined ? current.audienceRole : input.audienceRole,
+          publishAt: input.publishAt ? new Date(input.publishAt) : current.publishAt
+        };
+        if (next.publishAt.getTime() <= Date.now()) {
+          throw new CommunicationValidationError("Scheduled publication must remain in the future.");
+        }
+        if ((next.audienceScope === "CLASS") !== Boolean(next.classId) ||
+          (next.audienceScope === "ROLE" && !next.audienceRole) ||
+          (next.audienceScope === "SCHOOL" && !!next.audienceRole)) {
+          throw new CommunicationValidationError("Announcement audience fields do not match its scope.");
+        }
+        if (next.classId) {
+          const [classRow] = await tx.select({ id: classSections.id }).from(classSections)
+            .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, next.classId))).limit(1);
+          if (!classRow) throw new CommunicationNotFoundError("Class not found.");
+        }
+        const [updated] = await tx.update(announcements).set({ ...next, updatedAt: new Date() })
+          .where(and(eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId),
+            isNull(announcements.archivedAt))).returning();
+        if (!updated) throw new CommunicationConflictError("Announcement changed.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, action: "announcement.scheduled_updated",
+          entityType: "announcement", entityId: announcementId,
+          metadata: { previousPublishAt: current.publishAt.toISOString(),
+            publishAt: updated.publishAt.toISOString() }
+        });
+        return updated;
+      });
+    },
+
     async archiveAnnouncement(schoolId, actorUserId, announcementId) {
       return db.transaction(async tx => {
         const [updated] = await tx.update(announcements).set({
