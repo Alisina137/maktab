@@ -177,7 +177,7 @@ export interface TeacherTeachingReport extends TeacherTeachingPayload {
 export interface AttendanceSheetPayload {
   date: string;
   classSection: { id: string; name: string; code: string; academicYearId: string };
-  attendance: { id: string; status: "SUBMITTED" | "CORRECTED" } | null;
+  attendance: { id: string; status: "SUBMITTED" | "CORRECTED"; updatedAt: string } | null;
   students: Array<{
     student: { id: string; studentCode: string; fullName: string };
     status: AttendanceStatus | null;
@@ -1046,6 +1046,7 @@ export const api = {
       classId: string;
       date: string;
       entries: Array<{ studentId: string; status: AttendanceStatus; note?: string }>;
+      expectedUpdatedAt?: string | null;
     }
   ) {
     return request<{

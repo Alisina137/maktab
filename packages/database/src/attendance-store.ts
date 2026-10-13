@@ -293,9 +293,17 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     classId: string,
     date: string
   ) {
-    const [assignment] = await db
-      .select()
+    const [row] = await db
+      .select({ assignment: negaranAssignments })
       .from(negaranAssignments)
+      .innerJoin(
+        academicYears,
+        and(
+          eq(academicYears.id, negaranAssignments.academicYearId),
+          eq(academicYears.schoolId, negaranAssignments.schoolId),
+          eq(academicYears.status, "ACTIVE")
+        )
+      )
       .where(
         and(
           eq(negaranAssignments.schoolId, schoolId),
@@ -306,6 +314,7 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         )
       )
       .limit(1);
+    const assignment = row?.assignment;
     if (!assignment) {
       throw new AttendanceValidationError("You are not the active Negaran for this class on the selected date.");
     }
@@ -394,30 +403,41 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     };
   }
 
+  // Keep the notification and its triggering attendance mark in one transaction.
+  // A failed notification write must roll back the mark, not leave a silent
+  // absence that retries consider already complete.
+  type AttendanceTx = Parameters<Parameters<FoundationDatabase["transaction"]>[0]>[0];
+
   async function syncAttendanceAlert(
+    tx: AttendanceTx,
     schoolId: string,
     attendance: DailyAttendance,
     student: Student,
     status: AttendanceStatus
   ): Promise<boolean> {
     const dedupKey = `attendance:${attendance.id}:${student.id}`;
-    const [existing] = await db
+    const [existing] = await tx
       .select()
       .from(notifications)
       .where(and(eq(notifications.schoolId, schoolId), eq(notifications.dedupKey, dedupKey)))
       .limit(1);
 
     if (status !== "ABSENT" && status !== "LATE") {
-      if (existing && !existing.readAt) {
-        await db
+      // A correction to Present/Excused supersedes an old alert even when
+      // the parent has already read it. Do not leave a misleading absence.
+      if (existing && existing.deliveryStatus !== "CANCELLED") {
+        await tx
           .update(notifications)
           .set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
-          .where(eq(notifications.id, existing.id));
+          .where(and(eq(notifications.schoolId, schoolId), eq(notifications.id, existing.id)));
       }
       return false;
     }
 
     const type = status === "ABSENT" ? "ATTENDANCE_ABSENT" : "ATTENDANCE_LATE";
+    // A same-status update to another mark must not generate another alert.
+    if (existing && existing.type === type && existing.deliveryStatus !== "CANCELLED") return false;
+
     const title = status === "ABSENT" ? "Student absent" : "Student late";
     const message =
       status === "ABSENT"
@@ -430,18 +450,19 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
       deepLink: `/parent/children/${student.id}/attendance`,
       metadata: { studentId: student.id, date: attendance.date, status },
       deliveryStatus: "PENDING" as const,
+      readAt: null,
       updatedAt: new Date()
     };
 
     if (existing) {
-      await db
+      await tx
         .update(notifications)
         .set(values)
         .where(and(eq(notifications.schoolId, schoolId), eq(notifications.id, existing.id)));
       return false;
     }
 
-    await db.insert(notifications).values({
+    await tx.insert(notifications).values({
       id: randomUUID(),
       schoolId,
       userId: student.parentUserId,
@@ -685,104 +706,107 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         throw new AttendanceValidationError("Negaran assignment and class academic year do not match.");
       }
       const classStudents = await activeStudents(schoolId, input.classId, negaran.academicYearId);
-      if (classStudents.length === 0) {
+      if (!classStudents.length) {
         throw new AttendanceConflictError("This class has no active students to mark.");
       }
 
-      const studentIds = new Set(classStudents.map((student) => student.id));
+      const studentById = new Map(classStudents.map((student) => [student.id, student]));
       const submittedIds = new Set(input.entries.map((entry) => entry.studentId));
       if (submittedIds.size !== input.entries.length) {
         throw new AttendanceValidationError("Each student may be marked only once.");
       }
       if (
         input.entries.length !== classStudents.length ||
-        input.entries.some((entry) => !studentIds.has(entry.studentId))
+        input.entries.some((entry) => !studentById.has(entry.studentId))
       ) {
         throw new AttendanceValidationError("Every active student in the supervised class must have exactly one attendance state.");
       }
 
-      const existing = await getAttendance(schoolId, input.classId, input.date);
-      let changed = !existing;
-      if (existing) {
-        const current = await db
+      // Serialize same-class/day edits. Handle competing first submissions via
+      // ON CONFLICT, and accept exact network retries without duplicate writes.
+      const result = await db.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(dailyAttendances)
+          .where(and(
+            eq(dailyAttendances.schoolId, schoolId),
+            eq(dailyAttendances.classId, input.classId),
+            eq(dailyAttendances.date, input.date)
+          ))
+          .limit(1)
+          .for("update");
+
+        let attendanceRow = existing;
+        let created = false;
+        if (!attendanceRow) {
+          const [inserted] = await tx.insert(dailyAttendances).values({
+            id: randomUUID(),
+            schoolId,
+            academicYearId: negaran.academicYearId,
+            classId: input.classId,
+            date: input.date,
+            status: "SUBMITTED",
+            submittedBy: teacherUserId,
+            updatedBy: teacherUserId
+          }).onConflictDoNothing().returning();
+          if (!inserted) {
+            throw new AttendanceConflictError("Attendance was submitted by another request. Reload the sheet.");
+          }
+          attendanceRow = inserted;
+          created = true;
+        }
+
+        const existingMarks = created ? [] : await tx
           .select()
           .from(studentAttendances)
-          .where(
-            and(
-              eq(studentAttendances.schoolId, schoolId),
-              eq(studentAttendances.attendanceId, existing.id)
-            )
-          );
-        const byStudent = new Map(current.map((entry) => [entry.studentId, entry]));
-        changed = input.entries.some((entry) => {
-          const old = byStudent.get(entry.studentId);
-          return !old || old.status !== entry.status || (old.note ?? "") !== (entry.note ?? "");
-        });
-        if (!changed) {
-          return {
-            sheet: await buildSheet(schoolId, input.classId, input.date, true),
-            created: false,
-            changed: false,
-            notificationCount: 0
-          };
-        }
-      }
-
-      const attendance = await db.transaction(async (tx) => {
-        let attendanceRow = existing;
-        if (!attendanceRow) {
-          const [created] = await tx
-            .insert(dailyAttendances)
-            .values({
-              id: randomUUID(),
-              schoolId,
-              academicYearId: negaran.academicYearId,
-              classId: input.classId,
-              date: input.date,
-              status: "SUBMITTED",
-              submittedBy: teacherUserId,
-              updatedBy: teacherUserId
-            })
-            .returning();
-          if (!created) throw new Error("Attendance insert did not return a row.");
-          attendanceRow = created;
-        } else {
-          const [updated] = await tx
-            .update(dailyAttendances)
-            .set({
-              status: "CORRECTED",
-              updatedBy: teacherUserId,
-              updatedAt: new Date()
-            })
-            .where(and(eq(dailyAttendances.schoolId, schoolId), eq(dailyAttendances.id, attendanceRow.id)))
-            .returning();
-          attendanceRow = updated ?? attendanceRow;
-        }
-
-        const existingMarks = existing
-          ? await tx
-              .select()
-              .from(studentAttendances)
-              .where(
-                and(
-                  eq(studentAttendances.schoolId, schoolId),
-                  eq(studentAttendances.attendanceId, attendanceRow.id)
-                )
-              )
-          : [];
+          .where(and(
+            eq(studentAttendances.schoolId, schoolId),
+            eq(studentAttendances.attendanceId, attendanceRow.id)
+          ));
         const markByStudent = new Map(existingMarks.map((entry) => [entry.studentId, entry]));
+        // Omitted notes mean "leave the current note unchanged", never clear
+        // an administrator's correction note during a status-only resubmit.
+        const nextNote = (entry: (typeof input.entries)[number]) =>
+          entry.note === undefined ? markByStudent.get(entry.studentId)?.note ?? null : entry.note || null;
+        const changed = created || input.entries.some((entry) => {
+          const previous = markByStudent.get(entry.studentId);
+          return !previous || previous.status !== entry.status || previous.note !== nextNote(entry);
+        });
+        if (!changed) return { created: false, changed: false, notificationCount: 0 };
 
+        // Precondition applies only to actual changes. Thus a lost-response
+        // retry with exactly the same marks remains idempotent.
+        if (
+          input.expectedUpdatedAt !== undefined &&
+          (existing?.updatedAt.toISOString() ?? null) !== input.expectedUpdatedAt
+        ) {
+          throw new AttendanceConflictError("Attendance changed since you opened it. Reload the sheet.");
+        }
+
+        if (!created) {
+          const [updated] = await tx.update(dailyAttendances).set({
+            status: "CORRECTED",
+            updatedBy: teacherUserId,
+            updatedAt: new Date(Math.max(Date.now(), attendanceRow.updatedAt.getTime() + 1))
+          }).where(and(
+            eq(dailyAttendances.schoolId, schoolId),
+            eq(dailyAttendances.id, attendanceRow.id)
+          )).returning();
+          if (!updated) throw new AttendanceNotFoundError("Attendance record not found.");
+          attendanceRow = updated;
+        }
+
+        let notificationCount = 0;
         for (const entry of input.entries) {
           const old = markByStudent.get(entry.studentId);
           if (old) {
-            await tx
-              .update(studentAttendances)
-              .set({
+            if (old.status !== entry.status || old.note !== nextNote(entry)) {
+              await tx.update(studentAttendances).set({
                 status: entry.status,
-                note: entry.note || null,
+                note: nextNote(entry),
                 updatedAt: new Date()
-              })
-              .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.id, old.id)));
+              }).where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.id, old.id)));
+            }
           } else {
             await tx.insert(studentAttendances).values({
               id: randomUUID(),
@@ -790,25 +814,23 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
               attendanceId: attendanceRow.id,
               studentId: entry.studentId,
               status: entry.status,
-              note: entry.note || null
+              note: nextNote(entry)
             });
           }
+          // No notification replay for an unchanged mark on the same sheet.
+          if (!old || old.status !== entry.status) {
+            const student = studentById.get(entry.studentId);
+            if (student && await syncAttendanceAlert(tx, schoolId, attendanceRow, student, entry.status)) {
+              notificationCount++;
+            }
+          }
         }
-        return attendanceRow;
+        return { created, changed, notificationCount };
       });
-
-      let notificationCount = 0;
-      for (const entry of input.entries) {
-        const student = classStudents.find((item) => item.id === entry.studentId);
-        if (!student) continue;
-        if (await syncAttendanceAlert(schoolId, attendance, student, entry.status)) notificationCount += 1;
-      }
 
       return {
         sheet: await buildSheet(schoolId, input.classId, input.date, true),
-        created: !existing,
-        changed,
-        notificationCount
+        ...result
       };
     },
 
@@ -885,7 +907,8 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
           and(
             eq(notifications.schoolId, schoolId),
             eq(notifications.userId, parentUserId),
-            eq(notifications.id, notificationId)
+            eq(notifications.id, notificationId),
+            or(eq(notifications.deliveryStatus, "PENDING"), eq(notifications.deliveryStatus, "SENT"))
           )
         )
         .returning();
@@ -1016,21 +1039,29 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         throw new AttendanceConflictError("Historical attendance is read-only unless its academic year is active.");
       }
 
-      const [entry] = await db
-        .update(studentAttendances)
-        .set({ status: input.status, note: input.note || null, updatedAt: new Date() })
-        .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.id, current.entry.id)))
-        .returning();
-      if (!entry) throw new AttendanceNotFoundError("Attendance entry not found.");
+      const { attendance, entry } = await db.transaction(async (tx) => {
+        const [entry] = await tx
+          .update(studentAttendances)
+          .set({ status: input.status, note: input.note || null, updatedAt: new Date() })
+          .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.id, current.entry.id)))
+          .returning();
+        if (!entry) throw new AttendanceNotFoundError("Attendance entry not found.");
 
-      const [attendance] = await db
-        .update(dailyAttendances)
-        .set({ status: "CORRECTED", updatedBy: actorUserId, updatedAt: new Date() })
-        .where(and(eq(dailyAttendances.schoolId, schoolId), eq(dailyAttendances.id, attendanceId)))
-        .returning();
-      if (!attendance) throw new AttendanceNotFoundError("Attendance record not found.");
-
-      await syncAttendanceAlert(schoolId, attendance, current.student, entry.status);
+        const [attendance] = await tx
+          .update(dailyAttendances)
+          .set({
+            status: "CORRECTED",
+            updatedBy: actorUserId,
+            updatedAt: new Date(Math.max(Date.now(), current.attendance.updatedAt.getTime() + 1))
+          })
+          .where(and(eq(dailyAttendances.schoolId, schoolId), eq(dailyAttendances.id, attendanceId)))
+          .returning();
+        if (!attendance) throw new AttendanceNotFoundError("Attendance record not found.");
+        if (current.entry.status !== entry.status) {
+          await syncAttendanceAlert(tx, schoolId, attendance, current.student, entry.status);
+        }
+        return { attendance, entry };
+      });
       return { attendance, entry, previousStatus: current.entry.status };
     }
   };

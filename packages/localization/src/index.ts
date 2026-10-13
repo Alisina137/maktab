@@ -246,6 +246,7 @@ export type TranslationKey =
   | "attendance.submit"
   | "attendance.saved"
   | "attendance.noChanges"
+  | "attendance.staleSheet"
   | "attendance.markAllPresent"
   | "attendance.bulkHint"
   | "attendance.confirmTitle"
@@ -687,6 +688,7 @@ const en: Record<TranslationKey, string> = {
   "attendance.submit": "Submit attendance",
   "attendance.saved": "Attendance saved.",
   "attendance.noChanges": "Attendance was already submitted with these states.",
+  "attendance.staleSheet": "Attendance changed while you were editing. The latest marks have been loaded. Review them and submit again.",
   "attendance.markAllPresent": "Mark unmarked present",
   "attendance.bulkHint": "Only students without a mark will be changed.",
   "attendance.confirmTitle": "Review attendance",
@@ -1144,6 +1146,7 @@ const dari: Record<TranslationKey, string> = {
   "attendance.submit": "ثبت حاضری",
   "attendance.saved": "حاضری ذخیره شد.",
   "attendance.noChanges": "حاضری قبلاً با همین وضعیت‌ها ثبت شده است.",
+  "attendance.staleSheet": "حاضری در جریان ویرایش شما تغییر کرده است. وضعیت‌های تازه بار شد؛ لطفاً آن‌ها را بررسی و دوباره ثبت کنید.",
   "attendance.markAllPresent": "علامت‌گذاری باقیمانده‌ها به حاضر",
   "attendance.bulkHint": "فقط شاگردانی که هنوز علامت ندارند حاضر می‌شوند.",
   "attendance.confirmTitle": "تأیید حاضری",
@@ -1601,6 +1604,7 @@ const pashto: Record<TranslationKey, string> = {
   "attendance.submit": "حاضري ثبت کړئ",
   "attendance.saved": "حاضري خوندي شوه.",
   "attendance.noChanges": "حاضري مخکې له همدې حالتونو سره ثبت شوې ده.",
+  "attendance.staleSheet": "ستاسو د سمون پر مهال حاضري بدله شوې ده. وروستي حالتونه بیا پورته شول؛ مهرباني وکړئ ویې ګورئ او بیا یې ثبت کړئ.",
   "attendance.markAllPresent": "نا نښه شوي حاضر کړئ",
   "attendance.bulkHint": "یوازې هغه زده کوونکي حاضر کېږي چې لا نه دي نښه شوي.",
   "attendance.confirmTitle": "د حاضرۍ تایید",

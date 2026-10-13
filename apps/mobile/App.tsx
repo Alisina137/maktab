@@ -1395,13 +1395,32 @@ function AppContent() {
       const result = await api.submitDailyAttendance(session.accessToken, {
         classId: attendanceSheet.classSection.id,
         date: attendanceSheet.date,
-        entries: entries as Array<{ studentId: string; status: AttendanceStatus }>
+        entries: entries as Array<{ studentId: string; status: AttendanceStatus }>,
+        expectedUpdatedAt: attendanceSheet.attendance?.updatedAt ?? null
       });
       setAttendanceSheet(result.sheet);
       setNotice(result.changed ? translate(locale, "attendance.saved") : translate(locale, "attendance.noChanges"));
       // Returning to Teacher Today/Classes reloads the current attendance status.
     } catch (cause) {
-      showCause(cause);
+      if (cause instanceof ApiRequestError && cause.status === 409 && cause.code === "attendance_conflict") {
+        // Resolve concurrent same-day Negaran/admin edits using the new
+        // authoritative sheet. Never silently overwrite another correction.
+        try {
+          const refreshed = await api.teacherAttendance(
+            session.accessToken, attendanceSheet.classSection.id, attendanceSheet.date
+          );
+          setAttendanceSheet(refreshed);
+          setAttendanceDraft(Object.fromEntries(
+            refreshed.students.filter((item) => item.status)
+              .map((item) => [item.student.id, item.status as AttendanceStatus])
+          ));
+          setAppError("attendance.staleSheet");
+        } catch (refreshCause) {
+          showCause(refreshCause);
+        }
+      } else {
+        showCause(cause);
+      }
     } finally {
       setBusy(false);
     }

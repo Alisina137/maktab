@@ -2881,6 +2881,71 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(alerts.statusCode, 200);
   assert.equal(alerts.json<{ notifications: Array<{ type: string }> }>().notifications[0]?.type, "ATTENDANCE_ABSENT");
 
+  // Test 13: a read Absence alert must be retired when a same-day Negaran
+  // correction changes the mark. A subsequent absence must re-alert unread.
+  const initialAlert = alerts.json<{ notifications: Array<{ id: string }> }>().notifications[0]!;
+  const originalVersion = submitted.json<{ sheet: { attendance: { updatedAt: string } } }>()
+    .sheet.attendance.updatedAt;
+  const readInitial = await app.inject({
+    method: "POST", url: `/v1/parent/notifications/${initialAlert.id}/read`, headers: parentAuth
+  });
+  assert.equal(readInitial.statusCode, 200);
+
+  const toPresent = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: { ...payload, entries: [{ studentId, status: "PRESENT" }], expectedUpdatedAt: originalVersion }
+  });
+  assert.equal(toPresent.statusCode, 200);
+  assert.equal(toPresent.json<{ changed: boolean }>().changed, true);
+  const cancelledAlerts = await app.inject({
+    method: "GET", url: "/v1/parent/notifications", headers: parentAuth
+  });
+  assert.deepEqual(cancelledAlerts.json<{ notifications: unknown[] }>().notifications, []);
+  const cannotReadCancelled = await app.inject({
+    method: "POST", url: `/v1/parent/notifications/${initialAlert.id}/read`, headers: parentAuth
+  });
+  assert.equal(cannotReadCancelled.statusCode, 404);
+
+  const toLate = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: {
+      ...payload, entries: [{ studentId, status: "LATE" }],
+      expectedUpdatedAt: toPresent.json<{ sheet: { attendance: { updatedAt: string } } }>()
+        .sheet.attendance.updatedAt
+    }
+  });
+  assert.equal(toLate.statusCode, 200);
+  const renewedAlert = await app.inject({
+    method: "GET", url: "/v1/parent/notifications", headers: parentAuth
+  });
+  assert.equal(renewedAlert.json<{ notifications: Array<{ type: string; readAt: string | null }> }>()
+    .notifications[0]?.type, "ATTENDANCE_LATE");
+  assert.equal(renewedAlert.json<{ notifications: Array<{ readAt: string | null }> }>()
+    .notifications[0]?.readAt, null);
+
+  const backAbsent = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: {
+      ...payload, expectedUpdatedAt: toLate.json<{ sheet: { attendance: { updatedAt: string } } }>()
+        .sheet.attendance.updatedAt
+    }
+  });
+  assert.equal(backAbsent.statusCode, 200);
+  const alertsAfterReopen = await app.inject({
+    method: "GET", url: "/v1/parent/notifications", headers: parentAuth
+  });
+  assert.equal(alertsAfterReopen.json<{ notifications: Array<{ type: string; readAt: string | null }> }>()
+    .notifications[0]?.type, "ATTENDANCE_ABSENT");
+  assert.equal(alertsAfterReopen.json<{ notifications: Array<{ readAt: string | null }> }>()
+    .notifications[0]?.readAt, null);
+  // Admin receives the current record; the stale teacher form remains old.
+  const staleTeacherVersion = backAbsent.json<{ sheet: { attendance: { updatedAt: string } } }>()
+    .sheet.attendance.updatedAt;
+  const rereadAlert = await app.inject({
+    method: "POST", url: `/v1/parent/notifications/${initialAlert.id}/read`, headers: parentAuth
+  });
+  assert.equal(rereadAlert.statusCode, 200);
+
   const corrected = await app.inject({
     method: "PATCH",
     url: `/v1/admin/attendance/${submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id}/students/${studentId}`,
@@ -2910,6 +2975,43 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     headers: parentAuth
   });
   assert.equal(parentAfterCorrection.json<{ days: Array<{ status: string }> }>().days[0]?.status, "PRESENT");
+
+  // Admin correction also retires a *read* alert and cannot be overwritten by
+  // the teacher's previously loaded attendance form.
+  const postAdminAlerts = await app.inject({
+    method: "GET", url: "/v1/parent/notifications", headers: parentAuth
+  });
+  assert.deepEqual(postAdminAlerts.json<{ notifications: unknown[] }>().notifications, []);
+  const staleSubmit = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: { ...payload, expectedUpdatedAt: staleTeacherVersion }
+  });
+  assert.equal(staleSubmit.statusCode, 409);
+  assert.equal(staleSubmit.json<{ error: string }>().error, "attendance_conflict");
+  const afterConflict = await app.inject({
+    method: "GET", url: `/v1/parent/children/${studentId}/attendance`, headers: parentAuth
+  });
+  assert.equal(afterConflict.json<{ days: Array<{ status: string }> }>().days[0]?.status, "PRESENT");
+
+  // A status-only retry must preserve the admin's correction note and not
+  // recreate an absence alert. The current revision may be used by the UI.
+  const reloadedSheet = await app.inject({
+    method: "GET", url: `/v1/teacher/negaran/${classId}/attendance?date=${today.date}`, headers: teacherAuth
+  });
+  const reloadedVersion = reloadedSheet.json<{ attendance: { updatedAt: string } }>()
+    .attendance.updatedAt;
+  const sameMarkRetry = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: {
+      ...payload, entries: [{ studentId, status: "PRESENT" }],
+      expectedUpdatedAt: reloadedVersion
+    }
+  });
+  assert.equal(sameMarkRetry.statusCode, 200);
+  assert.equal(sameMarkRetry.json<{ changed: boolean; sheet: { students: Array<{ note: string }> } }>()
+    .changed, false);
+  assert.equal(sameMarkRetry.json<{ sheet: { students: Array<{ note: string }> } }>()
+    .sheet.students[0]?.note, "Corrected by school admin");
 
   // Preserve the originally marked students on historical sheets even when
   // their present-day enrollment has since been withdrawn. Admin corrections

@@ -1377,3 +1377,16 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Migration **0017_teacher_productivity.sql** creates teacher_tasks plus owner/status/due indexes, priority/status constraints, school/user foreign keys; run `pnpm --filter @maktablink/database db:migrate` before starting Phase 6.
 - Automated API regression tests: tasks are private per teacher, teacher permissions apply, invalid due dates rejected, status reopen/update/delete persist, non-owner mutation denied, Teacher-only bulk notification acknowledgement.
 - Android test: sign in Teacher, Workflows → My personal tasks, create/edit/complete/reopen/delete and search/filter; open Inbox and mark unread individually/all; use airplane mode while typing **new-task draft** and relaunch Expo Go, verify local draft restored and writes still require internet; verify app foreground inbox refresh and English/Dari/Pashto LTR/RTL; verify different Teacher sees no private tasks.
+
+
+### Testing Step 13 — Attendance integrity and correction hardening (2026-10-13)
+
+**Test 13 started:** Negaran supervised-class access, all four statuses, same-day corrections, Admin overrides, Parent state/alerts, idempotency/concurrency and tenant isolation. CI/API checks are not a substitute for Android acceptance.
+
+- Active Negaran validation now also requires an ACTIVE academic year; stale year assignments cannot submit or open attendance.
+- Attendance submits use transactional class/day row locking and conflict-safe first inserts. Exactly repeated submissions remain idempotent; actual stale edits with an optional `expectedUpdatedAt` revision return HTTP 409 instead of silently overwriting a correction.
+- Android sends the revision and, on an attendance conflict, reloads the latest authoritative sheet and draft marks with a localized Dari/Pashto/English conflict notice rather than retrying the stale write.
+- Omitted teacher notes preserve existing notes (including an Admin correction reason). Unchanged rows are not rewritten.
+- Attendance-mark mutations and absence/late alert updates are atomic in the same PostgreSQL transaction. Read alerts are cancelled when a record is corrected to Present/Excused; switching back to Absent/Late reopens the deduplicated alert unread. Cancelled alerts cannot be marked read through the endpoint.
+- Admin correction and its associated alert update are committed together. Added integration assertions for same-day correction, read alert cancellation/reopening, conflict rejection, and Admin note preservation.
+- No new migration is required. Pending: CI confirmation and actual Android checks for two devices/sessions, school-local date boundary, airplane-mode retry, RTL, roster edge cases, and real push delivery.

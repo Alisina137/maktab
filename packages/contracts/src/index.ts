@@ -349,7 +349,8 @@ export type AttendanceEntryInput = z.infer<typeof attendanceEntrySchema>;
 export const submitDailyAttendanceSchema = z.object({
   classId: z.string().uuid(),
   date: isoDateSchema,
-  entries: z.array(attendanceEntrySchema).min(1).max(300)
+  entries: z.array(attendanceEntrySchema).min(1).max(300),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).nullable().optional()
 });
 export type SubmitDailyAttendanceInput = z.infer<typeof submitDailyAttendanceSchema>;
 
