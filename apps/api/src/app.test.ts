@@ -4645,6 +4645,45 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   }
 
 
+  // 16.3: a role-only announcement is not silently broadcast school-wide.
+  const parentRoleNotice = await app.inject({ method: "POST",
+    url: "/v1/admin/announcements", headers: admin,
+    payload: { title: "Parents meeting", content: "For parent accounts",
+      audienceScope: "ROLE", audienceRole: "PARENT" } });
+  assert.equal(parentRoleNotice.statusCode, 201);
+  const parentRoleId = parentRoleNotice.json<{ announcement: { id: string } }>().announcement.id;
+  for (const [token, expected] of [
+    [parentAToken, true], [parentBToken, true],
+    [studentAToken, false], [studentBToken, false]
+  ] as const) {
+    const response = await app.inject({ method: "GET", url: "/v1/announcements",
+      headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.json<{ announcements: Array<{ id: string }> }>()
+      .announcements.some(item => item.id === parentRoleId), expected);
+  }
+
+  // 16.6: unpublished SCHEDULED announcements can be edited; published
+  // notices cannot be silently rewritten after delivery.
+  const scheduled = await app.inject({ method: "POST",
+    url: "/v1/admin/announcements", headers: admin,
+    payload: { title: "Scheduled opening", content: "Old text",
+      audienceScope: "SCHOOL", publishAt: "2099-12-01T08:00:00Z" } });
+  assert.equal(scheduled.statusCode, 201);
+  const scheduledId = scheduled.json<{ announcement: { id: string } }>().announcement.id;
+  const editScheduled = await app.inject({ method: "PATCH",
+    url: `/v1/admin/announcements/${scheduledId}`, headers: admin,
+    payload: { title: "Updated scheduled opening", content: "New scheduled text",
+      audienceScope: "CLASS", classId: classB, audienceRole: "PARENT" } });
+  assert.equal(editScheduled.statusCode, 200);
+  const editingPublished = await app.inject({ method: "PATCH",
+    url: `/v1/admin/announcements/${roleTargetId}`, headers: admin,
+    payload: { content: "Cannot silently rewrite" } });
+  assert.equal(editingPublished.statusCode, 409);
+  const noEarlyDelivery = await app.inject({ method: "GET", url: "/v1/notifications",
+    headers: { authorization: `Bearer ${parentBToken}` } });
+  assert.equal(noEarlyDelivery.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
+    .notifications.some(item => item.metadata.announcementId === scheduledId), false);
+
   const invoiceResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/fees/invoices",
