@@ -1450,3 +1450,15 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - `verify-parent-resilience.mjs` no longer asserts a stale comment marker after the ngrok reconnect refactor; it inspects the actual cache/network handoff inside `retryServiceConnection`.
 - Added Step 18 API regressions for platform provisioning key, invalid onboarding, duplicate school protection, subscription date changes, cancelled reactivation and active-admin readiness count.
 - **Pending:** latest GitHub CI, browser/Android pilot flow, production PostgreSQL concurrent cron test, EAS push receipts, external metrics, encrypted backup/restore drill, and real school operator acceptance.
+
+
+### Testing Step 19 — Local Deployment and Database Diagnostics (2026-10-14)
+
+**Started; source and CI checks only until local Git and database connectivity recover.** See `docs/TEST-19-ENVIRONMENT-DEPLOYMENT.md`.
+
+- User's `git pull origin main` failed with GitHub HTTPS connection reset. Consequently the original local `verify-parent-resilience.mjs` is still in place, and its stale comment-marker assertion fails. The corrected reconnect-verifier code was already merged in Step 18 and passed GitHub CI.
+- The user's migration command exited during Drizzle's applying-migrations spinner without exposing a SQL/PostgreSQL reason. Root cause **not established** from the available output; no schema reset, shadow migration, or destructive workaround performed.
+- Added a safe `pnpm db:check` command that validates the configured PostgreSQL URL, attempts a read-only connection, reports the current database/schema and migration-journal count, and classifies common connection errors **without printing secrets**.
+- Added an offline regression ensuring an invalid `DATABASE_URL` fails and the supplied secret remains absent from logs. The test runs in the regular verification chain and syntax checks in CI.
+- Documented a fail-fast PowerShell sequence so Git fetch failures cannot silently lead to migrations and verification against an out-of-date working tree.
+- Remaining local acceptance: successful pull, live `db:check`, migration, full `pnpm verify`, Android/web functionality and non-production backup/restore practice.
