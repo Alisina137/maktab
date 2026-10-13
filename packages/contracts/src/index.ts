@@ -382,7 +382,9 @@ export const createHomeworkSchema = z.object({
   title: z.string().trim().min(2).max(160),
   content: z.string().trim().min(1).max(5000),
   dueAt: z.string().datetime({ offset: true }),
-  attachmentUrl: z.string().url().max(500).optional()
+  attachmentUrl: z.string().url().max(500).refine(
+    (value) => value.startsWith("https://"), "Homework attachment links must use HTTPS."
+  ).optional()
 });
 export type CreateHomeworkInput = z.infer<typeof createHomeworkSchema>;
 
@@ -390,7 +392,9 @@ export const updateHomeworkSchema = z.object({
   title: z.string().trim().min(2).max(160).optional(),
   content: z.string().trim().min(1).max(5000).optional(),
   dueAt: z.string().datetime({ offset: true }).optional(),
-  attachmentUrl: z.string().url().max(500).nullable().optional()
+  attachmentUrl: z.string().url().max(500).refine(
+    (value) => value.startsWith("https://"), "Homework attachment links must use HTTPS."
+  ).nullable().optional()
 }).refine((value) => Object.keys(value).length > 0, {
   message: "Provide at least one homework field to update."
 });
