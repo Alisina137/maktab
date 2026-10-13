@@ -367,7 +367,24 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         publishAt: input.publishAt ? new Date(input.publishAt) : new Date()
       }).returning();
       if (!created) throw new Error("Announcement insert did not return a row.");
-      // The initial delivery and audit happen before the transaction commits.
+      if (created.publishAt.getTime() <= Date.now()) {
+        const recipients = await announcementRecipients(created);
+        for (const userId of recipients) {
+          await tx.insert(notifications).values({
+            id: randomUUID(), schoolId, userId, type: "ANNOUNCEMENT",
+            title: created.title, message: created.content, deepLink: "/announcements",
+            dedupKey: `announcement:${created.id}:${userId}`,
+            metadata: { announcementId: created.id, classId: created.classId,
+              audienceScope: created.audienceScope, audienceRole: created.audienceRole }
+          }).onConflictDoNothing();
+        }
+      }
+      await tx.insert(auditLogs).values({
+        id: randomUUID(), schoolId, actorUserId, action: "announcement.created",
+        entityType: "announcement", entityId: created.id,
+        metadata: { audienceScope: created.audienceScope, classId: created.classId,
+          audienceRole: created.audienceRole, publishAt: created.publishAt.toISOString() }
+      });
       return created;
       });
     },
