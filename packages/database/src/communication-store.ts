@@ -668,26 +668,55 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     },
 
     async getUserNotifications(schoolId, userId) {
-      return db.select().from(notifications)
-        .where(and(eq(notifications.schoolId, schoolId), eq(notifications.userId, userId), ne(notifications.deliveryStatus, "CANCELLED")))
-        .orderBy(desc(notifications.createdAt));
+      const [person] = await db.select({ role: users.role, status: users.status })
+        .from(users).where(and(eq(users.schoolId, schoolId), eq(users.id, userId))).limit(1);
+      if (!person || person.status === "SUSPENDED" || person.status === "ARCHIVED") return [];
+      const rows = await db.select().from(notifications).where(and(
+        eq(notifications.schoolId, schoolId), eq(notifications.userId, userId),
+        ne(notifications.deliveryStatus, "CANCELLED")
+      )).orderBy(desc(notifications.createdAt));
+      const visible: Notification[] = [];
+      for (const row of rows) {
+        if (row.type === "ANNOUNCEMENT") {
+          const id = row.metadata.announcementId;
+          if (typeof id !== "string") continue;
+          const [item] = await db.select().from(announcements).where(and(
+            eq(announcements.schoolId, schoolId), eq(announcements.id, id),
+            isNull(announcements.archivedAt), lte(announcements.publishAt, new Date())
+          )).limit(1);
+          if (!item || !(await announcementRecipients(item)).includes(userId)) continue;
+        }
+        visible.push(row);
+      }
+      return visible;
+    },
+
+    async getUnreadNotificationCount(schoolId, userId) {
+      const rows = await this.getUserNotifications(schoolId, userId);
+      return rows.filter(item => !item.readAt).length;
     },
 
     async markNotificationRead(schoolId, userId, notificationId) {
-      const [updated] = await db.update(notifications).set({ readAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(notifications.schoolId, schoolId), eq(notifications.userId, userId), eq(notifications.id, notificationId))).returning();
-      return updated ?? null;
+      const allowed = await this.getUserNotifications(schoolId, userId);
+      if (!allowed.some(item => item.id === notificationId)) return null;
+      const [updated] = await db.update(notifications).set({
+        readAt: new Date(), updatedAt: new Date()
+      }).where(and(eq(notifications.schoolId, schoolId),
+        eq(notifications.userId, userId), eq(notifications.id, notificationId),
+        isNull(notifications.readAt), ne(notifications.deliveryStatus, "CANCELLED"))).returning();
+      return updated ?? allowed.find(item => item.id === notificationId) ?? null;
     },
 
     async markAllNotificationsRead(schoolId, userId) {
+      const allowed = (await this.getUserNotifications(schoolId, userId))
+        .filter(item => !item.readAt).map(item => item.id);
+      if (allowed.length === 0) return 0;
       const changed = await db.update(notifications).set({
         readAt: new Date(), updatedAt: new Date()
-      }).where(and(
-        eq(notifications.schoolId, schoolId),
-        eq(notifications.userId, userId),
+      }).where(and(eq(notifications.schoolId, schoolId),
+        eq(notifications.userId, userId), inArray(notifications.id, allowed),
         isNull(notifications.readAt),
-        ne(notifications.deliveryStatus, "CANCELLED")
-      )).returning({ id: notifications.id });
+        ne(notifications.deliveryStatus, "CANCELLED"))).returning({ id: notifications.id });
       return changed.length;
     },
 
