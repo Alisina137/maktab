@@ -359,15 +359,17 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
           .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, input.classId))).limit(1);
         if (!classRow) throw new CommunicationNotFoundError("Class not found.");
       }
-      const [created] = await db.insert(announcements).values({
+      return db.transaction(async tx => {
+      const [created] = await tx.insert(announcements).values({
         id: randomUUID(), schoolId, createdBy: actorUserId, title: input.title, content: input.content,
         audienceScope: input.audienceScope, classId: input.classId ?? null,
         audienceRole: input.audienceRole ?? null,
         publishAt: input.publishAt ? new Date(input.publishAt) : new Date()
       }).returning();
       if (!created) throw new Error("Announcement insert did not return a row.");
-      await materializeAnnouncement(created);
+      // The initial delivery and audit happen before the transaction commits.
       return created;
+      });
     },
 
     async createNegaranAnnouncement(schoolId, teacherUserId, input) {
