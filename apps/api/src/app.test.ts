@@ -4684,6 +4684,58 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(noEarlyDelivery.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
     .notifications.some(item => item.metadata.announcementId === scheduledId), false);
 
+  // Scheduler replay creates each recipient alert only once, even after a
+  // transient retry. A Class B parent receives it, not Class A or Students.
+  await client.query("UPDATE announcements SET publish_at=now()-interval '1 second' WHERE id=$1",
+    [scheduledId]);
+  const runJob = () => app.inject({ method: "POST",
+    url: "/v1/platform/jobs/communication/run",
+    headers: { "x-platform-provisioning-key": provisioningKey } });
+  const firstScheduledJob = await runJob();
+  assert.equal(firstScheduledJob.statusCode, 200);
+  const secondScheduledJob = await runJob();
+  assert.equal(secondScheduledJob.statusCode, 200);
+  for (const [token, expected] of [
+    [parentAToken, false], [parentBToken, true],
+    [studentAToken, false], [studentBToken, false]
+  ] as const) {
+    const inbox = await app.inject({ method: "GET", url: "/v1/notifications",
+      headers: { authorization: `Bearer ${token}` } });
+    const matches = inbox.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
+      .notifications.filter(x => x.metadata.announcementId === scheduledId);
+    assert.equal(matches.length, expected ? 1 : 0);
+  }
+
+  // 16.7/16.8: counts reflect current visibility and bulk-read is idempotent.
+  const bAuth = { authorization: `Bearer ${parentBToken}` };
+  const beforeBulk = await app.inject({ method: "GET",
+    url: "/v1/notifications", headers: bAuth });
+  const unreadExpected = beforeBulk.json<{
+    unreadCount: number; notifications: Array<{ readAt: string | null }>
+  }>();
+  assert.equal(unreadExpected.unreadCount, unreadExpected.notifications.filter(x => !x.readAt).length);
+  const readAll = await app.inject({ method: "POST",
+    url: "/v1/notifications/read-all", headers: bAuth });
+  assert.equal(readAll.statusCode, 200);
+  assert.equal(readAll.json<{ changed: number }>().changed, unreadExpected.unreadCount);
+  const repeatReadAll = await app.inject({ method: "POST",
+    url: "/v1/notifications/read-all", headers: bAuth });
+  assert.equal(repeatReadAll.json<{ changed: number }>().changed, 0);
+  const unreadAfter = await app.inject({ method: "GET",
+    url: "/v1/notifications/unread-count", headers: bAuth });
+  assert.equal(unreadAfter.json<{ unreadCount: number }>().unreadCount, 0);
+
+  const archivedNotice = await app.inject({ method: "POST",
+    url: `/v1/admin/announcements/${scheduledId}/archive`, headers: admin });
+  assert.equal(archivedNotice.statusCode, 200);
+  const repeatArchive = await app.inject({ method: "POST",
+    url: `/v1/admin/announcements/${scheduledId}/archive`, headers: admin });
+  assert.equal(repeatArchive.statusCode, 409);
+  const afterArchive = await app.inject({ method: "GET",
+    url: "/v1/notifications", headers: bAuth });
+  assert.equal(afterArchive.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
+    .notifications.some(x => x.metadata.announcementId === scheduledId), false);
+
   const invoiceResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/fees/invoices",
