@@ -1154,3 +1154,17 @@ Planned verification slices:
 - Withdrawal, suspension, session refresh, reconnect, and stale-response protections remain active on the Results screen.
 - Existing API regression coverage already proves draft/RESULTS_READY data is hidden from Students and becomes visible only after Admin publishes the exam.
 - Extended that regression to prove a correction to an already-published grade is also reflected in the Student view, including the corrected score and remark while remaining PUBLISHED.
+
+
+### Development workflow — combined API + ngrok
+- Ported the proven Futsal development launcher pattern into MaktabLink.
+- Root `pnpm dev:api` now runs `scripts/dev-api.mjs` instead of starting only `@maktablink/api`.
+- The launcher starts the local MaktabLink API on `API_PORT` (default 4000), waits for `/health`, verifies database readiness through `/ready`, and only then starts `ngrok http <port>`.
+- API and ngrok share one terminal. `Ctrl+C` terminates both processes.
+- On Windows, pnpm/ngrok are launched through the shell to avoid the Node spawn issue previously encountered in the Futsal workflow.
+- The launcher discovers the HTTPS ngrok endpoint through the local ngrok inspector, verifies that `<public-url>/health` is actually serving `maktablink-api`, and only then synchronizes the ignored `apps/mobile/.env.local` file with `EXPO_PUBLIC_API_URL=<public-url>`.
+- Existing local Expo settings in `.env.local` are preserved, duplicate API URL entries are removed, and only HTTPS tunnel origins are accepted.
+- If the API cannot start, the database is not ready, ngrok is unavailable, or the public health check fails, an invalid public URL is not written to Expo configuration.
+- Set `MAKTABLINK_SYNC_MOBILE_API_URL=false` only when automatic Expo URL synchronization is intentionally disabled.
+- Added `pnpm verify:dev-api` with syntax, environment-sync, and process-supervision regression coverage and included it in root `pnpm verify`.
+- Normal mobile development now requires two terminals only: Terminal 1 `pnpm dev:api` (API + API ngrok) and Terminal 2 Expo/Metro (for example `pnpm --filter @maktablink/mobile exec expo start --tunnel --clear --go`).
