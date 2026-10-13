@@ -23,9 +23,26 @@ Source of truth for currently implemented behavior: the main-branch application 
 5. Test keyboard navigation, focus visibility, 200% zoom, RTL phone/tablet widths and temporary password visibility.
 6. Verify `pnpm verify` and CI Ubuntu/Windows at the final commit.
 
-## Future phases (not implemented by Phase 1)
+## Phase 2 — Guided creation and one-time credentials (implemented)
 
-- **Phase 2 — Creation:** role-specific form validation and improved one-time credential display/dismissal/copy behavior.
+- **Role-aware instructions:** The creation form explains Teacher, Parent, Student, Staff, and Admin pathways. Teacher academic profiles remain managed in Academics; Family linking remains managed in Families; account creation does not bypass those workflows.
+- **Inline validation:** Mirrors the existing contracts for 3–64 character usernames, parent/student alphanumeric-only credentials, other role username punctuation, parent full-name length, optional phone length, and local duplicate usernames (case-insensitive). The server is still authoritative for uniqueness and validation.
+- **Student choice:** Accounts with an existing login or withdrawn student status are excluded. An admin must explicitly select an eligible student instead of silently defaulting to the first record. Search filters eligible student name/code/class.
+- **One-time credential presentation:** Newly created/reset passwords are concealed by default in a dedicated panel with explicit reveal/hide, copy-username, copy-password, and close controls. Passwords live only in transient React state and are discarded when the panel is closed or the page unmounts; no browser storage or logs. Clipboard copying requires a secure context and may retain the copied password beyond the panel's lifetime; the interface warns about this.
+- **Error/interaction behavior:** Field errors are rendered with labels and ARIA hints. A new creation request is prevented while a previous temporary-credential panel remains open. Created accounts return to the directory, with the temporary-credential panel focused for accessible handoff. API writes, account role permissions and subscription rules were not changed.
+- **Translations:** New help/error/security copy is available in English, Dari, and Pashto.
+- **Tests:** `apps/api/src/account-create-rules.test.ts` exercises the exact client validation helper. `pnpm verify:release` checks localized creation and credential guards. Existing API integration tests still protect school account provisioning and tenant isolation.
+- **Limitations:** No password delivery provider has been added; operators must communicate credentials securely. Clipboard history cannot be erased reliably by the browser. Reset confirmation dialogs, session revocation on suspension and account detail editing remain Phase 4/3 scope.
+
+### Manual acceptance for Phase 2
+
+1. For each role, select Create Account and confirm the guidance is appropriate. For Parents, validate names and optional phone; for Students, search and explicitly choose an active student without a login.
+2. Enter invalid/duplicate username formats and verify inline, localized messages before submission. Verify legitimate Teacher usernames can contain punctuation but Parent/Student cannot.
+3. Create an account and confirm the temporary password is masked, can be revealed/copied, and is cleared on Close and navigation. Retry on a non-HTTPS external deployment to verify clipboard failure guidance.
+4. Reset another account password and verify the same one-time credential panel displays. Verify self-reset, self-suspend and archived-account restrictions remain enforced.
+5. Check RTL, keyboard focus, screen readers, and responsive layouts on actual browsers. Run `pnpm verify` and check exact-commit Linux/Windows CI.
+
+## Future phases (not implemented in Phases 1–2)
 - **Phase 3 — Details:** account drawer and linked parent/child/teacher information; editing through canonical feature modules.
 - **Phase 4 — Security:** confirmation dialogs, revoked sessions on suspension, suspension reasons, account audit drill-down and appropriate security handling.
 - **Phase 5 — Scale:** server-side search/pagination/sorting, optional safely scoped bulk account operations.
