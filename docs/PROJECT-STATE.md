@@ -1468,3 +1468,17 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 
 - **2026-10-14 Windows regression testing:** User-local `pnpm verify` ran API tests and reported 3 failures despite green Ubuntu CI. Reproduced with a new GitHub Actions Windows / Node 24 job. Fixed the test's invalid dotted parent username without weakening the application's alphanumeric username policy. Hardened Drizzle nested PostgreSQL unique-constraint error handling to return 409 instead of 500 for duplicate exam and school onboarding, with dedicated helper regression tests.
 - **Critical CI coverage gap corrected:** Unquoted `src/**/*.test.ts` was expanded by Ubuntu Bash to only nested test files, skipping root `apps/api/src/app.test.ts`; Windows executed the full test suite. Quoted TypeScript test globs across workspace packages; added Windows / Node 24 API regression job. See `docs/TEST-19-ENVIRONMENT-DEPLOYMENT.md`. Exact full suite validation pending latest CI results and local user rerun.
+
+
+### Testing Step 20 — Full regression and release readiness (2026-10-14)
+
+**Source-level implementation and automated regression expanded; production release decision: NO-GO until required live acceptance passes.** See `docs/TEST-20-FULL-REGRESSION.md` (20.1–20.20 matrix) and `docs/RELEASE-READINESS-STEP20.md`.
+
+- Confirmed successful pre-Step20 full Linux + Windows/Node24 CI after Step19; verified previously failed provisioning/academic/exam tests remained green (54 API, 16 database tests at pre-Step20 baseline).
+- Fixed the public landing page's outdated Phase 3 text asserting Parent/Student onboarding and attendance were not implemented. Updated current capability descriptions with semantic page headings.
+- Added `packages/database/src/migration-chain.test.ts` to replay **every** migration in the versioned Drizzle journal (20 at creation), including the previously omitted assignment unique-index migration, and inspect fee idempotency/exam subject date/assignment constraints. PGlite CI run at `8e5f6d10` passed (54 API / 17 database tests). **This is not proof of hosted Neon migration success**.
+- Added executable `pnpm verify:release` evidence index and integrated into local `pnpm verify` and both CI operating systems. CI now explicitly runs parent localization and offline/reconnection checks rather than omitting them in Linux build jobs.
+- Confirmed the existing session authenticator already refuses access and refresh tokens for INACTIVE schools and ARCHIVED accounts (HTTP 401 invalid session); added a real API regression covering Active→Inactive→Active and archival, retaining the existing authorization contract. No security bypass was established.
+- Hardened `AccountStore.createUser` duplicate username handling with nested PostgreSQL `23505` cause detection, matching the Step 19 exam/school store fixes. Added API coverage of 409 same-school duplicate Teacher accounts and same username permitted in another school.
+- Retained full cross-role, fee reversals/retry, exam publication, homework privacy, notification audience, attended Negaran and subscription lifecycle integration tests. Tests now use the same quoted glob discovery on Ubuntu and Windows.
+- **Unverified / release blockers:** user's external Neon `CONNECT_TIMEOUT` unresolved at last report; real DB migrations, Android/web keyboard/TalkBack/RTL/responsive smoke, real push, external schedulers, monitoring, encrypted off-host backup/restore, concurrency and operator sign-off. Automated passing must not be interpreted as production acceptance.
