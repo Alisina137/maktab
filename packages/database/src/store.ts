@@ -328,11 +328,13 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
         }
 
         if (next) {
-          await db
+          const changed = await db
             .update(subscriptions)
             .set({ status: next, updatedAt: new Date() })
-            .where(eq(subscriptions.schoolId, subscription.schoolId));
-          transitioned += 1;
+            .where(and(eq(subscriptions.schoolId, subscription.schoolId),
+              eq(subscriptions.status, subscription.status)))
+            .returning({ schoolId: subscriptions.schoolId });
+          transitioned += changed.length;
         }
 
         if (!subscription.expiresOn || subscription.status === "SUSPENDED" || subscription.status === "CANCELLED") continue;
@@ -342,24 +344,17 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
         const admins = await db
           .select({ id: users.id })
           .from(users)
-          .where(
-            and(
-              eq(users.schoolId, subscription.schoolId),
-              eq(users.role, "SCHOOL_ADMIN"),
-              or(eq(users.status, "ACTIVE"), eq(users.status, "INVITED"))
-            )
-          );
+          .where(and(
+            eq(users.schoolId, subscription.schoolId),
+            eq(users.role, "SCHOOL_ADMIN"),
+            eq(users.status, "ACTIVE")
+          ));
 
         for (const admin of admins) {
           const dedupKey = `subscription-expiry:${subscription.schoolId}:${subscription.expiresOn}:${remaining}:${admin.id}`;
-          const [existingNotification] = await db
-            .select({ id: notifications.id })
-            .from(notifications)
-            .where(and(eq(notifications.schoolId, subscription.schoolId), eq(notifications.dedupKey, dedupKey)))
-            .limit(1);
-          if (existingNotification) continue;
-
-          await db.insert(notifications).values({
+          // Concurrent scheduler invocations must not race the read-before-
+          // insert check and abort the whole job on a unique-key conflict.
+          const inserted = await db.insert(notifications).values({
             id: randomUUID(),
             schoolId: subscription.schoolId,
             userId: admin.id,
@@ -373,8 +368,8 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
               daysRemaining: remaining
             },
             deliveryStatus: "PENDING"
-          });
-          remindersCreated += 1;
+          }).onConflictDoNothing().returning({ id: notifications.id });
+          remindersCreated += inserted.length;
         }
       }
 
