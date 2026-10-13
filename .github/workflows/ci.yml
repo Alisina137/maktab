@@ -31,6 +31,14 @@ jobs:
       - name: Operational scripts syntax
         run: pnpm ops:check
 
+      - name: Step 20 release evidence and static gates
+        run: pnpm verify:release
+
+      - name: Parent three-language and resilience regressions
+        run: |
+          pnpm verify:parent-localization
+          pnpm verify:parent-resilience
+
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
 
@@ -59,5 +67,10 @@ jobs:
           node-version: 24.13.0
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Release evidence and parent locale/resilience (Windows)
+        run: |
+          pnpm verify:release
+          pnpm verify:parent-localization
+          pnpm verify:parent-resilience
       - name: Test API (Windows / Node 24)
         run: pnpm --filter @maktablink/api test
