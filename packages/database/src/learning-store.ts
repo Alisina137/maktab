@@ -119,8 +119,8 @@ export interface LearningStore {
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
-  createExam(schoolId: string, input: CreateExamInput): Promise<Exam>;
-  createExamSubject(schoolId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
+  createExam(schoolId: string, actorUserId: string, input: CreateExamInput): Promise<Exam>;
+  createExamSubject(schoolId: string, actorUserId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
   setExamStatus(schoolId: string, actorUserId: string, examId: string, status: ExamStatus): Promise<Exam>;
   publishExam(schoolId: string, actorUserId: string, examId: string): Promise<{ exam: Exam; notificationCount: number }>;
   correctPublishedGrade(
@@ -719,7 +719,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       return { exams: schoolExams, examSubjects: subjectRows, publishedGrades };
     },
 
-    async createExam(schoolId, input) {
+    async createExam(schoolId, actorUserId, input) {
       const [year] = await db
         .select()
         .from(academicYears)
@@ -728,19 +728,24 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (!year) throw new LearningNotFoundError("Academic year not found.");
       if (year.status !== "ACTIVE") throw new LearningConflictError("New exams require the active academic year.");
       try {
-        const [exam] = await db
-          .insert(exams)
-          .values({ id: randomUUID(), schoolId, ...input, status: "DRAFT" })
-          .returning();
-        if (!exam) throw new Error("Exam insert did not return a row.");
-        return exam;
+        return await db.transaction(async (tx) => {
+          const [exam] = await tx.insert(exams)
+            .values({ id: randomUUID(), schoolId, ...input, status: "DRAFT" }).returning();
+          if (!exam) throw new Error("Exam insert did not return a row.");
+          await tx.insert(auditLogs).values({
+            id: randomUUID(), schoolId, actorUserId,
+            action: "exam.created", entityType: "exam", entityId: exam.id,
+            metadata: { name: exam.name, type: exam.type, academicYearId: exam.academicYearId }
+          });
+          return exam;
+        });
       } catch (error) {
         if (isUniqueError(error)) throw new LearningConflictError("An exam with that name already exists in this academic year.");
         throw error;
       }
     },
 
-    async createExamSubject(schoolId, input) {
+    async createExamSubject(schoolId, actorUserId, input) {
       const exam = await getExam(schoolId, input.examId);
       if (exam.status !== "DRAFT" && exam.status !== "SCHEDULED") {
         throw new LearningConflictError("Exam subjects can be configured only before the exam starts.");
@@ -779,12 +784,26 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         throw new LearningValidationError("Exam subject requires an existing teacher assignment for the selected class and subject.");
       }
       try {
-        const [created] = await db
-          .insert(examSubjects)
-          .values({ id: randomUUID(), schoolId, ...input })
-          .returning();
-        if (!created) throw new Error("Exam subject insert did not return a row.");
-        return created;
+        return await db.transaction(async (tx) => {
+          // Do not add a new exam subject after another administrator has
+          // started the exam while this form was open.
+          const [locked] = await tx.select({ status: exams.status }).from(exams)
+            .where(and(eq(exams.schoolId, schoolId), eq(exams.id, exam.id)))
+            .limit(1).for("update");
+          if (!locked || !["DRAFT", "SCHEDULED"].includes(locked.status)) {
+            throw new LearningConflictError("Exam is no longer accepting subject setup.");
+          }
+          const [created] = await tx.insert(examSubjects)
+            .values({ id: randomUUID(), schoolId, ...input }).returning();
+          if (!created) throw new Error("Exam subject insert did not return a row.");
+          await tx.insert(auditLogs).values({
+            id: randomUUID(), schoolId, actorUserId,
+            action: "exam.subject_added", entityType: "exam_subject", entityId: created.id,
+            metadata: { examId: created.examId, classId: created.classId,
+              subjectId: created.subjectId, maxScore: created.maxScore, examDate: created.examDate }
+          });
+          return created;
+        });
       } catch (error) {
         if (isUniqueError(error)) throw new LearningConflictError("This subject is already configured for that exam and class.");
         throw error;
