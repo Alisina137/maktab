@@ -12,6 +12,7 @@ import {
   createLearningStore,
   createLearningExtensionsStore,
   createTeacherTeachingStore,
+  createTeacherTasksStore,
   createPilotStore,
   createSchoolStore,
   type PushProvider,
@@ -41,7 +42,8 @@ async function createTestApp() {
     "0012_admin_password_2fa.sql",
     "0014_student_phone.sql",
     "0015_teacher_learning_workflows.sql",
-    "0016_teacher_teaching_plans.sql"
+    "0016_teacher_teaching_plans.sql",
+    "0017_teacher_productivity.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -79,6 +81,7 @@ async function createTestApp() {
     learningStore: createLearningStore(db),
     learningExtensionsStore,
     teacherTeachingStore: createTeacherTeachingStore(db),
+    teacherTasksStore: createTeacherTasksStore(db),
     communicationStore: createCommunicationStore(db),
     pilotStore: createPilotStore(db),
     pushProvider,
@@ -1084,6 +1087,77 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.equal(otherView.statusCode, 200);
   assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().assignmentDetails, []);
   assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().schedule, []);
+  // Teacher Phase 6: private tasks never cross teacher or school identity,
+  // completed status persists, and invalid dates cannot enter storage.
+  const emptyTasks = await app.inject({
+    method: "GET", url: "/v1/teacher/tasks", headers: teacherHeaders
+  });
+  assert.equal(emptyTasks.statusCode, 200);
+  assert.deepEqual(emptyTasks.json<{ tasks: unknown[] }>().tasks, []);
+  const firstTask = await app.inject({
+    method: "POST", url: "/v1/teacher/tasks", headers: teacherHeaders,
+    payload: { title: "Prepare Wednesday quiz", details: "Revise fractions",
+      priority: "HIGH", dueOn: "2026-10-14" }
+  });
+  assert.equal(firstTask.statusCode, 201, firstTask.body);
+  const taskId = firstTask.json<{ task: { id: string } }>().task.id;
+  const invalidDue = await app.inject({
+    method: "POST", url: "/v1/teacher/tasks", headers: teacherHeaders,
+    payload: { title: "Impossible date", dueOn: "2026-02-30" }
+  });
+  assert.equal(invalidDue.statusCode, 400);
+  const secondTeacherTasks = await app.inject({
+    method: "GET", url: "/v1/teacher/tasks",
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(secondTeacherTasks.statusCode, 200);
+  assert.deepEqual(secondTeacherTasks.json<{ tasks: unknown[] }>().tasks, []);
+  const otherTeacherUpdateTask = await app.inject({
+    method: "PATCH", url: `/v1/teacher/tasks/${taskId}`,
+    headers: { authorization: `Bearer ${otherToken}` },
+    payload: { status: "DONE" }
+  });
+  assert.equal(otherTeacherUpdateTask.statusCode, 404);
+  const otherTeacherDeleteTask = await app.inject({
+    method: "DELETE", url: `/v1/teacher/tasks/${taskId}`,
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(otherTeacherDeleteTask.statusCode, 404);
+  const adminTeacherTasks = await app.inject({
+    method: "GET", url: "/v1/teacher/tasks", headers: auth
+  });
+  assert.equal(adminTeacherTasks.statusCode, 403);
+  const markDone = await app.inject({
+    method: "PATCH", url: `/v1/teacher/tasks/${taskId}`,
+    headers: teacherHeaders, payload: { status: "DONE" }
+  });
+  assert.equal(markDone.statusCode, 200, markDone.body);
+  assert.equal(markDone.json<{ task: { status: string } }>().task.status, "DONE");
+  const markDoneAgain = await app.inject({
+    method: "PATCH", url: `/v1/teacher/tasks/${taskId}`,
+    headers: teacherHeaders, payload: { title: "Prepare fractions worksheet", status: "OPEN" }
+  });
+  assert.equal(markDoneAgain.statusCode, 200);
+  assert.equal(markDoneAgain.json<{ task: { status: string } }>().task.status, "OPEN");
+  const readAll = await app.inject({
+    method: "POST", url: "/v1/teacher/notifications/read-all", headers: teacherHeaders
+  });
+  assert.equal(readAll.statusCode, 200);
+  assert.equal(typeof readAll.json<{ changed: number }>().changed, "number");
+  const adminReadAllDenied = await app.inject({
+    method: "POST", url: "/v1/teacher/notifications/read-all", headers: auth
+  });
+  assert.equal(adminReadAllDenied.statusCode, 403);
+  const taskRemove = await app.inject({
+    method: "DELETE", url: `/v1/teacher/tasks/${taskId}`, headers: teacherHeaders
+  });
+  assert.equal(taskRemove.statusCode, 200);
+  const taskNotFound = await app.inject({
+    method: "PATCH", url: `/v1/teacher/tasks/${taskId}`,
+    headers: teacherHeaders, payload: { status: "DONE" }
+  });
+  assert.equal(taskNotFound.statusCode, 404);
+
   // Phase 2: class details derive from exact active teacher assignment.
   const ownAssignmentId = assignmentResponse.json<{ assignment: { id: string } }>().assignment.id;
 

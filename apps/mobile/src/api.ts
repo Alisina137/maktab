@@ -142,6 +142,15 @@ export interface TeacherClassDetailPayload {
   canSuperviseToday: boolean;
 }
 
+export interface TeacherTaskPayload {
+  id: string; schoolId: string; teacherUserId: string;
+  title: string; details: string; priority: "LOW" | "NORMAL" | "HIGH";
+  status: "OPEN" | "DONE"; dueOn: string | null; createdAt: string; updatedAt: string;
+}
+export type TeacherTaskForm = {
+  title: string; details: string; priority: TeacherTaskPayload["priority"]; dueOn: string | null;
+};
+
 export type LessonState = "PLANNED" | "COMPLETED" | "POSTPONED";
 export type UnitState = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 export interface TeachingUnit {
@@ -788,6 +797,12 @@ export const api = {
     });
   },
 
+  teacherMarkAllNotificationsRead(accessToken: string) {
+    return request<{ changed: number }>("/v1/teacher/notifications/read-all", {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
   announcements(accessToken: string) {
     return request<{ announcements: AnnouncementPayload[] }>("/v1/announcements", {
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -847,6 +862,32 @@ export const api = {
   teacherAcademics(accessToken: string) {
     return request<TeacherAcademicsPayload>("/v1/teacher/academics", {
       headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  teacherTasks(accessToken: string) {
+    return request<{ tasks: TeacherTaskPayload[] }>("/v1/teacher/tasks", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+  createTeacherTask(accessToken: string, input: TeacherTaskForm) {
+    return request<{ task: TeacherTaskPayload }>("/v1/teacher/tasks", {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
+  updateTeacherTask(accessToken: string, id: string,
+    input: Partial<TeacherTaskForm> & { status?: TeacherTaskPayload["status"] }) {
+    return request<{ task: TeacherTaskPayload }>(
+      `/v1/teacher/tasks/${encodeURIComponent(id)}`, {
+        method: "PATCH", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(input)
+      }
+    );
+  },
+  deleteTeacherTask(accessToken: string, id: string) {
+    return request<{ deleted: true }>(`/v1/teacher/tasks/${encodeURIComponent(id)}`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }
     });
   },
 

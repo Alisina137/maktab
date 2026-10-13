@@ -155,6 +155,17 @@ export function registerCommunicationRoutes(
     }
   );
 
+  app.post("/v1/teacher/notifications/read-all", async (request, reply) => {
+    const context = await requireActiveCommunicationAccess(request, reply);
+    if (!context) return;
+    if (context.user.role !== "TEACHER") {
+      return reply.code(403).send({ error: "forbidden", message: "Teacher access is required." });
+    }
+    return { changed: await communication.markAllNotificationsRead(
+      context.user.schoolId, context.user.id
+    ) };
+  });
+
   app.post("/v1/notifications/devices", async (request, reply) => {
     const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;

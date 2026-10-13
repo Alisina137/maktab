@@ -108,6 +108,37 @@ export type TranslationKey =
   | "common.cachedOffline"
   | "common.serviceUnavailable"
   | "common.sessionExpired"
+  | "productivity.title"
+  | "productivity.privateHint"
+  | "productivity.open"
+  | "productivity.done"
+  | "productivity.all"
+  | "productivity.total"
+  | "productivity.edit"
+  | "productivity.new"
+  | "productivity.taskTitle"
+  | "productivity.details"
+  | "productivity.dueDate"
+  | "productivity.clearDueDate"
+  | "productivity.low"
+  | "productivity.normal"
+  | "productivity.high"
+  | "productivity.offlineDraft"
+  | "productivity.save"
+  | "productivity.cancelEdit"
+  | "productivity.list"
+  | "productivity.search"
+  | "productivity.empty"
+  | "productivity.markDone"
+  | "productivity.reopen"
+  | "productivity.deleteTitle"
+  | "productivity.deleteConfirm"
+  | "productivity.delete"
+  | "productivity.invalid"
+  | "productivity.saved"
+  | "teacher.markAllRead"
+  | "teacher.onlyUnread"
+  | "teacher.allNotifications"
   | "teacher.dayAtGlance"
   | "teacher.attendancePending"
   | "teacher.nextLesson"
@@ -518,6 +549,37 @@ const en: Record<TranslationKey, string> = {
   "common.connectionRestored": "MaktabLink reconnected successfully and refreshed your information.",
   "common.validationError": "Some of the information entered is not valid. Please review it and try again.",
   "common.requestFailed": "This action could not be completed. Please try again.",
+  "productivity.title": "My personal tasks",
+  "productivity.privateHint": "Private to your teacher account. Not visible to students or other teachers.",
+  "productivity.open": "Open",
+  "productivity.done": "Done",
+  "productivity.all": "All",
+  "productivity.total": "Total tasks",
+  "productivity.edit": "Edit task",
+  "productivity.new": "New task",
+  "productivity.taskTitle": "Task title",
+  "productivity.details": "Notes (optional)",
+  "productivity.dueDate": "Due date (optional)",
+  "productivity.clearDueDate": "Clear date",
+  "productivity.low": "Low priority",
+  "productivity.normal": "Normal priority",
+  "productivity.high": "High priority",
+  "productivity.offlineDraft": "New task drafts are saved securely on this device. Sending or editing tasks requires internet.",
+  "productivity.save": "Save task",
+  "productivity.cancelEdit": "Cancel editing",
+  "productivity.list": "Tasks",
+  "productivity.search": "Search tasks",
+  "productivity.empty": "No tasks match this view.",
+  "productivity.markDone": "Mark done",
+  "productivity.reopen": "Reopen",
+  "productivity.deleteTitle": "Delete task?",
+  "productivity.deleteConfirm": "This personal task will be permanently deleted.",
+  "productivity.delete": "Delete",
+  "productivity.invalid": "Enter a task title and use the allowed length limits.",
+  "productivity.saved": "Task saved.",
+  "teacher.markAllRead": "Mark all read",
+  "teacher.onlyUnread": "Unread only",
+  "teacher.allNotifications": "All notifications",
   "teacher.dayAtGlance": "Your day at a glance",
   "teacher.attendancePending": "Attendance pending",
   "teacher.nextLesson": "Next lesson",
@@ -944,6 +1006,37 @@ const dari: Record<TranslationKey, string> = {
   "common.connectionRestored": "ارتباط MaktabLink دوباره برقرار شد و معلومات شما تازه شد.",
   "common.validationError": "بعضی از معلومات واردشده درست نیست. لطفاً آن‌ها را بررسی کرده و دوباره کوشش کنید.",
   "common.requestFailed": "این کار انجام نشد. لطفاً دوباره کوشش کنید.",
+  "productivity.title": "کارهای شخصی من",
+  "productivity.privateHint": "فقط در حساب استاد شما قابل مشاهده است؛ شاگردان و سایر استادان دسترسی ندارند.",
+  "productivity.open": "باز",
+  "productivity.done": "انجام‌شده",
+  "productivity.all": "همه",
+  "productivity.total": "مجموع کارها",
+  "productivity.edit": "ویرایش کار",
+  "productivity.new": "کار جدید",
+  "productivity.taskTitle": "عنوان کار",
+  "productivity.details": "یادداشت (اختیاری)",
+  "productivity.dueDate": "تاریخ انجام (اختیاری)",
+  "productivity.clearDueDate": "حذف تاریخ",
+  "productivity.low": "اولویت پایین",
+  "productivity.normal": "اولویت عادی",
+  "productivity.high": "اولویت بالا",
+  "productivity.offlineDraft": "پیش‌نویس کار جدید به‌صورت امن در دستگاه ذخیره می‌شود. ثبت و ویرایش کارها به اینترنت نیاز دارد.",
+  "productivity.save": "ذخیره کار",
+  "productivity.cancelEdit": "لغو ویرایش",
+  "productivity.list": "کارها",
+  "productivity.search": "جستجوی کارها",
+  "productivity.empty": "در این بخش کاری یافت نشد.",
+  "productivity.markDone": "علامت‌گذاری انجام‌شده",
+  "productivity.reopen": "بازگشایی",
+  "productivity.deleteTitle": "حذف کار؟",
+  "productivity.deleteConfirm": "این کار شخصی برای همیشه حذف می‌شود.",
+  "productivity.delete": "حذف",
+  "productivity.invalid": "عنوان کار را وارد و محدوده متن را رعایت کنید.",
+  "productivity.saved": "کار ذخیره شد.",
+  "teacher.markAllRead": "همه خوانده شد",
+  "teacher.onlyUnread": "فقط خوانده‌نشده",
+  "teacher.allNotifications": "همه اعلان‌ها",
   "teacher.dayAtGlance": "نمای کلی روز شما",
   "teacher.attendancePending": "حاضری ثبت‌نشده",
   "teacher.nextLesson": "درس بعدی",
@@ -1370,6 +1463,37 @@ const pashto: Record<TranslationKey, string> = {
   "common.connectionRestored": "د MaktabLink اړیکه بېرته جوړه شوه او ستاسو معلومات تازه شول.",
   "common.validationError": "ځینې داخل شوي معلومات سم نه دي. مهرباني وکړئ یې وګورئ او بیا هڅه وکړئ.",
   "common.requestFailed": "دا کار بشپړ نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
+  "productivity.title": "زما شخصي کارونه",
+  "productivity.privateHint": "یوازې ستاسو د ښوونکي حساب ته ښکاري؛ زده کوونکي او نور ښوونکي یې نه ویني.",
+  "productivity.open": "پرانېستي",
+  "productivity.done": "بشپړ",
+  "productivity.all": "ټول",
+  "productivity.total": "ټول کارونه",
+  "productivity.edit": "کار سم کړئ",
+  "productivity.new": "نوی کار",
+  "productivity.taskTitle": "د کار سرلیک",
+  "productivity.details": "یادښت (اختیاري)",
+  "productivity.dueDate": "د ترسره کولو نېټه (اختیاري)",
+  "productivity.clearDueDate": "نېټه پاکه کړئ",
+  "productivity.low": "ټیټ لومړیتوب",
+  "productivity.normal": "عادي لومړیتوب",
+  "productivity.high": "لوړ لومړیتوب",
+  "productivity.offlineDraft": "د نوي کار مسوده په دې وسیله کې خوندي ساتل کېږي. د کار ثبت او سمون انټرنېټ ته اړتیا لري.",
+  "productivity.save": "کار خوندي کړئ",
+  "productivity.cancelEdit": "سمون لغوه کړئ",
+  "productivity.list": "کارونه",
+  "productivity.search": "کارونه ولټوئ",
+  "productivity.empty": "دلته کوم کار ونه موندل شو.",
+  "productivity.markDone": "بشپړ په نښه کړئ",
+  "productivity.reopen": "بېرته پرانیزئ",
+  "productivity.deleteTitle": "کار حذف شي؟",
+  "productivity.deleteConfirm": "دا شخصي کار به د تل لپاره حذف شي.",
+  "productivity.delete": "حذف",
+  "productivity.invalid": "د کار سرلیک او د متن ټاکلي حدود مراعات کړئ.",
+  "productivity.saved": "کار خوندي شو.",
+  "teacher.markAllRead": "ټول لوستل شوي",
+  "teacher.onlyUnread": "یوازې نالوستل شوي",
+  "teacher.allNotifications": "ټول خبرتیاوې",
   "teacher.dayAtGlance": "ستاسو د ورځې لنډیز",
   "teacher.attendancePending": "نا ثبت شوې حاضري",
   "teacher.nextLesson": "راتلونکی درس",

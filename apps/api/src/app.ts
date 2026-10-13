@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, PilotStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
+import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
@@ -11,6 +11,7 @@ import { registerCommunicationRoutes } from "./communication/routes.js";
 import { registerLearningRoutes } from "./learning/routes.js";
 import { registerLearningExtensionsRoutes } from "./learning/extensions-routes.js";
 import { registerTeachingRoutes } from "./teaching/routes.js";
+import { registerTeacherTasksRoutes } from "./teaching/tasks-routes.js";
 import { registerPilotRoutes } from "./pilot/routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
@@ -26,6 +27,7 @@ export interface BuildAppOptions {
   learningStore: LearningStore;
   learningExtensionsStore?: LearningExtensionsStore;
   teacherTeachingStore?: TeacherTeachingStore;
+  teacherTasksStore?: TeacherTasksStore;
   communicationStore: CommunicationStore;
   pilotStore: PilotStore;
   pushProvider: PushProvider;
@@ -93,6 +95,7 @@ export function buildApp(options: BuildAppOptions) {
   registerLearningRoutes(app, options.accountStore, options.learningStore);
   if (options.learningExtensionsStore) registerLearningExtensionsRoutes(app, options.accountStore, options.learningExtensionsStore);
   if (options.teacherTeachingStore) registerTeachingRoutes(app, options.accountStore, options.teacherTeachingStore);
+  if (options.teacherTasksStore) registerTeacherTasksRoutes(app, options.accountStore, options.teacherTasksStore);
   registerPilotRoutes(app, options.accountStore, options.pilotStore);
   registerCommunicationRoutes(
     app,

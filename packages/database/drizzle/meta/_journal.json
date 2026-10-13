@@ -120,6 +120,13 @@
       "when": 1790720000000,
       "tag": "0016_teacher_teaching_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790730000000,
+      "tag": "0017_teacher_productivity",
+      "breakpoints": true
     }
   ]
 }

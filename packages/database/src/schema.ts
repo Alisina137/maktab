@@ -652,6 +652,22 @@ export const teacherUnitProgress = pgTable("teacher_unit_progress", {
   uniqueIndex("teacher_unit_progress_unique").on(table.assignmentId, table.unitId)
 ]);
 
+export const teacherTasks = pgTable("teacher_tasks", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  teacherUserId: uuid("teacher_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  details: varchar("details", { length: 1500 }).notNull().default(""),
+  priority: varchar("priority", { length: 12 }).notNull().default("NORMAL"),
+  status: varchar("status", { length: 12 }).notNull().default("OPEN"),
+  dueOn: date("due_on"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("teacher_tasks_owner_status_idx").on(table.schoolId, table.teacherUserId, table.status),
+  index("teacher_tasks_due_idx").on(table.schoolId, table.teacherUserId, table.dueOn)
+]);
+
 export const teacherLessonPlans = pgTable("teacher_lesson_plans", {
   id: uuid("id").primaryKey(),
   schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
@@ -923,6 +939,7 @@ export const databaseSchema = {
   curriculumUnits,
   teacherUnitProgress,
   teacherLessonPlans,
+  teacherTasks,
   exams,
   examSubjects,
   gradeRecords,
@@ -965,6 +982,7 @@ export type ContinuousAssessment = typeof continuousAssessments.$inferSelect;
 export type CurriculumUnit = typeof curriculumUnits.$inferSelect;
 export type TeacherUnitProgress = typeof teacherUnitProgress.$inferSelect;
 export type TeacherLessonPlan = typeof teacherLessonPlans.$inferSelect;
+export type TeacherTask = typeof teacherTasks.$inferSelect;
 export type Exam = typeof exams.$inferSelect;
 export type ExamSubject = typeof examSubjects.$inferSelect;
 export type GradeRecord = typeof gradeRecords.$inferSelect;

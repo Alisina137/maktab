@@ -2339,6 +2339,8 @@ function AppContent() {
             academicsReady={teacherAcademicsReady}
             schoolName={school?.name ?? ""}
             username={session.user.username}
+            teacherUserId={session.user.id}
+            schoolId={session.user.schoolId}
             locale={locale}
             textDirection={textDirection}
             accessToken={session.accessToken}

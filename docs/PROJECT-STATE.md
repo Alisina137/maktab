@@ -1363,3 +1363,17 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 
 - School Admin curriculum controls now support editing title/order and deleting **unused** units. Deletion is blocked when a unit has a linked Teacher lesson plan or progress record; teacher authorship and audit events are preserved. Added API authorization and conflict regressions. Admin curriculum labels have Dari and Pashto translations.
 - Teaching-period homework reporting uses school-local Asia/Kabul dates and the **actual publication timestamp** for Published/Closed homework, avoiding incorrect report assignment to the month in which the draft was created; draft counts use creation time. School curriculum progress figures remain the current per-assignment snapshot, which is stated in the UI.
+
+
+### Teacher Workspace Expansion — Phase 6: Communication, Notifications, Productivity, and Resilient Drafts (2026-10-13)
+
+**Implementation submitted to GitHub CI; Android acceptance outstanding.**
+
+- Teacher notification inbox supports **Unread only** / **All notifications** views and a bulk **Mark all read** command. The server endpoint is authenticated Teacher-only and updates only the active user's notifications within their school; cancelled notifications and other users are unaffected.
+- Teacher inbox refreshes when opened, from manual Retry, and when the app returns to the foreground. The last successfully retrieved inbox and Today learning summaries remain visible through isolated failed ngrok requests, reducing offline/online flicker. No high-frequency background polling was added.
+- Teacher **Workflows → My personal tasks** and a Today quick action now provide private task tracking: create/edit/delete, optional due date picker, LOW/NORMAL/HIGH priority, OPEN/DONE progress, search and filters, retry/refresh. Server CRUD strictly limits access by school and authenticated teacher identity; no student, parent, admin, or other Teacher can see or mutate another Teacher's private task. The system caps persistent tasks at 300 per teacher.
+- Unsaved **new-task form drafts** are stored securely on the Android device through Expo SecureStore under a school- and user-scoped key, restored after relaunch, and cleared after successful submission. Offline draft retention does **not** queue or imply server mutations; saving/editing/deleting requires a valid online session. Regular server GET cache fallback continues with the existing 7-day lifetime / 6000-character bound.
+- This phase deliberately reuses existing School Admin contact and the Negaran-only class announcements permission model; no unrestricted teacher-to-parent messaging is introduced.
+- Migration **0017_teacher_productivity.sql** creates teacher_tasks plus owner/status/due indexes, priority/status constraints, school/user foreign keys; run `pnpm --filter @maktablink/database db:migrate` before starting Phase 6.
+- Automated API regression tests: tasks are private per teacher, teacher permissions apply, invalid due dates rejected, status reopen/update/delete persist, non-owner mutation denied, Teacher-only bulk notification acknowledgement.
+- Android test: sign in Teacher, Workflows → My personal tasks, create/edit/complete/reopen/delete and search/filter; open Inbox and mark unread individually/all; use airplane mode while typing **new-task draft** and relaunch Expo Go, verify local draft restored and writes still require internet; verify app foreground inbox refresh and English/Dari/Pashto LTR/RTL; verify different Teacher sees no private tasks.

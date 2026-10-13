@@ -83,6 +83,7 @@ export interface CommunicationStore {
   deactivateDevice(schoolId: string, userId: string, pushToken: string): Promise<void>;
   getUserNotifications(schoolId: string, userId: string): Promise<Notification[]>;
   markNotificationRead(schoolId: string, userId: string, notificationId: string): Promise<Notification | null>;
+  markAllNotificationsRead(schoolId: string, userId: string): Promise<number>;
   deliverPendingPush(provider: PushProvider, limit?: number): Promise<{ sent: number; failed: number; skipped: number }>;
 }
 
@@ -596,6 +597,18 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       const [updated] = await db.update(notifications).set({ readAt: new Date(), updatedAt: new Date() })
         .where(and(eq(notifications.schoolId, schoolId), eq(notifications.userId, userId), eq(notifications.id, notificationId))).returning();
       return updated ?? null;
+    },
+
+    async markAllNotificationsRead(schoolId, userId) {
+      const changed = await db.update(notifications).set({
+        readAt: new Date(), updatedAt: new Date()
+      }).where(and(
+        eq(notifications.schoolId, schoolId),
+        eq(notifications.userId, userId),
+        isNull(notifications.readAt),
+        ne(notifications.deliveryStatus, "CANCELLED")
+      )).returning({ id: notifications.id });
+      return changed.length;
     },
 
     async deliverPendingPush(provider, limit = 100) {

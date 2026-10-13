@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -17,6 +17,7 @@ import { teacherTime12 } from "./teacher-hub-data";
 import { TeacherClassDetailPage } from "./teacher-class-detail";
 import { AdminContactCard } from "./admin-contact-card";
 import { TeacherLearningPanel } from "./learning-ui";
+import { TeacherTasksPanel } from "./teacher-tasks";
 import { CommunicationPanel } from "./communication-ui";
 import type { AppErrorKind } from "./error-message";
 
@@ -116,7 +117,7 @@ function Empty({ message, rtl, textDirection }: { message: string; rtl: boolean;
 }
 
 export function TeacherExperience({
-  tab, today, academics, todayReady, academicsReady, schoolName, username, locale,
+  tab, today, academics, todayReady, academicsReady, schoolName, username, teacherUserId, schoolId, locale,
   textDirection, accessToken, adminContact, reconnectEpoch, onSelect, onAttendance,
   onRetry, onError, onNotice, onLogout, onScrollTop
 }: {
@@ -127,6 +128,8 @@ export function TeacherExperience({
   academicsReady: boolean;
   schoolName: string;
   username: string;
+  teacherUserId: string;
+  schoolId: string;
   locale: SupportedLocale;
   textDirection: Direction;
   accessToken: string;
@@ -164,6 +167,13 @@ export function TeacherExperience({
   const previousTab = useRef(tab);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") setHubRefresh((value) => value + 1);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     if (previousTab.current === "WORKFLOWS" && tab === "TODAY") {
       setHubRefresh((value) => value + 1);
     }
@@ -173,7 +183,8 @@ export function TeacherExperience({
   useEffect(() => {
     const requestId = ++hubRequestId.current;
     currentToken.current = accessToken;
-    setHubReady({ learning: false, announcements: false, notifications: false });
+    // Keep last successful data visible while a refresh is in flight.
+    // A single failed ngrok request must not erase an otherwise valid inbox.
     const read = async () => {
       const [learning, announcements, notifications] = await Promise.allSettled([
         api.teacherLearning(accessToken),
@@ -181,14 +192,30 @@ export function TeacherExperience({
         api.notifications(accessToken)
       ] as const);
       if (hubRequestId.current !== requestId) return;
-      setHubLearning(learning.status === "fulfilled" ? learning.value : null);
-      setHubAnnouncements(announcements.status === "fulfilled" ? announcements.value.announcements : []);
-      setHubNotifications(notifications.status === "fulfilled" ? notifications.value.notifications : []);
+      if (learning.status === "fulfilled") setHubLearning(learning.value);
+      if (announcements.status === "fulfilled") setHubAnnouncements(announcements.value.announcements);
+      if (notifications.status === "fulfilled") setHubNotifications(notifications.value.notifications);
       setHubReady({ learning: true, announcements: true, notifications: true });
     };
     void read();
     return () => { hubRequestId.current += 1; };
   }, [accessToken, reconnectEpoch, hubRefresh]);
+
+  async function markAllTeacherNotificationsRead() {
+    try {
+      await api.teacherMarkAllNotificationsRead(accessToken);
+      const now = new Date().toISOString();
+      setHubNotifications((items) => items.map((item) => item.readAt ? item : { ...item, readAt: now }));
+      setHubRefresh((count) => count + 1);
+    } catch {
+      // Never pretend an offline or unauthorized update was successful.
+    }
+  }
+
+  function openInbox() {
+    setInboxOpen(true);
+    setHubRefresh((count) => count + 1);
+  }
 
   async function markTeacherNotificationRead(notificationId: string) {
     try {
@@ -223,7 +250,7 @@ export function TeacherExperience({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={translate(locale, "teacher.notificationsCenter")}
-          onPress={() => setInboxOpen(true)}
+          onPress={openInbox}
           style={styles.inboxButton}
           testID="teacher-inbox-button"
         >
@@ -252,10 +279,18 @@ export function TeacherExperience({
             onHomework={() => goToWorkflow("HOMEWORK")}
             onGrades={() => goToWorkflow("GRADES")}
             onAnnouncements={() => goToWorkflow("ANNOUNCEMENTS")}
-            onNotifications={() => setInboxOpen(true)}
+            onNotifications={openInbox}
             onAttendance={onAttendance}
             onRetry={() => setHubRefresh((value) => value + 1)}
           />
+          <Pressable accessibilityRole="button" style={[styles.actionRow, rtl && styles.rowRtl]}
+            onPress={() => goToWorkflow("TASKS")}>
+            <Ionicons name="checkbox-outline" color={tokens.color.brandStrong} size={22} />
+            <Text style={[styles.itemTitle, styles.flex, textDirection]}>
+              {translate(locale, "productivity.title")}
+            </Text>
+            <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted}/>
+          </Pressable>
           <View style={styles.card}>
             <SectionHeading icon="today-outline" title={translate(locale, "teacher.todayTitle")} rtl={rtl} textDirection={textDirection} />
             <Text style={[styles.date, textDirection]}>
@@ -406,7 +441,8 @@ export function TeacherExperience({
               {([
                 ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
                 ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
-                ["ANNOUNCEMENTS", "teacher.workflowAnnouncements", "megaphone-outline"]
+                ["ANNOUNCEMENTS", "teacher.workflowAnnouncements", "megaphone-outline"],
+                ["TASKS", "productivity.title", "checkbox-outline"]
               ] as const).map(([id, label, icon]) => (
                 <Pressable
                   key={id} accessibilityRole="tab"
@@ -425,7 +461,13 @@ export function TeacherExperience({
               ))}
             </View>
           </View>
-          {workflowSection !== "ANNOUNCEMENTS" ? (
+          {workflowSection === "TASKS" ? (
+            <TeacherTasksPanel
+              accessToken={accessToken} schoolId={schoolId} teacherUserId={teacherUserId}
+              locale={locale} textDirection={textDirection} reconnectEpoch={reconnectEpoch}
+              onError={onError} onNotice={onNotice}
+            />
+          ) : workflowSection !== "ANNOUNCEMENTS" ? (
             <TeacherLearningPanel
               key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
               section={workflowSection}
@@ -468,6 +510,7 @@ export function TeacherExperience({
         textDirection={textDirection}
         onClose={() => setInboxOpen(false)}
         onMarkRead={(notificationId) => void markTeacherNotificationRead(notificationId)}
+        onMarkAllRead={() => void markAllTeacherNotificationsRead()}
         onRetry={() => setHubRefresh((value) => value + 1)}
       />
     </View>
