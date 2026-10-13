@@ -502,7 +502,10 @@ export type UpdateScheduledAnnouncementInput = z.infer<typeof updateScheduledAnn
 export const createFeeInvoiceSchema = z.object({
   studentId: z.string().uuid(),
   amount: z.number().int().min(1).max(100000000),
-  dueDate: isoDateSchema,
+  dueDate: isoDateSchema.refine(value => {
+    const date = new Date(`${value}T00:00:00Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, "Provide a real calendar date."),
   description: z.string().trim().max(240).optional()
 });
 export type CreateFeeInvoiceInput = z.infer<typeof createFeeInvoiceSchema>;

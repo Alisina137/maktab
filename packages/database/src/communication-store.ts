@@ -326,6 +326,11 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
   async function feeAlertIsVisible(row: Notification): Promise<boolean> {
     if (row.type !== "FEE_DUE" && row.type !== "FEE_OVERDUE") return true;
+    const [guardian] = await db.select({ id: users.id }).from(users).where(and(
+      eq(users.id, row.userId), eq(users.schoolId, row.schoolId),
+      eq(users.role, "PARENT"), ne(users.status, "SUSPENDED"), ne(users.status, "ARCHIVED")
+    )).limit(1);
+    if (!guardian) return false;
     const invoiceId = row.metadata.invoiceId;
     const studentId = row.metadata.studentId;
     if (typeof invoiceId !== "string" || typeof studentId !== "string") return false;
@@ -346,8 +351,13 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
   async function invoiceView(invoice: FeeInvoice): Promise<FeeInvoiceView> {
     const student = await getStudent(invoice.schoolId, invoice.studentId);
     const totals = await paymentTotals(invoice.schoolId, invoice.id);
+    // The UI must still show overdue if the scheduled job has not run today.
+    // This is a read-only projection; the scheduler persists the OVERDUE state.
+    const status = invoice.status === "DRAFT" || invoice.status === "CANCELLED"
+      ? invoice.status
+      : balanceStatus(invoice, totals.paid, await schoolDateAt(invoice.schoolId));
     return {
-      invoice,
+      invoice: status === invoice.status ? invoice : { ...invoice, status },
       studentName: student.fullName,
       studentCode: student.studentCode,
       paid: totals.paid,
