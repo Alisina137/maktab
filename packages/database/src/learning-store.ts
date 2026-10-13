@@ -121,7 +121,7 @@ export interface LearningStore {
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
   createExam(schoolId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
-  setExamStatus(schoolId: string, examId: string, status: ExamStatus): Promise<Exam>;
+  setExamStatus(schoolId: string, actorUserId: string, examId: string, status: ExamStatus): Promise<Exam>;
   publishExam(schoolId: string, examId: string): Promise<{ exam: Exam; notificationCount: number }>;
   correctPublishedGrade(
     schoolId: string,
@@ -791,47 +791,71 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       }
     },
 
-    async setExamStatus(schoolId, examId, status) {
-      const exam = await getExam(schoolId, examId);
-      if (status === "PUBLISHED") throw new LearningValidationError("Use the publish-results action to publish an exam.");
-      const allowed: Record<ExamStatus, ExamStatus[]> = {
-        DRAFT: ["SCHEDULED"],
-        SCHEDULED: ["IN_PROGRESS"],
-        IN_PROGRESS: ["RESULTS_READY"],
-        RESULTS_READY: [],
-        PUBLISHED: ["ARCHIVED"],
-        ARCHIVED: []
-      };
-      if (!allowed[exam.status].includes(status)) {
-        throw new LearningConflictError(`Exam cannot move from ${exam.status} to ${status}.`);
+    async setExamStatus(schoolId, actorUserId, examId, status) {
+      if (status === "PUBLISHED") {
+        throw new LearningValidationError("Use the publish-results action to publish an exam.");
       }
-
-      if (status === "RESULTS_READY") {
-        const subjectsForExam = await db
-          .select()
-          .from(examSubjects)
-          .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)));
-        if (subjectsForExam.length === 0) throw new LearningConflictError("An exam needs at least one subject before results can be ready.");
-        for (const examSubject of subjectsForExam) {
-          const enrolled = await classStudents(schoolId, examSubject.classId, exam.academicYearId);
-          const entered = await db
-            .select({ studentId: gradeRecords.studentId })
-            .from(gradeRecords)
-            .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.examSubjectId, examSubject.id)));
-          const enteredIds = new Set(entered.map((item) => item.studentId));
-          if (enrolled.some((student) => !enteredIds.has(student.id))) {
-            throw new LearningConflictError("Every active student must have a draft mark before results can be marked ready.");
+      return db.transaction(async (tx) => {
+        const [exam] = await tx.select().from(exams).where(and(
+          eq(exams.schoolId, schoolId), eq(exams.id, examId)
+        )).limit(1).for("update");
+        if (!exam) throw new LearningNotFoundError("Exam not found.");
+        const allowed: Record<ExamStatus, ExamStatus[]> = {
+          DRAFT: ["SCHEDULED"],
+          SCHEDULED: ["IN_PROGRESS"],
+          IN_PROGRESS: ["RESULTS_READY"],
+          RESULTS_READY: [],
+          PUBLISHED: ["ARCHIVED"],
+          ARCHIVED: []
+        };
+        if (!allowed[exam.status].includes(status)) {
+          throw new LearningConflictError(`Exam cannot move from ${exam.status} to ${status}.`);
+        }
+        if (status === "SCHEDULED" || status === "RESULTS_READY") {
+          const configured = await tx.select().from(examSubjects).where(and(
+            eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)
+          ));
+          if (configured.length === 0) {
+            throw new LearningConflictError("Configure at least one exam subject before advancing.");
+          }
+          if (status === "SCHEDULED" && configured.some(item => !item.examDate)) {
+            throw new LearningConflictError("Every subject needs an exam date before scheduling.");
+          }
+          if (status === "RESULTS_READY") {
+            for (const subject of configured) {
+              const roster = await tx.select({ id: students.id }).from(students).where(and(
+                eq(students.schoolId, schoolId), eq(students.classId, subject.classId),
+                eq(students.academicYearId, exam.academicYearId), eq(students.status, "ACTIVE")
+              ));
+              if (!roster.length) {
+                throw new LearningConflictError("Every exam class needs an active student before results are ready.");
+              }
+              const marks = await tx.select().from(gradeRecords).where(and(
+                eq(gradeRecords.schoolId, schoolId),
+                eq(gradeRecords.examSubjectId, subject.id)
+              ));
+              const marksByStudent = new Map(marks.map(mark => [mark.studentId, mark]));
+              if (roster.some(student => {
+                const grade = marksByStudent.get(student.id);
+                return !grade || grade.status !== "DRAFT" ||
+                  grade.score < 0 || grade.score > subject.maxScore;
+              })) {
+                throw new LearningConflictError("Complete valid draft marks for every active student before results are ready.");
+              }
+            }
           }
         }
-      }
-
-      const [updated] = await db
-        .update(exams)
-        .set({ status, updatedAt: new Date() })
-        .where(and(eq(exams.schoolId, schoolId), eq(exams.id, examId)))
-        .returning();
-      if (!updated) throw new LearningNotFoundError("Exam not found.");
-      return updated;
+        const [updated] = await tx.update(exams).set({ status, updatedAt: new Date() })
+          .where(and(eq(exams.schoolId, schoolId), eq(exams.id, examId),
+            eq(exams.status, exam.status))).returning();
+        if (!updated) throw new LearningConflictError("Exam status changed. Refresh and retry.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId,
+          action: "exam.status_changed", entityType: "exam", entityId: examId,
+          metadata: { previousStatus: exam.status, status }
+        });
+        return updated;
+      });
     },
 
     async publishExam(schoolId, examId) {
