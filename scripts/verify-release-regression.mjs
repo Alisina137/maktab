@@ -45,6 +45,7 @@ const cases = [
   ["20.11", "Scheduled notification idempotency", communication, "Phase 7 reminder jobs are idempotent and push failure does not roll back school data"],
   ["20.12", "Payment ledger and retries", communication, "Step 17 fees: tenant isolation, replay, exact balances, immutable reversals and reminders"],
   ["20.13", "Suspended subscription access", api, "Phase 8 subscription suspension blocks end users and operational admin writes but preserves billing and export access"],
+  ["20.14", "Inactive-school and archived-token revocation", api, "Step 20 deactivated schools and archived users cannot reuse existing access or refresh tokens"],
   ["20.14", "Tenant-scoped account identities", accounts, "the same username can exist in different schools but not twice in one school"],
   ["20.15", "Three-locale text parity", locale, "all locales expose the same translation keys"],
   ["20.15", "RTL and Gregorian date rules", locale, "Afghan RTL locales use Solar Hijri dates while English stays Gregorian"],
