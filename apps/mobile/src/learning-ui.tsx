@@ -370,7 +370,7 @@ export function TeacherLearningPanel(props: CommonProps) {
                 <View style={styles.flex}>
                   <Text style={[styles.itemTitle, textDirection]}>{homework.title}</Text>
                   <Text style={[styles.muted, textDirection]}>
-                    {translate(locale, homework.status === "DRAFT" ? "learning.saveDraft" : homework.status === "PUBLISHED" ? "learning.publish" : homework.status === "CLOSED" ? "learning.close" : "learning.archive")} · {translate(locale, "learning.due")} {formatLocalizedDate(homework.dueAt, locale)}
+                    {translate(locale, homework.status === "DRAFT" ? "teacher.statusDraft" : homework.status === "PUBLISHED" ? "teacher.statusPublished" : homework.status === "CLOSED" ? "teacher.statusClosed" : "teacher.statusArchived")} · {translate(locale, "learning.due")} {formatLocalizedDate(homework.dueAt, locale)}
                   </Text>
                 </View>
                 <View style={styles.actions}>

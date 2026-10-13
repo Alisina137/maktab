@@ -2641,6 +2641,33 @@ test("teacher without Negaran assignment cannot access another class attendance"
   });
   assert.equal(sheet.statusCode, 400);
   assert.equal(sheet.json<{ error: string }>().error, "attendance_validation");
+
+  const unauthorizedAnnouncement = await app.inject({
+    method: "POST",
+    url: "/v1/teacher/announcements",
+    headers: { authorization: `Bearer ${accessToken}` },
+    payload: {
+      title: "Unauthorized class update",
+      content: "Regular teaching assignment does not grant Negaran communication permissions.",
+      audienceScope: "CLASS",
+      classId
+    }
+  });
+  assert.equal(unauthorizedAnnouncement.statusCode, 400);
+  assert.equal(unauthorizedAnnouncement.json<{ error: string }>().error, "communication_validation");
+
+  const emptyTeacherToday = await app.inject({
+    method: "GET", url: "/v1/teacher/today",
+    headers: { authorization: `Bearer ${accessToken}` }
+  });
+  assert.equal(emptyTeacherToday.statusCode, 200);
+  assert.deepEqual(emptyTeacherToday.json<{
+    schedule: unknown[];
+    supervisedClasses: unknown[];
+  }>().schedule, []);
+  assert.deepEqual(emptyTeacherToday.json<{
+    supervisedClasses: unknown[];
+  }>().supervisedClasses, []);
 });
 
 

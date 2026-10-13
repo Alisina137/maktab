@@ -1241,6 +1241,6 @@ Planned verification slices:
 - Existing token refresh, scoped offline read cache, connection-recovery mechanism and non-blocking push registration continue to apply to Teacher routes.
 
 ### Acceptance status
-- **Code changes and automated regression tests:** submitted for TypeScript checks, API/database regression tests and production builds through GitHub Actions CI.
+- **Code changes and automated regression tests:** GitHub Actions CI verifies the monorepo typecheck, API/database tests and production builds. Additional regressions cover non-Negaran announcement denial and empty normal-Teacher Today; homework statuses are now localized.
 - **Real Android Teacher smoke tests:** not independently run in this conversation. Validate authentic Teacher/Negaran accounts, Today date/order, weekly navigation, RTL/large text, attendance permissions, network loss/reconnect and token refresh before marking the entire Step 12 manual acceptance complete.
 - No new database migration is necessary.

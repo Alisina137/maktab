@@ -124,6 +124,10 @@ export type TranslationKey =
   | "teacher.noAssignments"
   | "teacher.negaranHint"
   | "teacher.workflowsHint"
+  | "teacher.statusDraft"
+  | "teacher.statusPublished"
+  | "teacher.statusClosed"
+  | "teacher.statusArchived"
   | "teacher.todayTitle"
   | "teacher.supervisedClass"
   | "teacher.schedule"
@@ -388,6 +392,10 @@ const en: Record<TranslationKey, string> = {
   "teacher.noAssignments": "No subjects or classes have been assigned to you for the active year.",
   "teacher.negaranHint": "Only classes assigned to you as Negaran can open daily attendance or post class announcements.",
   "teacher.workflowsHint": "Manage homework and draft grades for your own teaching assignments; class announcements require active Negaran supervision.",
+  "teacher.statusDraft": "Draft",
+  "teacher.statusPublished": "Published",
+  "teacher.statusClosed": "Closed",
+  "teacher.statusArchived": "Archived",
   "teacher.todayTitle": "Today",
   "teacher.supervisedClass": "My supervised class",
   "teacher.schedule": "Today's schedule",
@@ -668,6 +676,10 @@ const dari: Record<TranslationKey, string> = {
   "teacher.noAssignments": "در سال تعلیمی فعال صنف یا مضمونی به شما سپرده نشده است.",
   "teacher.negaranHint": "فقط برای صنفی که نگران آن هستید می‌توانید حاضری بگیرید یا اطلاعیهٔ صنفی نشر کنید.",
   "teacher.workflowsHint": "کارخانگی و نمرات مسوده را برای مضامین مربوط خود مدیریت کنید؛ اطلاعیهٔ صنفی فقط برای نگران فعال است.",
+  "teacher.statusDraft": "مسوده",
+  "teacher.statusPublished": "نشرشده",
+  "teacher.statusClosed": "بسته‌شده",
+  "teacher.statusArchived": "آرشیف‌شده",
   "teacher.todayTitle": "امروز",
   "teacher.supervisedClass": "صنف تحت نظارت من",
   "teacher.schedule": "برنامه امروز",
@@ -948,6 +960,10 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.noAssignments": "په فعال کال کې تاسو ته مضمون یا ټولګی نه دی ټاکل شوی.",
   "teacher.negaranHint": "یوازې هغه ټولګی چې تاسو یې نګران یاست، د حاضري او ټولګي اعلان اجازه لري.",
   "teacher.workflowsHint": "د خپلو درسونو کورنۍ دندې او مسوده نمرې تنظیم کړئ؛ د ټولګي اعلان د فعال نګران لپاره دی.",
+  "teacher.statusDraft": "مسوده",
+  "teacher.statusPublished": "خپور شوی",
+  "teacher.statusClosed": "تړل شوی",
+  "teacher.statusArchived": "آرشیف شوی",
   "teacher.todayTitle": "نن",
   "teacher.supervisedClass": "زما تر څار لاندې ټولګی",
   "teacher.schedule": "د نن ورځې مهالویش",
