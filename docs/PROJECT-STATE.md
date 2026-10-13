@@ -1195,5 +1195,16 @@ Planned verification slices:
 - A Student `account_unavailable` response immediately activates the restricted withdrawn UI instead of waiting for the next periodic status poll.
 - The shared mobile single-flight token refresh, reconnect freshness, 7-day account-scoped cached GET fallback, non-replayed writes, and non-blocking push registration remain in place.
 - Expanded API regressions to deny withdrawn Student communication endpoints, confirm reactivation restores read access, restrict announcement notifications to active Students, and prevent cross-account notification acknowledgment.
-- Device-only gates remain unverified here: Android Expo tab/RTL/large-text smoke tests, real outage/reconnect and foreground/refresh, push delivery, and manual school-admin withdrawal/reactivation.
+- At code delivery, Android acceptance checks had not yet been verified. The user subsequently reported completing Android device acceptance on 2026-10-13; see Step 11 closure below for the milestone status.
 - This is a source-code plus CI test slice, not certification of a live production deployment.
+
+
+#### Testing Step 11 — Completion and Android acceptance (2026-10-13)
+
+**Status: COMPLETE — implementation, automated verification, and user-reported Android acceptance.**
+
+- Student experience test slices 11.1–11.8 have been implemented and verified by the automated test/build pipeline.
+- The final code CI workflow for commit `ee22b7cdd067312a322ffbcfdd5beecc05541bc7` passed TypeScript typechecking, automated tests, and production builds: https://github.com/Alisina137/maktab/actions/runs/38342497716.
+- On 2026-10-13 the user confirmed completing the Android device acceptance testing for Step 11. Record this as a **user-reported manual acceptance**, not as independently captured device logs or an automated device-test result.
+- As a result, **Step 11 is closed**. No additional Step 11 implementation remains planned; any newly discovered bugs or enhancements will be handled as follow-up work.
+- This Step 11 acceptance does not replace the separate real-production readiness gates, such as production deployment, server scheduler operations, backup/restore rehearsal, or external observability integrations.
