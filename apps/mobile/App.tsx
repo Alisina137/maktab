@@ -603,6 +603,23 @@ function AppContent() {
   }, [session?.accessToken, session?.mustChangePassword, session?.user.status]);
 
   useEffect(() => {
+    if (!session || session.mustChangePassword || session.user.status === "SUSPENDED") return;
+    const identity = session.user.id;
+    const accessToken = session.accessToken;
+    let active = true;
+    let unsubscribe = () => {};
+    void subscribeToPushOpens(async id => {
+      try {
+        const inbox = await api.notifications(accessToken);
+        if (!active || sessionRef.current?.user.id !== identity) return;
+        const item = inbox.notifications.find(row => row.id === id);
+        if (item) openNotification(item);
+      } catch { /* Defer navigation until the authenticated inbox loads. */ }
+    }).then(off => { if (active) unsubscribe = off; else off(); });
+    return () => { active = false; unsubscribe(); };
+  }, [session?.accessToken, session?.user.id, session?.user.status, session?.mustChangePassword]);
+
+  useEffect(() => {
     if (!session || !school || screen === "role" || screen === "school" || screen === "login") return;
 
     const activeSession = session;
