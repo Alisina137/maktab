@@ -409,6 +409,9 @@ export type TranslationKey =
   | "learning.completeHomework"
   | "learning.invalidDueDate"
   | "learning.homeworkSaved"
+  | "learning.confirmPublish"
+  | "learning.confirmClose"
+  | "learning.confirmArchive"
   | "learning.homeworkPublished"
   | "learning.homeworkUpdated"
   | "learning.marks"
@@ -851,6 +854,9 @@ const en: Record<TranslationKey, string> = {
   "learning.completeHomework": "Complete the assignment, title, instructions, due date and time.",
   "learning.invalidDueDate": "Enter the date as YYYY-MM-DD and the time as HH:mm.",
   "learning.homeworkSaved": "Homework draft saved.",
+  "learning.confirmPublish": "Publish this homework? Parents and students will be notified, and the content can no longer be edited.",
+  "learning.confirmClose": "Close this homework? Students will no longer be able to submit answers.",
+  "learning.confirmArchive": "Archive this homework? It will leave Parent/Student feeds but remain in teacher history.",
   "learning.homeworkPublished": "Homework published to the class.",
   "learning.homeworkUpdated": "Homework status updated.",
   "learning.marks": "Marks",
@@ -1309,6 +1315,9 @@ const dari: Record<TranslationKey, string> = {
   "learning.completeHomework": "مضمون، عنوان، دستورالعمل، تاریخ و زمان تحویل را تکمیل کنید.",
   "learning.invalidDueDate": "تاریخ را به شکل YYYY-MM-DD و زمان را به شکل HH:mm وارد کنید.",
   "learning.homeworkSaved": "پیش‌نویس وظیفه ذخیره شد.",
+  "learning.confirmPublish": "این کارخانگی نشر شود؟ والدین و شاگردان خبر می‌شوند و متن آن دیگر قابل ویرایش نیست.",
+  "learning.confirmClose": "این کارخانگی بسته شود؟ شاگردان دیگر نمی‌توانند پاسخ بفرستند.",
+  "learning.confirmArchive": "این کارخانگی آرشیف شود؟ از صفحهٔ والدین و شاگردان پنهان می‌شود، ولی در سابقهٔ معلم باقی می‌ماند.",
   "learning.homeworkPublished": "وظیفه برای صنف نشر شد.",
   "learning.homeworkUpdated": "وضعیت وظیفه به‌روزرسانی شد.",
   "learning.marks": "نمرات",
@@ -1767,6 +1776,9 @@ const pashto: Record<TranslationKey, string> = {
   "learning.completeHomework": "دنده، سرلیک، لارښوونې، نېټه او وخت بشپړ کړئ.",
   "learning.invalidDueDate": "نېټه د YYYY-MM-DD او وخت د HH:mm په بڼه ولیکئ.",
   "learning.homeworkSaved": "د کورنۍ دندې مسوده وساتل شوه.",
+  "learning.confirmPublish": "دا کورنۍ دنده خپره شي؟ زده کوونکي او والدین به خبر شي او متن به یې نور د سمون وړ نه وي.",
+  "learning.confirmClose": "دا کورنۍ دنده وتړل شي؟ زده کوونکي به نور ځوابونه نه شي سپارلی.",
+  "learning.confirmArchive": "دا کورنۍ دنده آرشیف شي؟ د والدینو او زده کوونکو له لېست څخه به پټه شي، خو د ښوونکي په تاریخچه کې به پاتې وي.",
   "learning.homeworkPublished": "کورنۍ دنده ټولګي ته خپره شوه.",
   "learning.homeworkUpdated": "د کورنۍ دندې حالت تازه شو.",
   "learning.marks": "نمرې",
