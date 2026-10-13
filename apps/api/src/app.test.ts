@@ -3970,6 +3970,18 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(duplicateExam.statusCode, 409);
   const examId = exam.json<{ exam: { id: string } }>().exam.id;
+  const otherSchoolId = await provisionSchool(app, "LEARN-EXAM-OTHER");
+  const otherSchoolAdminToken = await bootstrapAdmin(app, otherSchoolId);
+  const otherAdmin = { authorization: `Bearer ${otherSchoolAdminToken}` };
+  const wrongSchoolStatus = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/status`, headers: otherAdmin,
+    payload: { status: "SCHEDULED" } });
+  assert.equal(wrongSchoolStatus.statusCode, 404);
+  const wrongSchoolSubject = await app.inject({ method: "POST",
+    url: "/v1/admin/exam-subjects", headers: otherAdmin,
+    payload: { examId, subjectId, classId, maxScore: 100, examDate: "2028-09-15" } });
+  assert.equal(wrongSchoolSubject.statusCode, 404);
+
   // Exam needs at least one subject before moving DRAFT → SCHEDULED.
   const withoutSubjects = await app.inject({
     method: "POST", url: `/v1/admin/exams/${examId}/status`, headers: admin,
@@ -4234,6 +4246,11 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
   assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
+  const crossTenantCorrection = await app.inject({ method: "PATCH",
+    url: `/v1/admin/grades/${gradeIdToCorrect}/correct`, headers: otherAdmin,
+    payload: { score: 90, reason: "Different school may not edit" } });
+  assert.equal(crossTenantCorrection.statusCode, 404);
+
   const staleCorrection = await app.inject({ method: "PATCH",
     url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
     headers: admin, payload: { score: 90, reason: "Stale overwrite",
