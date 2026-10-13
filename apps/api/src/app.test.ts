@@ -3933,19 +3933,90 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   const parentAuth = { authorization: `Bearer ${parentChanged.json<{ accessToken: string }>().accessToken}` };
 
+  // 15.1–15.3: creation is admin-only, scoped to active academic year,
+  // with required names/type and no duplicate exam cycles.
+  const teacherExamDenied = await app.inject({
+    method: "POST", url: "/v1/admin/exams", headers: assignedTeacher.auth,
+    payload: { academicYearId: yearId, name: "Unauthorized", type: "FINAL" }
+  });
+  assert.equal(teacherExamDenied.statusCode, 403);
+  const invalidExamName = await app.inject({
+    method: "POST", url: "/v1/admin/exams", headers: admin,
+    payload: { academicYearId: yearId, name: " ", type: "FINAL" }
+  });
+  assert.equal(invalidExamName.statusCode, 400);
+  const inactiveExamYear = await app.inject({
+    method: "POST", url: "/v1/admin/academics/years", headers: admin,
+    payload: { name: "1408", startDate: "2029-03-21", endDate: "2030-03-20" }
+  });
+  assert.equal(inactiveExamYear.statusCode, 201);
+  const draftYearId = inactiveExamYear.json<{ academicYear: { id: string } }>().academicYear.id;
+  const invalidYearExam = await app.inject({
+    method: "POST", url: "/v1/admin/exams", headers: admin,
+    payload: { academicYearId: draftYearId, name: "Inactive Year", type: "FINAL" }
+  });
+  assert.equal(invalidYearExam.statusCode, 409);
+
   const exam = await app.inject({
     method: "POST",
     url: "/v1/admin/exams",
     headers: admin,
     payload: { academicYearId: yearId, name: "Midyear", type: "MIDYEAR" }
   });
+  assert.equal(exam.statusCode, 201);
+  const duplicateExam = await app.inject({
+    method: "POST", url: "/v1/admin/exams", headers: admin,
+    payload: { academicYearId: yearId, name: "Midyear", type: "MIDYEAR" }
+  });
+  assert.equal(duplicateExam.statusCode, 409);
   const examId = exam.json<{ exam: { id: string } }>().exam.id;
+  // Exam needs at least one subject before moving DRAFT → SCHEDULED.
+  const withoutSubjects = await app.inject({
+    method: "POST", url: `/v1/admin/exams/${examId}/status`, headers: admin,
+    payload: { status: "SCHEDULED" }
+  });
+  assert.equal(withoutSubjects.statusCode, 409);
+  const subjectPayload = { examId, subjectId, classId, maxScore: 100,
+    examDate: "2028-09-15" };
+  for (const override of [
+    { examDate: "2028-02-30" }, { examDate: "2029-03-21" },
+    { examDate: "2028-03-20" }, { maxScore: 0 }, { maxScore: 1.5 },
+    { examDate: undefined }
+  ]) {
+    const response = await app.inject({ method: "POST", url: "/v1/admin/exam-subjects",
+      headers: admin, payload: { ...subjectPayload, ...override } });
+    assert.equal(response.statusCode, 400, response.body);
+  }
+  const teacherSubjectDenied = await app.inject({
+    method: "POST", url: "/v1/admin/exam-subjects", headers: assignedTeacher.auth,
+    payload: subjectPayload
+  });
+  assert.equal(teacherSubjectDenied.statusCode, 403);
+  const unassignedClassSubject = await app.inject({
+    method: "POST", url: "/v1/admin/exam-subjects", headers: admin,
+    payload: { ...subjectPayload, classId: outsideClassId }
+  });
+  assert.equal(unassignedClassSubject.statusCode, 400);
+
   const examSubject = await app.inject({
     method: "POST",
     url: "/v1/admin/exam-subjects",
     headers: admin,
     payload: { examId, subjectId, classId, maxScore: 100, examDate: "2028-09-15" }
   });
+  assert.equal(examSubject.statusCode, 201);
+  const duplicateExamSubject = await app.inject({
+    method: "POST", url: "/v1/admin/exam-subjects", headers: admin,
+    payload: subjectPayload
+  });
+  assert.equal(duplicateExamSubject.statusCode, 409);
+  const zoologyExamSubject = await app.inject({
+    method: "POST", url: "/v1/admin/exam-subjects", headers: admin,
+    payload: { examId, subjectId: secondSubjectId, classId, maxScore: 50,
+      examDate: "2028-09-17" }
+  });
+  assert.equal(zoologyExamSubject.statusCode, 201);
+  const secondExamSubjectId = zoologyExamSubject.json<{ examSubject: { id: string } }>().examSubject.id;
   const examSubjectId = examSubject.json<{ examSubject: { id: string } }>().examSubject.id;
 
   await app.inject({
