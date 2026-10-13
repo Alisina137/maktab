@@ -1407,3 +1407,18 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Teacher actions now require localized confirmation before Publish/Close/Archive, and a concurrent status conflict refreshes canonical data rather than encouraging a duplicate mutation.
 - Expanded API tests cover all 14.1–14.12 categories including sibling/class isolation, unauthorised roles, notification fan-out and acknowledgement, status transitions, historical read access and archive privacy.
 - Run `pnpm verify` locally after pulling to repeat automated verification. Real Teacher/Parent/Student Android workflows, attachment opening, notification navigation, TalkBack/RTL and flaky-tunnel/airplane-mode manual checks still require device testing.
+
+
+### Testing Step 15 — Exams, grades and results (2026-10-13)
+
+**Implementation hardening and automated regression coverage delivered; Android/operator acceptance still pending.** See `docs/TEST-15-EXAMS-RESULTS.md` for itemized 15.1–15.12 checks.
+
+- Added `0018_exam_subject_dates.sql`: optional historical but **required for new** class/subject exam schedule dates, strictly validated against real calendar days and the ACTIVE academic-year boundaries. Admin uses the existing Solar Hijri date picker, and Teacher/Parent/Student see localized subject exam dates.
+- Exam creation is active-year and admin-only; subject creation requires teacher assignment matching school/year/class/subject. Exam subject configuration now acquires an exam row lock, preventing adding new subjects after progress to IN_PROGRESS; creation and subject-added audits commit in the same transactions as records.
+- Teachers see only matching active class/year rosters. Grades are checked for integer score 0..configured max, duplicate students, cross-class student IDs, missing marks, and exam IN_PROGRESS. Draft saves lock the exam status in the transaction to serialize against RESULTS_READY. Identical draft saves avoid duplicate change audits.
+- RESULTS_READY requires all active students to have valid DRAFT grades for every configured subject. Publishing revalidates roster completeness and atomically commits the exam, published grade rows, deduplicated class/year-scoped Parent/Student notification inbox entries, and audit. Concurrent re-publication / invalid lifecycle transitions are rejected.
+- Parent and linked Student see only published marks, never draft or RESULTS_READY grades. Archived published exams remain accessible as historical results, while Teacher published/archived grade sheets are read-only.
+- School Admin published-grade correction locks the affected row, validates range, reason, optional optimistic revision, rejects no-op/stale corrections, and atomically persists new score/remark plus previous/new audit values. Cross-tenant and non-admin edits remain denied.
+- Added Parent per-exam total summaries derived from current published grade rows, matching the Student result view; two-subject regression covers 88/100 + 40/50 = 128/150, then correction to 91/100 updates both to 131/150.
+- Expanded PGlite/Fastify integration test cases include exam setup validation, permission/school isolation, roster, missing-grade rejection, publication privacy, results after archive, correction reason/audit integrity, and notification idempotency.
+- **Device acceptance still outstanding**: real Android Teacher/Parent/Student flows, browser calendar, RTL, live push, offline/reconnect, school year transitions. Run the migration before API startup.
