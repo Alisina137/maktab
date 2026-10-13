@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
+import { isUniqueConstraintViolation } from "./db-errors.js";
 import {
   adminPasswordVerifications,
   adminProfiles,
@@ -214,8 +215,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         if (!user) throw new Error("User insert did not return a row.");
         return user;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/unique|duplicate/i.test(message)) {
+        if (isUniqueConstraintViolation(error)) {
           throw new AccountConflictError("That username already exists in this school.");
         }
         throw error;
