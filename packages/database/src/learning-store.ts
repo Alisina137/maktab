@@ -386,7 +386,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           .where(
             and(
               eq(examSubjects.schoolId, schoolId),
-              inArray(exams.status, ["IN_PROGRESS", "RESULTS_READY"])
+              inArray(exams.status, ["IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"])
             )
           )
           .orderBy(asc(exams.name), asc(classSections.name), asc(subjects.name))
