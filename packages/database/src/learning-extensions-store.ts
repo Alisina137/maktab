@@ -46,12 +46,12 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
     if (!row) throw new LearningNotFoundError("Active teaching assignment not found.");
     return row.assignment;
   }
-  async function requireOwnedHomework(schoolId: string, teacherId: string, homeworkId: string) {
+  async function requireOwnedHomework(schoolId: string, teacherId: string, homeworkId: string, requireActive = true) {
     const [row] = await db.select().from(homeworks)
       .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId),
         eq(homeworks.teacherUserId, teacherId))).limit(1);
     if (!row) throw new LearningNotFoundError("Homework not assigned to this teacher.");
-    await requireAssignment(schoolId, teacherId, row.assignmentId);
+    if (requireActive) await requireAssignment(schoolId, teacherId, row.assignmentId);
     return row;
   }
   async function requireStudent(schoolId: string, userId: string) {
@@ -272,7 +272,8 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
         .where(and(eq(homeworkSubmissions.schoolId, schoolId), eq(homeworkSubmissions.studentId, student.id)));
     },
     async teacherSubmissions(schoolId, teacherId, homeworkId) {
-      await requireOwnedHomework(schoolId, teacherId, homeworkId);
+      // Historical submission review remains readable when the school year is closed.
+      await requireOwnedHomework(schoolId, teacherId, homeworkId, false);
       return db.select({
         submission: homeworkSubmissions,
         student: { id: students.id, fullName: students.fullName, studentCode: students.studentCode }
@@ -283,7 +284,10 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
         .orderBy(asc(students.fullName));
     },
     async reviewSubmission(schoolId, teacherId, homeworkId, submissionId, input) {
-      await requireOwnedHomework(schoolId, teacherId, homeworkId);
+      const homework = await requireOwnedHomework(schoolId, teacherId, homeworkId);
+      if (homework.status === "ARCHIVED") {
+        throw new LearningConflictError("Archived homework is read-only.");
+      }
       const [row] = await db.update(homeworkSubmissions).set({
         status: input.status, feedback: input.feedback, reviewedBy: teacherId,
         reviewedAt: new Date(), updatedAt: new Date()
