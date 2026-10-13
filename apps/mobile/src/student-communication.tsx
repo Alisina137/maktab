@@ -27,7 +27,8 @@ export function StudentCommunicationContent({
   locale,
   textDirection,
   onSelectTab,
-  onMarkRead
+  onMarkRead,
+  onOpenNotification
 }: {
   announcements: AnnouncementPayload[];
   notifications: ParentNotification[];
@@ -38,6 +39,7 @@ export function StudentCommunicationContent({
   textDirection: TextDirectionStyle;
   onSelectTab: (tab: StudentCommunicationTab) => void;
   onMarkRead: (notificationId: string) => void;
+  onOpenNotification: (notification: ParentNotification) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const [unreadOnly, setUnreadOnly] = useState(false);
