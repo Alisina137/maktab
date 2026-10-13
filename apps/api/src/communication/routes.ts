@@ -264,19 +264,6 @@ export function registerCommunicationRoutes(
     try {
       const input = createAnnouncementSchema.parse(request.body);
       const announcement = await communication.createAnnouncement(context.user.schoolId, context.user.id, input);
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "announcement.created",
-        entityType: "announcement",
-        entityId: announcement.id,
-        metadata: {
-          audienceScope: announcement.audienceScope,
-          classId: announcement.classId,
-          audienceRole: announcement.audienceRole,
-          publishAt: announcement.publishAt.toISOString()
-        }
-      });
       return reply.code(201).send({ announcement });
     } catch (error) {
       return sendCommunicationError(reply, error);
