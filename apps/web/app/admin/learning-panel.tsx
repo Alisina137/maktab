@@ -298,7 +298,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
 
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create exam")}</h2><p>{t("Exam cycles begin as DRAFT. Scheduling dates are intentionally outside the MVP Phase 6 scope.")}</p></div>
+          <div><h2>{t("Create exam")}</h2><p>{t("Exam cycles begin as drafts. Set a separate exam date for each assigned class and subject.")}</p></div>
           <form className="admin-form" onSubmit={createExam}>
             <label>
               {t("Active academic year")}
