@@ -728,6 +728,23 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let failed = 0;
       let skipped = 0;
       for (const notification of pending) {
+        if (notification.type === "ANNOUNCEMENT") {
+          const id = notification.metadata.announcementId;
+          const [item] = typeof id === "string"
+            ? await db.select().from(announcements).where(and(
+                eq(announcements.schoolId, notification.schoolId),
+                eq(announcements.id, id), isNull(announcements.archivedAt),
+                lte(announcements.publishAt, new Date())
+              )).limit(1) : [];
+          if (!item || !(await announcementRecipients(item)).includes(notification.userId)) {
+            await db.update(notifications).set({
+              deliveryStatus: "CANCELLED", updatedAt: new Date()
+            }).where(and(eq(notifications.schoolId, notification.schoolId),
+              eq(notifications.id, notification.id)));
+            skipped += 1;
+            continue;
+          }
+        }
         const [recipient] = await db.select({ role: users.role, status: users.status }).from(users)
           .where(and(eq(users.id, notification.userId), eq(users.schoolId, notification.schoolId)))
           .limit(1);
