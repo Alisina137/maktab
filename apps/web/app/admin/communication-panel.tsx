@@ -162,6 +162,30 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function saveScheduledEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingNotice) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await request(accessToken, `/v1/admin/announcements/${editingNotice.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: editTitle.trim(), content: editMessage.trim(),
+          ...(editPublishAt ? { publishAt: datetimeLocalToIso(editPublishAt) } : {})
+        })
+      });
+      setEditingNotice(null);
+      setNotice(t("Scheduled announcement updated."));
+      await load();
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Could not update scheduled announcement."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archiveAnnouncement(id: string) {
     setBusy(true);
     setError("");
@@ -389,6 +413,23 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <button className="admin-primary" disabled={busy}>{t("Save announcement")}</button>
           </form>
         </article>
+
+        {editingNotice ? (
+          <article className="admin-panel communication-form-card">
+            <div><h2>{t("Edit scheduled announcement")}</h2>
+              <p>{t("Published announcements are immutable; only future scheduled notices may be edited.")}</p>
+            </div>
+            <form className="admin-form" onSubmit={saveScheduledEdit}>
+              <label>{t("Title")}<input required minLength={2} maxLength={160}
+                value={editTitle} onChange={event => setEditTitle(event.target.value)} /></label>
+              <label>{t("Message")}<textarea required maxLength={10000} rows={5}
+                value={editMessage} onChange={event => setEditMessage(event.target.value)} /></label>
+              <button className="admin-primary" disabled={busy}>{t("Save changes")}</button>
+              <button type="button" className="admin-secondary"
+                onClick={() => setEditingNotice(null)}>{t("Cancel")}</button>
+            </form>
+          </article>
+        ) : null}
 
         <article className="admin-panel communication-form-card">
           <div><h2>{t("Create fee invoice")}</h2><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
