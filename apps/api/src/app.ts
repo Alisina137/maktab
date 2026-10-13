@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, PilotStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
+import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, PilotStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
@@ -9,6 +9,7 @@ import type { AdminPasswordVerificationDelivery } from "./auth/admin-password-2f
 import { registerFamilyRoutes } from "./families/routes.js";
 import { registerCommunicationRoutes } from "./communication/routes.js";
 import { registerLearningRoutes } from "./learning/routes.js";
+import { registerLearningExtensionsRoutes } from "./learning/extensions-routes.js";
 import { registerPilotRoutes } from "./pilot/routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
@@ -22,6 +23,7 @@ export interface BuildAppOptions {
   familyStore: FamilyStore;
   attendanceStore: AttendanceStore;
   learningStore: LearningStore;
+  learningExtensionsStore?: LearningExtensionsStore;
   communicationStore: CommunicationStore;
   pilotStore: PilotStore;
   pushProvider: PushProvider;
@@ -87,6 +89,7 @@ export function buildApp(options: BuildAppOptions) {
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
   registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);
   registerLearningRoutes(app, options.accountStore, options.learningStore);
+  if (options.learningExtensionsStore) registerLearningExtensionsRoutes(app, options.accountStore, options.learningExtensionsStore);
   registerPilotRoutes(app, options.accountStore, options.pilotStore);
   registerCommunicationRoutes(
     app,
