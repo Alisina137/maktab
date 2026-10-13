@@ -478,11 +478,26 @@ export const createAnnouncementSchema = z
     if (value.audienceScope === "ROLE" && !value.audienceRole) {
       context.addIssue({ code: "custom", path: ["audienceRole"], message: "Role audience requires a role." });
     }
-    if (value.audienceScope !== "ROLE" && value.audienceRole) {
-      context.addIssue({ code: "custom", path: ["audienceRole"], message: "Audience role may be set only for ROLE audience." });
+    if (value.audienceScope === "SCHOOL" && value.audienceRole) {
+      context.addIssue({ code: "custom", path: ["audienceRole"], message: "A school-wide announcement cannot use a role filter." });
     }
   });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
+
+// SCHEDULED announcements can be revised up to their publication time.
+// Once published, the text/audience is immutable; use archive instead.
+export const updateScheduledAnnouncementSchema = z.object({
+  title: z.string().trim().min(2).max(160).optional(),
+  content: z.string().trim().min(1).max(10000).optional(),
+  audienceScope: announcementAudienceScopeSchema.optional(),
+  classId: z.string().uuid().nullable().optional(),
+  audienceRole: announcementAudienceRoleSchema.nullable().optional(),
+  publishAt: z.string().datetime({ offset: true }).optional()
+}).refine(value => Object.keys(value).length > 0, {
+  message: "Provide an announcement field to update."
+});
+export type UpdateScheduledAnnouncementInput = z.infer<typeof updateScheduledAnnouncementSchema>;
+
 
 export const createFeeInvoiceSchema = z.object({
   studentId: z.string().uuid(),
