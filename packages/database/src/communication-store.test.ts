@@ -260,4 +260,17 @@ test("Step 17 fees: tenant isolation, replay, exact balances, immutable reversal
   assert.equal(count("fee_invoice.cancelled"), 1);
   assert.equal(count("fee_payment.recorded"), 2);
   assert.equal(count("fee_payment.reversed"), 2);
+  // A retry of a reversed payment must never silently recreate it. The ledger
+  // remains immutable even when the original idempotency key is replayed.
+  const afterReversalReplay = await fees.recordFeePayment(schoolId, admin.id, invoice.id, first);
+  assert.equal(afterReversalReplay.invoice.status, "CANCELLED");
+  assert.equal(afterReversalReplay.paid, 0);
+  assert.equal(afterReversalReplay.payments.length, 4);
+  await assert.rejects(() => fees.recordFeePayment(schoolId, admin.id, invoice.id,
+    { amount: 1, method: "CASH" }), /issued unpaid/);
+  await assert.rejects(() => fees.reverseFeePayment(other.school.id, admin.id, originalId,
+    { reason: "Not this school's payment" }), /not found/);
+  assert.equal((await fees.getParentFees(schoolId, parent.user.id, student.id))[0]?.invoice.status, "CANCELLED");
+  assert.equal((await fees.getUserNotifications(schoolId, parent.user.id))
+    .filter(x => x.type === "FEE_DUE" || x.type === "FEE_OVERDUE").length, 0);
 });
