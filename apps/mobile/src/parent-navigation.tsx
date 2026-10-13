@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { shareLearningFile } from "./learning-files";
 import { tokens } from "@maktablink/design-tokens";
@@ -123,17 +123,26 @@ export function ParentHomeworkContent({
         <View key={item.homework.id} style={styles.contentItem}>
           <Text style={[styles.itemTitle, textDirection]}>{item.homework.title}</Text>
           <Text style={[styles.muted, textDirection]}>
-            {item.subjectName} · {translate(locale, "learning.due")} {formatLocalizedDate(item.homework.dueAt, locale)}
+            {item.subjectName} · {translate(locale, item.homework.status === "CLOSED"
+              ? "teacher.statusClosed" : "teacher.statusPublished")} · {translate(locale, "learning.due")} {formatLocalizedDate(item.homework.dueAt, locale)}
           </Text>
           <Text style={[styles.body, textDirection]}>{item.homework.content}</Text>
           {item.homework.attachmentFileId ? (
             <Pressable accessibilityRole="button"
-              onPress={() => void shareLearningFile(accessToken,item.homework.attachmentFileId!).catch(() => {})}>
+              onPress={() => void shareLearningFile(accessToken,item.homework.attachmentFileId!).catch(
+                () => Alert.alert(translate(locale, "common.errorTitle"),
+                  translate(locale, "common.requestFailed"))
+              )}>
               <Text style={[styles.linkText,textDirection]}>{translate(locale,"learning.openAttachment")}</Text>
             </Pressable>
           ) : null}
-          {item.homework.attachmentUrl ? (
-            <Text style={[styles.linkText, textDirection]}>{item.homework.attachmentUrl}</Text>
+          {item.homework.attachmentUrl?.startsWith("https://") ? (
+            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(
+              item.homework.attachmentUrl!
+            ).catch(() => Alert.alert(translate(locale, "common.errorTitle"),
+              translate(locale, "common.requestFailed")))}>
+              <Text style={[styles.linkText, textDirection]}>{translate(locale, "learning.openAttachment")}</Text>
+            </Pressable>
           ) : null}
         </View>
       ))}
