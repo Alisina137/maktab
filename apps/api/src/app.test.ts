@@ -893,7 +893,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { username: "teacher.academic", role: "TEACHER" }
   });
-  assert.equal(teacherAccount.statusCode, 201);
+  assert.equal(teacherAccount.statusCode, 201, teacherAccount.body);
   const teacherUserId = teacherAccount.json<{ user: { id: string } }>().user.id;
 
   const yearResponse = await app.inject({
@@ -902,7 +902,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { name: "1405", startDate: "2026-03-21", endDate: "2027-03-20" }
   });
-  assert.equal(yearResponse.statusCode, 201);
+  assert.equal(yearResponse.statusCode, 201, yearResponse.body);
   const yearId = yearResponse.json<{ academicYear: { id: string } }>().academicYear.id;
 
   const activate = await app.inject({
@@ -918,7 +918,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { code: "G7", name: "Grade 7", sortOrder: 7 }
   });
-  assert.equal(gradeResponse.statusCode, 201);
+  assert.equal(gradeResponse.statusCode, 201, gradeResponse.body);
   const gradeId = gradeResponse.json<{ grade: { id: string } }>().grade.id;
 
   const classResponse = await app.inject({
@@ -927,7 +927,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "7A", name: "Grade 7 A" }
   });
-  assert.equal(classResponse.statusCode, 201);
+  assert.equal(classResponse.statusCode, 201, classResponse.body);
   const classId = classResponse.json<{ class: { id: string } }>().class.id;
 
   const subjectResponse = await app.inject({
@@ -936,7 +936,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { code: "MATH", name: "Mathematics" }
   });
-  assert.equal(subjectResponse.statusCode, 201);
+  assert.equal(subjectResponse.statusCode, 201, subjectResponse.body);
   const subjectId = subjectResponse.json<{ subject: { id: string } }>().subject.id;
 
   const teacherProfile = await app.inject({
@@ -950,7 +950,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       phone: "0700000000"
     }
   });
-  assert.equal(teacherProfile.statusCode, 201);
+  assert.equal(teacherProfile.statusCode, 201, teacherProfile.body);
 
   const assignmentResponse = await app.inject({
     method: "POST",
@@ -963,7 +963,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       teacherUserId
     }
   });
-  assert.equal(assignmentResponse.statusCode, 201);
+  assert.equal(assignmentResponse.statusCode, 201, assignmentResponse.body);
 
   const secondTeacherAccount = await app.inject({
     method: "POST",
@@ -971,7 +971,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     headers: auth,
     payload: { username: "teacher.academic.two", role: "TEACHER" }
   });
-  assert.equal(secondTeacherAccount.statusCode, 201);
+  assert.equal(secondTeacherAccount.statusCode, 201, secondTeacherAccount.body);
   const secondTeacherUserId = secondTeacherAccount.json<{ user: { id: string } }>().user.id;
 
   const secondTeacherProfile = await app.inject({
@@ -984,7 +984,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       fullName: "Second Academic Teacher"
     }
   });
-  assert.equal(secondTeacherProfile.statusCode, 201);
+  assert.equal(secondTeacherProfile.statusCode, 201, secondTeacherProfile.body);
 
   const occupiedClassSubject = await app.inject({
     method: "POST",
@@ -997,7 +997,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       teacherUserId: secondTeacherUserId
     }
   });
-  assert.equal(occupiedClassSubject.statusCode, 409);
+  assert.equal(occupiedClassSubject.statusCode, 409, occupiedClassSubject.body);
   assert.equal(
     occupiedClassSubject.json<{ message: string }>().message,
     "This class and subject already have a teacher assigned."
@@ -1014,7 +1014,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       startDate: "2026-03-21"
     }
   });
-  assert.equal(negaranResponse.statusCode, 201);
+  assert.equal(negaranResponse.statusCode, 201, negaranResponse.body);
 
   const timetableResponse = await app.inject({
     method: "POST",
@@ -1030,7 +1030,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       endsAt: "08:45"
     }
   });
-  assert.equal(timetableResponse.statusCode, 201);
+  assert.equal(timetableResponse.statusCode, 201, timetableResponse.body);
 
   // Step 12: teacher identity, school-scoped schedule, linked assignments and
   // the distinction between normal teaching and Negaran supervision.
@@ -1174,7 +1174,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
     payload: { academicYearId: yearId, classId, subjectId, title: "Another chapter", sortOrder: 1 }
   });
-  assert.equal(duplicateUnit.statusCode, 409);
+  assert.equal(duplicateUnit.statusCode, 409, duplicateUnit.body);
   const teacherCannotDefineCurriculum = await app.inject({
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: teacherHeaders,
     payload: { academicYearId: yearId, classId, subjectId, title: "Unauthorized", sortOrder: 2 }
@@ -1202,7 +1202,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
     payload: { academicYearId: yearId, classId, subjectId, title: "Unused lesson", sortOrder: 2 }
   });
-  assert.equal(unusedUnit.statusCode, 201);
+  assert.equal(unusedUnit.statusCode, 201, unusedUnit.body);
   const unusedId = unusedUnit.json<{ unit: { id: string } }>().unit.id;
   const removedUnusedUnit = await app.inject({
     method: "DELETE", url: `/v1/admin/teaching/curriculum/${unusedId}`, headers: auth
@@ -1263,7 +1263,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   const deleteTrackedUnitDenied = await app.inject({
     method: "DELETE", url: `/v1/admin/teaching/curriculum/${unitId}`, headers: auth
   });
-  assert.equal(deleteTrackedUnitDenied.statusCode, 409);
+  assert.equal(deleteTrackedUnitDenied.statusCode, 409, deleteTrackedUnitDenied.body);
 
   const report = await app.inject({
     method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-01&to=2026-10-31`,
@@ -1289,7 +1289,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     method: "POST", url: "/v1/admin/families/parents", headers: auth,
     payload: { username: "parent.classroster", fullName: "Roster Parent" }
   });
-  assert.equal(createdParent.statusCode, 201);
+  assert.equal(createdParent.statusCode, 201, createdParent.body);
   const parentId = createdParent.json<{ user: { id: string } }>().user.id;
   const createdStudent = await app.inject({
     method: "POST", url: "/v1/admin/families/students", headers: auth,
@@ -1298,7 +1298,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
       fullName: "Roster Learner", academicYearId: yearId, classId
     }
   });
-  assert.equal(createdStudent.statusCode, 201);
+  assert.equal(createdStudent.statusCode, 201, createdStudent.body);
   const studentId = createdStudent.json<{ student: { id: string } }>().student.id;
   const ownDetail = await app.inject({
     method: "GET", url: `/v1/teacher/classes/${ownAssignmentId}`, headers: teacherHeaders
@@ -1336,13 +1336,13 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     method: "POST", url: "/v1/admin/academics/subjects", headers: auth,
     payload: { code: "PHYS-7A", name: "Physics" }
   });
-  assert.equal(physics.statusCode, 201);
+  assert.equal(physics.statusCode, 201, physics.body);
   const physicsId = physics.json<{ subject: { id: string } }>().subject.id;
   const physicsAssignment = await app.inject({
     method: "POST", url: "/v1/admin/academics/assignments", headers: auth,
     payload: { academicYearId: yearId, classId, subjectId: physicsId, teacherUserId: secondTeacherUserId }
   });
-  assert.equal(physicsAssignment.statusCode, 201);
+  assert.equal(physicsAssignment.statusCode, 201, physicsAssignment.body);
   const otherAssignmentId = physicsAssignment.json<{ assignment: { id: string } }>().assignment.id;
   const otherDetail = await app.inject({
     method: "GET", url: `/v1/teacher/classes/${otherAssignmentId}`,
@@ -3849,19 +3849,19 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST", url: "/v1/admin/academics/subjects", headers: admin,
     payload: { code: "ZOO5", name: "Zoology 5" }
   });
-  assert.equal(secondSubject.statusCode, 201);
+  assert.equal(secondSubject.statusCode, 201, secondSubject.body);
   const secondSubjectId = secondSubject.json<{ subject: { id: string } }>().subject.id;
   const secondAssignment = await app.inject({
     method: "POST", url: "/v1/admin/academics/assignments", headers: admin,
     payload: { academicYearId: yearId, classId, subjectId: secondSubjectId,
       teacherUserId: assignedTeacher.userId }
   });
-  assert.equal(secondAssignment.statusCode, 201);
+  assert.equal(secondAssignment.statusCode, 201, secondAssignment.body);
   const outsideClass = await app.inject({
     method: "POST", url: "/v1/admin/academics/classes", headers: admin,
     payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "5B", name: "Grade 5 B" }
   });
-  assert.equal(outsideClass.statusCode, 201);
+  assert.equal(outsideClass.statusCode, 201, outsideClass.body);
   const outsideClassId = outsideClass.json<{ class: { id: string } }>().class.id;
 
   const parentResponse = await app.inject({
@@ -3889,7 +3889,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     payload: { parentUserId: parent.user.id, studentCode: "MRK-002",
       fullName: "Other Class Marks Student", academicYearId: yearId, classId: outsideClassId }
   });
-  assert.equal(outsideStudent.statusCode, 201);
+  assert.equal(outsideStudent.statusCode, 201, outsideStudent.body);
   const outsideStudentId = outsideStudent.json<{ student: { id: string } }>().student.id;
 
   const studentAccount = await app.inject({
@@ -3898,7 +3898,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: admin,
     payload: { username: "marksstudent" }
   });
-  assert.equal(studentAccount.statusCode, 201);
+  assert.equal(studentAccount.statusCode, 201, studentAccount.body);
   const studentCredential = studentAccount.json<{ temporaryPassword: string }>();
 
   const studentLogin = await app.inject({
@@ -3950,13 +3950,13 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST", url: "/v1/admin/academics/years", headers: admin,
     payload: { name: "1408", startDate: "2029-03-21", endDate: "2030-03-20" }
   });
-  assert.equal(inactiveExamYear.statusCode, 201);
+  assert.equal(inactiveExamYear.statusCode, 201, inactiveExamYear.body);
   const draftYearId = inactiveExamYear.json<{ academicYear: { id: string } }>().academicYear.id;
   const invalidYearExam = await app.inject({
     method: "POST", url: "/v1/admin/exams", headers: admin,
     payload: { academicYearId: draftYearId, name: "Inactive Year", type: "FINAL" }
   });
-  assert.equal(invalidYearExam.statusCode, 409);
+  assert.equal(invalidYearExam.statusCode, 409, invalidYearExam.body);
 
   const exam = await app.inject({
     method: "POST",
@@ -3964,12 +3964,12 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: admin,
     payload: { academicYearId: yearId, name: "Midyear", type: "MIDYEAR" }
   });
-  assert.equal(exam.statusCode, 201);
+  assert.equal(exam.statusCode, 201, exam.body);
   const duplicateExam = await app.inject({
     method: "POST", url: "/v1/admin/exams", headers: admin,
     payload: { academicYearId: yearId, name: "Midyear", type: "MIDYEAR" }
   });
-  assert.equal(duplicateExam.statusCode, 409);
+  assert.equal(duplicateExam.statusCode, 409, duplicateExam.body);
   const examId = exam.json<{ exam: { id: string } }>().exam.id;
   const otherSchoolId = await provisionSchool(app, "LEARN-EXAM-OTHER");
   const otherSchoolAdminToken = await bootstrapAdmin(app, otherSchoolId);
@@ -3988,7 +3988,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST", url: `/v1/admin/exams/${examId}/status`, headers: admin,
     payload: { status: "SCHEDULED" }
   });
-  assert.equal(withoutSubjects.statusCode, 409);
+  assert.equal(withoutSubjects.statusCode, 409, withoutSubjects.body);
   const subjectPayload = { examId, subjectId, classId, maxScore: 100,
     examDate: "2028-09-15" };
   for (const override of [
@@ -4017,18 +4017,18 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: admin,
     payload: { examId, subjectId, classId, maxScore: 100, examDate: "2028-09-15" }
   });
-  assert.equal(examSubject.statusCode, 201);
+  assert.equal(examSubject.statusCode, 201, examSubject.body);
   const duplicateExamSubject = await app.inject({
     method: "POST", url: "/v1/admin/exam-subjects", headers: admin,
     payload: subjectPayload
   });
-  assert.equal(duplicateExamSubject.statusCode, 409);
+  assert.equal(duplicateExamSubject.statusCode, 409, duplicateExamSubject.body);
   const zoologyExamSubject = await app.inject({
     method: "POST", url: "/v1/admin/exam-subjects", headers: admin,
     payload: { examId, subjectId: secondSubjectId, classId, maxScore: 50,
       examDate: "2028-09-17" }
   });
-  assert.equal(zoologyExamSubject.statusCode, 201);
+  assert.equal(zoologyExamSubject.statusCode, 201, zoologyExamSubject.body);
   const secondExamSubjectId = zoologyExamSubject.json<{ examSubject: { id: string } }>().examSubject.id;
   // Legacy rows have a nullable date after migration. School Admin can date
   // them before IN_PROGRESS; the change and old date are audited.
@@ -4067,7 +4067,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   const frozenDate = await app.inject({ method: "PATCH",
     url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`,
     headers: admin, payload: { examDate: "2028-09-19" } });
-  assert.equal(frozenDate.statusCode, 409);
+  assert.equal(frozenDate.statusCode, 409, frozenDate.body);
 
   const unrelated = await app.inject({
     method: "GET",
@@ -4126,7 +4126,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   const firstReadyDenied = await app.inject({ method: "POST",
     url: `/v1/admin/exams/${examId}/status`, headers: admin,
     payload: { status: "RESULTS_READY" } });
-  assert.equal(firstReadyDenied.statusCode, 409);
+  assert.equal(firstReadyDenied.statusCode, 409, firstReadyDenied.body);
   const saveZoology = await app.inject({ method: "POST",
     url: `/v1/teacher/exam-subjects/${secondExamSubjectId}/grades`,
     headers: assignedTeacher.auth,
@@ -4185,11 +4185,11 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   const gradesAfterReadyDenied = await app.inject({ method: "POST",
     url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
     headers: assignedTeacher.auth, payload: { entries: [{ studentId, score: 95 }] } });
-  assert.equal(gradesAfterReadyDenied.statusCode, 409);
+  assert.equal(gradesAfterReadyDenied.statusCode, 409, gradesAfterReadyDenied.body);
   const repeatedReadyDenied = await app.inject({ method: "POST",
     url: `/v1/admin/exams/${examId}/status`, headers: admin,
     payload: { status: "RESULTS_READY" } });
-  assert.equal(repeatedReadyDenied.statusCode, 409);
+  assert.equal(repeatedReadyDenied.statusCode, 409, repeatedReadyDenied.body);
   const unauthorizedPublish = await app.inject({ method: "POST",
     url: `/v1/admin/exams/${examId}/publish`, headers: assignedTeacher.auth });
   assert.equal(unauthorizedPublish.statusCode, 403);
@@ -4210,11 +4210,11 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
 
   const publishAgain = await app.inject({ method: "POST",
     url: `/v1/admin/exams/${examId}/publish`, headers: admin });
-  assert.equal(publishAgain.statusCode, 409);
+  assert.equal(publishAgain.statusCode, 409, publishAgain.body);
   const teacherAfterPublish = await app.inject({ method: "POST",
     url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
     headers: assignedTeacher.auth, payload: { entries: [{ studentId, score: 99 }] } });
-  assert.equal(teacherAfterPublish.statusCode, 409);
+  assert.equal(teacherAfterPublish.statusCode, 409, teacherAfterPublish.body);
 
   const parentPublished = await app.inject({
     method: "GET",
@@ -4288,7 +4288,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
     headers: admin, payload: { score: 90, reason: "Stale overwrite",
       expectedUpdatedAt: initialGradeRevision } });
-  assert.equal(staleCorrection.statusCode, 409);
+  assert.equal(staleCorrection.statusCode, 409, staleCorrection.body);
 
   const parentCorrected = await app.inject({
     method: "GET",
@@ -4345,7 +4345,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   const archivedCorrection = await app.inject({ method: "PATCH",
     url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
     headers: admin, payload: { score: 93, reason: "Archived results locked" } });
-  assert.equal(archivedCorrection.statusCode, 409);
+  assert.equal(archivedCorrection.statusCode, 409, archivedCorrection.body);
   for (const [headers, url] of [
     [parentAuth, `/v1/parent/children/${studentId}/learning`],
     [studentAuth, "/v1/student/home"]
@@ -5019,7 +5019,7 @@ test("Step 18 pilot onboarding is credential-gated, scoped, and rejects inconsis
     headers: { "x-platform-provisioning-key": provisioningKey },
     payload: { ...payload, subscription: { startsOn: "2099-12-01" } }
   });
-  assert.equal(badDates.statusCode, 409);
+  assert.equal(badDates.statusCode, 409, badDates.body);
   const list = await app.inject({
     method: "GET", url: "/v1/platform/schools",
     headers: { "x-platform-provisioning-key": provisioningKey }
@@ -5034,7 +5034,7 @@ test("Step 18 pilot onboarding is credential-gated, scoped, and rejects inconsis
     method: "POST", url: "/v1/platform/pilot/onboard",
     headers: { "x-platform-provisioning-key": provisioningKey }, payload
   });
-  assert.equal(onboard.statusCode, 201);
+  assert.equal(onboard.statusCode, 201, onboard.body);
   const created = onboard.json<{ school: { id: string }; admin: { id: string; username: string };
     temporaryPassword: string }>();
   assert.equal(created.admin.username, "pilot18.admin");
@@ -5045,7 +5045,7 @@ test("Step 18 pilot onboarding is credential-gated, scoped, and rejects inconsis
     method: "POST", url: "/v1/platform/pilot/onboard",
     headers: { "x-platform-provisioning-key": provisioningKey }, payload
   });
-  assert.equal(duplicate.statusCode, 409);
+  assert.equal(duplicate.statusCode, 409, duplicate.body);
   const schools = await app.inject({
     method: "GET", url: "/v1/platform/schools",
     headers: { "x-platform-provisioning-key": provisioningKey }
