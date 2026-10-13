@@ -227,6 +227,21 @@ export function ParentMoreAcademicContent({
 }) {
   const rtl = getDirection(locale) === "rtl";
   const outstanding = fees.reduce((sum, item) => sum + item.outstanding, 0);
+  // Calculate exam totals from currently published grade rows; the totals
+  // update automatically when a school administrator corrects a mark.
+  const examTotals = new Map<string, {
+    id: string; name: string; score: number; maximum: number;
+  }>();
+  for (const row of learning?.results ?? []) {
+    const key = row.exam.id;
+    const current = examTotals.get(key) ?? {
+      id: key, name: row.exam.name, score: 0, maximum: 0
+    };
+    current.score += row.grade.score;
+    current.maximum += row.examSubject.maxScore;
+    examTotals.set(key, current);
+  }
+
 
   return (
     <View style={styles.stack}>
@@ -241,6 +256,20 @@ export function ParentMoreAcademicContent({
         </View>
 
         {!learning ? <ActivityIndicator color={tokens.color.brand} /> : null}
+        {[...examTotals.values()].map((total) => (
+          <View key={total.id} style={[styles.resultCard, rtl && styles.rowRtl]}>
+            <View style={styles.flex}>
+              <Text style={[styles.itemTitle, textDirection]}>
+                {total.name} · {translate(locale, "student.examTotal")}
+              </Text>
+            </View>
+            <View style={styles.scoreBadge}>
+              <Text style={styles.scoreText}>
+                {formatLocalizedNumber(total.score, locale)}/{formatLocalizedNumber(total.maximum, locale)}
+              </Text>
+            </View>
+          </View>
+        ))}
         {learning?.results.map((item) => (
           <View key={item.grade.id} style={[styles.resultCard, rtl && styles.rowRtl]}>
             <View style={styles.flex}>
