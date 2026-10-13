@@ -4615,7 +4615,7 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     { title: "Wrong scope", content: "No", audienceScope: "SCHOOL", audienceRole: "PARENT" },
     { title: "Missing role", content: "No", audienceScope: "ROLE" },
     { title: "Missing class", content: "No", audienceScope: "CLASS" },
-    { title: "Bad title", content: "No", audienceScope: "SCHOOL" },
+    { title: "X", content: "No", audienceScope: "SCHOOL" },
     { title: "Wrong class field", content: "No", audienceScope: "ROLE",
       audienceRole: "STUDENT", classId: classA }
   ]) {
