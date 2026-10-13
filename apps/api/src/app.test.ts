@@ -4138,12 +4138,38 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(studentBeforePublish.json<{ results: unknown[] }>().results.length, 0);
 
+  // Once Results Ready is reached, teacher grade writes and duplicate
+  // lifecycle transitions are denied even when another session retries.
+  const gradeLocked = await app.inject({ method: "GET",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth });
+  assert.equal(gradeLocked.statusCode, 200);
+  assert.equal(gradeLocked.json<{ canEdit: boolean }>().canEdit, false);
+  const gradesAfterReadyDenied = await app.inject({ method: "POST",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth, payload: { entries: [{ studentId, score: 95 }] } });
+  assert.equal(gradesAfterReadyDenied.statusCode, 409);
+  const repeatedReadyDenied = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/status`, headers: admin,
+    payload: { status: "RESULTS_READY" } });
+  assert.equal(repeatedReadyDenied.statusCode, 409);
+  const unauthorizedPublish = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/publish`, headers: assignedTeacher.auth });
+  assert.equal(unauthorizedPublish.statusCode, 403);
+
   const publish = await app.inject({
     method: "POST",
     url: `/v1/admin/exams/${examId}/publish`,
     headers: admin
   });
   assert.equal(publish.statusCode, 200);
+  const publishAgain = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/publish`, headers: admin });
+  assert.equal(publishAgain.statusCode, 409);
+  const teacherAfterPublish = await app.inject({ method: "POST",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth, payload: { entries: [{ studentId, score: 99 }] } });
+  assert.equal(teacherAfterPublish.statusCode, 409);
 
   const parentPublished = await app.inject({
     method: "GET",
