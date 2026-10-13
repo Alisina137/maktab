@@ -457,6 +457,11 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
     async archiveAnnouncement(schoolId, actorUserId, announcementId) {
       return db.transaction(async tx => {
+        const [current] = await tx.select({ archivedAt: announcements.archivedAt })
+          .from(announcements).where(and(eq(announcements.schoolId, schoolId),
+            eq(announcements.id, announcementId))).limit(1).for("update");
+        if (!current) throw new CommunicationNotFoundError("Announcement not found.");
+        if (current.archivedAt) throw new CommunicationConflictError("Announcement already archived.");
         const [updated] = await tx.update(announcements).set({
           archivedAt: new Date(), updatedAt: new Date()
         }).where(and(eq(announcements.schoolId, schoolId),
