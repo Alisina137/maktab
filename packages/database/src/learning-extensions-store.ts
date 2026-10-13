@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import type { FoundationDatabase } from "./client.js";
 import {
-  academicYears, continuousAssessments, continuousScores, homeworkSubmissions,
+  academicYears, auditLogs, continuousAssessments, continuousScores, homeworkSubmissions,
   homeworks, learningFiles, notifications, students, teacherAssignments, users
 } from "./schema.js";
 import { LearningConflictError, LearningNotFoundError, LearningValidationError } from "./learning-store.js";
@@ -198,11 +198,14 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
                 eq(homeworks.status, "DRAFT"), lte(homeworks.scheduledAt, now),
                 gt(homeworks.dueAt, now)))
               .returning({ id: homeworks.id, schoolId: homeworks.schoolId, classId: homeworks.classId,
-                title: homeworks.title, subjectId: homeworks.subjectId, dueAt: homeworks.dueAt });
+                title: homeworks.title, subjectId: homeworks.subjectId,
+                academicYearId: homeworks.academicYearId, teacherUserId: homeworks.teacherUserId,
+                dueAt: homeworks.dueAt });
             if (!changed) return false; // Atomic claim across API workers.
             const recipients = await tx.select({ parentId: students.parentUserId, userId: students.userId })
               .from(students).where(and(eq(students.schoolId, changed.schoolId),
-                eq(students.classId, changed.classId), eq(students.status, "ACTIVE")));
+                eq(students.classId, changed.classId), eq(students.academicYearId, changed.academicYearId),
+                eq(students.status, "ACTIVE")));
             for (const userId of new Set(recipients.flatMap(x => [x.parentId, x.userId].filter((id): id is string => !!id)))) {
               await tx.insert(notifications).values({
                 id: randomUUID(), schoolId: changed.schoolId, userId,
@@ -213,6 +216,12 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
                 dedupKey: `homework:${changed.id}:${userId}`, deliveryStatus: "PENDING"
               }).onConflictDoNothing();
             }
+            await tx.insert(auditLogs).values({
+              id: randomUUID(), schoolId: changed.schoolId, actorUserId: changed.teacherUserId,
+              action: "homework.published", entityType: "homework", entityId: changed.id,
+              metadata: { classId: changed.classId, subjectId: changed.subjectId,
+                dueAt: changed.dueAt.toISOString(), automated: true }
+            });
             return true;
           });
           if (published) completed++;
