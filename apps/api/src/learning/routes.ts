@@ -20,7 +20,11 @@ import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
 
 function sendLearningError(reply: FastifyReply, error: unknown) {
-  if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+  if (error instanceof ZodError) return reply.code(400).send({
+    error: "validation_error",
+    message: error.issues[0]?.message ?? "Invalid learning request.",
+    issues: error.issues
+  });
   if (error instanceof LearningValidationError) {
     return reply.code(400).send({ error: "learning_validation", message: error.message });
   }
@@ -114,16 +118,6 @@ export function registerLearningRoutes(
             request.params.homeworkId,
             status
           );
-          if (status === "PUBLISHED") {
-            await accounts.writeAudit({
-              schoolId: context.user.schoolId,
-              actorUserId: context.user.id,
-              action: "homework.published",
-              entityType: "homework",
-              entityId: homework.id,
-              metadata: { classId: homework.classId, subjectId: homework.subjectId, dueAt: homework.dueAt.toISOString() }
-            });
-          }
           return { homework };
         } catch (error) {
           return sendLearningError(reply, error);
