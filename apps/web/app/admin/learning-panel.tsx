@@ -32,6 +32,7 @@ type PublishedGrade = {
     id: string;
     score: number;
     remark: string | null;
+    updatedAt: string;
   };
   academicYearId: string;
   examName: string;
@@ -411,7 +412,8 @@ function PublishedGradeRow({
         body: JSON.stringify({
           score: Number(score),
           remark: remark.trim() || undefined,
-          reason: reason.trim()
+          reason: reason.trim(),
+          expectedUpdatedAt: item.grade.updatedAt
         })
       });
       onNotice(adminFormat(locale, "Published mark corrected for {name}. The reason and previous value are in the audit log.", { name: item.studentName }));
