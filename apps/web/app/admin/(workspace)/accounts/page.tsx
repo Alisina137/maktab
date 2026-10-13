@@ -7,6 +7,12 @@ import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
+type AccountView = "DIRECTORY" | "CREATE";
+type AccountHighlight = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
+
+function needsActivation(user: User): boolean {
+  return user.status === "INVITED" || (user.status === "ACTIVE" && user.mustChangePassword);
+}
 
 type FamilyStudent = {
   student: {
@@ -35,6 +41,8 @@ export default function AccountsPage() {
   const [studentRecordId, setStudentRecordId] = useState("");
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
   const [group, setGroup] = useState<AccountGroup>("ALL");
+  const [view, setView] = useState<AccountView>("DIRECTORY");
+  const [highlight, setHighlight] = useState<AccountHighlight>("ALL");
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -183,12 +191,37 @@ export default function AccountsPage() {
     STUDENT: users.filter((u) => u.role === "STUDENT").length,
     STAFF: staffCount
   };
+  const summaries = [
+    { id: "ALL", label: "Total accounts", value: users.length, symbol: "▦" },
+    { id: "ACTIVE", label: "Active accounts", value: users.filter((user) => user.status === "ACTIVE").length, symbol: "✓" },
+    { id: "PENDING", label: "Pending activation", value: users.filter(needsActivation).length, symbol: "◷" },
+    { id: "SUSPENDED", label: "Suspended accounts", value: users.filter((user) => user.status === "SUSPENDED").length, symbol: "!" }
+  ] as const;
+
+  function selectSummary(next: AccountHighlight) {
+    setHighlight(next);
+    setGroup("ALL");
+    setStatus("ALL");
+    setQuery("");
+    setView("DIRECTORY");
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setGroup("ALL");
+    setStatus("ALL");
+    setHighlight("ALL");
+  }
+
   const q = query.trim().toLowerCase();
   const filtered = users.filter((user) => {
     const groupMatch =
       group === "ALL" ||
       (group === "STAFF" ? user.role === "SCHOOL_ADMIN" || user.role === "SCHOOL_STAFF" : user.role === group);
     const statusMatch = status === "ALL" || user.status === status;
+    const summaryMatch =
+      highlight === "ALL" ||
+      (highlight === "PENDING" ? needsActivation(user) : user.status === highlight);
     const haystack = [
       user.username,
       user.profile?.fullName,
@@ -197,7 +230,7 @@ export default function AccountsPage() {
       user.role,
       user.status
     ].filter(Boolean).join(" ").toLowerCase();
-    return groupMatch && statusMatch && (!q || haystack.includes(q));
+    return groupMatch && statusMatch && summaryMatch && (!q || haystack.includes(q));
   });
 
   if (initialLoading) {
@@ -227,8 +260,50 @@ export default function AccountsPage() {
         </section>
       ) : null}
 
-      <div className="admin-grid admin-account-grid">
-        <article className="admin-panel admin-create-account-card">
+      <div className="admin-account-overview">
+        <div className="admin-account-overview-heading">
+          <div>
+            <span className="eyebrow">{t("Account overview")}</span>
+            <h3>{t("Manage school accounts")}</h3>
+            <p>{t("Review account access and create new school logins.")}</p>
+          </div>
+          <div className="admin-account-view-switch" role="group" aria-label={t("Accounts page view")}>
+            <button
+              type="button"
+              className={view === "DIRECTORY" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
+              aria-pressed={view === "DIRECTORY"}
+              onClick={() => setView("DIRECTORY")}
+            >{t("Account directory")}</button>
+            <button
+              type="button"
+              className={view === "CREATE" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
+              aria-pressed={view === "CREATE"}
+              onClick={() => setView("CREATE")}
+            >{t("Create account")}</button>
+          </div>
+        </div>
+        <div className="admin-account-stats" role="group" aria-label={t("Account overview")}>
+          {summaries.map((summary) => (
+            <button
+              key={summary.id}
+              type="button"
+              className={`admin-account-stat admin-account-stat-${summary.id.toLowerCase()} ${highlight === summary.id ? "admin-account-stat-selected" : ""}`}
+              aria-pressed={highlight === summary.id}
+              onClick={() => selectSummary(summary.id)}
+            >
+              <span className="admin-account-stat-top">
+                <span className="admin-account-stat-symbol" aria-hidden="true">{summary.symbol}</span>
+                <span className="admin-account-stat-label">{t(summary.label)}</span>
+              </span>
+              <strong>{summary.value.toLocaleString()}</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={`admin-grid admin-account-grid ${view === "CREATE" ? "admin-account-grid-creating" : "admin-account-grid-directory"}`}>
+        {view === "CREATE" ? (
+        <article className="admin-panel admin-create-account-card" id="account-create-panel">
           <div className="admin-panel-icon" aria-hidden="true">+</div>
           <h3>{t("Create account")}</h3>
           <p className="admin-copy">{t("Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.")}</p>
@@ -297,7 +372,7 @@ export default function AccountsPage() {
               <input
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                placeholder={newRole === "PARENT" ? "parent.001" : newRole === "STUDENT" ? "student.001" : "teacher.001"}
+                placeholder={newRole === "PARENT" ? "parent001" : newRole === "STUDENT" ? "student001" : "teacher001"}
                 required
               />
             </label>
@@ -311,17 +386,18 @@ export default function AccountsPage() {
             </button>
           </form>
         </article>
+        ) : null}
 
-        <article className="admin-panel admin-users-panel admin-users-panel-premium">
+        <article className="admin-panel admin-users-panel admin-users-panel-premium" id="account-directory-panel">
           <div className="admin-section-header">
             <div>
               <h3>{t("Account directory")}</h3>
-              <p>{filtered.length} / {users.length}</p>
+              <p>{adminFormat(locale, "Showing {visible} of {total} accounts", { visible: filtered.length, total: users.length })}</p>
             </div>
-            <button className="admin-secondary" onClick={() => void loadUsers()} disabled={busy}>{t("Refresh accounts")}</button>
+            <button type="button" className="admin-secondary" onClick={() => void loadUsers()} disabled={busy}>{t("Refresh accounts")}</button>
           </div>
 
-          <div className="admin-account-tabs" role="tablist">
+          <div className="admin-account-tabs" role="group" aria-label={t("Account role")}>
             {([
               ["ALL", "All"],
               ["PARENT", "Parents"],
@@ -334,7 +410,7 @@ export default function AccountsPage() {
                 type="button"
                 className={group === value ? "admin-account-tab admin-account-tab-active" : "admin-account-tab"}
                 onClick={() => setGroup(value)}
-                aria-selected={group === value}
+                aria-pressed={group === value}
               >
                 <span>{t(label)}</span><strong>{counts[value]}</strong>
               </button>
@@ -342,16 +418,16 @@ export default function AccountsPage() {
           </div>
 
           <div className="admin-account-filters">
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search name, username, phone, code, role, or status")} />
-            <select value={status} onChange={(e) => setStatus(e.target.value as "ALL" | User["status"])}>
+            <input aria-label={t("Search accounts")} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search name, username, phone, code, role, or status")} />
+            <select aria-label={t("Filter by status")} value={status} onChange={(e) => { setStatus(e.target.value as "ALL" | User["status"]); setHighlight("ALL"); }}>
               <option value="ALL">{t("All statuses")}</option>
               <option value="ACTIVE">{t("Active")}</option>
               <option value="INVITED">{t("Invited")}</option>
               <option value="SUSPENDED">{t("Suspended")}</option>
               <option value="ARCHIVED">{t("Archived")}</option>
             </select>
-            {(query || group !== "ALL" || status !== "ALL") ? (
-              <button className="admin-secondary" onClick={() => { setQuery(""); setGroup("ALL"); setStatus("ALL"); }}>
+            {(query || group !== "ALL" || status !== "ALL" || highlight !== "ALL") ? (
+              <button type="button" className="admin-secondary" onClick={clearFilters}>
                 {t("Clear filters")}
               </button>
             ) : null}
@@ -363,10 +439,10 @@ export default function AccountsPage() {
               return (
               <div className="admin-user-row admin-user-row-premium" key={user.id}>
                 <div className="admin-user-identity">
-                  <span className="admin-user-avatar">{displayName(user).slice(0, 1).toUpperCase()}</span>
+                  <span className={`admin-user-avatar admin-user-avatar-${user.role.toLowerCase()}`} aria-hidden="true">{displayName(user).slice(0, 1).toUpperCase()}</span>
                   <div>
                     <strong>{displayName(user)}</strong>
-                    <span>@{user.username} · {roleLabel(user, t)}</span>
+                    <span><bdi dir="ltr">@{user.username}</bdi> · {roleLabel(user, t)}</span>
                     {(user.profile?.code || user.profile?.phone) ? <span>{[user.profile?.code, user.profile?.phone].filter(Boolean).join(" · ")}</span> : null}
                   </div>
                 </div>
@@ -377,6 +453,7 @@ export default function AccountsPage() {
                 </div>
                 <div className="admin-actions">
                   <button
+                    type="button"
                     onClick={() => void action(user, "reset-password")}
                     disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
                     title={isCurrentAdmin ? t("Use Profile to change your own password.") : undefined}
@@ -384,9 +461,10 @@ export default function AccountsPage() {
                     {t("Reset password")}
                   </button>
                   {user.status === "SUSPENDED"
-                    ? <button onClick={() => void action(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
+                    ? <button type="button" onClick={() => void action(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
                     : (
                       <button
+                        type="button"
                         onClick={() => void action(user, "suspend")}
                         disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
                         title={isCurrentAdmin ? t("You cannot suspend the administrator account you are currently using.") : undefined}
@@ -399,7 +477,7 @@ export default function AccountsPage() {
               );
             })}
             {filtered.length === 0 ? (
-              <div className="admin-empty-state">
+              <div className="admin-empty-state" role="status">
                 <strong>{t("No matching accounts")}</strong>
                 <span>{t("Try another account group, status, name, username, phone number, or code.")}</span>
               </div>
