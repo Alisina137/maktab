@@ -4029,6 +4029,25 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(zoologyExamSubject.statusCode, 201);
   const secondExamSubjectId = zoologyExamSubject.json<{ examSubject: { id: string } }>().examSubject.id;
+  // Legacy rows have a nullable date after migration. School Admin can date
+  // them before IN_PROGRESS; the change and old date are audited.
+  await client.query("UPDATE exam_subjects SET exam_date = NULL WHERE id = $1",
+    [secondExamSubjectId]);
+  const badDateUpdate = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`,
+    headers: admin, payload: { examDate: "2028-02-30" } });
+  assert.equal(badDateUpdate.statusCode, 400);
+  const unrelatedDateEdit = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`,
+    headers: assignedTeacher.auth, payload: { examDate: "2028-09-18" } });
+  assert.equal(unrelatedDateEdit.statusCode, 403);
+  const repairedSubjectDate = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`,
+    headers: admin, payload: { examDate: "2028-09-18" } });
+  assert.equal(repairedSubjectDate.statusCode, 200);
+  assert.equal(repairedSubjectDate.json<{ examSubject: { examDate: string } }>()
+    .examSubject.examDate, "2028-09-18");
+
   const examSubjectId = examSubject.json<{ examSubject: { id: string } }>().examSubject.id;
 
   await app.inject({
@@ -4043,6 +4062,11 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: admin,
     payload: { status: "IN_PROGRESS" }
   });
+
+  const frozenDate = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`,
+    headers: admin, payload: { examDate: "2028-09-19" } });
+  assert.equal(frozenDate.statusCode, 409);
 
   const unrelated = await app.inject({
     method: "GET",
@@ -4337,6 +4361,8 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(forExam.filter(x => x.action === "exam.results_published").length, 1);
   assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_added" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
+  assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_date_changed" &&
+    x.entity_id === secondExamSubjectId).length, 1);
   assert.equal(auditLog.rows.filter(x => x.action === "grades.draft_saved" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
   const correctionAudit = auditLog.rows.filter(x =>
