@@ -1330,3 +1330,16 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - PostgreSQL file uploads are capped at 1 MiB per PDF/image, 10 uploads/24 hours for students and 40 uploads/24 hours for teachers. This bounds pilot storage consumption and is **not** a replacement for object storage plus malware scanning for larger-scale deployment.
 - Teacher assessment gradebook has an explicit assigned class/subject selector. Archived homework remains available for reviewing historical submissions. The API closes scheduled publication and its 60-second timer correctly during shutdown.
 - Device manual acceptance and production-object-storage hardening remain separate from CI completion.
+
+
+### Teacher Workspace Expansion — Phase 4: Negaran attendance and history (2026-10-13)
+
+**Implementation submitted for automated and Android verification; not yet device-accepted.**
+
+- Added **Mark unmarked present** for today's editable Negaran attendance. Fills only students without a mark and preserves intentionally selected Absent, Late and Excused statuses. Existing server-side completeness, idempotency, permission and school-local-day checks remain authoritative.
+- Attendance daily view now shows live Present/Absent/Late/Excused counters and a native confirmation alert displaying all totals before submission. No marks are sent until the user confirms. Past attendance remains non-editable and corrections remain School Admin-only.
+- Added Negaran **History** tab to the attendance screen (reachable from Teacher Today, even when Negaran has no subject teaching assignment), and monthly history panel within assigned class Supervision. Calendar begins Saturday, localizes labels/numerals and highlights submitted days. Selecting a recorded day opens its read-only historical sheet. Month controls do not request future dates.
+- Added authenticated `GET /v1/teacher/negaran/:classId/history?from=YYYY-MM-DD&to=YYYY-MM-DD` with strictly validated calendar dates, chronological bounds, at most 42 days, and a school-local non-future maximum. Teacher must be the **active Negaran today** for the class and current ACTIVE academic year; returned records are further bounded by that same assignment's start/end dates and school/year/class. Ordinary teachers and non-Teacher accounts have no access.
+- The endpoint aggregates historical submitted/corrected attendance rows by day, returns per-status totals, submitted days, and an attendance percentage **(Present + Late) / all marks**. It does not expose individual student private information in history summaries. A date without submitted attendance is not misrepresented as absent.
+- Android checks needed: Negaran Today → Attendance → mark all unmarked, adjust a student to absent, review totals/confirmation, submit/reload, History monthly summaries, tap past date/read-only, navigate months and Dari/Pashto RTL; normal Teacher, wrong-class and suspended-account denial; no date/role regression under airplane-mode caching/reconnect.
+- Phase 4 requires **no new migration or dependency**; verified by automated CI and targeted authorization/history/bulk-mark tests once workflow completes.

@@ -118,6 +118,30 @@ export function registerAttendanceRoutes(
     }
   );
 
+  app.get<{ Params: { classId: string }; Querystring: { from: string; to: string } }>(
+    "/v1/teacher/negaran/:classId/history",
+    async (request, reply) => {
+      const context = await requireTeacher(request, reply, accounts);
+      if (!context) return;
+      try {
+        const classId = z.string().uuid().parse(request.params.classId);
+        const dates = z.object({
+          from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+          to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/)
+        }).strict().parse(request.query);
+        return await attendance.getTeacherAttendanceHistory(
+          context.user.schoolId,
+          context.user.id,
+          classId,
+          dates.from,
+          dates.to
+        );
+      } catch (error) {
+        return sendAttendanceError(reply, error);
+      }
+    }
+  );
+
   app.post("/v1/teacher/negaran/attendance", async (request, reply) => {
     const context = await requireTeacher(request, reply, accounts);
     if (!context) return;

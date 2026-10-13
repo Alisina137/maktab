@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Alert,
   AppState,
   Animated,
   Easing,
@@ -20,6 +21,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatLocalizedDate,
+  formatLocalizedNumber,
   getDirection,
   localizeDigits,
   supportedLocales,
@@ -52,6 +54,8 @@ import {
 import { AdminContactCard } from "./src/admin-contact-card";
 
 import { TeacherBottomNavigation, TeacherExperience, type TeacherTab } from "./src/teacher-experience";
+import { NegaranHistoryPanel } from "./src/negaran-history";
+import { countAttendance, fillUnmarkedPresent } from "./src/negaran-attendance-utils";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
@@ -218,6 +222,7 @@ function AppContent() {
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
+  const [attendanceHistoryOpen, setAttendanceHistoryOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
@@ -1331,6 +1336,7 @@ function AppContent() {
     try {
       const sheet = await api.teacherAttendance(session.accessToken, classId, date);
       setAttendanceSheet(sheet);
+      setAttendanceHistoryOpen(false);
       setAttendanceDraft(
         Object.fromEntries(
           sheet.students
@@ -1344,6 +1350,31 @@ function AppContent() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function confirmAttendance() {
+    if (!attendanceSheet || busy || !attendanceSheet.canEdit) return;
+    const ids = attendanceSheet.students.map((row) => row.student.id);
+    const counts = countAttendance(ids, attendanceDraft);
+    if (counts.unmarked) {
+      setAppError("attendance.markEveryone");
+      return;
+    }
+    const rows = [
+      `${translate(locale, "attendance.present")}: ${formatLocalizedNumber(counts.totals.PRESENT, locale)}`,
+      `${translate(locale, "attendance.absent")}: ${formatLocalizedNumber(counts.totals.ABSENT, locale)}`,
+      `${translate(locale, "attendance.late")}: ${formatLocalizedNumber(counts.totals.LATE, locale)}`,
+      `${translate(locale, "attendance.excused")}: ${formatLocalizedNumber(counts.totals.EXCUSED, locale)}`
+    ];
+    Alert.alert(
+      translate(locale, "attendance.confirmTitle"),
+      `${translate(locale, "attendance.confirmMessage")}\n\n${rows.join("\n")}`,
+      [
+        { text: translate(locale, "attendance.cancel"), style: "cancel" },
+        { text: translate(locale, "attendance.confirmSubmit"), onPress: () => void submitAttendance() }
+      ],
+      { cancelable: true }
+    );
   }
 
   async function submitAttendance() {
@@ -1581,9 +1612,10 @@ function AppContent() {
     }, 0);
   }
 
-  const attendanceMarkedCount = attendanceSheet
-    ? attendanceSheet.students.filter((item) => attendanceDraft[item.student.id]).length
-    : 0;
+  const attendanceSummary = attendanceSheet
+    ? countAttendance(attendanceSheet.students.map((item) => item.student.id), attendanceDraft)
+    : countAttendance([], {});
+  const attendanceMarkedCount = attendanceSummary.marked;
 
   if (busy && screen === "role") {
     return (
@@ -2635,7 +2667,35 @@ function AppContent() {
                 </Text>
               </View>
             </View>
-
+            <View style={[styles.attendanceTabs, direction === "rtl" && styles.rowRtl]}>
+              {(["TODAY", "HISTORY"] as const).map((tab) => (
+                <Pressable key={tab} accessibilityRole="tab"
+                  accessibilityLabel={translate(locale, tab === "TODAY" ? "attendance.dailyTab" : "attendance.historyTab")}
+                  accessibilityState={{ selected: attendanceHistoryOpen === (tab === "HISTORY") }}
+                  style={[styles.attendanceTab, attendanceHistoryOpen === (tab === "HISTORY") && styles.attendanceTabActive]}
+                  onPress={() => setAttendanceHistoryOpen(tab === "HISTORY")}>
+                  <Ionicons
+                    name={tab === "TODAY" ? "checkmark-done-outline" : "calendar-outline"}
+                    size={18} color={tokens.color.brandStrong} />
+                  <Text style={styles.attendanceTabText}>
+                    {translate(locale, tab === "TODAY" ? "attendance.dailyTab" : "attendance.historyTab")}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {attendanceHistoryOpen ? (
+              <NegaranHistoryPanel
+                accessToken={session.accessToken}
+                classId={attendanceSheet.classSection.id}
+                today={teacherToday?.date ?? attendanceSheet.date}
+                locale={locale}
+                textDirection={textDirection}
+                reconnectEpoch={reconnectEpoch}
+                onOpenDay={(date) => void openAttendance(attendanceSheet.classSection.id, date)}
+                onError={setAppError}
+              />
+            ) : (
+            <>
             <View style={styles.attendanceProgress}>
               <Text style={[styles.muted, textDirection]}>
                 {attendanceMarkedCount}/{attendanceSheet.students.length} {translate(locale, "attendance.marked")}
@@ -2653,6 +2713,38 @@ function AppContent() {
                 />
               </View>
             </View>
+
+            <View style={[styles.attendanceStatusTotals, direction === "rtl" && styles.rowRtl]}>
+              {attendanceStatuses.map((status) => (
+                <View style={styles.attendanceTotalItem} key={status}>
+                  <Text style={styles.attendanceTotalNumber}>
+                    {formatLocalizedNumber(attendanceSummary.totals[status], locale)}
+                  </Text>
+                  <Text style={styles.attendanceTotalLabel}>
+                    {translate(locale, attendanceKey[status])}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {attendanceSheet.canEdit && attendanceSummary.unmarked > 0 ? (
+              <View style={styles.attendanceBulk}>
+                <Pressable accessibilityRole="button"
+                  accessibilityLabel={translate(locale, "attendance.markAllPresent")}
+                  onPress={() => setAttendanceDraft((current) =>
+                    fillUnmarkedPresent(attendanceSheet.students.map((item) => item.student.id), current))}
+                  style={[styles.attendanceBulkButton, direction === "rtl" && styles.rowRtl]}>
+                  <Ionicons name="checkmark-circle-outline" size={21} color={tokens.color.brandStrong} />
+                  <Text style={styles.attendanceBulkLabel}>
+                    {translate(locale, "attendance.markAllPresent")}
+                    {" · "}
+                    {formatLocalizedNumber(attendanceSummary.unmarked, locale)}
+                  </Text>
+                </Pressable>
+                <Text style={[styles.muted, textDirection]}>
+                  {translate(locale, "attendance.bulkHint")}
+                </Text>
+              </View>
+            ) : null}
 
             {attendanceSheet.students.map((item) => (
               <View key={item.student.id} style={styles.attendanceStudentCard}>
@@ -2698,8 +2790,10 @@ function AppContent() {
               <PrimaryButton
                 disabled={busy || attendanceMarkedCount !== attendanceSheet.students.length}
                 label={translate(locale, "attendance.submit")}
-                onPress={() => void submitAttendance()}
+                onPress={confirmAttendance}
               />
+            )}
+            </>
             )}
           </View>
         )}
@@ -3770,6 +3864,22 @@ const styles = StyleSheet.create({
   scheduleRow: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: 11, borderTopWidth: 1, borderTopColor: "#eef1f5", paddingTop: 10 },
   timePill: { backgroundColor: "#edf3ff", borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 },
   timePillText: { color: tokens.color.brandStrong, fontSize: 12, fontWeight: "900" },
+  attendanceTabs: { flexDirection: "row", gap: 9 },
+  attendanceTab: { flex: 1, minHeight: 48, borderRadius: 12, flexDirection: "row",
+    alignItems: "center", justifyContent: "center", gap: 7, borderWidth: 1,
+    borderColor: "#dbe5f2", backgroundColor: "#fff" },
+  attendanceTabActive: { backgroundColor: "#e8f1ff", borderColor: "#a1beef" },
+  attendanceTabText: { fontSize: 13, fontWeight: "900", color: tokens.color.brandStrong },
+  attendanceStatusTotals: { flexDirection: "row", gap: 6 },
+  attendanceTotalItem: { flex: 1, minWidth: 0, padding: 10, backgroundColor: "#f2f6fc",
+    borderRadius: 12, alignItems: "center", gap: 5 },
+  attendanceTotalNumber: { fontSize: 18, fontWeight: "900", color: tokens.color.brandStrong },
+  attendanceTotalLabel: { fontSize: 11, fontWeight: "700", color: tokens.color.textMuted },
+  attendanceBulk: { padding: 12, gap: 7, borderWidth: 1, borderColor: "#d9e9fa", borderRadius: 14,
+    backgroundColor: "#f5f9ff" },
+  attendanceBulkButton: { minHeight: 44, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8, backgroundColor: "#e8f1ff", borderRadius: 11 },
+  attendanceBulkLabel: { color: tokens.color.brandStrong, fontSize: 13, fontWeight: "900" },
   attendanceProgress: { gap: 7 },
   progressTrack: { height: 7, borderRadius: 999, backgroundColor: "#e4e9f1", overflow: "hidden" },
   progressFill: { height: 7, borderRadius: 999, backgroundColor: tokens.color.brand },

@@ -90,6 +90,36 @@ export interface ParentAttendanceDay {
   className: string;
 }
 
+export interface NegaranHistoryDay {
+  attendanceId: string;
+  date: string;
+  recordStatus: "SUBMITTED" | "CORRECTED";
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  total: number;
+  submittedAt: Date;
+}
+
+export interface NegaranAttendanceHistory {
+  classId: string;
+  from: string;
+  to: string;
+  today: string;
+  days: NegaranHistoryDay[];
+  summary: {
+    submittedDays: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    totalMarks: number;
+    // Includes late as attended; excused is not counted as attended.
+    attendancePercent: number | null;
+  };
+}
+
 export interface AttendanceReportRow {
   attendanceId: string;
   date: string;
@@ -135,6 +165,13 @@ export interface AttendanceStore {
     classId: string,
     date: string
   ): Promise<AttendanceSheet>;
+  getTeacherAttendanceHistory(
+    schoolId: string,
+    teacherUserId: string,
+    classId: string,
+    from: string,
+    to: string
+  ): Promise<NegaranAttendanceHistory>;
   submitDailyAttendance(
     schoolId: string,
     teacherUserId: string,
@@ -505,6 +542,115 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         },
         schedule: scheduleRows,
         supervisedClasses
+      };
+    },
+
+    async getTeacherAttendanceHistory(schoolId, teacherUserId, classId, from, to) {
+      await requireTeacher(schoolId, teacherUserId);
+      const today = await schoolToday(schoolId);
+      const isValidDay = (value: string) => {
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+        const date = new Date(value + "T12:00:00Z");
+        return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+      };
+      if (!isValidDay(from) || !isValidDay(to) || from > to || to > today) {
+        throw new AttendanceValidationError("Choose valid past or current dates in chronological order.");
+      }
+      const numberOfDays = Math.round(
+        (new Date(to + "T12:00:00Z").getTime() -
+          new Date(from + "T12:00:00Z").getTime()) / 86_400_000
+      ) + 1;
+      if (numberOfDays > 42) {
+        throw new AttendanceValidationError("Attendance history is limited to 42 days per request.");
+      }
+
+      // A teacher must be the active Negaran TODAY to open history, and
+      // may only see days during the active assignment's own date window.
+      // Ordinary subject teachers must never gain roster or attendance access.
+      const negaran = await getNegaran(schoolId, teacherUserId, classId, today);
+      const section = await getClass(schoolId, classId);
+      if (section.academicYearId !== negaran.academicYearId) {
+        throw new AttendanceValidationError("Negaran responsibility is not for this class academic year.");
+      }
+      const [year] = await db.select({ id: academicYears.id })
+        .from(academicYears)
+        .where(and(
+          eq(academicYears.id, negaran.academicYearId),
+          eq(academicYears.schoolId, schoolId),
+          eq(academicYears.status, "ACTIVE")
+        )).limit(1);
+      if (!year) {
+        throw new AttendanceValidationError("Negaran history requires an active academic year.");
+      }
+
+      const allowedFrom = from > negaran.startDate ? from : negaran.startDate;
+      const allowedTo = negaran.endDate && negaran.endDate < to ? negaran.endDate : to;
+      const counts = { present: 0, absent: 0, late: 0, excused: 0, totalMarks: 0 };
+      if (allowedFrom > allowedTo) {
+        return {
+          classId, from, to, today, days: [],
+          summary: { submittedDays: 0, ...counts, attendancePercent: null }
+        };
+      }
+
+      const rows = await db.select({
+        attendanceId: dailyAttendances.id,
+        date: dailyAttendances.date,
+        recordStatus: dailyAttendances.status,
+        submittedAt: dailyAttendances.submittedAt,
+        status: studentAttendances.status
+      }).from(dailyAttendances)
+        .leftJoin(studentAttendances, and(
+          eq(studentAttendances.attendanceId, dailyAttendances.id),
+          eq(studentAttendances.schoolId, schoolId)
+        ))
+        .where(and(
+          eq(dailyAttendances.schoolId, schoolId),
+          eq(dailyAttendances.classId, classId),
+          eq(dailyAttendances.academicYearId, negaran.academicYearId),
+          gte(dailyAttendances.date, allowedFrom),
+          lte(dailyAttendances.date, allowedTo)
+        ))
+        .orderBy(desc(dailyAttendances.date));
+
+      const byDate = new Map<string, NegaranHistoryDay>();
+      for (const row of rows) {
+        let day = byDate.get(row.date);
+        if (!day) {
+          day = {
+            attendanceId: row.attendanceId,
+            date: row.date,
+            recordStatus: row.recordStatus,
+            submittedAt: row.submittedAt,
+            present: 0, absent: 0, late: 0, excused: 0, total: 0
+          };
+          byDate.set(row.date, day);
+        }
+        if (!row.status) continue;
+        if (row.status === "PRESENT") day.present++;
+        else if (row.status === "ABSENT") day.absent++;
+        else if (row.status === "LATE") day.late++;
+        else if (row.status === "EXCUSED") day.excused++;
+        day.total++;
+      }
+      const days = Array.from(byDate.values());
+      for (const day of days) {
+        counts.present += day.present;
+        counts.absent += day.absent;
+        counts.late += day.late;
+        counts.excused += day.excused;
+        counts.totalMarks += day.total;
+      }
+
+      return {
+        classId, from, to, today, days,
+        summary: {
+          submittedDays: days.length,
+          ...counts,
+          attendancePercent: counts.totalMarks
+            ? Math.round((counts.present + counts.late) * 1000 / counts.totalMarks) / 10
+            : null
+        }
       };
     },
 

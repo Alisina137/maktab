@@ -7,6 +7,7 @@ import { api, type TeacherClassDetailPayload, type TeacherTodayPayload } from ".
 import { TeacherLearningPanel } from "./learning-ui";
 import { CommunicationPanel } from "./communication-ui";
 import { teacherTime12 } from "./teacher-hub-data";
+import { NegaranHistoryPanel } from "./negaran-history";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
 type Section = "OVERVIEW" | "STUDENTS" | "HOMEWORK" | "GRADES" | "SUPERVISION";
@@ -169,6 +170,18 @@ export function TeacherClassDetailPage({
                   <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.supervisionUnavailable")}</Text>
                 )}
               </View>
+              {supervision ? (
+                <NegaranHistoryPanel
+                  accessToken={accessToken}
+                  classId={current.classId}
+                  today={detail.today}
+                  locale={locale}
+                  textDirection={textDirection}
+                  reconnectEpoch={reconnectEpoch}
+                  onOpenDay={(day) => onAttendance(current.classId, day)}
+                  onError={onError}
+                />
+              ) : null}
               {supervision ? <CommunicationPanel key={`supervised-${assignmentId}-${reconnectEpoch}`}
                 accessToken={accessToken} mode="TEACHER" teacherSection="ANNOUNCEMENTS"
                 supervisedClasses={[{ classId: current.classId, classCode: current.classCode, className: current.className }]}

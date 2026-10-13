@@ -2598,6 +2598,52 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(retried.json<{ changed: boolean; notificationCount: number }>().changed, false);
   assert.equal(retried.json<{ changed: boolean; notificationCount: number }>().notificationCount, 0);
 
+  // Phase 4: month-history is read-only, summary derives from submitted marks,
+  // and the data is visible only to the active Negaran for this class.
+  const historyUrl = `/v1/teacher/negaran/${classId}/history?from=${today.date}&to=${today.date}`;
+  const attendanceHistory = await app.inject({
+    method: "GET", url: historyUrl, headers: teacherAuth
+  });
+  assert.equal(attendanceHistory.statusCode, 200);
+  const initialHistory = attendanceHistory.json<{
+    days: Array<{ date: string; absent: number; total: number; recordStatus: string }>;
+    summary: { submittedDays: number; totalMarks: number; absent: number; attendancePercent: number | null };
+  }>();
+  assert.equal(initialHistory.days.length, 1);
+  assert.equal(initialHistory.days[0]?.date, today.date);
+  assert.equal(initialHistory.days[0]?.absent, 1);
+  assert.equal(initialHistory.days[0]?.total, 1);
+  assert.deepEqual(initialHistory.summary, {
+    submittedDays: 1, present: 0, absent: 1, late: 0, excused: 0,
+    totalMarks: 1, attendancePercent: 0
+  });
+
+  const invalidRange = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/history?from=${today.date}&to=2099-01-01`,
+    headers: teacherAuth
+  });
+  assert.equal(invalidRange.statusCode, 400);
+  assert.equal(invalidRange.json<{ error: string }>().error, "attendance_validation");
+
+  const invalidCalendar = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/history?from=2026-02-30&to=${today.date}`,
+    headers: teacherAuth
+  });
+  assert.equal(invalidCalendar.statusCode, 400);
+  assert.equal(invalidCalendar.json<{ error: string }>().error, "attendance_validation");
+
+  const missingQuery = await app.inject({
+    method: "GET", url: `/v1/teacher/negaran/${classId}/history`, headers: teacherAuth
+  });
+  assert.equal(missingQuery.statusCode, 400);
+
+  const unauthorizedReport = await app.inject({
+    method: "GET", url: historyUrl, headers: admin
+  });
+  assert.equal(unauthorizedReport.statusCode, 403);
+
   const parentLogin = await app.inject({
     method: "POST",
     url: "/v1/auth/login",
@@ -2644,6 +2690,19 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousStatus: string; entry: { status: string } }>().previousStatus, "ABSENT");
   assert.equal(corrected.json<{ entry: { status: string } }>().entry.status, "PRESENT");
+
+  const correctedHistory = await app.inject({
+    method: "GET", url: historyUrl, headers: teacherAuth
+  });
+  assert.equal(correctedHistory.statusCode, 200);
+  const correctedSummary = correctedHistory.json<{
+    days: Array<{ present: number; absent: number; recordStatus: string }>;
+    summary: { present: number; absent: number; attendancePercent: number };
+  }>();
+  assert.equal(correctedSummary.days[0]?.present, 1);
+  assert.equal(correctedSummary.days[0]?.absent, 0);
+  assert.equal(correctedSummary.days[0]?.recordStatus, "CORRECTED");
+  assert.equal(correctedSummary.summary.attendancePercent, 100);
 
   const parentAfterCorrection = await app.inject({
     method: "GET",
@@ -2729,6 +2788,14 @@ test("teacher without Negaran assignment cannot access another class attendance"
   });
   assert.equal(sheet.statusCode, 400);
   assert.equal(sheet.json<{ error: string }>().error, "attendance_validation");
+
+  const historyDenied = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/history?from=${today}&to=${today}`,
+    headers: { authorization: `Bearer ${accessToken}` }
+  });
+  assert.equal(historyDenied.statusCode, 400);
+  assert.equal(historyDenied.json<{ error: string }>().error, "attendance_validation");
 
   const unauthorizedAnnouncement = await app.inject({
     method: "POST",

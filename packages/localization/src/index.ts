@@ -181,6 +181,21 @@ export type TranslationKey =
   | "attendance.submit"
   | "attendance.saved"
   | "attendance.noChanges"
+  | "attendance.markAllPresent"
+  | "attendance.bulkHint"
+  | "attendance.confirmTitle"
+  | "attendance.confirmMessage"
+  | "attendance.cancel"
+  | "attendance.confirmSubmit"
+  | "attendance.historyTitle"
+  | "attendance.historyError"
+  | "attendance.submittedDays"
+  | "attendance.attendanceRate"
+  | "attendance.rateHint"
+  | "attendance.historyReadOnly"
+  | "attendance.dailyTab"
+  | "attendance.historyTab"
+  | "attendance.countsTitle"
   | "attendance.locked"
   | "notifications.title"
   | "notifications.absent"
@@ -542,6 +557,21 @@ const en: Record<TranslationKey, string> = {
   "attendance.submit": "Submit attendance",
   "attendance.saved": "Attendance saved.",
   "attendance.noChanges": "Attendance was already submitted with these states.",
+  "attendance.markAllPresent": "Mark unmarked present",
+  "attendance.bulkHint": "Only students without a mark will be changed.",
+  "attendance.confirmTitle": "Review attendance",
+  "attendance.confirmMessage": "Check these totals before submitting:",
+  "attendance.cancel": "Cancel",
+  "attendance.confirmSubmit": "Confirm and save",
+  "attendance.historyTitle": "Attendance history",
+  "attendance.historyError": "Unable to load attendance history. Try refreshing.",
+  "attendance.submittedDays": "Submitted days",
+  "attendance.attendanceRate": "Attendance rate",
+  "attendance.rateHint": "Attendance rate = (Present + Late) ÷ all recorded marks. Excused is counted separately.",
+  "attendance.historyReadOnly": "Past attendance is read-only. Contact school administration for corrections.",
+  "attendance.dailyTab": "Today",
+  "attendance.historyTab": "History",
+  "attendance.countsTitle": "Marked students",
   "attendance.locked": "This attendance day is locked. A school administrator can make a correction.",
   "notifications.title": "Notifications",
   "notifications.absent": "Absence alert",
@@ -919,6 +949,21 @@ const dari: Record<TranslationKey, string> = {
   "attendance.submit": "ثبت حاضری",
   "attendance.saved": "حاضری ذخیره شد.",
   "attendance.noChanges": "حاضری قبلاً با همین وضعیت‌ها ثبت شده است.",
+  "attendance.markAllPresent": "علامت‌گذاری باقیمانده‌ها به حاضر",
+  "attendance.bulkHint": "فقط شاگردانی که هنوز علامت ندارند حاضر می‌شوند.",
+  "attendance.confirmTitle": "تأیید حاضری",
+  "attendance.confirmMessage": "قبل از ثبت، این شمارش را بررسی کنید:",
+  "attendance.cancel": "لغو",
+  "attendance.confirmSubmit": "تأیید و ذخیره",
+  "attendance.historyTitle": "تاریخچه حاضری",
+  "attendance.historyError": "تاریخچه حاضری بار نشد. دوباره تلاش کنید.",
+  "attendance.submittedDays": "روزهای ثبت‌شده",
+  "attendance.attendanceRate": "فیصدی حاضری",
+  "attendance.rateHint": "فیصدی حاضری = (حاضر + ناوقت) ÷ همه وضعیت‌های ثبت‌شده. معذور جداگانه حساب می‌شود.",
+  "attendance.historyReadOnly": "حاضری روزهای گذشته فقط قابل مشاهده است. برای اصلاح به اداره مکتب مراجعه کنید.",
+  "attendance.dailyTab": "امروز",
+  "attendance.historyTab": "تاریخچه",
+  "attendance.countsTitle": "شاگردان علامت‌گذاری‌شده",
   "attendance.locked": "حاضری این روز قفل شده است. مدیر مکتب می‌تواند آن را اصلاح کند.",
   "notifications.title": "اعلان‌ها",
   "notifications.absent": "هشدار غیابت",
@@ -1296,6 +1341,21 @@ const pashto: Record<TranslationKey, string> = {
   "attendance.submit": "حاضري ثبت کړئ",
   "attendance.saved": "حاضري خوندي شوه.",
   "attendance.noChanges": "حاضري مخکې له همدې حالتونو سره ثبت شوې ده.",
+  "attendance.markAllPresent": "نا نښه شوي حاضر کړئ",
+  "attendance.bulkHint": "یوازې هغه زده کوونکي حاضر کېږي چې لا نه دي نښه شوي.",
+  "attendance.confirmTitle": "د حاضرۍ تایید",
+  "attendance.confirmMessage": "له ثبت وړاندې دا شمېرې وګورئ:",
+  "attendance.cancel": "لغوه",
+  "attendance.confirmSubmit": "تایید او خوندي کول",
+  "attendance.historyTitle": "د حاضرۍ مخینه",
+  "attendance.historyError": "د حاضرۍ مخینه پورته نه شوه. بیا هڅه وکړئ.",
+  "attendance.submittedDays": "ثبت شوې ورځې",
+  "attendance.attendanceRate": "د حاضرۍ سلنه",
+  "attendance.rateHint": "د حاضرۍ سلنه = (حاضر + ناوخته) ÷ ټولې ثبت شوې نښې. معذور جلا شمېرل کېږي.",
+  "attendance.historyReadOnly": "د تېرو ورځو حاضري یوازې د لیدو لپاره ده. د سمون لپاره د ښوونځي ادارې ته ورشئ.",
+  "attendance.dailyTab": "نن",
+  "attendance.historyTab": "مخینه",
+  "attendance.countsTitle": "نښه شوي زده کوونکي",
   "attendance.locked": "د دې ورځې حاضري تړل شوې ده. د ښوونځي مدیر یې اصلاح کولی شي.",
   "notifications.title": "خبرتیاوې",
   "notifications.absent": "د غیابت خبرتیا",

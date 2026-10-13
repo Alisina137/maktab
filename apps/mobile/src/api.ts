@@ -155,6 +155,33 @@ export interface AttendanceSheetPayload {
   locked: boolean;
 }
 
+export interface NegaranAttendanceHistoryPayload {
+  classId: string;
+  from: string;
+  to: string;
+  today: string;
+  days: Array<{
+    attendanceId: string;
+    date: string;
+    recordStatus: "SUBMITTED" | "CORRECTED";
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    total: number;
+    submittedAt: string;
+  }>;
+  summary: {
+    submittedDays: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    totalMarks: number;
+    attendancePercent: number | null;
+  };
+}
+
 export interface ParentAttendanceDay {
   attendanceId: string;
   date: string;
@@ -804,6 +831,14 @@ export const api = {
     return request<TeacherClassDetailPayload>(`/v1/teacher/classes/${encodeURIComponent(assignmentId)}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
+  },
+
+  teacherAttendanceHistory(accessToken: string, classId: string, from: string, to: string) {
+    const query = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    return request<NegaranAttendanceHistoryPayload>(
+      `/v1/teacher/negaran/${encodeURIComponent(classId)}/history${query}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
   },
 
   teacherAttendance(accessToken: string, classId: string, date?: string) {
