@@ -226,15 +226,7 @@ export function registerLearningRoutes(
     if (!context) return;
     try {
       const input = createExamSchema.parse(request.body);
-      const exam = await learning.createExam(context.user.schoolId, input);
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "exam.created",
-        entityType: "exam",
-        entityId: exam.id,
-        metadata: { name: exam.name, type: exam.type, academicYearId: exam.academicYearId }
-      });
+      const exam = await learning.createExam(context.user.schoolId, context.user.id, input);
       return reply.code(201).send({ exam });
     } catch (error) {
       return sendLearningError(reply, error);
@@ -246,7 +238,7 @@ export function registerLearningRoutes(
     if (!context) return;
     try {
       const input = createExamSubjectSchema.parse(request.body);
-      const examSubject = await learning.createExamSubject(context.user.schoolId, input);
+      const examSubject = await learning.createExamSubject(context.user.schoolId, context.user.id, input);
       return reply.code(201).send({ examSubject });
     } catch (error) {
       return sendLearningError(reply, error);
