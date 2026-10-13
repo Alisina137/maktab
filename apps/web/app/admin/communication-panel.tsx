@@ -102,6 +102,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [scope, setScope] = useState<AnnouncementScope>("SCHOOL");
+  const [editingNotice, setEditingNotice] = useState<Announcement | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editPublishAt, setEditPublishAt] = useState("");
   const [reminderText, setReminderText] = useState("7, 1");
   const [paymentDraft, setPaymentDraft] = useState<Record<string, { amount: string; method: string; reference: string }>>({});
   const [reversalReason, setReversalReason] = useState<Record<string, string>>({});
@@ -143,7 +147,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           content: String(form.get("content") ?? "").trim(),
           audienceScope: scope,
           classId: scope === "CLASS" ? classId : undefined,
-          audienceRole: scope === "ROLE" ? audienceRole : undefined,
+          audienceRole: scope === "ROLE" || scope === "CLASS" ? audienceRole || undefined : undefined,
           publishAt: datetimeLocalToIso(String(form.get("publishAt") ?? ""))
         })
       });
@@ -360,6 +364,16 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   {academics.classes.map((item) => (
                     <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
                   ))}
+                </select>
+              </label>
+            ) : null}
+            {scope === "CLASS" ? (
+              <label>{t("Optional role within class")}
+                <select name="audienceRole" defaultValue="">
+                  <option value="">{t("All roles in class")}</option>
+                  <option value="PARENT">{t("Parents")}</option>
+                  <option value="STUDENT">{t("Students")}</option>
+                  <option value="TEACHER">{t("Teachers")}</option>
                 </select>
               </label>
             ) : null}
