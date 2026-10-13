@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type {
   CreateAnnouncementInput,
+  UpdateScheduledAnnouncementInput,
   CreateFeeInvoiceInput,
   DevicePlatform,
   FeeInvoiceStatus,
@@ -12,6 +13,7 @@ import type {
 import type { FoundationDatabase } from "./client.js";
 import {
   announcements,
+  auditLogs,
   classSections,
   communicationSettings,
   devices,
@@ -66,7 +68,8 @@ export interface PushProvider {
 export interface CommunicationStore {
   createAnnouncement(schoolId: string, actorUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
   createNegaranAnnouncement(schoolId: string, teacherUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
-  archiveAnnouncement(schoolId: string, announcementId: string): Promise<Announcement>;
+  archiveAnnouncement(schoolId: string, actorUserId: string, announcementId: string): Promise<Announcement>;
+  updateScheduledAnnouncement(schoolId: string, actorUserId: string, announcementId: string, input: UpdateScheduledAnnouncementInput): Promise<Announcement>;
   hasActiveStudentEnrollment(schoolId: string, userId: string): Promise<boolean>;
   getAnnouncementsForUser(schoolId: string, userId: string, role: UserRole): Promise<Announcement[]>;
   getAdminOverview(schoolId: string): Promise<CommunicationOverview>;
@@ -84,6 +87,7 @@ export interface CommunicationStore {
   getUserNotifications(schoolId: string, userId: string): Promise<Notification[]>;
   markNotificationRead(schoolId: string, userId: string, notificationId: string): Promise<Notification | null>;
   markAllNotificationsRead(schoolId: string, userId: string): Promise<number>;
+  getUnreadNotificationCount(schoolId: string, userId: string): Promise<number>;
   deliverPendingPush(provider: PushProvider, limit?: number): Promise<{ sent: number; failed: number; skipped: number }>;
 }
 
