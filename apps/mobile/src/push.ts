@@ -98,7 +98,7 @@ export async function subscribeToPushOpens(onNotificationId: (id: string) => voi
   if (!Notifications) return () => {};
   let lastId = "";
   const handle = (response: import("expo-notifications").NotificationResponse) => {
-    const id = response.notification.request.content.data.notificationId;
+    const id = response.notification.request.content.data?.notificationId;
     if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) || id === lastId) return;
     lastId = id;
     onNotificationId(id);
