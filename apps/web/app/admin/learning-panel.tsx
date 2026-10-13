@@ -3,6 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 
@@ -23,6 +24,7 @@ type ExamSubject = {
   subjectId: string;
   classId: string;
   maxScore: number;
+  examDate: string | null;
 };
 
 type PublishedGrade = {
@@ -84,6 +86,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [examId, setExamId] = useState("");
   const [examClassId, setExamClassId] = useState("");
+  const [examDate, setExamDate] = useState("");
 
   useEffect(() => {
     void load();
@@ -136,16 +139,22 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     const form = new FormData(event.currentTarget);
     try {
+      if (!examDate || !selectedAcademicYear ||
+        examDate < selectedAcademicYear.startDate || examDate > selectedAcademicYear.endDate) {
+        throw new Error(t("Choose an exam date within the academic year."));
+      }
       await request(accessToken, "/v1/admin/exam-subjects", {
         method: "POST",
         body: JSON.stringify({
           examId: String(form.get("examId") ?? ""),
           classId: String(form.get("classId") ?? ""),
           subjectId: String(form.get("subjectId") ?? ""),
-          maxScore: Number(form.get("maxScore"))
+          maxScore: Number(form.get("maxScore")),
+          examDate
         })
       });
       setNotice(t("Exam subject added."));
+      setExamDate("");
       await load();
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not add exam subject."));
@@ -216,6 +225,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   useEffect(() => {
     if (!learning) return;
     setExamClassId("");
+    setExamDate("");
     setExamId(
       learning.exams.find(
         (exam) =>
@@ -293,8 +303,9 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                 {examSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
               </select>
             </label>
-            <label>{t("Maximum score")}<input name="maxScore" type="number" min={1} max={10000} defaultValue={100} required /></label>
-            <button className="admin-primary" disabled={busy || !examId || !examClassId || examSubjects.length === 0}>{t("Add subject")}</button>
+            <label>{t("Exam date")}<AdminHijriDatePicker locale={locale} value={examDate} onChange={setExamDate} required disabled={busy} /></label>
+            <label>{t("Maximum score")}<input name="maxScore" type="number" min={1} max={10000} step={1} defaultValue={100} required /></label>
+            <button className="admin-primary" disabled={busy || !examId || !examClassId || !examDate || examSubjects.length === 0}>{t("Add subject")}</button>
           </form>
         </article>
       </div>
@@ -318,7 +329,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                   <strong>{exam.name}</strong>
                   <span>{exam.type} · {t(exam.status)} · {subjectCount} {t("subject setup(s)")}</span>
                   {yearExamSubjects.filter((item) => item.examSubject.examId === exam.id).map((item) => (
-                    <span key={item.examSubject.id}>{item.className} · {item.subjectName} · {t("Maximum")} {item.examSubject.maxScore}</span>
+                    <span key={item.examSubject.id}>{item.className} · {item.subjectName} · {item.examSubject.examDate ? formatAdminHijriDate(locale, item.examSubject.examDate) + " · " : ""}{t("Maximum")} {item.examSubject.maxScore}</span>
                   ))}
                 </div>
                 {action ? (
@@ -419,10 +430,10 @@ function PublishedGradeRow({
         <strong>{item.studentName}</strong>
         <span>{item.studentCode} · {item.examName} · {item.className} · {item.subjectName}</span>
       </div>
-      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} value={score} onChange={(event) => setScore(event.target.value)} disabled={readOnly} /></label>
+      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} disabled={readOnly} /></label>
       <label>{t("Remark")}<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} disabled={readOnly} /></label>
       <label>{t("Correction reason")}<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required disabled={readOnly} /></label>
-      <button className="admin-secondary" type="button" disabled={busy || readOnly || !reason.trim() || Number(score) < 0 || Number(score) > item.maxScore} onClick={() => void save()}>
+      <button className="admin-secondary" type="button" disabled={busy || readOnly || reason.trim().length < 2 || !/^\d+$/.test(score.trim()) || !Number.isSafeInteger(Number(score)) || Number(score) > item.maxScore} onClick={() => void save()}>
         {t("Save correction")}
       </button>
     </div>
