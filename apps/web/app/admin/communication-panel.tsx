@@ -1,7 +1,7 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import {
   AdminHijriDatePicker,
@@ -108,6 +108,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [editPublishAt, setEditPublishAt] = useState("");
   const [reminderText, setReminderText] = useState("7, 1");
   const [paymentDraft, setPaymentDraft] = useState<Record<string, { amount: string; method: string; reference: string }>>({});
+  // Keep the same key across a network timeout; changing the payment fields creates a new attempt.
+  const paymentAttempts = useRef<Record<string, { signature: string; key: string }>>({});
   const [reversalReason, setReversalReason] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -244,6 +246,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
   async function recordPayment(invoiceId: string) {
     const draft = paymentDraft[invoiceId] ?? { amount: "", method: "CASH", reference: "" };
+    const signature = JSON.stringify([Number(draft.amount), draft.method.trim(), draft.reference.trim()]);
+    const previous = paymentAttempts.current[invoiceId];
+    const idempotencyKey = previous?.signature === signature ? previous.key : crypto.randomUUID();
+    paymentAttempts.current[invoiceId] = { signature, key: idempotencyKey };
     setBusy(true);
     setError("");
     setNotice("");
@@ -253,9 +259,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({
           amount: Number(draft.amount),
           method: draft.method.trim(),
-          transactionReference: draft.reference.trim() || undefined
+          transactionReference: draft.reference.trim() || undefined,
+          idempotencyKey
         })
       });
+      delete paymentAttempts.current[invoiceId];
       setPaymentDraft((current) => ({ ...current, [invoiceId]: { amount: "", method: "CASH", reference: "" } }));
       setNotice(t("Payment recorded as an immutable transaction."));
       await load();

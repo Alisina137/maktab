@@ -510,7 +510,9 @@ export type CreateFeeInvoiceInput = z.infer<typeof createFeeInvoiceSchema>;
 export const recordFeePaymentSchema = z.object({
   amount: z.number().int().min(1).max(100000000),
   method: z.string().trim().min(2).max(50),
-  transactionReference: z.string().trim().max(120).optional()
+  transactionReference: z.string().trim().max(120).optional(),
+  // Reuse this key when a payment POST is retried after a lost response.
+  idempotencyKey: z.string().uuid().optional()
 });
 export type RecordFeePaymentInput = z.infer<typeof recordFeePaymentSchema>;
 

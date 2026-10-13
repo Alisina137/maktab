@@ -74,8 +74,8 @@ export interface CommunicationStore {
   getAnnouncementsForUser(schoolId: string, userId: string, role: UserRole): Promise<Announcement[]>;
   getAdminOverview(schoolId: string): Promise<CommunicationOverview>;
   createFeeInvoice(schoolId: string, actorUserId: string, input: CreateFeeInvoiceInput): Promise<FeeInvoice>;
-  issueFeeInvoice(schoolId: string, invoiceId: string): Promise<FeeInvoice>;
-  cancelFeeInvoice(schoolId: string, invoiceId: string): Promise<FeeInvoice>;
+  issueFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
+  cancelFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
   recordFeePayment(schoolId: string, actorUserId: string, invoiceId: string, input: RecordFeePaymentInput): Promise<FeeInvoiceView>;
   reverseFeePayment(schoolId: string, actorUserId: string, paymentId: string, input: ReverseFeePaymentInput): Promise<FeeInvoiceView>;
   getParentFees(schoolId: string, parentUserId: string, studentId: string): Promise<FeeInvoiceView[]>;
@@ -309,18 +309,38 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     return { rows, paid };
   }
 
-  async function refreshInvoiceStatus(invoice: FeeInvoice): Promise<FeeInvoice> {
-    if (invoice.status === "CANCELLED" || invoice.status === "DRAFT") return invoice;
-    const { paid } = await paymentTotals(invoice.schoolId, invoice.id);
-    const [settings] = await db.select().from(schoolSettings).where(eq(schoolSettings.schoolId, invoice.schoolId)).limit(1);
-    const today = localDate(new Date(), settings?.timezone ?? "Asia/Kabul");
-    let status: FeeInvoiceStatus =
-      paid >= invoice.amount ? "PAID" :
-      paid > 0 ? "PARTIALLY_PAID" :
-      invoice.dueDate < today ? "OVERDUE" : "ISSUED";
-    const [updated] = await db.update(feeInvoices).set({ status, updatedAt: new Date() })
-      .where(and(eq(feeInvoices.schoolId, invoice.schoolId), eq(feeInvoices.id, invoice.id))).returning();
-    return updated ?? invoice;
+  // Balance and status are always calculated from the append-only ledger.
+  // The invoice row lock in each mutation serializes payment/cancel/reversal.
+  function balanceStatus(invoice: FeeInvoice, paid: number, today: string): FeeInvoiceStatus {
+    if (paid >= invoice.amount) return "PAID";
+    if (invoice.dueDate < today) return "OVERDUE";
+    return paid > 0 ? "PARTIALLY_PAID" : "ISSUED";
+  }
+
+  async function cancelFeeAlerts(schoolId: string, invoiceId: string, tx: Parameters<Parameters<FoundationDatabase["transaction"]>[0]>[0]) {
+    await tx.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+      .where(and(eq(notifications.schoolId, schoolId),
+        sql`${notifications.dedupKey} LIKE ${`fee-reminder:${invoiceId}:%`}`,
+        ne(notifications.deliveryStatus, "CANCELLED")));
+  }
+
+  async function feeAlertIsVisible(row: Notification): Promise<boolean> {
+    if (row.type !== "FEE_DUE" && row.type !== "FEE_OVERDUE") return true;
+    const invoiceId = row.metadata.invoiceId;
+    const studentId = row.metadata.studentId;
+    if (typeof invoiceId !== "string" || typeof studentId !== "string") return false;
+    const [invoice] = await db.select().from(feeInvoices).where(and(
+      eq(feeInvoices.schoolId, row.schoolId), eq(feeInvoices.id, invoiceId),
+      eq(feeInvoices.studentId, studentId)
+    )).limit(1);
+    if (!invoice || invoice.status === "CANCELLED" || invoice.status === "DRAFT") return false;
+    const [student] = await db.select().from(students).where(and(
+      eq(students.schoolId, row.schoolId), eq(students.id, studentId),
+      eq(students.parentUserId, row.userId), eq(students.status, "ACTIVE")
+    )).limit(1);
+    if (!student) return false;
+    const totals = await paymentTotals(row.schoolId, invoice.id);
+    return totals.paid < invoice.amount;
   }
 
   async function invoiceView(invoice: FeeInvoice): Promise<FeeInvoiceView> {
@@ -517,72 +537,167 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     },
 
     async createFeeInvoice(schoolId, actorUserId, input) {
-      await getStudent(schoolId, input.studentId);
-      const [invoice] = await db.insert(feeInvoices).values({
-        id: randomUUID(), schoolId, studentId: input.studentId, amount: input.amount,
-        dueDate: input.dueDate, description: input.description ?? null, createdBy: actorUserId
-      }).returning();
-      if (!invoice) throw new Error("Fee invoice insert did not return a row.");
-      return invoice;
+      const student = await getStudent(schoolId, input.studentId);
+      if (student.status !== "ACTIVE") throw new CommunicationValidationError("Cannot bill a withdrawn student.");
+      return db.transaction(async tx => {
+        const [invoice] = await tx.insert(feeInvoices).values({
+          id: randomUUID(), schoolId, studentId: input.studentId, amount: input.amount,
+          dueDate: input.dueDate, description: input.description ?? null, createdBy: actorUserId
+        }).returning();
+        if (!invoice) throw new Error("Fee invoice insert did not return a row.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, action: "fee_invoice.created",
+          entityType: "fee_invoice", entityId: invoice.id,
+          metadata: { studentId: invoice.studentId, amount: invoice.amount, dueDate: invoice.dueDate }
+        });
+        return invoice;
+      });
     },
 
-    async issueFeeInvoice(schoolId, invoiceId) {
-      const [current] = await db.select().from(feeInvoices)
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).limit(1);
-      if (!current) throw new CommunicationNotFoundError("Fee invoice not found.");
-      if (current.status !== "DRAFT") throw new CommunicationConflictError("Only a draft fee invoice can be issued.");
-      const [updated] = await db.update(feeInvoices).set({ status: "ISSUED", issuedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).returning();
-      if (!updated) throw new Error("Fee invoice update did not return a row.");
-      return updated;
+    async issueFeeInvoice(schoolId, invoiceId, actorUserId) {
+      return db.transaction(async tx => {
+        const [current] = await tx.select().from(feeInvoices)
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId)))
+          .limit(1).for("update");
+        if (!current) throw new CommunicationNotFoundError("Fee invoice not found.");
+        if (current.status !== "DRAFT") throw new CommunicationConflictError("Only a draft fee invoice can be issued.");
+        const [student] = await tx.select({ status: students.status }).from(students)
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, current.studentId))).limit(1);
+        if (!student || student.status !== "ACTIVE")
+          throw new CommunicationConflictError("A withdrawn student cannot receive a new invoice.");
+        const [updated] = await tx.update(feeInvoices)
+          .set({ status: "ISSUED", issuedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId),
+            eq(feeInvoices.status, "DRAFT"))).returning();
+        if (!updated) throw new CommunicationConflictError("Invoice changed while issuing.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId: actorUserId ?? current.createdBy,
+          action: "fee_invoice.issued", entityType: "fee_invoice", entityId: invoiceId,
+          metadata: { status: updated.status }
+        });
+        return updated;
+      });
     },
 
-    async cancelFeeInvoice(schoolId, invoiceId) {
-      const [current] = await db.select().from(feeInvoices)
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).limit(1);
-      if (!current) throw new CommunicationNotFoundError("Fee invoice not found.");
-      const { paid } = await paymentTotals(schoolId, invoiceId);
-      if (paid !== 0) throw new CommunicationConflictError("Reverse recorded payments before cancelling this invoice.");
-      if (current.status === "PAID" || current.status === "CANCELLED") throw new CommunicationConflictError("This invoice cannot be cancelled.");
-      const [updated] = await db.update(feeInvoices).set({ status: "CANCELLED", cancelledAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).returning();
-      if (!updated) throw new Error("Fee invoice update did not return a row.");
-      return updated;
+    async cancelFeeInvoice(schoolId, invoiceId, actorUserId) {
+      return db.transaction(async tx => {
+        const [current] = await tx.select().from(feeInvoices)
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId)))
+          .limit(1).for("update");
+        if (!current) throw new CommunicationNotFoundError("Fee invoice not found.");
+        const payments = await tx.select().from(feePayments)
+          .where(and(eq(feePayments.schoolId, schoolId), eq(feePayments.invoiceId, invoiceId)));
+        const paid = payments.reduce((sum, p) => sum + (p.kind === "PAYMENT" ? p.amount : -p.amount), 0);
+        if (paid !== 0) throw new CommunicationConflictError("Reverse recorded payments before cancelling this invoice.");
+        if (current.status === "PAID" || current.status === "CANCELLED")
+          throw new CommunicationConflictError("This invoice cannot be cancelled.");
+        const [updated] = await tx.update(feeInvoices)
+          .set({ status: "CANCELLED", cancelledAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId),
+            ne(feeInvoices.status, "CANCELLED"))).returning();
+        if (!updated) throw new CommunicationConflictError("Invoice changed while cancelling.");
+        await cancelFeeAlerts(schoolId, invoiceId, tx);
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId: actorUserId ?? current.createdBy,
+          action: "fee_invoice.cancelled", entityType: "fee_invoice", entityId: invoiceId,
+          metadata: { status: updated.status }
+        });
+        return updated;
+      });
     },
 
     async recordFeePayment(schoolId, actorUserId, invoiceId, input) {
-      const [invoice] = await db.select().from(feeInvoices)
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).limit(1);
-      if (!invoice) throw new CommunicationNotFoundError("Fee invoice not found.");
-      if (!["ISSUED","PARTIALLY_PAID","OVERDUE"].includes(invoice.status)) {
-        throw new CommunicationConflictError("Payment can be recorded only against an issued unpaid invoice.");
-      }
-      const totals = await paymentTotals(schoolId, invoiceId);
-      const outstanding = invoice.amount - totals.paid;
-      if (input.amount > outstanding) throw new CommunicationValidationError("Payment amount exceeds the outstanding balance.");
-      await db.insert(feePayments).values({
-        id: randomUUID(), schoolId, invoiceId, kind: "PAYMENT", amount: input.amount,
-        method: input.method, transactionReference: input.transactionReference ?? null, recordedBy: actorUserId
+      const today = await schoolDateAt(schoolId);
+      const updatedInvoice = await db.transaction(async tx => {
+        const [invoice] = await tx.select().from(feeInvoices)
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId)))
+          .limit(1).for("update");
+        if (!invoice) throw new CommunicationNotFoundError("Fee invoice not found.");
+        if (input.idempotencyKey) {
+          const [prior] = await tx.select().from(feePayments).where(and(
+            eq(feePayments.schoolId, schoolId), eq(feePayments.invoiceId, invoiceId),
+            eq(feePayments.idempotencyKey, input.idempotencyKey)
+          )).limit(1);
+          if (prior) {
+            if (prior.kind !== "PAYMENT" || prior.amount !== input.amount ||
+                prior.method !== input.method || (prior.transactionReference ?? "") !== (input.transactionReference ?? ""))
+              throw new CommunicationConflictError("This payment retry key was already used with different details.");
+            return invoice; // Network retry: do not append a second ledger/audit entry.
+          }
+        }
+        if (!["ISSUED","PARTIALLY_PAID","OVERDUE"].includes(invoice.status))
+          throw new CommunicationConflictError("Payment can be recorded only against an issued unpaid invoice.");
+        const payments = await tx.select().from(feePayments).where(and(
+          eq(feePayments.schoolId, schoolId), eq(feePayments.invoiceId, invoiceId)
+        ));
+        const paid = payments.reduce((sum, p) => sum + (p.kind === "PAYMENT" ? p.amount : -p.amount), 0);
+        if (input.amount > invoice.amount - paid)
+          throw new CommunicationValidationError("Payment amount exceeds the outstanding balance.");
+        const paymentId = randomUUID();
+        await tx.insert(feePayments).values({
+          id: paymentId, schoolId, invoiceId, kind: "PAYMENT", amount: input.amount,
+          method: input.method, transactionReference: input.transactionReference ?? null,
+          idempotencyKey: input.idempotencyKey ?? null, recordedBy: actorUserId
+        });
+        const status = balanceStatus(invoice, paid + input.amount, today);
+        const [updated] = await tx.update(feeInvoices).set({ status, updatedAt: new Date() })
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId))).returning();
+        if (!updated) throw new Error("Fee invoice update did not return a row.");
+        if (status === "PAID") await cancelFeeAlerts(schoolId, invoiceId, tx);
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, action: "fee_payment.recorded",
+          entityType: "fee_payment", entityId: paymentId,
+          metadata: { invoiceId, amount: input.amount, method: input.method,
+            transactionReference: input.transactionReference ?? null }
+        });
+        return updated;
       });
-      return invoiceView(await refreshInvoiceStatus(invoice));
+      return invoiceView(updatedInvoice);
     },
 
     async reverseFeePayment(schoolId, actorUserId, paymentId, input) {
-      const [payment] = await db.select().from(feePayments)
-        .where(and(eq(feePayments.schoolId, schoolId), eq(feePayments.id, paymentId))).limit(1);
-      if (!payment || payment.kind !== "PAYMENT") throw new CommunicationNotFoundError("Payment transaction not found.");
-      const [existing] = await db.select({ id: feePayments.id }).from(feePayments)
-        .where(and(eq(feePayments.schoolId, schoolId), eq(feePayments.reversalOfPaymentId, payment.id))).limit(1);
-      if (existing) throw new CommunicationConflictError("This payment has already been reversed.");
-      await db.insert(feePayments).values({
-        id: randomUUID(), schoolId, invoiceId: payment.invoiceId, kind: "REVERSAL", amount: payment.amount,
-        method: "REVERSAL", transactionReference: payment.transactionReference,
-        reversalOfPaymentId: payment.id, reversalReason: input.reason, recordedBy: actorUserId
+      const [prior] = await db.select({ invoiceId: feePayments.invoiceId })
+        .from(feePayments).where(and(eq(feePayments.schoolId, schoolId),
+          eq(feePayments.id, paymentId), eq(feePayments.kind, "PAYMENT"))).limit(1);
+      if (!prior) throw new CommunicationNotFoundError("Payment transaction not found.");
+      const today = await schoolDateAt(schoolId);
+      const updatedInvoice = await db.transaction(async tx => {
+        const [invoice] = await tx.select().from(feeInvoices)
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, prior.invoiceId)))
+          .limit(1).for("update");
+        if (!invoice) throw new CommunicationNotFoundError("Fee invoice not found.");
+        const [payment] = await tx.select().from(feePayments)
+          .where(and(eq(feePayments.schoolId, schoolId), eq(feePayments.id, paymentId),
+            eq(feePayments.invoiceId, invoice.id), eq(feePayments.kind, "PAYMENT"))).limit(1);
+        if (!payment) throw new CommunicationNotFoundError("Payment transaction not found.");
+        const [existing] = await tx.select({ id: feePayments.id }).from(feePayments).where(and(
+          eq(feePayments.schoolId, schoolId), eq(feePayments.reversalOfPaymentId, payment.id)
+        )).limit(1);
+        if (existing) throw new CommunicationConflictError("This payment has already been reversed.");
+        const reversalId = randomUUID();
+        await tx.insert(feePayments).values({
+          id: reversalId, schoolId, invoiceId: invoice.id, kind: "REVERSAL",
+          amount: payment.amount, method: "REVERSAL",
+          transactionReference: payment.transactionReference, reversalOfPaymentId: payment.id,
+          reversalReason: input.reason, recordedBy: actorUserId
+        });
+        const ledger = await tx.select().from(feePayments).where(and(
+          eq(feePayments.schoolId, schoolId), eq(feePayments.invoiceId, invoice.id)
+        ));
+        const paid = ledger.reduce((sum, row) => sum + (row.kind === "PAYMENT" ? row.amount : -row.amount), 0);
+        const [updated] = await tx.update(feeInvoices)
+          .set({ status: balanceStatus(invoice, paid, today), updatedAt: new Date() })
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoice.id))).returning();
+        if (!updated) throw new Error("Fee invoice update did not return a row.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, action: "fee_payment.reversed",
+          entityType: "fee_payment", entityId: reversalId,
+          metadata: { originalPaymentId: payment.id, invoiceId: invoice.id,
+            amount: payment.amount, reason: input.reason }
+        });
+        return updated;
       });
-      const [invoice] = await db.select().from(feeInvoices)
-        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, payment.invoiceId))).limit(1);
-      if (!invoice) throw new CommunicationNotFoundError("Fee invoice not found.");
-      return invoiceView(await refreshInvoiceStatus(invoice));
+      return invoiceView(updatedInvoice);
     },
 
     async getParentFees(schoolId, parentUserId, studentId) {
@@ -641,6 +756,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
           ));
         for (let invoice of invoices) {
           const student = await getStudent(settings.schoolId, invoice.studentId);
+          if (student.status !== "ACTIVE") continue; // Never remind a withdrawn family.
           const totals = await paymentTotals(settings.schoolId, invoice.id);
           const outstanding = Math.max(0, invoice.amount - totals.paid);
           if (outstanding <= 0) continue;
@@ -707,6 +823,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       )).orderBy(desc(notifications.createdAt));
       const visible: Notification[] = [];
       for (const row of rows) {
+        if (!(await feeAlertIsVisible(row))) continue;
         if (row.type === "ANNOUNCEMENT") {
           const id = row.metadata.announcementId;
           if (typeof id !== "string") continue;
@@ -758,6 +875,12 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let failed = 0;
       let skipped = 0;
       for (const notification of pending) {
+        if (!(await feeAlertIsVisible(notification))) {
+          await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+            .where(and(eq(notifications.schoolId, notification.schoolId), eq(notifications.id, notification.id)));
+          skipped += 1;
+          continue;
+        }
         if (notification.type === "ANNOUNCEMENT") {
           const id = notification.metadata.announcementId;
           const [item] = typeof id === "string"

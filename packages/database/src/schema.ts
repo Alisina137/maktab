@@ -860,13 +860,15 @@ export const feePayments = pgTable(
     method: varchar("method", { length: 50 }).notNull(),
     transactionReference: varchar("transaction_reference", { length: 120 }),
     reversalOfPaymentId: uuid("reversal_of_payment_id"),
+    idempotencyKey: uuid("idempotency_key"),
     reversalReason: varchar("reversal_reason", { length: 240 }),
     recordedBy: uuid("recorded_by").notNull().references(() => users.id, { onDelete: "restrict" }),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => [
     index("fee_payments_invoice_idx").on(table.schoolId, table.invoiceId),
-    uniqueIndex("fee_payments_reversal_unique").on(table.schoolId, table.reversalOfPaymentId)
+    uniqueIndex("fee_payments_reversal_unique").on(table.schoolId, table.reversalOfPaymentId),
+    uniqueIndex("fee_payments_idempotency_unique").on(table.schoolId, table.invoiceId, table.idempotencyKey)
   ]
 );
 

@@ -134,6 +134,13 @@
       "when": 1790740000000,
       "tag": "0018_exam_subject_dates",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790750000000,
+      "tag": "0019_fee_payment_idempotency",
+      "breakpoints": true
     }
   ]
 }

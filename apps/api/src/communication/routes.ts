@@ -311,14 +311,6 @@ export function registerCommunicationRoutes(
     try {
       const input = createFeeInvoiceSchema.parse(request.body);
       const invoice = await communication.createFeeInvoice(context.user.schoolId, context.user.id, input);
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "fee_invoice.created",
-        entityType: "fee_invoice",
-        entityId: invoice.id,
-        metadata: { studentId: invoice.studentId, amount: invoice.amount, dueDate: invoice.dueDate }
-      });
       return reply.code(201).send({ invoice });
     } catch (error) {
       return sendCommunicationError(reply, error);
@@ -332,18 +324,9 @@ export function registerCommunicationRoutes(
         const context = await requireSchoolAdmin(request, reply, accounts);
         if (!context) return;
         try {
-          const invoice =
-            action === "issue"
-              ? await communication.issueFeeInvoice(context.user.schoolId, request.params.invoiceId)
-              : await communication.cancelFeeInvoice(context.user.schoolId, request.params.invoiceId);
-          await accounts.writeAudit({
-            schoolId: context.user.schoolId,
-            actorUserId: context.user.id,
-            action: action === "issue" ? "fee_invoice.issued" : "fee_invoice.cancelled",
-            entityType: "fee_invoice",
-            entityId: invoice.id,
-            metadata: { status: invoice.status }
-          });
+          const invoice = action === "issue"
+            ? await communication.issueFeeInvoice(context.user.schoolId, request.params.invoiceId, context.user.id)
+            : await communication.cancelFeeInvoice(context.user.schoolId, request.params.invoiceId, context.user.id);
           return { invoice };
         } catch (error) {
           return sendCommunicationError(reply, error);
@@ -360,25 +343,8 @@ export function registerCommunicationRoutes(
       try {
         const input = recordFeePaymentSchema.parse(request.body);
         const invoice = await communication.recordFeePayment(
-          context.user.schoolId,
-          context.user.id,
-          request.params.invoiceId,
-          input
+          context.user.schoolId, context.user.id, request.params.invoiceId, input
         );
-        const payment = invoice.payments.at(-1);
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: "fee_payment.recorded",
-          entityType: "fee_payment",
-          entityId: payment?.id,
-          metadata: {
-            invoiceId: request.params.invoiceId,
-            amount: input.amount,
-            method: input.method,
-            transactionReference: input.transactionReference
-          }
-        });
         return reply.code(201).send(invoice);
       } catch (error) {
         return sendCommunicationError(reply, error);
@@ -394,25 +360,8 @@ export function registerCommunicationRoutes(
       try {
         const input = reverseFeePaymentSchema.parse(request.body);
         const invoice = await communication.reverseFeePayment(
-          context.user.schoolId,
-          context.user.id,
-          request.params.paymentId,
-          input
+          context.user.schoolId, context.user.id, request.params.paymentId, input
         );
-        const reversal = invoice.payments.at(-1);
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: "fee_payment.reversed",
-          entityType: "fee_payment",
-          entityId: reversal?.id,
-          metadata: {
-            originalPaymentId: request.params.paymentId,
-            invoiceId: invoice.invoice.id,
-            amount: reversal?.amount,
-            reason: input.reason
-          }
-        });
         return reply.code(201).send(invoice);
       } catch (error) {
         return sendCommunicationError(reply, error);
