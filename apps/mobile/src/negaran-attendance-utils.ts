@@ -25,7 +25,8 @@ export function fillUnmarkedPresent(
 ): Record<string, AttendanceStatus> {
   const next = { ...draft };
   for (const id of studentIds) {
-    if (!ATTENDANCE_TYPES.includes(next[id])) next[id] = "PRESENT";
+    const existing = next[id];
+    if (!existing || !ATTENDANCE_TYPES.includes(existing)) next[id] = "PRESENT";
   }
   return next;
 }
