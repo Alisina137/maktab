@@ -469,7 +469,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return rows.filter((item) =>
         item.audienceScope === "SCHOOL" ||
         (item.audienceScope === "ROLE" && item.audienceRole === role) ||
-        (item.audienceScope === "CLASS" && item.classId !== null && classes.has(item.classId))
+        (item.audienceScope === "CLASS" && item.classId !== null && classes.has(item.classId) && (!item.audienceRole || item.audienceRole === role))
       );
     },
 
