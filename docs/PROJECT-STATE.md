@@ -1168,3 +1168,13 @@ Planned verification slices:
 - Set `MAKTABLINK_SYNC_MOBILE_API_URL=false` only when automatic Expo URL synchronization is intentionally disabled.
 - Added `pnpm verify:dev-api` with syntax, environment-sync, and process-supervision regression coverage and included it in root `pnpm verify`.
 - Normal mobile development now requires two terminals only: Terminal 1 `pnpm dev:api` (API + API ngrok) and Terminal 2 Expo/Metro (for example `pnpm --filter @maktablink/mobile exec expo start --tunnel --clear --go`).
+
+#### 11.6 — Student announcements and notifications
+- Added a dedicated Student School updates page reached via the Home actions **View announcements** and **View notifications**.
+- Segmented tabs expose accessible selected state, an unread badge, localized dates, loading and empty states, and full announcements/notification lists in English, Dari, and Pashto.
+- Class-scoped announcements are checked against the authenticated active Student class in the UI in addition to backend school/role/class authorization.
+- A personal notification supports explicit **Mark as read** and an unread-only filter. Mark-read updates Student and Parent state from the server response without applying a stale cross-account response.
+- The Student content reuses the existing app-level announcement/notification loading; opening a tab does not duplicate initial API requests.
+- Fixed mobile API JSON headers: requests with no body no longer claim JSON. This prevents Fastify from rejecting notification mark-read POST and other bodyless actions before their handlers execute.
+- Extended the API regression for class-scoped Student announcement delivery and ownership-scoped notification mark-read (including denying a second Student).
+- Device smoke testing and CI verification remain separate acceptance gates, especially offline/reconnect and real push delivery.

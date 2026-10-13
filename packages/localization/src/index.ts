@@ -173,6 +173,21 @@ export type TranslationKey =
   | "student.publishedOn"
   | "student.teacherRemark"
   | "student.noResults"
+  | "student.viewAnnouncements"
+  | "student.viewNotifications"
+  | "student.announcementsTitle"
+  | "student.notificationsTitle"
+  | "student.announcementsSubtitle"
+  | "student.notificationsSubtitle"
+  | "student.communicationTitle"
+  | "student.communicationSubtitle"
+  | "student.schoolAnnouncement"
+  | "student.classAnnouncement"
+  | "student.studentAnnouncement"
+  | "student.markRead"
+  | "student.read"
+  | "student.unreadOnly"
+  | "student.showAll"
   | "weekday.saturday"
   | "weekday.sunday"
   | "weekday.monday"
@@ -402,6 +417,21 @@ const en: Record<TranslationKey, string> = {
   "student.viewResults": "View results",
   "student.resultsTitle": "My results",
   "student.resultsSubtitle": "Published exam results from your school.",
+  "student.viewAnnouncements": "View announcements",
+  "student.viewNotifications": "View notifications",
+  "student.announcementsTitle": "Announcements",
+  "student.notificationsTitle": "Notifications",
+  "student.announcementsSubtitle": "School and class updates for you.",
+  "student.notificationsSubtitle": "Personal alerts and updates.",
+  "student.communicationTitle": "School updates",
+  "student.communicationSubtitle": "Announcements and personal notifications.",
+  "student.schoolAnnouncement": "School-wide",
+  "student.classAnnouncement": "My class",
+  "student.studentAnnouncement": "Students",
+  "student.markRead": "Mark as read",
+  "student.read": "Read",
+  "student.unreadOnly": "Unread only",
+  "student.showAll": "Show all",
   "student.examTotal": "Exam total",
   "student.publishedOn": "Published",
   "student.teacherRemark": "Teacher remark",
@@ -651,6 +681,21 @@ const dari: Record<TranslationKey, string> = {
   "student.viewResults": "دیدن نتایج",
   "student.resultsTitle": "نتایج من",
   "student.resultsSubtitle": "نتایج امتحان‌های نشرشده مکتب شما.",
+  "student.viewAnnouncements": "دیدن اطلاعیه‌ها",
+  "student.viewNotifications": "دیدن خبرتیاها",
+  "student.announcementsTitle": "اطلاعیه‌ها",
+  "student.notificationsTitle": "خبرتیاها",
+  "student.announcementsSubtitle": "تازه‌ترین معلومات مکتب و صنف شما.",
+  "student.notificationsSubtitle": "هشدارها و پیام‌های مخصوص شما.",
+  "student.communicationTitle": "تازه‌های مکتب",
+  "student.communicationSubtitle": "اطلاعیه‌ها و خبرتیاهای شخصی شما.",
+  "student.schoolAnnouncement": "تمام مکتب",
+  "student.classAnnouncement": "صنف من",
+  "student.studentAnnouncement": "شاگردان",
+  "student.markRead": "نشان‌کردن به‌عنوان خوانده‌شده",
+  "student.read": "خوانده‌شده",
+  "student.unreadOnly": "فقط ناخوانده‌ها",
+  "student.showAll": "نمایش همه",
   "student.examTotal": "مجموع امتحان",
   "student.publishedOn": "نشرشده",
   "student.teacherRemark": "ملاحظه آموزگار",
@@ -900,6 +945,21 @@ const pashto: Record<TranslationKey, string> = {
   "student.viewResults": "پایلې وګورئ",
   "student.resultsTitle": "زما پایلې",
   "student.resultsSubtitle": "ستاسو د ښوونځي خپرې شوې ازموینې پایلې.",
+  "student.viewAnnouncements": "اعلانونه وګورئ",
+  "student.viewNotifications": "خبرتیاوې وګورئ",
+  "student.announcementsTitle": "اعلانونه",
+  "student.notificationsTitle": "خبرتیاوې",
+  "student.announcementsSubtitle": "ستاسو د ښوونځي او ټولګي خبرونه.",
+  "student.notificationsSubtitle": "ستاسو شخصي خبرتیاوې او تازه معلومات.",
+  "student.communicationTitle": "د ښوونځي خبرونه",
+  "student.communicationSubtitle": "اعلانونه او شخصي خبرتیاوې.",
+  "student.schoolAnnouncement": "ټول ښوونځی",
+  "student.classAnnouncement": "زما ټولګی",
+  "student.studentAnnouncement": "زده کوونکي",
+  "student.markRead": "لوستل شوې وښایئ",
+  "student.read": "لوستل شوې",
+  "student.unreadOnly": "یوازې نه لوستل شوې",
+  "student.showAll": "ټولې وښایئ",
   "student.examTotal": "د ازموینې ټولټال",
   "student.publishedOn": "خپره شوې",
   "student.teacherRemark": "د ښوونکي یادونه",

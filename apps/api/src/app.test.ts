@@ -3153,7 +3153,7 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
       classId: classA
     }
   });
-  await app.inject({
+  const studentBResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/families/students",
     headers: admin,
@@ -3166,6 +3166,32 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     }
   });
   const studentA = studentAResponse.json<{ student: { id: string } }>().student;
+  const studentB = studentBResponse.json<{ student: { id: string } }>().student;
+
+  const studentAAccount = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentA.id}/account`,
+    headers: admin,
+    payload: { username: "comm7studenta" }
+  });
+  const studentBAccount = await app.inject({
+    method: "POST",
+    url: `/v1/admin/families/students/${studentB.id}/account`,
+    headers: admin,
+    payload: { username: "comm7studentb" }
+  });
+  assert.equal(studentAAccount.statusCode, 201);
+  assert.equal(studentBAccount.statusCode, 201);
+  const studentAToken = await activateRoleLogin(
+    app, schoolId, "STUDENT", "comm7studenta",
+    studentAAccount.json<{ temporaryPassword: string }>().temporaryPassword,
+    "CommStudentA2026!"
+  );
+  const studentBToken = await activateRoleLogin(
+    app, schoolId, "STUDENT", "comm7studentb",
+    studentBAccount.json<{ temporaryPassword: string }>().temporaryPassword,
+    "CommStudentB2026!"
+  );
 
   const parentAToken = await activateRoleLogin(
     app, schoolId, "PARENT", "classaparent", parentA.temporaryPassword, "ClassAParent2026!"
@@ -3220,6 +3246,44 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     classBNotifications.json<{ notifications: Array<{ type: string }> }>().notifications.filter((item) => item.type === "ANNOUNCEMENT").length,
     0
   );
+
+  // Step 11.6: Student announcement scope and personal notification ownership.
+  const studentAAnnouncements = await app.inject({
+    method: "GET", url: "/v1/announcements",
+    headers: { authorization: `Bearer ${studentAToken}` }
+  });
+  const studentBAnnouncements = await app.inject({
+    method: "GET", url: "/v1/announcements",
+    headers: { authorization: `Bearer ${studentBToken}` }
+  });
+  assert.equal(studentAAnnouncements.statusCode, 200);
+  assert.equal(studentBAnnouncements.statusCode, 200);
+  assert.equal(studentAAnnouncements.json<{ announcements: unknown[] }>().announcements.length, 1);
+  assert.equal(studentBAnnouncements.json<{ announcements: unknown[] }>().announcements.length, 0);
+
+  const studentANotifications = await app.inject({
+    method: "GET", url: "/v1/notifications",
+    headers: { authorization: `Bearer ${studentAToken}` }
+  });
+  const recipientAlerts = studentANotifications.json<{
+    notifications: Array<{ id: string; type: string; readAt: string | null }>
+  }>().notifications.filter((item) => item.type === "ANNOUNCEMENT");
+  assert.equal(recipientAlerts.length, 1);
+  assert.equal(recipientAlerts[0]?.readAt, null);
+  const recipientNotificationId = recipientAlerts[0]!.id;
+  const crossAccountRead = await app.inject({
+    method: "POST",
+    url: `/v1/notifications/${recipientNotificationId}/read`,
+    headers: { authorization: `Bearer ${studentBToken}` }
+  });
+  assert.equal(crossAccountRead.statusCode, 404);
+  const acknowledged = await app.inject({
+    method: "POST",
+    url: `/v1/notifications/${recipientNotificationId}/read`,
+    headers: { authorization: `Bearer ${studentAToken}` }
+  });
+  assert.equal(acknowledged.statusCode, 200);
+  assert.ok(acknowledged.json<{ notification: { readAt: string | null } }>().notification.readAt);
 
   const invoiceResponse = await app.inject({
     method: "POST",

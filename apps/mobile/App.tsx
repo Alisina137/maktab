@@ -56,6 +56,7 @@ import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
 import { StudentHomeworkContent } from "./src/student-homework";
 import { StudentResultsContent } from "./src/student-results";
+import { StudentCommunicationContent, type StudentCommunicationTab } from "./src/student-communication";
 import {
   ParentAnnouncementsContent,
   ParentBottomNavigation,
@@ -89,6 +90,7 @@ type Screen =
   | "student-timetable"
   | "student-homework"
   | "student-results"
+  | "student-communication"
   | "teacher-attendance";
 
 const roleKey: Record<MobileRole, "role.parent" | "role.teacher" | "role.student"> = {
@@ -199,6 +201,7 @@ function AppContent() {
   const [studentLearningReady, setStudentLearningReady] = useState(false);
   const [studentAnnouncements, setStudentAnnouncements] = useState<AnnouncementPayload[]>([]);
   const [studentNotifications, setStudentNotifications] = useState<ParentNotification[]>([]);
+  const [studentCommunicationTab, setStudentCommunicationTab] = useState<StudentCommunicationTab>("ANNOUNCEMENTS");
   const [studentCommunicationReady, setStudentCommunicationReady] = useState(false);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
@@ -1218,7 +1221,11 @@ function AppContent() {
     if (!session) return;
     try {
       const result = await api.markNotificationRead(session.accessToken, notificationId);
+      if (sessionRef.current?.user.id !== session.user.id) return;
       setParentNotifications((current) =>
+        current.map((item) => (item.id === notificationId ? result.notification : item))
+      );
+      setStudentNotifications((current) =>
         current.map((item) => (item.id === notificationId ? result.notification : item))
       );
     } catch {
@@ -2249,6 +2256,18 @@ function AppContent() {
                 setAppError(null);
                 setScreen("student-results");
               }}
+              onOpenAnnouncements={() => {
+                setStudentCommunicationTab("ANNOUNCEMENTS");
+                setNotice(null);
+                setAppError(null);
+                setScreen("student-communication");
+              }}
+              onOpenNotifications={() => {
+                setStudentCommunicationTab("NOTIFICATIONS");
+                setNotice(null);
+                setAppError(null);
+                setScreen("student-communication");
+              }}
             />
 
             <AdminContactCard contact={adminContact} locale={locale} />
@@ -2369,6 +2388,46 @@ function AppContent() {
               ready={studentLearningReady}
               locale={locale}
               textDirection={textDirection}
+            />
+          </View>
+        ) : null}
+
+        {screen === "student-communication" &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        !studentEnrollmentUnavailable ? (
+          <View style={styles.section}>
+            <BackButton
+              locale={locale}
+              onPress={() => {
+                setNotice(null);
+                setAppError(null);
+                setScreen("home");
+              }}
+            />
+            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="megaphone-outline" size={24} color={tokens.color.brandStrong} />
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title, textDirection]}>
+                  {translate(locale, "student.communicationTitle")}
+                </Text>
+                <Text style={[styles.subtitle, textDirection]}>
+                  {translate(locale, "student.communicationSubtitle")}
+                </Text>
+              </View>
+            </View>
+            <StudentCommunicationContent
+              announcements={studentAnnouncements}
+              notifications={studentNotifications}
+              classId={studentTimetable?.student.classId ?? null}
+              ready={studentCommunicationReady}
+              activeTab={studentCommunicationTab}
+              locale={locale}
+              textDirection={textDirection}
+              onSelectTab={setStudentCommunicationTab}
+              onMarkRead={(notificationId) => void readNotification(notificationId)}
             />
           </View>
         ) : null}

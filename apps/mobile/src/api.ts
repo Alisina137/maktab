@@ -427,7 +427,10 @@ async function request<T>(
     let response: Response;
     try {
       const headers = new Headers(init?.headers);
-      if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+      // Fastify rejects bodyless POST requests labelled application/json.
+      if (init?.body != null && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
       if (!headers.has("ngrok-skip-browser-warning")) {
         headers.set("ngrok-skip-browser-warning", "true");
       }

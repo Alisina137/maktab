@@ -112,7 +112,9 @@ export function StudentDashboard({
   textDirection,
   onOpenTimetable,
   onOpenHomework,
-  onOpenResults
+  onOpenResults,
+  onOpenAnnouncements,
+  onOpenNotifications
 }: {
   timetable: StudentTimetablePayload | null;
   timetableReady: boolean;
@@ -126,6 +128,8 @@ export function StudentDashboard({
   onOpenTimetable: () => void;
   onOpenHomework: () => void;
   onOpenResults: () => void;
+  onOpenAnnouncements: () => void;
+  onOpenNotifications: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const student = timetable?.student ?? learning?.student ?? null;
@@ -313,6 +317,62 @@ export function StudentDashboard({
             </Text>
             <Text style={[styles.timetableActionSubtitle, textDirection]}>
               {translate(locale, "student.resultsSubtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={18}
+            color={tokens.color.textMuted}
+          />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "student.viewAnnouncements")}
+          onPress={onOpenAnnouncements}
+          style={({ pressed }) => [
+            styles.timetableAction,
+            rtl && styles.rowRtl,
+            pressed && styles.pressed
+          ]}
+        >
+          <View style={styles.timetableActionIcon}>
+            <Ionicons name="megaphone-outline" size={20} color={tokens.color.brandStrong} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.timetableActionTitle, textDirection]}>
+              {translate(locale, "student.viewAnnouncements")}
+            </Text>
+            <Text style={[styles.timetableActionSubtitle, textDirection]}>
+              {translate(locale, "student.announcementsSubtitle")}
+            </Text>
+          </View>
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={18}
+            color={tokens.color.textMuted}
+          />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "student.viewNotifications")}
+          onPress={onOpenNotifications}
+          style={({ pressed }) => [
+            styles.timetableAction,
+            rtl && styles.rowRtl,
+            pressed && styles.pressed
+          ]}
+        >
+          <View style={styles.timetableActionIcon}>
+            <Ionicons name="notifications-outline" size={20} color={tokens.color.brandStrong} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.timetableActionTitle, textDirection]}>
+              {translate(locale, "student.viewNotifications")}
+            </Text>
+            <Text style={[styles.timetableActionSubtitle, textDirection]}>
+              {translate(locale, "student.notificationsSubtitle")}
             </Text>
           </View>
           <Ionicons
