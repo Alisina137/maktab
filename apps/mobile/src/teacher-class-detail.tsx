@@ -112,7 +112,7 @@ export function TeacherClassDetailPage({
               {detail.schedule.length ? [...detail.schedule].sort((a,b) => a.startsAt.localeCompare(b.startsAt)).map((period) => (
                 <View key={period.id} style={[styles.row, rtl && styles.rtl, styles.listRow]}>
                   <Text style={styles.time}>{teacherTime12(period.startsAt)}</Text>
-                  <Text style={[styles.label, textDirection]}>{weekdayKey[period.weekday] ? translate(locale, weekdayKey[period.weekday]) : period.weekday}</Text>
+                  <Text style={[styles.label, textDirection]}>{weekdayKey[period.weekday] ? translate(locale, weekdayKey[period.weekday]!) : period.weekday}</Text>
                 </View>
               )) : <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noSchedule")}</Text>}
             </View>
