@@ -19,6 +19,9 @@ const mobile = read("apps/mobile/App.tsx");
 const landing = read("apps/web/app/page.tsx");
 const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const accountPage = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
+const accountRules = read("apps/web/app/admin/account-create-rules.ts");
+const credentialPanel = read("apps/web/app/admin/account-temporary-credential.tsx");
+const creationTests = read("apps/api/src/account-create-rules.test.ts");
 const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
 const ci = read(".github/workflows/ci.yml");
 const pkg = JSON.parse(read("package.json"));
@@ -114,6 +117,40 @@ for (const key of ['"Account overview":', '"Total accounts":', '"Active accounts
                    '"Filter by status":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Accounts Phase1 is missing a Dari or Pashto translation: ${key}`);
+}
+/* Admin Accounts Phase 2: validated role-specific creation and ephemeral credentials. */
+assert.ok(accountPage.includes('validateAccountCreation({') &&
+  accountPage.includes('noValidate onSubmit={createUser}') &&
+  accountPage.includes('creationAttempted'),
+  "Phase 2 account creation must validate locally before the server request");
+assert.ok(accountPage.includes('matchingStudentRecords') &&
+  accountPage.includes('setStudentRecordId("")') &&
+  accountPage.includes('availableStudentRecords.map((item) => item.student.id)'),
+  "Student account creation must restrict selection to active unlinked student records");
+assert.ok(accountPage.includes('<AccountTemporaryCredentialPanel') &&
+  accountPage.includes('onClose={() => setCredential(null)}'),
+  "One-time credentials must be explicitly dismissible");
+assert.ok(accountRules.includes('/^[A-Za-z0-9]+$/') &&
+  accountRules.includes('/^[A-Za-z0-9._@+-]+$/') &&
+  accountRules.includes('existingUsernames.some'),
+  "Client-side account creation rules must mirror role-specific server username rules");
+assert.ok(credentialPanel.includes('navigator.clipboard.writeText') &&
+  credentialPanel.includes('revealed ? credential.password : "••••••••••••"') &&
+  credentialPanel.includes('useEffect(() => {'),
+  "Credential panel must conceal passwords by default and provide secure copy controls");
+assert.ok(creationTests.includes('duplicate username guidance is case-insensitive') &&
+  creationTests.includes('student selection must reference an eligible active unlinked student'),
+  "Phase 2 account creation regression tests are missing");
+assert.ok(css.includes('.account-create-field-error') &&
+  css.includes('.account-credential-panel .credential-values') &&
+  css.includes('@media (max-width: 760px)'),
+  "Phase 2 form errors and credential panel must remain responsive");
+for (const key of ['"Step 1 · Account role":', '"Copy username":',
+                   '"Copy password":', '"Select an eligible student":',
+                   '"Username must contain between 3 and 64 characters":',
+                   '"Parent and student usernames may contain English letters and numbers only.":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Account Phase2 is missing a Dari or Pashto translation: ${key}`);
 }
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
