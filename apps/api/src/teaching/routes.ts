@@ -84,6 +84,41 @@ export function registerTeachingRoutes(
       return reply.code(201).send({ unit });
     } catch (error) { return respond(reply, error); }
   });
+  app.patch<{ Params: { unitId: string } }>(
+    "/v1/admin/teaching/curriculum/:unitId", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = unitInput.pick({ title: true, sortOrder: true }).partial().strict()
+          .refine((value) => Object.keys(value).length > 0).parse(request.body);
+        const unit = await teaching.updateCurriculumUnit(
+          context.user.schoolId, uuid.parse(request.params.unitId), input
+        );
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId, actorUserId: context.user.id,
+          action: "curriculum.unit_updated", entityType: "curriculum_unit", entityId: unit.id,
+          metadata: { classId: unit.classId, subjectId: unit.subjectId }
+        });
+        return { unit };
+      } catch (error) { return respond(reply, error); }
+    }
+  );
+  app.delete<{ Params: { unitId: string } }>(
+    "/v1/admin/teaching/curriculum/:unitId", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const unitId = uuid.parse(request.params.unitId);
+        await teaching.deleteCurriculumUnit(context.user.schoolId, unitId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId, actorUserId: context.user.id,
+          action: "curriculum.unit_deleted", entityType: "curriculum_unit", entityId: unitId
+        });
+        return { deleted: true };
+      } catch (error) { return respond(reply, error); }
+    }
+  );
+
   app.get<{ Params: { assignmentId: string } }>(
     "/v1/teacher/teaching/:assignmentId", async (request, reply) => {
       const user = await teacher(request, reply);

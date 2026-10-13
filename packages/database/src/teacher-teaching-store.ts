@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, inArray, or } from "drizzle-orm";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears, classSections, subjects, teacherAssignments, curriculumUnits,
@@ -50,6 +50,8 @@ export function summarizeTeaching(
 export interface TeacherTeachingStore {
   listCurriculum(schoolId: string, yearId: string, classId: string, subjectId: string): Promise<Array<typeof curriculumUnits.$inferSelect>>;
   addCurriculumUnit(schoolId: string, adminId: string, input: UnitInput): Promise<typeof curriculumUnits.$inferSelect>;
+  updateCurriculumUnit(schoolId: string, unitId: string, input: { title?: string; sortOrder?: number }): Promise<typeof curriculumUnits.$inferSelect>;
+  deleteCurriculumUnit(schoolId: string, unitId: string): Promise<void>;
   teacherWorkspace(schoolId: string, teacherId: string, assignmentId: string): Promise<{
     lessons: Array<typeof teacherLessonPlans.$inferSelect>;
     units: Array<{ unit: typeof curriculumUnits.$inferSelect; status: UnitState }>;
@@ -160,6 +162,57 @@ export function createTeacherTeachingStore(db: FoundationDatabase): TeacherTeach
       if (!unit) throw new TeachingConflictError("This curriculum position is already assigned.");
       return unit;
     },
+    async updateCurriculumUnit(schoolId, unitId, input) {
+      const [existing] = await db.select({ unit: curriculumUnits }).from(curriculumUnits)
+        .innerJoin(academicYears, and(
+          eq(academicYears.id, curriculumUnits.academicYearId),
+          eq(academicYears.schoolId, schoolId),
+          eq(academicYears.status, "ACTIVE")
+        ))
+        .where(and(eq(curriculumUnits.schoolId, schoolId), eq(curriculumUnits.id, unitId)))
+        .limit(1);
+      if (!existing) throw new TeachingNotFoundError("Active curriculum unit not found.");
+      if (input.sortOrder !== undefined && input.sortOrder !== existing.unit.sortOrder) {
+        const [occupied] = await db.select({ id: curriculumUnits.id }).from(curriculumUnits)
+          .where(and(
+            eq(curriculumUnits.schoolId, schoolId),
+            eq(curriculumUnits.academicYearId, existing.unit.academicYearId),
+            eq(curriculumUnits.classId, existing.unit.classId),
+            eq(curriculumUnits.subjectId, existing.unit.subjectId),
+            eq(curriculumUnits.sortOrder, input.sortOrder)
+          )).limit(1);
+        if (occupied) throw new TeachingConflictError("The curriculum chapter position is already used.");
+      }
+      const [updated] = await db.update(curriculumUnits).set(input)
+        .where(and(eq(curriculumUnits.schoolId, schoolId), eq(curriculumUnits.id, unitId)))
+        .returning();
+      if (!updated) throw new TeachingNotFoundError("Curriculum unit no longer exists.");
+      return updated;
+    },
+    async deleteCurriculumUnit(schoolId, unitId) {
+      const [unit] = await db.select({ id: curriculumUnits.id }).from(curriculumUnits)
+        .innerJoin(academicYears, and(
+          eq(academicYears.id, curriculumUnits.academicYearId),
+          eq(academicYears.schoolId, schoolId), eq(academicYears.status, "ACTIVE")
+        ))
+        .where(and(eq(curriculumUnits.schoolId, schoolId), eq(curriculumUnits.id, unitId)))
+        .limit(1);
+      if (!unit) throw new TeachingNotFoundError("Active curriculum unit not found.");
+      const [progress, lesson] = await Promise.all([
+        db.select({ id: teacherUnitProgress.id }).from(teacherUnitProgress).where(and(
+          eq(teacherUnitProgress.schoolId, schoolId), eq(teacherUnitProgress.unitId, unitId)
+        )).limit(1),
+        db.select({ id: teacherLessonPlans.id }).from(teacherLessonPlans).where(and(
+          eq(teacherLessonPlans.schoolId, schoolId), eq(teacherLessonPlans.unitId, unitId)
+        )).limit(1)
+      ]);
+      if (progress.length || lesson.length) {
+        throw new TeachingConflictError("Curriculum unit is used by lesson plans or teaching progress.");
+      }
+      await db.delete(curriculumUnits).where(and(
+        eq(curriculumUnits.id, unitId), eq(curriculumUnits.schoolId, schoolId)
+      ));
+    },
     async teacherWorkspace(schoolId, teacherId, assignmentId) {
       const assignment = await activeAssignment(schoolId, teacherId, assignmentId);
       const [lessons, units] = await Promise.all([
@@ -229,8 +282,16 @@ export function createTeacherTeachingStore(db: FoundationDatabase): TeacherTeach
         unitOverview(schoolId, assignment),
         db.select({ status: homeworks.status }).from(homeworks).where(and(
           eq(homeworks.schoolId, schoolId), eq(homeworks.assignmentId, assignment.id),
-          gte(homeworks.createdAt, new Date(from + "T00:00:00Z")),
-          lte(homeworks.createdAt, new Date(to + "T23:59:59.999Z"))
+          or(
+            // Publication counts belong to the date they were published,
+            // not when the original homework draft was first created.
+            and(inArray(homeworks.status, ["PUBLISHED", "CLOSED"]),
+              gte(homeworks.publishedAt, new Date(from + "T00:00:00+04:30")),
+              lte(homeworks.publishedAt, new Date(to + "T23:59:59.999+04:30"))),
+            and(eq(homeworks.status, "DRAFT"),
+              gte(homeworks.createdAt, new Date(from + "T00:00:00+04:30")),
+              lte(homeworks.createdAt, new Date(to + "T23:59:59.999+04:30")))
+          )
         )),
         db.select({ id: continuousAssessments.id }).from(continuousAssessments).where(and(
           eq(continuousAssessments.schoolId, schoolId),

@@ -1111,6 +1111,28 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   });
   assert.equal(curriculum.statusCode, 200);
   assert.deepEqual(curriculum.json<{ units: Array<{ title: string }> }>().units.map((x) => x.title), ["Fractions"]);
+  const updatedUnit = await app.inject({
+    method: "PATCH", url: `/v1/admin/teaching/curriculum/${unitId}`, headers: auth,
+    payload: { title: "Adding fractions" }
+  });
+  assert.equal(updatedUnit.statusCode, 200, updatedUnit.body);
+  assert.equal(updatedUnit.json<{ unit: { title: string } }>().unit.title, "Adding fractions");
+  const unauthorizedUnitEdit = await app.inject({
+    method: "PATCH", url: `/v1/admin/teaching/curriculum/${unitId}`, headers: teacherHeaders,
+    payload: { title: "Teacher override" }
+  });
+  assert.equal(unauthorizedUnitEdit.statusCode, 403);
+  const unusedUnit = await app.inject({
+    method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
+    payload: { academicYearId: yearId, classId, subjectId, title: "Unused lesson", sortOrder: 2 }
+  });
+  assert.equal(unusedUnit.statusCode, 201);
+  const unusedId = unusedUnit.json<{ unit: { id: string } }>().unit.id;
+  const removedUnusedUnit = await app.inject({
+    method: "DELETE", url: `/v1/admin/teaching/curriculum/${unusedId}`, headers: auth
+  });
+  assert.equal(removedUnusedUnit.statusCode, 200);
+
 
   const teacherWorkspace = await app.inject({
     method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}`, headers: teacherHeaders
@@ -1162,6 +1184,11 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   });
   assert.equal(completedUnit.statusCode, 200);
   assert.equal(completedUnit.json<{ status: string }>().status, "COMPLETED");
+  const deleteTrackedUnitDenied = await app.inject({
+    method: "DELETE", url: `/v1/admin/teaching/curriculum/${unitId}`, headers: auth
+  });
+  assert.equal(deleteTrackedUnitDenied.statusCode, 409);
+
   const report = await app.inject({
     method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-01&to=2026-10-31`,
     headers: teacherHeaders

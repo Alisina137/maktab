@@ -20,6 +20,7 @@ export function CurriculumAdminPanel({
   const [subjectId, setSubjectId] = useState("");
   const [units, setUnits] = useState<Unit[]>([]);
   const [title, setTitle] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [order, setOrder] = useState("1");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export function CurriculumAdminPanel({
   const [pane, setPane] = useState<"FORM" | "LIST">("FORM");
 
   useEffect(() => {
-    setClassId(""); setSubjectId(""); setUnits([]);
+    setClassId(""); setSubjectId(""); setUnits([]); setEditingId(null); setTitle("");
     setPane("FORM");
   }, [yearId]);
 
@@ -44,7 +45,7 @@ export function CurriculumAdminPanel({
       if (!activeRequest) return;
       setUnits(result.units);
       const next = Math.max(0, ...result.units.map(x => x.sortOrder)) + 1;
-      setOrder(String(next));
+      if (!editingId) setOrder(String(next));
     }).catch((error: unknown) => {
       if (activeRequest) setFailure(friendlyAdminError(error, "Unable to load curriculum.", locale));
     }).finally(() => { if (activeRequest) setLoading(false); });
@@ -61,19 +62,41 @@ export function CurriculumAdminPanel({
     }
     setBusy(true);
     try {
-      await adminApi("/v1/admin/teaching/curriculum", {
-        method: "POST",
+      await adminApi(editingId
+        ? `/v1/admin/teaching/curriculum/${encodeURIComponent(editingId)}`
+        : "/v1/admin/teaching/curriculum", {
+        method: editingId ? "PATCH" : "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
-          academicYearId: yearId, classId, subjectId,
+          ...(editingId ? {} : { academicYearId: yearId, classId, subjectId }),
           title: title.trim(), sortOrder
         })
       });
-      setTitle(""); setPane("LIST");
+      setTitle(""); setEditingId(null); setPane("LIST");
       setRevision(i => i + 1);
-      onNotice(true, t("Curriculum unit added for this class and subject."));
+      onNotice(true, t(editingId ? "Curriculum unit updated." : "Curriculum unit added for this class and subject."));
     } catch (error) {
       onNotice(false, friendlyAdminError(error, "Could not create curriculum unit.", locale));
+    } finally { setBusy(false); }
+  }
+
+  function beginEdit(unit: Unit) {
+    setEditingId(unit.id); setTitle(unit.title); setOrder(String(unit.sortOrder)); setPane("FORM");
+  }
+
+  async function remove(unit: Unit) {
+    if (!active || !window.confirm(t("Delete this unused chapter permanently?"))) return;
+    setBusy(true);
+    try {
+      await adminApi(`/v1/admin/teaching/curriculum/${encodeURIComponent(unit.id)}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (editingId === unit.id) { setEditingId(null); setTitle(""); }
+      setRevision((current) => current + 1);
+      onNotice(true, t("Unused curriculum unit deleted."));
+    } catch (cause) {
+      onNotice(false, friendlyAdminError(cause,
+        "Only unused curriculum units can be deleted. Existing lesson plans and progress are protected.", locale));
     } finally { setBusy(false); }
   }
 
@@ -92,13 +115,13 @@ export function CurriculumAdminPanel({
         <h2>{t("Choose a class and subject")}</h2>
         <div className="admin-form">
           <label>{t("Class")}
-            <select value={classId} onChange={(e) => setClassId(e.target.value)}>
+            <select value={classId} onChange={(e) => {setClassId(e.target.value);setEditingId(null);setTitle("");}}>
               <option value="">{t("Select class")}</option>
               {classes.map(item=><option value={item.id} key={item.id}>{item.name} · {item.code}</option>)}
             </select>
           </label>
           <label>{t("Subject")}
-            <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
+            <select value={subjectId} onChange={(e) => {setSubjectId(e.target.value);setEditingId(null);setTitle("");}}>
               <option value="">{t("Select subject")}</option>
               {subjects.map(item=><option value={item.id} key={item.id}>{item.name} · {item.code}</option>)}
             </select>
@@ -120,7 +143,7 @@ export function CurriculumAdminPanel({
       <div className={"academic-single-module academic-single-module-" + pane.toLowerCase()}>
         <div className="academic-responsive-pane academic-responsive-pane-form">
           <article className="admin-panel academic-form-card academic-single-form">
-            <h2>{t("Add official chapter")}</h2>
+            <h2>{t(editingId ? "Edit official chapter" : "Add official chapter")}</h2>
             <form className="admin-form" onSubmit={event=>void submit(event)}>
               <label>{t("Chapter name")}
                 <input value={title} onChange={e=>setTitle(e.target.value)} maxLength={160} required />
@@ -131,8 +154,12 @@ export function CurriculumAdminPanel({
               </label>
               <button className="admin-primary" type="submit"
                 disabled={busy || !active || !classId || !subjectId}>
-                {busy ? t("Saving…") : t("Create curriculum unit")}
+                {busy ? t("Saving…") : t(editingId ? "Save chapter" : "Create curriculum unit")}
               </button>
+              {editingId ? <button type="button" className="admin-secondary"
+                onClick={()=>{setEditingId(null);setTitle("");setOrder(String(Math.max(0,...units.map(x=>x.sortOrder))+1));}}>
+                {t("Cancel editing")}
+              </button> : null}
             </form>
           </article>
         </div>
@@ -143,6 +170,12 @@ export function CurriculumAdminPanel({
             {units.map(unit=>(
               <div className="academic-module-card" key={unit.id}>
                 <strong>{unit.sortOrder}. {unit.title}</strong>
+                {active ? <div className="academic-pane-switch">
+                  <button type="button" className="admin-secondary" disabled={busy}
+                    onClick={()=>beginEdit(unit)}>{t("Edit")}</button>
+                  <button type="button" className="admin-secondary" disabled={busy}
+                    onClick={()=>void remove(unit)}>{t("Delete")}</button>
+                </div> : null}
               </div>
             ))}
             {!loading && !units.length ? <p>{t("No chapters defined for this class and subject.")}</p> : null}
