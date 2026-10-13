@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
     "verify:dev-api": "node --check scripts/dev-api.mjs && node --check scripts/ngrok-health.mjs && node scripts/test-ngrok-health.mjs && node --check scripts/mobile-api-env.mjs && node scripts/test-mobile-api-env.mjs && node scripts/test-dev-api-startup.mjs && node scripts/test-db-check.mjs",
@@ -21,9 +21,10 @@
     "db:migrate": "pnpm --filter @maktablink/database db:migrate",
     "backup:db": "node scripts/backup-database.mjs",
     "restore:db": "node scripts/restore-database.mjs",
-    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs && node --check packages/database/scripts/check-db.mjs && node --check scripts/test-db-check.mjs",
+    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs && node --check packages/database/scripts/check-db.mjs && node --check scripts/test-db-check.mjs && node --check scripts/verify-release-regression.mjs",
     "demo:parent-dashboard": "pnpm --filter @maktablink/database demo:parent-dashboard",
-    "db:check": "pnpm --filter @maktablink/database db:check"
+    "db:check": "pnpm --filter @maktablink/database db:check",
+    "verify:release": "node scripts/verify-release-regression.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
