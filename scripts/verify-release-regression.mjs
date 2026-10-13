@@ -17,6 +17,8 @@ const migration = read("packages/database/src/migration-chain.test.ts");
 const css = read("apps/web/app/globals.css");
 const mobile = read("apps/mobile/App.tsx");
 const landing = read("apps/web/app/page.tsx");
+const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
 const ci = read(".github/workflows/ci.yml");
 const pkg = JSON.parse(read("package.json"));
 const packages = [
@@ -74,6 +76,18 @@ assert.ok(css.includes("@media (max-width:"), "Responsive breakpoint missing");
 assert.ok(css.includes("prefers-reduced-motion"), "Reduced motion CSS behavior missing");
 assert.ok(mobile.includes("accessibilityLabel"), "Android accessibility labels missing");
 assert.ok(mobile.includes("AccessibilityInfo"), "Android accessibility support missing");
+assert.ok(pilot.includes('readiness.checks.filter((check) => check.passed).length'),
+  "Onboarding progress must be computed from the server-side readiness checks");
+assert.ok(pilot.includes('aria-label={t("Onboarding progress")}'),
+  "Onboarding progress meter requires an accessible name");
+assert.ok(pilot.includes("pilot-check-passed") && pilot.includes("pilot-check-pending"),
+  "Onboarding status cards must visually distinguish passed and pending checks");
+assert.ok(css.includes(".pilot-onboarding-card .pilot-check-list") && css.includes("@media (max-width: 1140px)"),
+  "Onboarding cards must adapt to narrower viewport widths");
+for (const key of ['"Setup progress":', '"{done} of {total} checks complete":', '"Onboarding progress":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Onboarding copy is missing a Dari or Pashto translation: ${key}`);
+}
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
 assert.ok(read("packages/database/drizzle.config.ts").includes("DATABASE_URL_UNPOOLED"),
