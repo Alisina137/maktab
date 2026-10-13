@@ -1482,3 +1482,13 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Hardened `AccountStore.createUser` duplicate username handling with nested PostgreSQL `23505` cause detection, matching the Step 19 exam/school store fixes. Added API coverage of 409 same-school duplicate Teacher accounts and same username permitted in another school.
 - Retained full cross-role, fee reversals/retry, exam publication, homework privacy, notification audience, attended Negaran and subscription lifecycle integration tests. Tests now use the same quoted glob discovery on Ubuntu and Windows.
 - **Unverified / release blockers:** user's external Neon `CONNECT_TIMEOUT` unresolved at last report; real DB migrations, Android/web keyboard/TalkBack/RTL/responsive smoke, real push, external schedulers, monitoring, encrypted off-host backup/restore, concurrency and operator sign-off. Automated passing must not be interpreted as production acceptance.
+
+
+### Admin pilot onboarding presentation refresh (2026-10-14)
+
+- Updated the Admin `/admin/pilot` Pilot operations **Onboarding checklist** visual treatment without changing provisioning rules, API requests, authorization, exports or checklist pass/fail logic.
+- Added a compact, accessible native progress meter derived from the returned readiness checks, with a completed/total label and visible passed/pending states.
+- Introduced light, readable onboarding status cards and subtle subscription/summary hierarchy; cards collapse to one column for narrow screens with phone-specific layout protection.
+- Localized the new progress labels in Dari and Pashto, retaining English and RTL layout; preserved reduced-motion support.
+- The release static regression gate now checks source markers for localized, accessible progress and responsive cards.
+- Latest GitHub CI and actual browser screenshots/visual acceptance are required before claiming device-level confirmation.
