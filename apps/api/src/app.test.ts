@@ -5115,6 +5115,34 @@ test("Step 18 readiness counts only active administrator accounts", async (t) =>
   assert.equal(data.checks.find(row => row.key === "academic-year")?.passed, false);
 });
 
+test("Step 20 duplicate teacher usernames return conflict without cross-school blocking", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const firstSchool = await provisionSchool(app, "TENANT-USER-20A");
+  const secondSchool = await provisionSchool(app, "TENANT-USER-20B");
+  const firstAdmin = { authorization: `Bearer ${await bootstrapAdmin(app, firstSchool)}` };
+  const secondAdmin = { authorization: `Bearer ${await bootstrapAdmin(app, secondSchool)}` };
+  const payload = { username: "teacherduplicate20", role: "TEACHER" };
+  const first = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: firstAdmin, payload
+  });
+  assert.equal(first.statusCode, 201, first.body);
+  const conflict = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: firstAdmin, payload
+  });
+  assert.equal(conflict.statusCode, 409, conflict.body);
+  assert.equal(conflict.json<{ error: string }>().error, "username_conflict");
+  const otherSchool = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: secondAdmin, payload
+  });
+  assert.equal(otherSchool.statusCode, 201, otherSchool.body);
+  const directory = await app.inject({ method: "GET", url: "/v1/admin/users", headers: firstAdmin });
+  assert.equal(directory.statusCode, 200, directory.body);
+  assert.equal(directory.json<{ users: Array<{ username: string }> }>().users.filter(
+    (entry) => entry.username === payload.username
+  ).length, 1);
+});
+
 test("Step 20 deactivated schools and archived users cannot reuse existing access or refresh tokens", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
