@@ -311,6 +311,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         and(
           eq(homeworks.schoolId, schoolId),
           eq(homeworks.classId, student.classId),
+          eq(homeworks.academicYearId, student.academicYearId),
           inArray(homeworks.status, ["PUBLISHED", "CLOSED"])
         )
       )
