@@ -5185,18 +5185,18 @@ test("Step 20 deactivated schools and archived users cannot reuse existing acces
 
   for (const headers of [adminAuth, parentAuth]) {
     const blocked = await app.inject({ method: "GET", url: "/v1/auth/me", headers });
-    assert.equal(blocked.statusCode, 503, blocked.body);
-    assert.equal(blocked.json<{ error: string }>().error, "school_service_unavailable");
+    assert.equal(blocked.statusCode, 401, blocked.body);
+    assert.equal(blocked.json<{ error: string }>().error, "session_invalid");
   }
   const blockedContact = await app.inject({
     method: "GET", url: "/v1/school/admin-contact", headers: parentAuth
   });
-  assert.equal(blockedContact.statusCode, 503, blockedContact.body);
+  assert.equal(blockedContact.statusCode, 401, blockedContact.body);
   const blockedRefresh = await app.inject({
     method: "POST", url: "/v1/auth/refresh",
     payload: { refreshToken: active.refreshToken }
   });
-  assert.equal(blockedRefresh.statusCode, 503, blockedRefresh.body);
+  assert.equal(blockedRefresh.statusCode, 401, blockedRefresh.body);
   const blockedNewLogin = await app.inject({
     method: "POST", url: "/v1/auth/login",
     payload: { schoolId, username: "inactiveparent20", password: "InactiveParent20!",
@@ -5218,20 +5218,20 @@ test("Step 20 deactivated schools and archived users cannot reuse existing acces
   assert.equal(rotated.statusCode, 200, rotated.body);
   const resumed = rotated.json<{ accessToken: string; refreshToken: string }>();
 
-  // Archived accounts are terminal: if an old refresh/access credential
-  // remains in storage, it must not confer operational rights.
+  // The existing session authenticator rejects archived accounts and inactive
+  // schools as invalid sessions; neither may reuse cached credentials.
   await client.query("UPDATE users SET status = 'ARCHIVED' WHERE school_id = $1 AND id = $2",
     [schoolId, parent.user.id]);
   const archivedMe = await app.inject({
     method: "GET", url: "/v1/auth/me",
     headers: { authorization: `Bearer ${resumed.accessToken}` }
   });
-  assert.equal(archivedMe.statusCode, 403, archivedMe.body);
-  assert.equal(archivedMe.json<{ error: string }>().error, "account_unavailable");
+  assert.equal(archivedMe.statusCode, 401, archivedMe.body);
+  assert.equal(archivedMe.json<{ error: string }>().error, "session_invalid");
   const archivedRefresh = await app.inject({
     method: "POST", url: "/v1/auth/refresh", payload: { refreshToken: resumed.refreshToken }
   });
-  assert.equal(archivedRefresh.statusCode, 403, archivedRefresh.body);
+  assert.equal(archivedRefresh.statusCode, 401, archivedRefresh.body);
 });
 
 test("Phase 8 subscription suspension blocks end users and operational admin writes but preserves billing and export access", async (t) => {
