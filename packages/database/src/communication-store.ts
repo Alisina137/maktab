@@ -236,12 +236,22 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return eligibleAudienceUserIds(announcement.schoolId, rows);
     }
     if (!announcement.classId) return [];
+    const [targetClass] = await db.select({ academicYearId: classSections.academicYearId })
+      .from(classSections).where(and(
+        eq(classSections.schoolId, announcement.schoolId),
+        eq(classSections.id, announcement.classId)
+      )).limit(1);
+    if (!targetClass) return [];
     const effectiveDate = await schoolDateAt(announcement.schoolId, effectiveAt);
     const [studentRows, teacherRows, negaranRows] = await Promise.all([
       db.select({ parentUserId: students.parentUserId, userId: students.userId }).from(students)
-        .where(and(eq(students.schoolId, announcement.schoolId), eq(students.classId, announcement.classId), eq(students.status, "ACTIVE"))),
+        .where(and(eq(students.schoolId, announcement.schoolId), eq(students.classId, announcement.classId),
+          eq(students.academicYearId, targetClass.academicYearId),
+          eq(students.status, "ACTIVE"))),
       db.select({ userId: teacherAssignments.teacherUserId }).from(teacherAssignments)
-        .where(and(eq(teacherAssignments.schoolId, announcement.schoolId), eq(teacherAssignments.classId, announcement.classId))),
+        .where(and(eq(teacherAssignments.schoolId, announcement.schoolId),
+            eq(teacherAssignments.classId, announcement.classId),
+            eq(teacherAssignments.academicYearId, targetClass.academicYearId))),
       db.select({ userId: negaranAssignments.teacherUserId }).from(negaranAssignments)
         .where(and(
           eq(negaranAssignments.schoolId, announcement.schoolId),
@@ -250,11 +260,22 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
           or(isNull(negaranAssignments.endDate), sql`${negaranAssignments.endDate} >= ${effectiveDate}`)
         ))
     ]);
-    return Array.from(new Set([
-      ...studentRows.flatMap((row) => row.userId ? [row.parentUserId, row.userId] : [row.parentUserId]),
-      ...teacherRows.map((row) => row.userId),
-      ...negaranRows.map((row) => row.userId)
+    const all = Array.from(new Set([
+      ...studentRows.flatMap(row => row.userId ? [row.parentUserId, row.userId] : [row.parentUserId]),
+      ...teacherRows.map(row => row.userId),
+      ...negaranRows.map(row => row.userId)
     ]));
+    if (all.length === 0) return [];
+    const permitted = await db.select({ id: users.id, role: users.role }).from(users).where(and(
+      eq(users.schoolId, announcement.schoolId),
+      inArray(users.id, all),
+      ne(users.status, "SUSPENDED"), ne(users.status, "ARCHIVED")
+    ));
+    // CLASS+role means intersection, never union. A teacher cannot receive
+    // a parent-only notice merely because they teach this class.
+    return permitted.filter(row =>
+      !announcement.audienceRole || row.role === announcement.audienceRole
+    ).map(row => row.id);
   }
 
   async function materializeAnnouncement(announcement: Announcement, effectiveNow = new Date()): Promise<number> {
