@@ -283,6 +283,23 @@ export function registerCommunicationRoutes(
     }
   });
 
+  app.patch<{ Params: { announcementId: string } }>(
+    "/v1/admin/announcements/:announcementId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateScheduledAnnouncementSchema.parse(request.body);
+        const announcement = await communication.updateScheduledAnnouncement(
+          context.user.schoolId, context.user.id, request.params.announcementId, input
+        );
+        return { announcement };
+      } catch (error) {
+        return sendCommunicationError(reply, error);
+      }
+    }
+  );
+
   app.post<{ Params: { announcementId: string } }>(
     "/v1/admin/announcements/:announcementId/archive",
     async (request, reply) => {
@@ -291,15 +308,9 @@ export function registerCommunicationRoutes(
       try {
         const announcement = await communication.archiveAnnouncement(
           context.user.schoolId,
+          context.user.id,
           request.params.announcementId
         );
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: "announcement.archived",
-          entityType: "announcement",
-          entityId: announcement.id
-        });
         return { announcement };
       } catch (error) {
         return sendCommunicationError(reply, error);
