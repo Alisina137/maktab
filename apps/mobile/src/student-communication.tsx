@@ -159,7 +159,9 @@ export function StudentCommunicationContent({
             </Pressable>
           </View>
           {visibleNotifications.map((item) => (
-            <View key={item.id} style={[styles.itemCard, !item.readAt && styles.unreadCard]}>
+            <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.title}
+              onPress={() => onOpenNotification(item)}
+              style={[styles.itemCard, !item.readAt && styles.unreadCard]}>
               <View style={[styles.itemHeading, rtl && styles.rowRtl]}>
                 <View style={[styles.iconShell, !item.readAt && styles.unreadIcon]}>
                   <Ionicons
@@ -188,7 +190,7 @@ export function StudentCommunicationContent({
                   <Text style={styles.metaText}>{translate(locale, "student.read")}</Text>
                 )}
               </View>
-            </View>
+            </Pressable>
           ))}
           {visibleNotifications.length === 0 ? (
             <View style={styles.emptyCard}>
