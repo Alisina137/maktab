@@ -18,6 +18,7 @@ if (!connectionString) {
       throw new Error("invalid scheme or host");
     }
   } catch {
+    parsed = null;
     console.error("[db:check] DATABASE_URL is not a valid PostgreSQL URL.");
     process.exitCode = 1;
   }
