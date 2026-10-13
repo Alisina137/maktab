@@ -157,6 +157,8 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
 
   const writeBlocked =
     subscription?.status === "SUSPENDED" || subscription?.status === "CANCELLED";
+  const passedChecks = readiness.checks.filter((check) => check.passed).length;
+  const totalChecks = readiness.checks.length;
 
   return (
     <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
@@ -208,25 +210,38 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             <Summary label={t("Assignments")} value={readiness.counts.teacherAssignments} />
           </div>
 
-          <article className="admin-panel">
-            <div className="admin-section-header">
+          <article className="admin-panel pilot-onboarding-card" aria-labelledby="pilot-onboarding-title">
+            <div className="admin-section-header pilot-onboarding-header">
               <div>
-                <h3>{t("Onboarding checklist")}</h3>
+                <span className="eyebrow">{t("Phase 8 · Pilot Readiness")}</span>
+                <h3 id="pilot-onboarding-title">{t("Onboarding checklist")}</h3>
                 <p>{t(readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch.")}</p>
               </div>
               <span className={readiness.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
                 {t(readiness.ready ? "Ready" : "Needs setup")}
               </span>
             </div>
+            <div className="pilot-onboarding-progress">
+              <div className="pilot-onboarding-progress-copy">
+                <span>{t("Setup progress")}</span>
+                <strong>{adminFormat(locale, "{done} of {total} checks complete", { done: passedChecks, total: totalChecks })}</strong>
+              </div>
+              <progress
+                className="pilot-onboarding-meter"
+                value={passedChecks}
+                max={Math.max(totalChecks, 1)}
+                aria-label={t("Onboarding progress")}
+              />
+            </div>
             <div className="pilot-check-list">
               {readiness.checks.map((check) => (
-                <div className="pilot-check" key={check.key}>
-                  <span aria-hidden="true">{check.passed ? "✓" : "!"}</span>
-                  <div>
+                <div className={`pilot-check ${check.passed ? "pilot-check-passed" : "pilot-check-pending"}`} key={check.key}>
+                  <span className="pilot-check-icon" aria-hidden="true">{check.passed ? "✓" : "!"}</span>
+                  <div className="pilot-check-copy">
                     <strong>{pilotCheckLabel(check.key, t)}</strong>
                     <p>{pilotCheckDetail(check.key, readiness, subscription, locale, t)}</p>
                   </div>
-                  <span className="sr-only">{t(check.passed ? "Passed" : "Not passed")}</span>
+                  <span className="pilot-check-state">{t(check.passed ? "Passed" : "Not passed")}</span>
                 </div>
               ))}
             </div>
