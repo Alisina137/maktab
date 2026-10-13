@@ -5625,3 +5625,176 @@ html[dir="rtl"] body {
 .admin-password-toggle:active {
   transform: translateY(-50%) scale(.96);
 }
+
+
+/* Admin Accounts Phase 2: guided account creation and one-time credentials. */
+.account-create-form {
+  gap: 16px;
+}
+
+.account-create-form .account-form-kicker {
+  padding-block: 4px 8px;
+  border-bottom: 1px solid #e2e9f4;
+  color: #275494;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .015em;
+}
+
+.account-create-role-help {
+  margin: -6px 0 0;
+  padding: 13px 15px;
+  border: 1px solid #dce7f6;
+  border-radius: 12px;
+  background: #f4f8ff;
+  color: #4b6081;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.account-create-form label {
+  min-width: 0;
+}
+
+.account-create-form .admin-field-hint {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.account-create-form [aria-invalid="true"] {
+  border-color: #d66a66;
+  background: #fffafa;
+}
+
+.account-create-form [aria-invalid="true"]:focus-visible {
+  outline-color: #bf4a45;
+}
+
+.account-create-field-error {
+  display: block;
+  color: #a83d39;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.account-create-notice {
+  padding: 13px 15px;
+  border-inline-start: 3px solid #598cce;
+  border-radius: 8px;
+  background: #f2f7ff;
+  color: #506480;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.account-create-form > .admin-primary {
+  min-height: 48px;
+}
+
+.account-credential-panel {
+  scroll-margin-block-start: 30px;
+  border-color: #b5dcc6;
+  outline: none;
+}
+
+.account-credential-panel:focus-visible {
+  outline: 3px solid #5f9cdd;
+  outline-offset: 3px;
+}
+
+.account-credential-panel .credential-heading {
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.account-credential-panel .credential-heading > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.account-credential-panel .credential-heading strong {
+  display: block;
+  color: #236647;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.account-credential-panel .credential-heading p {
+  line-height: 1.6;
+}
+
+.account-credential-close {
+  align-self: flex-start;
+  flex: 0 0 auto;
+}
+
+.account-credential-panel .credential-values {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-credential-panel .credential-values > .account-credential-field {
+  min-width: 0;
+  gap: 11px;
+}
+
+.account-credential-field code {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  border: 1px solid #dde8e2;
+  border-radius: 9px;
+  background: white;
+  color: #284464;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-credential-field > .admin-secondary {
+  justify-self: start;
+}
+
+.account-credential-panel .account-credential-controls {
+  display: flex;
+  grid-template-columns: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-credential-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #f2dfb6;
+  border-radius: 10px;
+  background: #fffaed;
+  color: #8a601e !important;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.account-credential-copied {
+  margin: 0;
+  color: #18734b !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .account-credential-panel .credential-heading {
+    flex-wrap: wrap;
+  }
+
+  .account-credential-panel .credential-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-credential-close {
+    margin-inline-start: auto;
+  }
+}
