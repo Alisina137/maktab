@@ -4736,6 +4736,29 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(afterArchive.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
     .notifications.some(x => x.metadata.announcementId === scheduledId), false);
 
+  // 16.5: one Parent can legitimately receive notices for children in
+  // different classes. Access is the union of CURRENT active enrollments.
+  const sibling = await app.inject({ method: "POST",
+    url: "/v1/admin/families/students", headers: admin,
+    payload: { parentUserId: parentA.user.id, studentCode: "C7-A-SIB",
+      fullName: "Class B Sibling", academicYearId: yearId, classId: classB } });
+  assert.equal(sibling.statusCode, 201);
+  const classBAll = await app.inject({ method: "POST",
+    url: "/v1/admin/announcements", headers: admin,
+    payload: { title: "All of Class B", content: "Parents and students",
+      audienceScope: "CLASS", classId: classB } });
+  assert.equal(classBAll.statusCode, 201);
+  const classBAllId = classBAll.json<{ announcement: { id: string } }>().announcement.id;
+  for (const [token, expected] of [
+    [parentAToken, true], [parentBToken, true],
+    [studentAToken, false], [studentBToken, true]
+  ] as const) {
+    const notices = await app.inject({ method: "GET", url: "/v1/announcements",
+      headers: { authorization: `Bearer ${token}` } });
+    assert.equal(notices.json<{ announcements: Array<{ id: string }> }>()
+      .announcements.some(item => item.id === classBAllId), expected);
+  }
+
   const invoiceResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/fees/invoices",
