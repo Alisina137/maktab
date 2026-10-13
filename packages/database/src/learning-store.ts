@@ -121,6 +121,7 @@ export interface LearningStore {
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
   createExam(schoolId: string, actorUserId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, actorUserId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
+  updateExamSubjectDate(schoolId: string, actorUserId: string, examSubjectId: string, examDate: string): Promise<ExamSubject>;
   setExamStatus(schoolId: string, actorUserId: string, examId: string, status: ExamStatus): Promise<Exam>;
   publishExam(schoolId: string, actorUserId: string, examId: string): Promise<{ exam: Exam; notificationCount: number }>;
   correctPublishedGrade(
@@ -808,6 +809,46 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         if (isUniqueError(error)) throw new LearningConflictError("This subject is already configured for that exam and class.");
         throw error;
       }
+    },
+
+    async updateExamSubjectDate(schoolId, actorUserId, examSubjectId, examDate) {
+      const [row] = await db.select({
+        subject: examSubjects, exam: exams, year: academicYears
+      }).from(examSubjects)
+        .innerJoin(exams, and(eq(exams.schoolId, examSubjects.schoolId),
+          eq(exams.id, examSubjects.examId)))
+        .innerJoin(academicYears, and(eq(academicYears.schoolId, exams.schoolId),
+          eq(academicYears.id, exams.academicYearId)))
+        .where(and(eq(examSubjects.schoolId, schoolId),
+          eq(examSubjects.id, examSubjectId))).limit(1);
+      if (!row) throw new LearningNotFoundError("Exam subject not found.");
+      if (row.year.status !== "ACTIVE") {
+        throw new LearningConflictError("Exam date changes require the active academic year.");
+      }
+      if (examDate < row.year.startDate || examDate > row.year.endDate) {
+        throw new LearningValidationError("Exam date must fall within the selected academic year.");
+      }
+      return db.transaction(async (tx) => {
+        const [exam] = await tx.select({ status: exams.status }).from(exams).where(and(
+          eq(exams.schoolId, schoolId), eq(exams.id, row.exam.id)
+        )).limit(1).for("update");
+        if (!exam || !["DRAFT", "SCHEDULED"].includes(exam.status)) {
+          throw new LearningConflictError("An exam date cannot be edited after the exam starts.");
+        }
+        if (row.subject.examDate === examDate) return row.subject;
+        const [updated] = await tx.update(examSubjects).set({ examDate })
+          .where(and(eq(examSubjects.schoolId, schoolId),
+            eq(examSubjects.id, examSubjectId))).returning();
+        if (!updated) throw new LearningNotFoundError("Exam subject not found.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId,
+          action: "exam.subject_date_changed", entityType: "exam_subject",
+          entityId: updated.id,
+          metadata: { examId: updated.examId, previousDate: row.subject.examDate,
+            examDate: updated.examDate }
+        });
+        return updated;
+      });
     },
 
     async setExamStatus(schoolId, actorUserId, examId, status) {
