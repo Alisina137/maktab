@@ -79,6 +79,21 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
 
   return {
     async uploadFile(schoolId, userId, input) {
+      const [actor] = await db.select({ role: users.role }).from(users)
+        .where(and(eq(users.id, userId), eq(users.schoolId, schoolId))).limit(1);
+      if (!actor || !["TEACHER", "STUDENT"].includes(actor.role)) {
+        throw new LearningNotFoundError("Academic uploader not found.");
+      }
+      if (actor.role === "STUDENT") await requireStudent(schoolId, userId);
+      // Bound database-backed pilot storage to prevent a signed-in account
+      // from filling PostgreSQL with repeated orphan uploads.
+      const recent = await db.select({ id: learningFiles.id }).from(learningFiles)
+        .where(and(eq(learningFiles.schoolId, schoolId), eq(learningFiles.uploadedBy, userId),
+          gte(learningFiles.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))))
+        .limit(actor.role === "STUDENT" ? 11 : 41);
+      if (recent.length >= (actor.role === "STUDENT" ? 10 : 40)) {
+        throw new LearningConflictError("Daily attachment quota reached. Try again tomorrow.");
+      }
       if (!allowedMime.has(input.mimeType) || !/^[A-Za-z0-9+/]*={0,2}$/.test(input.base64) ||
           input.base64.length % 4 !== 0) {
         throw new LearningValidationError("Allowed attachments: PDF, PNG, JPEG, or WebP.");

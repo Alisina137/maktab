@@ -1322,3 +1322,11 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Automated integration coverage extends the existing family/teacher/student learning test with file MIME/permission checks, scheduled publication validation and idempotence, submission → feedback → revision → review, continuous assessment marks and teacher/student role isolation.
 
 **Acceptance gates:** GitHub CI Typecheck/Test/Build must pass; Android Teacher and Student acceptance still requires testing native file selection, upload/download, publish on schedule, draft and submitted states, teacher review, continuous marks, RTL, and reconnect behavior. Device-only functions cannot be independently accepted by GitHub CI. No broader homework-delivery SLA is guaranteed while the development server is offline.
+
+#### Phase 3 hardening and acceptance notes (2026-10-13)
+- Scheduled publication and class-notification fan-out now occur in the same PostgreSQL transaction. If fan-out fails, the draft stays scheduled so publication can be retried, rather than leaving a published homework without notifications.
+- Teacher editing validates that the due deadline remains after a selected publication time; manual publication clears obsolete schedule metadata. The mobile draft composer retains the created homework ID across intermittent attachment/scheduling failures to avoid creating duplicate drafts when saving again.
+- Parent accounts linked to an actively enrolled student can securely view uploaded homework files published to the student's current class and academic year; unrelated admins, students and parents cannot access them.
+- PostgreSQL file uploads are capped at 1 MiB per PDF/image, 10 uploads/24 hours for students and 40 uploads/24 hours for teachers. This bounds pilot storage consumption and is **not** a replacement for object storage plus malware scanning for larger-scale deployment.
+- Teacher assessment gradebook has an explicit assigned class/subject selector. Archived homework remains available for reviewing historical submissions. The API closes scheduled publication and its 60-second timer correctly during shutdown.
+- Device manual acceptance and production-object-storage hardening remain separate from CI completion.

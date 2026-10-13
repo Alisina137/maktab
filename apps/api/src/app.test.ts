@@ -3021,6 +3021,11 @@ test("homework stays private as draft, then becomes visible to parent and linked
   const visibleFile = await app.inject({method:"GET",url:`/v1/learning/files/${fileId}`,headers:studentAuth});
   assert.equal(visibleFile.statusCode,200);
   assert.equal(visibleFile.json<{file:{base64:string}}>().file.base64,pdf);
+  const parentFile=await app.inject({method:"GET",url:`/v1/learning/files/${fileId}`,headers:parentAuth});
+  assert.equal(parentFile.statusCode,200);
+  assert.equal(parentFile.json<{file:{fileName:string}}>().file.fileName,"worksheet.pdf");
+  const adminFile=await app.inject({method:"GET",url:`/v1/learning/files/${fileId}`,headers:admin});
+  assert.equal(adminFile.statusCode,404);
   const submission = await app.inject({
     method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
     headers:studentAuth,payload:{answer:"My chapter answers."}

@@ -242,6 +242,10 @@ export function TeacherLearningPanel(props: CommonProps & {
           attachmentUrl: attachmentUrl.trim() || undefined
         });
         savedId = created.homework.id;
+        // Retain the newly created draft ID before linking a file or adding a
+        // schedule. If the next network operation fails, retry EDITS this same
+        // draft rather than creating duplicates over an unstable tunnel.
+        setEditingHomeworkId(savedId);
       }
       // Never silently ignore a failed file link or scheduled publication.
       if (attachmentFileId) await api.attachHomeworkFile(accessToken, savedId, attachmentFileId);
@@ -567,7 +571,7 @@ export function TeacherLearningPanel(props: CommonProps & {
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
               {homework.scheduledAt ? (
                 <Text style={[styles.muted,textDirection]}>
-                  {translate(locale,"learning.schedulePublication")}: {formatLocalizedDate(homework.scheduledAt,locale)}
+                  {translate(locale,"learning.schedulePublication")}: {formatLocalizedDate(homework.scheduledAt,locale)} · {homeworkDueFields(homework.scheduledAt).time}
                 </Text>
               ) : null}
               {homework.attachmentFileId ? (
@@ -581,7 +585,7 @@ export function TeacherLearningPanel(props: CommonProps & {
                   <Text style={[styles.linkText, textDirection]}>{translate(locale, "learning.openAttachment")}</Text>
                 </Pressable>
               ) : null}
-              {(homework.status === "PUBLISHED" || homework.status === "CLOSED") ? (
+              {homework.status !== "DRAFT" ? (
                 <TeacherSubmissionReview homework={homework} accessToken={accessToken}
                   locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice}/>
               ) : null}
