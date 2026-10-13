@@ -2863,6 +2863,28 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   const parentToken = parentChanged.json<{ accessToken: string }>().accessToken;
   const parentAuth = { authorization: `Bearer ${parentToken}` };
 
+  // Invalid calendar dates must return client validation errors, not
+  // PostgreSQL date-cast failures/HTTP 500.
+  const invalidTeacherDate = await app.inject({
+    method: "GET",
+    url: `/v1/teacher/negaran/${classId}/attendance?date=2026-02-30`,
+    headers: teacherAuth
+  });
+  assert.equal(invalidTeacherDate.statusCode, 400);
+  assert.equal(invalidTeacherDate.json<{ error: string }>().error, "attendance_validation");
+  const invalidParentDate = await app.inject({
+    method: "GET",
+    url: `/v1/parent/children/${studentId}/attendance?from=2026-02-30`,
+    headers: parentAuth
+  });
+  assert.equal(invalidParentDate.statusCode, 400);
+  const invalidAdminDate = await app.inject({
+    method: "GET",
+    url: "/v1/admin/attendance/report?from=2026-02-30&to=2026-03-01",
+    headers: admin
+  });
+  assert.equal(invalidAdminDate.statusCode, 400);
+
   const parentAttendance = await app.inject({
     method: "GET",
     url: `/v1/parent/children/${studentId}/attendance`,
@@ -2906,11 +2928,25 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   });
   assert.equal(cannotReadCancelled.statusCode, 404);
 
+  const toExcused = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: {
+      ...payload, entries: [{ studentId, status: "EXCUSED" }],
+      expectedUpdatedAt: toPresent.json<{ sheet: { attendance: { updatedAt: string } } }>()
+        .sheet.attendance.updatedAt
+    }
+  });
+  assert.equal(toExcused.statusCode, 200);
+  const excusedAlerts = await app.inject({
+    method: "GET", url: "/v1/parent/notifications", headers: parentAuth
+  });
+  assert.deepEqual(excusedAlerts.json<{ notifications: unknown[] }>().notifications, []);
+
   const toLate = await app.inject({
     method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
     payload: {
       ...payload, entries: [{ studentId, status: "LATE" }],
-      expectedUpdatedAt: toPresent.json<{ sheet: { attendance: { updatedAt: string } } }>()
+      expectedUpdatedAt: toExcused.json<{ sheet: { attendance: { updatedAt: string } } }>()
         .sheet.attendance.updatedAt
     }
   });
@@ -3022,10 +3058,10 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     [schoolId]
   );
   assert.equal(auditRows.rows.filter((item) => item.action === "attendance.submitted").length, 1);
-  assert.equal(auditRows.rows.filter((item) => item.action === "attendance.corrected_by_negaran").length, 3);
+  assert.equal(auditRows.rows.filter((item) => item.action === "attendance.corrected_by_negaran").length, 4);
   assert.equal(auditRows.rows.filter((item) => item.action === "attendance.corrected_by_admin").length, 1);
-  assert.equal(auditRows.rows.length, 5);
-  assert.equal(auditRows.rows.filter((item) => item.actor_user_id === teacherId).length, 4);
+  assert.equal(auditRows.rows.length, 6);
+  assert.equal(auditRows.rows.filter((item) => item.actor_user_id === teacherId).length, 5);
   assert.equal(new Set(auditRows.rows.map((item) => item.entity_id)).size, 1);
 
   // Preserve the originally marked students on historical sheets even when

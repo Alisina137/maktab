@@ -252,6 +252,12 @@ function dateInTimezone(timeZone: string): string {
   return `${year}-${month}-${day}`;
 }
 
+function isValidAttendanceDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + "T12:00:00Z");
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 function defaultFrom(to: string): string {
   const date = new Date(`${to}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() - 29);
@@ -479,6 +485,9 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     classId: string,
     date: string
   ) {
+    if (!isValidAttendanceDate(date)) {
+      throw new AttendanceValidationError("Choose a valid calendar date.");
+    }
     await requireTeacher(schoolId, teacherUserId);
     await getNegaran(schoolId, teacherUserId, classId, date);
     const today = await schoolToday(schoolId);
@@ -587,12 +596,7 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     async getTeacherAttendanceHistory(schoolId, teacherUserId, classId, from, to) {
       await requireTeacher(schoolId, teacherUserId);
       const today = await schoolToday(schoolId);
-      const isValidDay = (value: string) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-        const date = new Date(value + "T12:00:00Z");
-        return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-      };
-      if (!isValidDay(from) || !isValidDay(to) || from > to || to > today) {
+      if (!isValidAttendanceDate(from) || !isValidAttendanceDate(to) || from > to || to > today) {
         throw new AttendanceValidationError("Choose valid past or current dates in chronological order.");
       }
       const numberOfDays = Math.round(
@@ -696,6 +700,9 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     getTeacherAttendanceSheet: sheetForTeacher,
 
     async submitDailyAttendance(schoolId, teacherUserId, input) {
+      if (!isValidAttendanceDate(input.date)) {
+        throw new AttendanceValidationError("Choose a valid calendar date.");
+      }
       const today = await schoolToday(schoolId);
       if (input.date !== today) {
         throw new AttendanceConflictError("Negaran attendance is locked after the school-local day ends.");
@@ -847,6 +854,10 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     },
 
     async getParentAttendance(schoolId, parentUserId, studentId, from, to) {
+      if ((from && !isValidAttendanceDate(from)) || (to && !isValidAttendanceDate(to)) ||
+        (from && to && from > to)) {
+        throw new AttendanceValidationError("Choose valid attendance dates in chronological order.");
+      }
       const today = await schoolToday(schoolId);
       const effectiveTo = to ?? today;
       const effectiveFrom = from ?? defaultFrom(effectiveTo);
@@ -928,6 +939,9 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     },
 
     async getAdminReport(schoolId, from, to, classId, academicYearId) {
+      if (!isValidAttendanceDate(from) || !isValidAttendanceDate(to) || from > to) {
+        throw new AttendanceValidationError("Choose valid attendance dates in chronological order.");
+      }
       const predicates = [
         eq(dailyAttendances.schoolId, schoolId),
         gte(dailyAttendances.date, from),
