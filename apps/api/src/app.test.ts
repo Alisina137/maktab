@@ -3370,6 +3370,69 @@ test("homework stays private as draft, then becomes visible to parent and linked
   });
   const studentAuth = { authorization: `Bearer ${studentChanged.json<{ accessToken: string }>().accessToken}` };
 
+  // Test 14.1, 14.2 and 14.11: reject invalid payloads and forged assignments.
+  const invalidCases = [
+    { assignmentId, content: "Missing title", dueAt: "2099-12-31T12:00:00Z" },
+    { assignmentId, title: "Good title", content: "  ", dueAt: "2099-12-31T12:00:00Z" },
+    { assignmentId, title: "Good title", content: "Valid", dueAt: "bad date" },
+    { assignmentId, title: "Good title", content: "Valid", dueAt: "2001-01-01T00:00:00Z" },
+    { assignmentId, title: "Good title", content: "Valid", dueAt: "2099-12-31T12:00:00Z",
+      attachmentUrl: "http://untrusted.example/worksheet.pdf" }
+  ];
+  for (const payload of invalidCases) {
+    const response = await app.inject({
+      method: "POST", url: "/v1/teacher/homework", headers: teacherAuth, payload
+    });
+    assert.equal(response.statusCode, 400, response.body);
+  }
+  const parentCannotCreate = await app.inject({
+    method: "POST", url: "/v1/teacher/homework", headers: parentAuth,
+    payload: { assignmentId, title: "Unauthorized", content: "No", dueAt: "2099-12-31T12:00:00Z" }
+  });
+  assert.equal(parentCannotCreate.statusCode, 403);
+
+  const otherTeacherAccount = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: admin,
+    payload: { username: "teacher.unassigned", role: "TEACHER" }
+  });
+  assert.equal(otherTeacherAccount.statusCode, 201);
+  const otherTeacher = otherTeacherAccount.json<{ temporaryPassword: string }>();
+  const otherLogin = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, expectedRole: "TEACHER", username: "teacher.unassigned",
+      password: otherTeacher.temporaryPassword }
+  });
+  assert.equal(otherLogin.statusCode, 200);
+  const otherChanged = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${otherLogin.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "UnassignedTeacher2099!" }
+  });
+  assert.equal(otherChanged.statusCode, 200);
+  const otherTeacherAuth = {
+    authorization: `Bearer ${otherChanged.json<{ accessToken: string }>().accessToken}`
+  };
+  const unrelatedCreate = await app.inject({
+    method: "POST", url: "/v1/teacher/homework", headers: otherTeacherAuth,
+    payload: { assignmentId, title: "Wrong class", content: "Cannot create",
+      dueAt: "2099-12-31T12:00:00Z" }
+  });
+  assert.equal(unrelatedCreate.statusCode, 404);
+
+  const secondClass = await app.inject({
+    method: "POST", url: "/v1/admin/academics/classes", headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "6B", name: "Grade 6 B" }
+  });
+  assert.equal(secondClass.statusCode, 201);
+  const secondClassId = secondClass.json<{ class: { id: string } }>().class.id;
+  const secondStudent = await app.inject({
+    method: "POST", url: "/v1/admin/families/students", headers: admin,
+    payload: { parentUserId: parent.user.id, studentCode: "LRN-002",
+      fullName: "Other Class Child", academicYearId: yearId, classId: secondClassId }
+  });
+  assert.equal(secondStudent.statusCode, 201);
+  const otherChildId = secondStudent.json<{ student: { id: string } }>().student.id;
+
   const created = await app.inject({
     method: "POST",
     url: "/v1/teacher/homework",
@@ -3384,6 +3447,29 @@ test("homework stays private as draft, then becomes visible to parent and linked
   assert.equal(created.statusCode, 201);
   const homeworkId = created.json<{ homework: { id: string; status: string } }>().homework.id;
   assert.equal(created.json<{ homework: { status: string } }>().homework.status, "DRAFT");
+
+  // Test 14.4: only a draft can be edited. The stored content is the new draft.
+  const editDraft = await app.inject({
+    method: "PATCH", url: `/v1/teacher/homework/${homeworkId}`,
+    headers: teacherAuth, payload: { content: "Revised questions for chapter 3." }
+  });
+  assert.equal(editDraft.statusCode, 200);
+  assert.equal(editDraft.json<{ homework: { content: string } }>().homework.content,
+    "Revised questions for chapter 3.");
+  for (const payload of [{}, { dueAt: "2001-01-01T00:00:00Z" },
+    { attachmentUrl: "javascript:alert(1)" }]) {
+    const result = await app.inject({
+      method: "PATCH", url: `/v1/teacher/homework/${homeworkId}`,
+      headers: teacherAuth, payload
+    });
+    assert.equal(result.statusCode, 400, result.body);
+  }
+  const unauthorizedEdit = await app.inject({
+    method: "PATCH", url: `/v1/teacher/homework/${homeworkId}`,
+    headers: otherTeacherAuth, payload: { title: "Not my homework" }
+  });
+  assert.equal(unauthorizedEdit.statusCode, 404);
+
 
   // Real PDF bytes are validated and only available to authorized users.
   const pdf = Buffer.from("%PDF-1.7\\n1 0 obj\\n<<>>\\nendobj").toString("base64");
