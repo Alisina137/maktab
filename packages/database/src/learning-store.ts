@@ -484,34 +484,45 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       }
 
       const now = new Date();
-      const [updated] = await db
-        .update(homeworks)
-        .set({
-          status,
-          publishedAt: status === "PUBLISHED" ? now : current.publishedAt,
+      return db.transaction(async (tx) => {
+        const [updated] = await tx.update(homeworks).set({
+          status, publishedAt: status === "PUBLISHED" ? now : current.publishedAt,
           scheduledAt: status === "PUBLISHED" ? null : current.scheduledAt,
           updatedAt: now
-        })
-        .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId)))
-        .returning();
-      if (!updated) throw new LearningNotFoundError("Homework not found.");
-
-      if (status === "PUBLISHED") {
-        const recipients = await recipientUserIds(schoolId, updated.classId);
-        for (const userId of recipients) {
-          await createNotification(
-            schoolId,
-            userId,
-            `homework:${updated.id}:${userId}`,
-            "HOMEWORK_PUBLISHED",
-            "New homework",
-            updated.title,
-            `/homework/${updated.id}`,
-            { homeworkId: updated.id, classId: updated.classId, subjectId: updated.subjectId, dueAt: updated.dueAt.toISOString() }
-          );
+        }).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId),
+          eq(homeworks.teacherUserId, teacherUserId), eq(homeworks.status, current.status)))
+          .returning();
+        if (!updated) throw new LearningConflictError("Homework status changed. Refresh and retry.");
+        if (status === "PUBLISHED") {
+          const enrolled = await tx.select({
+            parentId: students.parentUserId, childId: students.userId
+          }).from(students).where(and(eq(students.schoolId, schoolId),
+            eq(students.classId, updated.classId),
+            eq(students.academicYearId, updated.academicYearId),
+            eq(students.status, "ACTIVE")));
+          for (const userId of new Set(enrolled.flatMap(x =>
+            [x.parentId, x.childId].filter((id): id is string => !!id)))) {
+            await tx.insert(notifications).values({
+              id: randomUUID(), schoolId, userId, type: "HOMEWORK_PUBLISHED",
+              title: "New homework", message: updated.title,
+              deepLink: `/homework/${updated.id}`,
+              dedupKey: `homework:${updated.id}:${userId}`,
+              metadata: { homeworkId: updated.id, classId: updated.classId,
+                subjectId: updated.subjectId, dueAt: updated.dueAt.toISOString() },
+              deliveryStatus: "PENDING"
+            }).onConflictDoNothing();
+          }
         }
-      }
-      return updated;
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId: teacherUserId,
+          action: status === "PUBLISHED" ? "homework.published" :
+            status === "CLOSED" ? "homework.closed" : "homework.archived",
+          entityType: "homework", entityId: updated.id,
+          metadata: { classId: updated.classId, subjectId: updated.subjectId,
+            dueAt: updated.dueAt.toISOString() }
+        });
+        return updated;
+      });
     },
 
     async getGradeSheet(schoolId, teacherUserId, examSubjectId) {
