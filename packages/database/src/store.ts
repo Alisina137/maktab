@@ -8,6 +8,7 @@ import type {
   UpdateSubscriptionInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
+import { isUniqueConstraintViolation } from "./db-errors.js";
 import {
   auditLogs,
   notificationPushDeliveries,
@@ -142,8 +143,7 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
           return { school, settings, subscription };
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/unique|duplicate/i.test(message)) {
+        if (isUniqueConstraintViolation(error)) {
           throw new SchoolConflictError("A school with that code or slug already exists.");
         }
         throw error;
@@ -207,8 +207,7 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
           return { school, settings, subscription, admin };
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/unique|duplicate/i.test(message)) {
+        if (isUniqueConstraintViolation(error)) {
           throw new SchoolConflictError("A school with that code or slug already exists.");
         }
         throw error;
