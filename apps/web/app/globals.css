@@ -5712,6 +5712,7 @@ html[dir="rtl"] body {
 .account-credential-panel .credential-heading > div {
   flex: 1 1 auto;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .account-credential-panel .credential-heading strong {
