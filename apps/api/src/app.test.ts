@@ -4998,6 +4998,123 @@ test("Phase 8 pilot onboarding works without direct database manipulation", asyn
   assert.equal(login.statusCode, 200);
 });
 
+test("Step 18 pilot onboarding is credential-gated, scoped, and rejects inconsistent dates without orphan schools", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const payload = {
+    school: {
+      code: "ATOMIC18", name: "Atomic Pilot School", slug: "atomic-18",
+      province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+    },
+    adminUsername: "pilot18.admin"
+  };
+  const unauthorized = await app.inject({
+    method: "POST", url: "/v1/platform/pilot/onboard", payload
+  });
+  assert.equal(unauthorized.statusCode, 401);
+
+  const badDates = await app.inject({
+    method: "POST", url: "/v1/platform/pilot/onboard",
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { ...payload, subscription: { startsOn: "2099-12-01" } }
+  });
+  assert.equal(badDates.statusCode, 409);
+  const list = await app.inject({
+    method: "GET", url: "/v1/platform/schools",
+    headers: { "x-platform-provisioning-key": provisioningKey }
+  });
+  assert.equal(list.statusCode, 200);
+  assert.equal(
+    list.json<{ schools: Array<{ code: string }> }>().schools.some(row => row.code === "ATOMIC18"),
+    false
+  );
+
+  const onboard = await app.inject({
+    method: "POST", url: "/v1/platform/pilot/onboard",
+    headers: { "x-platform-provisioning-key": provisioningKey }, payload
+  });
+  assert.equal(onboard.statusCode, 201);
+  const created = onboard.json<{ school: { id: string }; admin: { id: string; username: string };
+    temporaryPassword: string }>();
+  assert.equal(created.admin.username, "pilot18.admin");
+  assert.ok(created.temporaryPassword.length >= 12);
+  assert.equal(onboard.body.includes("passwordHash"), false);
+
+  const duplicate = await app.inject({
+    method: "POST", url: "/v1/platform/pilot/onboard",
+    headers: { "x-platform-provisioning-key": provisioningKey }, payload
+  });
+  assert.equal(duplicate.statusCode, 409);
+  const schools = await app.inject({
+    method: "GET", url: "/v1/platform/schools",
+    headers: { "x-platform-provisioning-key": provisioningKey }
+  });
+  assert.equal(schools.json<{ schools: Array<{ code: string }> }>().schools.filter(
+    row => row.code === "ATOMIC18"
+  ).length, 1);
+});
+
+test("Step 18 subscription patch validates persisted dates and never revives CANCELLED", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolId = await provisionSchool(app, "SUB18");
+  const url = `/v1/platform/schools/${schoolId}/subscription`;
+  const headers = { "x-platform-provisioning-key": provisioningKey };
+  const mismatch = await app.inject({
+    method: "PATCH", url, headers,
+    payload: { startsOn: "2099-01-01" }
+  });
+  assert.equal(mismatch.statusCode, 409);
+
+  const current = await app.inject({
+    method: "GET", url: `/v1/platform/schools/${schoolId}`, headers
+  });
+  assert.equal(current.statusCode, 200);
+  assert.notEqual(
+    current.json<{ subscription: { startsOn: string } }>().subscription.startsOn,
+    "2099-01-01"
+  );
+
+  const cancelled = await app.inject({
+    method: "PATCH", url, headers, payload: { status: "CANCELLED" }
+  });
+  assert.equal(cancelled.statusCode, 200);
+  const revive = await app.inject({
+    method: "PATCH", url, headers, payload: { status: "ACTIVE" }
+  });
+  assert.equal(revive.statusCode, 409);
+  const unchanged = await app.inject({
+    method: "GET", url: `/v1/platform/schools/${schoolId}`, headers
+  });
+  assert.equal(unchanged.json<{ subscription: { status: string } }>().subscription.status, "CANCELLED");
+});
+
+test("Step 18 readiness counts only active administrator accounts", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "READY18");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const another = await app.inject({
+    method: "POST", url: `/v1/platform/schools/${schoolId}/admin`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { username: "invited18.admin" }
+  });
+  assert.equal(another.statusCode, 201);
+  const readiness = await app.inject({
+    method: "GET", url: "/v1/admin/pilot/readiness",
+    headers: { authorization: `Bearer ${adminToken}` }
+  });
+  assert.equal(readiness.statusCode, 200);
+  const data = readiness.json<{ ready: boolean; counts: { admins: number; activeAcademicYears: number };
+    checks: Array<{ key: string; passed: boolean }> }>();
+  assert.equal(data.counts.admins, 1);
+  assert.equal(data.counts.activeAcademicYears, 0);
+  assert.equal(data.ready, false);
+  assert.equal(data.checks.find(row => row.key === "academic-year")?.passed, false);
+});
+
 test("Phase 8 subscription suspension blocks end users and operational admin writes but preserves billing and export access", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
