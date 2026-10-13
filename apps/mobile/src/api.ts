@@ -330,6 +330,7 @@ export interface TeacherLearningPayload {
       subjectId: string;
       classId: string;
       maxScore: number;
+      examDate: string | null;
     };
     exam: {
       id: string;
@@ -351,6 +352,7 @@ export interface GradeSheetPayload {
     subjectId: string;
     classId: string;
     maxScore: number;
+    examDate: string | null;
   };
   exam: {
     id: string;
@@ -410,6 +412,7 @@ export interface LearnerAcademicPayload {
       maxScore: number;
       subjectId: string;
       classId: string;
+      examDate: string | null;
     };
     subjectName: string;
     className: string;
