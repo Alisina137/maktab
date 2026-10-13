@@ -126,8 +126,8 @@ export function registerAttendanceRoutes(
       try {
         const classId = z.string().uuid().parse(request.params.classId);
         const dates = z.object({
-          from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
-          to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/)
+          from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
         }).strict().parse(request.query);
         return await attendance.getTeacherAttendanceHistory(
           context.user.schoolId,

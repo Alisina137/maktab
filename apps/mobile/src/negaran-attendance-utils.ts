@@ -32,7 +32,7 @@ export function fillUnmarkedPresent(
 }
 
 export function monthRange(month: string, today: string): { from: string; to: string } | null {
-  if (!/^\\d{4}-\\d{2}$/.test(month) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(today)) return null;
+  if (!/^\d{4}-\d{2}$/.test(month) || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
   const year = Number(month.slice(0, 4)), mon = Number(month.slice(5, 7));
   if (mon < 1 || mon > 12 || year < 2000 || year > 2100) return null;
   const from = month + "-01";
