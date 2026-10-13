@@ -340,15 +340,12 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     schoolId: string; userId: string; type: string; title: string; message: string;
     deepLink: string; dedupKey: string; metadata?: Record<string, unknown>;
   }): Promise<boolean> {
-    const [existing] = await db.select({ id: notifications.id }).from(notifications)
-      .where(and(eq(notifications.schoolId, input.schoolId), eq(notifications.dedupKey, input.dedupKey))).limit(1);
-    if (existing) return false;
-    await db.insert(notifications).values({
+    const inserted = await db.insert(notifications).values({
       id: randomUUID(), schoolId: input.schoolId, userId: input.userId,
       type: input.type, title: input.title, message: input.message, deepLink: input.deepLink,
       dedupKey: input.dedupKey, metadata: input.metadata ?? {}
-    });
-    return true;
+    }).onConflictDoNothing().returning({ id: notifications.id });
+    return inserted.length > 0;
   }
 
   return {
