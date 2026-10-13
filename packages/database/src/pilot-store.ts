@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
@@ -48,95 +48,83 @@ export interface PilotStore {
 }
 
 export function createPilotStore(db: FoundationDatabase): PilotStore {
-  async function ids<T>(promise: Promise<T[]>): Promise<number> {
-    return (await promise).length;
-  }
-
   return {
     async getReadiness(schoolId) {
-      const [
-        admins,
-        teachers,
-        parents,
-        studentCount,
-        activeYears,
-        classes,
-        subjectCount,
-        assignments
-      ] = await Promise.all([
-        ids(db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId)).then((rows) => rows.filter((row) => row.id))),
-        ids(db.select({ id: teacherProfiles.userId }).from(teacherProfiles).where(eq(teacherProfiles.schoolId, schoolId))),
-        ids(db.select({ id: parentProfiles.userId }).from(parentProfiles).where(eq(parentProfiles.schoolId, schoolId))),
-        ids(db.select({ id: students.id }).from(students).where(eq(students.schoolId, schoolId))),
-        ids(
-          db
-            .select({ id: academicYears.id })
-            .from(academicYears)
-            .where(eq(academicYears.schoolId, schoolId))
-            .then((rows) => rows.filter(() => true))
-        ),
-        ids(db.select({ id: classSections.id }).from(classSections).where(eq(classSections.schoolId, schoolId))),
-        ids(db.select({ id: subjects.id }).from(subjects).where(eq(subjects.schoolId, schoolId))),
-        ids(db.select({ id: teacherAssignments.id }).from(teacherAssignments).where(eq(teacherAssignments.schoolId, schoolId)))
-      ]);
-
-      const adminUsers = await db
-        .select({ id: users.id, role: users.role })
-        .from(users)
-        .where(eq(users.schoolId, schoolId));
-      const yearRows = await db
-        .select({ id: academicYears.id, status: academicYears.status })
-        .from(academicYears)
-        .where(eq(academicYears.schoolId, schoolId));
-      const context = await db
-        .select({ school: schools, subscription: subscriptions })
-        .from(schools)
-        .innerJoin(subscriptions, eq(subscriptions.schoolId, schools.id))
-        .where(eq(schools.id, schoolId))
-        .limit(1);
-      if (!context[0]) {
+      const [schoolContext] = await db.select({ school: schools, subscription: subscriptions })
+        .from(schools).innerJoin(subscriptions, eq(subscriptions.schoolId, schools.id))
+        .where(eq(schools.id, schoolId)).limit(1);
+      if (!schoolContext) {
         return {
           ready: false,
-          counts: {
-            admins: 0,
-            teachers: 0,
-            parents: 0,
-            students: 0,
-            activeAcademicYears: 0,
-            classes: 0,
-            subjects: 0,
-            teacherAssignments: 0
-          },
+          counts: { admins: 0, teachers: 0, parents: 0, students: 0,
+            activeAcademicYears: 0, classes: 0, subjects: 0, teacherAssignments: 0 },
           checks: [{ key: "school", passed: false, detail: "School not found." }]
         };
       }
 
-      const realAdmins = adminUsers.filter((user) => user.role === "SCHOOL_ADMIN").length;
-      const realActiveYears = yearRows.filter((year) => year.status === "ACTIVE").length;
-      const operationalSubscription = !["SUSPENDED", "CANCELLED"].includes(context[0].subscription.status);
+      // Only currently usable accounts/enrollments and active-year assignments
+      // count toward readiness. A suspended or archived account must not
+      // make an unstaffed school appear pilot-ready.
+      const [adminRows, teacherRows, parentRows, studentRows,
+        yearRows, classRows, subjectRows, assignmentRows] = await Promise.all([
+        db.select({ id: users.id }).from(users).where(and(
+          eq(users.schoolId, schoolId), eq(users.role, "SCHOOL_ADMIN"), eq(users.status, "ACTIVE")
+        )),
+        db.select({ id: teacherProfiles.userId }).from(teacherProfiles)
+          .innerJoin(users, and(eq(users.id, teacherProfiles.userId),
+            eq(users.schoolId, teacherProfiles.schoolId)))
+          .where(and(eq(teacherProfiles.schoolId, schoolId),
+            eq(users.role, "TEACHER"), eq(users.status, "ACTIVE"))),
+        db.select({ id: parentProfiles.userId }).from(parentProfiles)
+          .innerJoin(users, and(eq(users.id, parentProfiles.userId),
+            eq(users.schoolId, parentProfiles.schoolId)))
+          .where(and(eq(parentProfiles.schoolId, schoolId),
+            eq(users.role, "PARENT"), eq(users.status, "ACTIVE"))),
+        db.select({ id: students.id }).from(students)
+          .where(and(eq(students.schoolId, schoolId), eq(students.status, "ACTIVE"))),
+        db.select({ id: academicYears.id }).from(academicYears)
+          .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.status, "ACTIVE"))),
+        db.select({ id: classSections.id }).from(classSections)
+          .innerJoin(academicYears, and(eq(academicYears.id, classSections.academicYearId),
+            eq(academicYears.schoolId, classSections.schoolId)))
+          .where(and(eq(classSections.schoolId, schoolId), eq(academicYears.status, "ACTIVE"))),
+        db.select({ id: subjects.id }).from(subjects).where(eq(subjects.schoolId, schoolId)),
+        db.select({ id: teacherAssignments.id }).from(teacherAssignments)
+          .innerJoin(academicYears, and(eq(academicYears.id, teacherAssignments.academicYearId),
+            eq(academicYears.schoolId, teacherAssignments.schoolId)))
+          .innerJoin(users, and(eq(users.id, teacherAssignments.teacherUserId),
+            eq(users.schoolId, teacherAssignments.schoolId)))
+          .where(and(eq(teacherAssignments.schoolId, schoolId),
+            eq(academicYears.status, "ACTIVE"), eq(users.role, "TEACHER"), eq(users.status, "ACTIVE")))
+      ]);
+
+      const admins = adminRows.length;
+      const teachers = teacherRows.length;
+      const parents = parentRows.length;
+      const studentCount = studentRows.length;
+      const activeYears = yearRows.length;
+      const classes = classRows.length;
+      const subjectCount = subjectRows.length;
+      const assignments = assignmentRows.length;
+      const operationalSubscription = !["SUSPENDED", "CANCELLED"].includes(schoolContext.subscription.status);
       const checks = [
-        { key: "school-active", passed: context[0].school.status === "ACTIVE", detail: "School is active." },
-        { key: "subscription", passed: operationalSubscription, detail: `Subscription status: ${context[0].subscription.status}.` },
-        { key: "admin", passed: realAdmins >= 1, detail: `${realAdmins} school administrator account(s).` },
-        { key: "academic-year", passed: realActiveYears === 1, detail: `${realActiveYears} active academic year(s).` },
-        { key: "classes", passed: classes >= 1, detail: `${classes} class(es).` },
+        { key: "school-active", passed: schoolContext.school.status === "ACTIVE", detail: "School is active." },
+        { key: "subscription", passed: operationalSubscription, detail: `Subscription status: ${schoolContext.subscription.status}.` },
+        { key: "admin", passed: admins >= 1, detail: `${admins} active school administrator account(s).` },
+        { key: "academic-year", passed: activeYears === 1, detail: `${activeYears} active academic year(s).` },
+        { key: "classes", passed: classes >= 1, detail: `${classes} active-year class(es).` },
         { key: "subjects", passed: subjectCount >= 1, detail: `${subjectCount} subject(s).` },
-        { key: "teachers", passed: teachers >= 1, detail: `${teachers} teacher profile(s).` },
-        { key: "assignments", passed: assignments >= 1, detail: `${assignments} teacher assignment(s).` },
-        { key: "families", passed: parents >= 1 && studentCount >= 1, detail: `${parents} parent(s), ${studentCount} student(s).` }
+        { key: "teachers", passed: teachers >= 1, detail: `${teachers} active teacher profile(s).` },
+        { key: "assignments", passed: assignments >= 1, detail: `${assignments} active-year teacher assignment(s).` },
+        { key: "families", passed: parents >= 1 && studentCount >= 1,
+          detail: `${parents} active parent(s), ${studentCount} enrolled student(s).` }
       ];
 
       return {
         ready: checks.every((check) => check.passed),
         counts: {
-          admins: realAdmins,
-          teachers,
-          parents,
-          students: studentCount,
-          activeAcademicYears: realActiveYears,
-          classes,
-          subjects: subjectCount,
-          teacherAssignments: assignments
+          admins, teachers, parents, students: studentCount,
+          activeAcademicYears: activeYears, classes, subjects: subjectCount, teacherAssignments: assignments
         },
         checks
       };
