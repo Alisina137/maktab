@@ -609,7 +609,10 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         const [recipient] = await db.select({ role: users.role, status: users.status }).from(users)
           .where(and(eq(users.id, notification.userId), eq(users.schoolId, notification.schoolId)))
           .limit(1);
-        const permitted = recipient?.status === "ACTIVE" &&
+        // INVITED accounts may already have school-issued push registrations.
+        // Only suspended/archived identities or withdrawn Students lose delivery.
+        const permitted = !!recipient &&
+          recipient.status !== "SUSPENDED" && recipient.status !== "ARCHIVED" &&
           (recipient.role !== "STUDENT" ||
             await this.hasActiveStudentEnrollment(notification.schoolId, notification.userId));
         if (!permitted) {
