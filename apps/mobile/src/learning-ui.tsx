@@ -20,6 +20,7 @@ import {
   type TranslationKey
 } from "@maktablink/localization";
 import {
+  ApiRequestError,
   api,
   type GradeSheetPayload,
   type HomeworkPayload,
@@ -288,8 +289,15 @@ export function TeacherLearningPanel(props: CommonProps & {
       );
       await load();
     } catch (cause) {
-      const failure = appErrorFromCause(cause);
-      onError(failure.key, failure.kind);
+      if (cause instanceof ApiRequestError && cause.code === "learning_conflict") {
+        // Another session or scheduled publisher may have advanced this item.
+        // Refresh the canonical state instead of encouraging repeated stale taps.
+        await load();
+        onError("learning.statusChanged");
+      } else {
+        const failure = appErrorFromCause(cause);
+        onError(failure.key, failure.kind);
+      }
     } finally {
       setBusy(false);
     }
