@@ -13,6 +13,7 @@ import type {
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
+  auditLogs,
   classSections,
   examSubjects,
   exams,
@@ -401,6 +402,9 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
 
     async createHomework(schoolId, teacherUserId, input) {
       const assignment = await getAssignment(schoolId, teacherUserId, input.assignmentId);
+      if (new Date(input.dueAt).getTime() <= Date.now()) {
+        throw new LearningValidationError("Homework deadline must be in the future.");
+      }
       const [homework] = await db
         .insert(homeworks)
         .values({
@@ -431,6 +435,9 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (!current) throw new LearningNotFoundError("Homework not found.");
       if (current.status !== "DRAFT") throw new LearningConflictError("Only draft homework can be edited.");
       await getAssignment(schoolId, teacherUserId, current.assignmentId);
+      if (input.dueAt && new Date(input.dueAt).getTime() <= Date.now()) {
+        throw new LearningValidationError("Homework deadline must be in the future.");
+      }
       if (input.dueAt && current.scheduledAt && new Date(input.dueAt) <= current.scheduledAt) {
         throw new LearningValidationError("Due date must remain after the scheduled publication.");
       }
@@ -444,9 +451,10 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           attachmentUrl: input.attachmentUrl === undefined ? current.attachmentUrl : input.attachmentUrl,
           updatedAt: new Date()
         })
-        .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId)))
+        .where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId),
+          eq(homeworks.teacherUserId, teacherUserId), eq(homeworks.status, "DRAFT")))
         .returning();
-      if (!updated) throw new LearningNotFoundError("Homework not found.");
+      if (!updated) throw new LearningConflictError("Homework was published or changed. Refresh and retry.");
       return updated;
     },
 
