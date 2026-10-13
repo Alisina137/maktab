@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   createAnnouncementSchema,
+  updateScheduledAnnouncementSchema,
   createFeeInvoiceSchema,
   recordFeePaymentSchema,
   registerPushDeviceSchema,
@@ -137,7 +138,8 @@ export function registerCommunicationRoutes(
   app.get("/v1/notifications", async (request, reply) => {
     const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
-    return { notifications: await communication.getUserNotifications(context.user.schoolId, context.user.id) };
+    const notifications = await communication.getUserNotifications(context.user.schoolId, context.user.id);
+    return { notifications, unreadCount: notifications.filter(item => !item.readAt).length };
   });
 
   app.post<{ Params: { notificationId: string } }>(
@@ -154,6 +156,22 @@ export function registerCommunicationRoutes(
       return { notification };
     }
   );
+
+  app.post("/v1/notifications/read-all", async (request, reply) => {
+    const context = await requireActiveCommunicationAccess(request, reply);
+    if (!context) return;
+    return { changed: await communication.markAllNotificationsRead(
+      context.user.schoolId, context.user.id
+    ) };
+  });
+
+  app.get("/v1/notifications/unread-count", async (request, reply) => {
+    const context = await requireActiveCommunicationAccess(request, reply);
+    if (!context) return;
+    return { unreadCount: await communication.getUnreadNotificationCount(
+      context.user.schoolId, context.user.id
+    ) };
+  });
 
   app.post("/v1/teacher/notifications/read-all", async (request, reply) => {
     const context = await requireActiveCommunicationAccess(request, reply);
