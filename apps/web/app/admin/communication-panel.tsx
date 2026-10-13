@@ -424,6 +424,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 value={editTitle} onChange={event => setEditTitle(event.target.value)} /></label>
               <label>{t("Message")}<textarea required maxLength={10000} rows={5}
                 value={editMessage} onChange={event => setEditMessage(event.target.value)} /></label>
+              <label>{t("Publish at")}
+                <AdminHijriDatePicker locale={locale} includeTime
+                  value={editPublishAt} onChange={setEditPublishAt} />
+              </label>
               <button className="admin-primary" disabled={busy}>{t("Save changes")}</button>
               <button type="button" className="admin-secondary"
                 onClick={() => setEditingNotice(null)}>{t("Cancel")}</button>
@@ -471,11 +475,22 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               <div>
                 <strong>{item.title}</strong>
                 <span>{t(item.audienceScope)}{item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}{item.classId ? ` · ${t("class scoped")}` : ""}</span>
-                <span>{formatAdminHijriDateTime(locale, item.publishAt)} {item.archivedAt ? `· ${t("ARCHIVED")}` : ""}</span>
+                <span>{formatAdminHijriDateTime(locale, item.publishAt)} · {t(item.archivedAt ? "ARCHIVED" :
+                    new Date(item.publishAt).getTime() > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
                 <p>{item.content}</p>
               </div>
               {!item.archivedAt ? (
-                <button className="admin-secondary" disabled={busy} onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
+                <div className="admin-actions">
+                  {new Date(item.publishAt).getTime() > Date.now() ? (
+                    <button className="admin-secondary" type="button" disabled={busy}
+                      onClick={() => {
+                        setEditingNotice(item); setEditTitle(item.title);
+                        setEditMessage(item.content); setEditPublishAt("");
+                      }}>{t("Edit")}</button>
+                  ) : null}
+                  <button className="admin-secondary" disabled={busy}
+                    onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
+                </div>
               ) : null}
             </div>
           ))}
