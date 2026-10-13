@@ -17,6 +17,7 @@ import type {
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
+  auditLogs,
   classSections,
   dailyAttendances,
   negaranAssignments,
@@ -825,6 +826,17 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
             }
           }
         }
+        // The audit event must commit with the marks and alerts, so a failed
+        // audit write cannot produce an untracked attendance change.
+        await tx.insert(auditLogs).values({
+          id: randomUUID(),
+          schoolId,
+          actorUserId: teacherUserId,
+          action: created ? "attendance.submitted" : "attendance.corrected_by_negaran",
+          entityType: "daily_attendance",
+          entityId: attendanceRow.id,
+          metadata: { classId: input.classId, date: input.date, notificationCount }
+        });
         return { created, changed, notificationCount };
       });
 
@@ -1060,6 +1072,20 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         if (current.entry.status !== entry.status) {
           await syncAttendanceAlert(tx, schoolId, attendance, current.student, entry.status);
         }
+        await tx.insert(auditLogs).values({
+          id: randomUUID(),
+          schoolId,
+          actorUserId,
+          action: "attendance.corrected_by_admin",
+          entityType: "daily_attendance",
+          entityId: attendance.id,
+          metadata: {
+            studentId,
+            previousStatus: current.entry.status,
+            status: entry.status,
+            note: entry.note
+          }
+        });
         return { attendance, entry };
       });
       return { attendance, entry, previousStatus: current.entry.status };

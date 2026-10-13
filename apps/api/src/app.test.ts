@@ -3013,6 +3013,21 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(sameMarkRetry.json<{ sheet: { students: Array<{ note: string }> } }>()
     .sheet.students[0]?.note, "Corrected by school admin");
 
+  // Test 13: audit events are committed once per real change, not on
+  // duplicate retries or rejected stale edits, and have the correct actor.
+  const auditRows = await client.query<{
+    action: string; actor_user_id: string; entity_id: string
+  }>(
+    "SELECT action, actor_user_id, entity_id FROM audit_logs WHERE school_id = $1 AND action LIKE 'attendance.%' ORDER BY created_at, id",
+    [schoolId]
+  );
+  assert.equal(auditRows.rows.filter((item) => item.action === "attendance.submitted").length, 1);
+  assert.equal(auditRows.rows.filter((item) => item.action === "attendance.corrected_by_negaran").length, 3);
+  assert.equal(auditRows.rows.filter((item) => item.action === "attendance.corrected_by_admin").length, 1);
+  assert.equal(auditRows.rows.length, 5);
+  assert.equal(auditRows.rows.filter((item) => item.actor_user_id === teacherId).length, 4);
+  assert.equal(new Set(auditRows.rows.map((item) => item.entity_id)).size, 1);
+
   // Preserve the originally marked students on historical sheets even when
   // their present-day enrollment has since been withdrawn. Admin corrections
   // remain the only way to change locked historical marks.

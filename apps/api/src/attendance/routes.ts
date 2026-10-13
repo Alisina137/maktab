@@ -152,20 +152,6 @@ export function registerAttendanceRoutes(
         context.user.id,
         input
       );
-      if (result.changed) {
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: result.created ? "attendance.submitted" : "attendance.corrected_by_negaran",
-          entityType: "daily_attendance",
-          entityId: result.sheet.attendance?.id,
-          metadata: {
-            classId: input.classId,
-            date: input.date,
-            notificationCount: result.notificationCount
-          }
-        });
-      }
       return reply.code(result.created ? 201 : 200).send(result);
     } catch (error) {
       return sendAttendanceError(reply, error);
@@ -260,19 +246,6 @@ export function registerAttendanceRoutes(
           request.params.studentId,
           input
         );
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: "attendance.corrected_by_admin",
-          entityType: "daily_attendance",
-          entityId: result.attendance.id,
-          metadata: {
-            studentId: request.params.studentId,
-            previousStatus: result.previousStatus,
-            status: result.entry.status,
-            note: result.entry.note
-          }
-        });
         return result;
       } catch (error) {
         return sendAttendanceError(reply, error);
