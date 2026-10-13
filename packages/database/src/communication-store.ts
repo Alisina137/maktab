@@ -388,10 +388,24 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     },
 
     async archiveAnnouncement(schoolId, actorUserId, announcementId) {
-      const [updated] = await db.update(announcements).set({ archivedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId))).returning();
-      if (!updated) throw new CommunicationNotFoundError("Announcement not found.");
-      return updated;
+      return db.transaction(async tx => {
+        const [updated] = await tx.update(announcements).set({
+          archivedAt: new Date(), updatedAt: new Date()
+        }).where(and(eq(announcements.schoolId, schoolId),
+          eq(announcements.id, announcementId),
+          isNull(announcements.archivedAt))).returning();
+        if (!updated) throw new CommunicationConflictError("Announcement is already archived or missing.");
+        await tx.update(notifications).set({
+          deliveryStatus: "CANCELLED", updatedAt: new Date()
+        }).where(and(eq(notifications.schoolId, schoolId),
+          sql`${notifications.dedupKey} LIKE ${`announcement:${announcementId}:%`}`));
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, action: "announcement.archived",
+          entityType: "announcement", entityId: announcementId,
+          metadata: { audienceScope: updated.audienceScope }
+        });
+        return updated;
+      });
     },
 
     async hasActiveStudentEnrollment(schoolId, userId) {
