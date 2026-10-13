@@ -418,6 +418,8 @@ export const createExamSubjectSchema = z.object({
   }, "Choose a real calendar date.")
 });
 export type CreateExamSubjectInput = z.infer<typeof createExamSubjectSchema>;
+export const updateExamSubjectDateSchema = createExamSubjectSchema.pick({ examDate: true });
+
 
 export const setExamStatusSchema = z.object({
   status: examStatusSchema
