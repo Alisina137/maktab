@@ -3541,6 +3541,13 @@ test("homework stays private as draft, then becomes visible to parent and linked
   });
   assert.equal(parentDraft.statusCode, 200);
   assert.equal(parentDraft.json<{ homework: unknown[] }>().homework.length, 0);
+  const otherChildDraft = await app.inject({ method: "GET",
+    url: `/v1/parent/children/${otherChildId}/learning`, headers: parentAuth });
+  assert.equal(otherChildDraft.statusCode, 200);
+  assert.equal(otherChildDraft.json<{ homework: unknown[] }>().homework.length, 0);
+  const unauthorizedPublish = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/publish`, headers: otherTeacherAuth });
+  assert.equal(unauthorizedPublish.statusCode, 404);
 
   const studentDraft = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
   assert.equal(studentDraft.statusCode, 200);
@@ -3552,6 +3559,17 @@ test("homework stays private as draft, then becomes visible to parent and linked
     headers: teacherAuth
   });
   assert.equal(published.statusCode, 200);
+  const repeatPublish = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/publish`, headers: teacherAuth });
+  assert.equal(repeatPublish.statusCode, 409);
+  const editPublished = await app.inject({ method: "PATCH",
+    url: `/v1/teacher/homework/${homeworkId}`, headers: teacherAuth,
+    payload: { title: "Unsafe edit" } });
+  assert.equal(editPublished.statusCode, 409);
+  const publishedFileEdit = await app.inject({ method: "PUT",
+    url: `/v1/teacher/homework/${homeworkId}/file`, headers: teacherAuth,
+    payload: { fileId: null } });
+  assert.equal(publishedFileEdit.statusCode, 409);
 
   const parentPublished = await app.inject({
     method: "GET",
