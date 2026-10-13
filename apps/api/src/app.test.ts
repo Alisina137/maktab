@@ -4151,8 +4151,9 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: parentAuth
   });
   const results = parentPublished.json<{ results: Array<{ grade: { id: string; score: number; status: string } }> }>().results;
-  assert.equal(results.length, 1);
+  assert.equal(results.length, 2);
   assert.equal(results[0]?.grade.score, 88);
+  assert.equal(results.reduce((sum, row) => sum + row.grade.score, 0), 128);
   assert.equal(results[0]?.grade.status, "PUBLISHED");
 
   const studentPublished = await app.inject({
@@ -4161,8 +4162,9 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     headers: studentAuth
   });
   const studentResults = studentPublished.json<{ results: Array<{ grade: { score: number; status: string } }> }>().results;
-  assert.equal(studentResults.length, 1);
+  assert.equal(studentResults.length, 2);
   assert.equal(studentResults[0]?.grade.score, 88);
+  assert.equal(studentResults.reduce((sum, row) => sum + row.grade.score, 0), 128);
   assert.equal(studentResults[0]?.grade.status, "PUBLISHED");
 
   const resultAlerts = await app.inject({
@@ -4211,6 +4213,23 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(correctedStudentResult?.grade.remark, "Reviewed");
   assert.equal(correctedStudentResult?.grade.status, "PUBLISHED");
   assert.equal(correctedStudentResult?.exam.status, "PUBLISHED");
+  // 15.11: aggregation uses all published subject maximums, not a
+  // hardcoded 100-point percentage; correction immediately changes totals.
+  const finalParentRows = parentCorrected.json<{ results: Array<{
+    grade: { score: number }; examSubject: { maxScore: number }
+  }> }>().results;
+  assert.equal(finalParentRows.reduce((sum, x) => sum + x.grade.score, 0), 131);
+  assert.equal(finalParentRows.reduce((sum, x) => sum + x.examSubject.maxScore, 0), 150);
+  const finalStudentRows = studentCorrected.json<{ results: Array<{
+    grade: { score: number }; examSubject: { maxScore: number }
+  }> }>().results;
+  assert.equal(finalStudentRows.reduce((sum, x) => sum + x.grade.score, 0), 131);
+  assert.equal(finalStudentRows.reduce((sum, x) => sum + x.examSubject.maxScore, 0), 150);
+  const otherClassResults = await app.inject({ method: "GET",
+    url: `/v1/parent/children/${outsideStudentId}/learning`, headers: parentAuth });
+  assert.equal(otherClassResults.statusCode, 200);
+  assert.equal(otherClassResults.json<{ results: unknown[] }>().results.length, 0);
+
 });
 
 
