@@ -70,7 +70,7 @@ import {
   ParentMoreAcademicContent,
   type ParentTab
 } from "./src/parent-navigation";
-import { deactivatePushForSession, registerPushForSession } from "./src/push";
+import { deactivatePushForSession, registerPushForSession, subscribeToPushOpens } from "./src/push";
 import { notificationDestination } from "./src/notification-destination";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
