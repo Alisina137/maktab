@@ -156,14 +156,6 @@ export function registerLearningRoutes(
           request.params.examSubjectId,
           input.entries
         );
-        await accounts.writeAudit({
-          schoolId: context.user.schoolId,
-          actorUserId: context.user.id,
-          action: "grades.draft_saved",
-          entityType: "exam_subject",
-          entityId: request.params.examSubjectId,
-          metadata: { entryCount: input.entries.length }
-        });
         return { sheet };
       } catch (error) {
         return sendLearningError(reply, error);
@@ -266,15 +258,7 @@ export function registerLearningRoutes(
     if (!context) return;
     try {
       const input = setExamStatusSchema.parse(request.body);
-      const exam = await learning.setExamStatus(context.user.schoolId, request.params.examId, input.status);
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "exam.status_changed",
-        entityType: "exam",
-        entityId: exam.id,
-        metadata: { status: exam.status }
-      });
+      const exam = await learning.setExamStatus(context.user.schoolId, context.user.id, request.params.examId, input.status);
       return { exam };
     } catch (error) {
       return sendLearningError(reply, error);
@@ -285,15 +269,7 @@ export function registerLearningRoutes(
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
     try {
-      const result = await learning.publishExam(context.user.schoolId, request.params.examId);
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "exam.results_published",
-        entityType: "exam",
-        entityId: result.exam.id,
-        metadata: { notificationCount: result.notificationCount }
-      });
+      const result = await learning.publishExam(context.user.schoolId, context.user.id, request.params.examId);
       return result;
     } catch (error) {
       return sendLearningError(reply, error);
@@ -311,20 +287,6 @@ export function registerLearningRoutes(
         request.params.gradeId,
         input
       );
-      await accounts.writeAudit({
-        schoolId: context.user.schoolId,
-        actorUserId: context.user.id,
-        action: "grade.corrected",
-        entityType: "grade_record",
-        entityId: result.grade.id,
-        metadata: {
-          previousScore: result.previousScore,
-          score: result.grade.score,
-          previousRemark: result.previousRemark,
-          remark: result.grade.remark,
-          reason: input.reason
-        }
-      });
       return result;
     } catch (error) {
       return sendLearningError(reply, error);
