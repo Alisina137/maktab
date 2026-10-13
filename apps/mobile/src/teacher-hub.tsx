@@ -64,6 +64,7 @@ export function TeacherTodayInsights({
   onNotifications: () => void;
   onAttendance: (classId: string, date: string) => void;
   onRetry: () => void;
+  onOpenNotification: (notification: ParentNotification) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const pending = teacherTaskCounts(today, learning);
@@ -194,7 +195,7 @@ export function TeacherTodayInsights({
 
 export function TeacherInboxModal({
   open, locale, notifications, announcements, notificationsReady, announcementsReady,
-  textDirection, onClose, onMarkRead, onMarkAllRead, onRetry
+  textDirection, onClose, onMarkRead, onMarkAllRead, onRetry, onOpenNotification
 }: {
   open: boolean;
   locale: SupportedLocale;
@@ -248,8 +249,11 @@ export function TeacherInboxModal({
               : listed.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noNotifications")}</Text>
               : [...listed].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 30).map((item) => (
                 <View style={[styles.inboxItem, !item.readAt && styles.inboxUnread]} key={item.id}>
-                  <Text style={[styles.nextTitle, textDirection]}>{item.title}</Text>
-                  <Text style={[styles.muted, textDirection]}>{item.message}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={item.title}
+                    onPress={() => onOpenNotification(item)}>
+                    <Text style={[styles.nextTitle, textDirection]}>{item.title}</Text>
+                    <Text style={[styles.muted, textDirection]}>{item.message}</Text>
+                  </Pressable>
                   <View style={[styles.inboxFooter, rtl && styles.rowRtl]}>
                     <Text style={styles.inboxDate}>{formatLocalizedDate(item.createdAt, locale)}</Text>
                     {!item.readAt ? (
