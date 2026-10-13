@@ -87,3 +87,55 @@ and set `DATABASE_URL_UNPOOLED` in the private root `.env`.
 
 Never share the raw connection URL, password, or `.env` in chat. Do not use
 `db:push`, `reset --hard`, or disable TLS as a timeout workaround.
+
+## 2026-10-14 follow-up — Local `pnpm verify` exposed three API test failures
+
+The user's latest Windows `pnpm verify` output passed localization, cache/reconnect
+verification, development tunnel tests, all typechecks, and the database unit
+tests, but stopped in `apps/api` with **51 passing / 3 failing** tests:
+
+- School teacher/Negaran/timetable integration fixture: HTTP **400** instead of **201**.
+- Duplicate exam/grade workflow: HTTP **500** instead of expected **409**.
+- Duplicate pilot onboarding: HTTP **500** instead of expected **409**.
+
+### Root causes reproduced
+
+A dedicated GitHub Actions **Windows / Node 24** test job reproduced the
+failure and revealed the first problem's HTTP response: the test attempted to
+create a parent with username `parent.classroster`, but the application's
+intentional alphanumeric-only username policy correctly rejects periods. The
+test fixture now uses `parentclassroster`; the user-facing policy was **not**
+weakened.
+
+The two 500s stemmed from PostgreSQL unique-constraint violations hidden
+inside nested Drizzle query errors. The exception translator previously tested
+only the outer error text, overlooking the driver's `23505` code. A shared
+cause-chain-aware helper now correctly recognizes nested unique violations.
+It is covered by regression tests that distinguish duplicates from unrelated
+database/network errors. In a subsequent Windows CI run, the exam and pilot
+duplicate tests passed.
+
+### CI discovery bug uncovered
+
+Linux shell expansion of the unquoted `src/**/*.test.ts` pattern selected
+only nested test files when they existed, silently omitting the root
+`apps/api/src/app.test.ts` integration suite. This allowed green Linux CI
+while Windows executed the whole suite and exposed real failures. Test
+commands now **quote the glob** so tsx performs platform-consistent discovery
+for API, database, contracts and localization projects. CI additionally
+includes a real Windows / Node 24 API test job.
+
+### User-local follow-up
+
+```powershell
+cd C:\projects\maktab
+git -c http.version=HTTP/1.1 pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw "Pull failed" }
+pnpm verify
+```
+
+This test suite uses an embedded local PGlite database and does **not** require
+the remote Neon PostgreSQL server to be connected. The earlier external
+`CONNECT_TIMEOUT` remains a separate connectivity issue: only run
+`pnpm db:migrate` after `pnpm db:check` succeeds. No destructive database
+operations are needed to address the API test failures.
