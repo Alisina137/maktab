@@ -411,7 +411,11 @@ export const createExamSubjectSchema = z.object({
   examId: z.string().uuid(),
   subjectId: z.string().uuid(),
   classId: z.string().uuid(),
-  maxScore: z.number().int().min(1).max(10000)
+  maxScore: z.number().int().min(1).max(10000),
+  examDate: isoDateSchema.refine((value) => {
+    const date = new Date(value + "T12:00:00Z");
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, "Choose a real calendar date.")
 });
 export type CreateExamSubjectInput = z.infer<typeof createExamSubjectSchema>;
 
