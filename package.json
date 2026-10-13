@@ -13,7 +13,7 @@
     "verify": "pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
-    "verify:dev-api": "node --check scripts/dev-api.mjs && node --check scripts/mobile-api-env.mjs && node scripts/test-mobile-api-env.mjs && node scripts/test-dev-api-startup.mjs",
+    "verify:dev-api": "node --check scripts/dev-api.mjs && node --check scripts/ngrok-health.mjs && node scripts/test-ngrok-health.mjs && node --check scripts/mobile-api-env.mjs && node scripts/test-mobile-api-env.mjs && node scripts/test-dev-api-startup.mjs",
     "dev:api": "node scripts/dev-api.mjs",
     "dev:web": "pnpm --filter @maktablink/web dev",
     "dev:mobile": "pnpm --filter @maktablink/mobile exec expo start --tunnel --clear --go",

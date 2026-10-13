@@ -14,6 +14,7 @@ import {
   readMobileApiUrl,
   syncMobileApiUrl
 } from "./mobile-api-env.mjs";
+import { waitForTunnelHealth } from "./ngrok-health.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = path.join(root, ".env");
@@ -375,27 +376,27 @@ async function main() {
 
   console.log("[dev:api] HTTPS tunnel: " + url);
 
-  let tunnelReady = false;
-  try {
-    const response = await fetch(url + "/health", {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(7000)
-    });
-    const body = await response.json().catch(() => null);
-    tunnelReady =
-      response.ok &&
-      body?.service === "maktablink-api" &&
-      body?.status === "ok";
-  } catch {
-    // Tunnel may be blocked, expired, or still propagating.
-  }
+  // An ngrok inspector URL can appear before the remote edge accepts traffic.
+  // Probe with the same ngrok warning-bypass header as the mobile API client.
+  console.log("[dev:api] Verifying public tunnel (up to 30 seconds)...");
+  const tunnelCheck = await waitForTunnelHealth(url);
 
-  if (!tunnelReady) {
+  if (!tunnelCheck.ok) {
     console.error(
-      "[dev:api] Tunnel health check failed: " + url + "/health"
+      "[dev:api] Public tunnel health failed after " + tunnelCheck.attempts +
+      " attempts: " + tunnelCheck.reason
     );
     console.error(
-      "[dev:api] Keeping the existing Expo API URL. Check ngrok login/network and restart pnpm dev:api."
+      "[dev:api] Local API and database are healthy, but the public HTTPS endpoint could not be verified."
+    );
+    console.error(
+      "[dev:api] IMPORTANT: Expo API URL was NOT updated. An older EXPO_PUBLIC_API_URL may be stale."
+    );
+    console.error(
+      "[dev:api] Test from PowerShell: curl.exe -i -H \"ngrok-skip-browser-warning: true\" " + url + "/health"
+    );
+    console.error(
+      "[dev:api] If that is unavailable, check the ngrok agent, firewall, DNS/VPN, and network; restart pnpm dev:api."
     );
   } else if (
     process.env.MAKTABLINK_SYNC_MOBILE_API_URL

@@ -31,6 +31,9 @@ jobs:
       - name: Operational scripts syntax
         run: pnpm ops:check
 
+      - name: Development API and public ngrok readiness regression
+        run: pnpm verify:dev-api
+
       - name: Typecheck
         run: pnpm typecheck
 

@@ -1262,3 +1262,11 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Shared bottom navigation continues to use Today / Schedule / Classes / Workflows, with RTL focus states and selected labels. Teachers' timetable starting times now use 12-hour AM/PM formatting.
 - Auth-scoped hub reads load independently and invalidate stale requests when credentials/reconnect epochs change. Summary refreshes when returning from Workflows. No new database migration, no extra teacher permissions, and no persistent offline writes are introduced.
 - Added pure regression checks for teacher pending tasks, school-local next class and AM/PM formatting. Android device acceptance remains pending: verify new dashboard, Workflow tab switching, read notification, RTL, no unauthorized composer, and offline recovery.
+
+
+### Development tunnel startup fix — 2026-10-13
+- User reported `pnpm dev:api` confirming local API /health and DB /ready, followed by ngrok HTTPS URL whose **one-shot public /health probe failed**, leaving Expo on a stale previous API URL.
+- Startup now checks the public tunnel with `ngrok-skip-browser-warning: true` (consistent with the mobile API client) and retries initial propagation failures for up to 30 seconds before deciding whether to update the ignored Expo API URL.
+- If public verification still fails, startup logs the final HTTP/transport reason and a copyable PowerShell `curl.exe` diagnostic command. It deliberately does not claim the public endpoint is healthy or overwrite the Expo URL on failure. API and ngrok keep running for investigation.
+- Added offline deterministic tests for ngrok HTML warning/502/network failures, header injection, retry and timeout; they run in CI with the dev launcher checks.
+- Follow-up Android acceptance: restart `pnpm dev:api` **first**, check a successful public API health before starting `pnpm dev:mobile`, scan a fresh Expo QR code and check live Teacher navigation and reconnect.
