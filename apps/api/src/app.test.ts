@@ -4759,6 +4759,25 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
       .announcements.some(item => item.id === classBAllId), expected);
   }
 
+  // The Parent's Class B entitlement is revoked when the only Class B
+  // child withdraws; archived/old inbox messages cannot bypass this check.
+  const siblingId = sibling.json<{ student: { id: string } }>().student.id;
+  const withdrawnSibling = await app.inject({ method: "PATCH",
+    url: `/v1/admin/families/students/${siblingId}`, headers: admin,
+    payload: { status: "WITHDRAWN" } });
+  assert.equal(withdrawnSibling.statusCode, 200);
+  const noLongerVisible = await app.inject({ method: "GET",
+    url: "/v1/announcements",
+    headers: { authorization: `Bearer ${parentAToken}` } });
+  assert.equal(noLongerVisible.json<{ announcements: Array<{ id: string }> }>()
+    .announcements.some(x => x.id === classBAllId), false);
+  const noLongerInInbox = await app.inject({ method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${parentAToken}` } });
+  assert.equal(noLongerInInbox.json<{
+    notifications: Array<{ metadata: { announcementId?: string } }>
+  }>().notifications.some(x => x.metadata.announcementId === classBAllId), false);
+
   const invoiceResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/fees/invoices",
