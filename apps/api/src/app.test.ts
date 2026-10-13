@@ -703,6 +703,23 @@ test("student entry enforces role, temporary password, active enrollment, and su
   assert.equal(withdrawnTimetable.statusCode, 403);
   assert.equal(withdrawnTimetable.json<{ error: string }>().error, "account_unavailable");
 
+  // Step 11.8: withdrawing a Student must close communication APIs as well
+  // as learning/timetable, without destroying the user or active session.
+  const withdrawnCommunicationRoutes = [
+    { method: "GET", url: "/v1/announcements" },
+    { method: "GET", url: "/v1/notifications" },
+    { method: "GET", url: "/v1/student/fees" },
+    { method: "POST", url: "/v1/notifications/any-notification-id/read" }
+  ] as const;
+  for (const route of withdrawnCommunicationRoutes) {
+    const blocked = await app.inject({
+      ...route,
+      headers: { authorization: `Bearer ${activeSession.accessToken}` }
+    });
+    assert.equal(blocked.statusCode, 403, route.url);
+    assert.equal(blocked.json<{ error: string }>().error, "account_unavailable");
+  }
+
   const reactivateEnrollment = await app.inject({
     method: "PATCH",
     url: `/v1/admin/families/students/${studentId}`,
@@ -721,6 +738,12 @@ test("student entry enforces role, temporary password, active enrollment, and su
     reactivatedStatus.json<{ studentId: string; status: string }>().status,
     "ACTIVE"
   );
+  const reactivatedAnnouncements = await app.inject({
+    method: "GET",
+    url: "/v1/announcements",
+    headers: { authorization: `Bearer ${activeSession.accessToken}` }
+  });
+  assert.equal(reactivatedAnnouncements.statusCode, 200);
 
   const suspend = await app.inject({
     method: "POST",
@@ -3359,6 +3382,54 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   });
   assert.equal(parentFees.statusCode, 200);
   assert.equal(parentFees.json<{ invoices: Array<{ outstanding: number }> }>().invoices[0]?.outstanding, 1000);
+
+  // Student enrollment is authoritative for school-wide delivery too:
+  // withdrawal must prevent new notifications even if the account is ACTIVE.
+  const withdrawStudentA = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/families/students/${studentA.id}`,
+    headers: admin,
+    payload: { status: "WITHDRAWN" }
+  });
+  assert.equal(withdrawStudentA.statusCode, 200);
+  const schoolAnnouncement = await app.inject({
+    method: "POST",
+    url: "/v1/admin/announcements",
+    headers: admin,
+    payload: {
+      title: "School update after withdrawal",
+      content: "Current students receive this notice.",
+      audienceScope: "SCHOOL"
+    }
+  });
+  assert.equal(schoolAnnouncement.statusCode, 201);
+  const studentBRecent = await app.inject({
+    method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${studentBToken}` }
+  });
+  assert.ok(
+    studentBRecent.json<{ notifications: Array<{ title: string }> }>().notifications
+      .some((item) => item.title === "School update after withdrawal")
+  );
+  const reactivateStudentA = await app.inject({
+    method: "PATCH",
+    url: `/v1/admin/families/students/${studentA.id}`,
+    headers: admin,
+    payload: { status: "ACTIVE" }
+  });
+  assert.equal(reactivateStudentA.statusCode, 200);
+  const studentAAfterReactivation = await app.inject({
+    method: "GET",
+    url: "/v1/notifications",
+    headers: { authorization: `Bearer ${studentAToken}` }
+  });
+  assert.equal(studentAAfterReactivation.statusCode, 200);
+  assert.equal(
+    studentAAfterReactivation.json<{ notifications: Array<{ title: string }> }>().notifications
+      .some((item) => item.title === "School update after withdrawal"),
+    false
+  );
 });
 
 

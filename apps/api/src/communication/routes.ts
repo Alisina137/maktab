@@ -70,8 +70,29 @@ export function registerCommunicationRoutes(
   pushProvider: PushProvider,
   provisioningKey: string
 ) {
-  app.get("/v1/announcements", async (request, reply) => {
+  // Enrollment withdrawal is independent of user suspension. Keep the
+  // status and administrator-contact endpoints reachable, but do not expose
+  // school announcements, personal alerts, fees or push-device writes to a
+  // Student whose enrollment is no longer active.
+  async function requireActiveCommunicationAccess(
+    request: Parameters<typeof requireAccess>[0],
+    reply: Parameters<typeof requireAccess>[1]
+  ) {
     const context = await requireReadyAccess(request, reply, accounts);
+    if (!context) return null;
+    if (context.user.role === "STUDENT" &&
+        !(await communication.hasActiveStudentEnrollment(context.user.schoolId, context.user.id))) {
+      await reply.code(403).send({
+        error: "account_unavailable",
+        message: "Student enrollment is not active. Contact the school administrator."
+      });
+      return null;
+    }
+    return context;
+  }
+
+  app.get("/v1/announcements", async (request, reply) => {
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     try {
       return {
@@ -87,7 +108,7 @@ export function registerCommunicationRoutes(
   });
 
   app.post("/v1/teacher/announcements", async (request, reply) => {
-    const context = await requireReadyAccess(request, reply, accounts);
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     if (context.user.role !== "TEACHER") {
       return reply.code(403).send({ error: "forbidden", message: "Teacher access is required." });
@@ -114,7 +135,7 @@ export function registerCommunicationRoutes(
   });
 
   app.get("/v1/notifications", async (request, reply) => {
-    const context = await requireReadyAccess(request, reply, accounts);
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     return { notifications: await communication.getUserNotifications(context.user.schoolId, context.user.id) };
   });
@@ -122,7 +143,7 @@ export function registerCommunicationRoutes(
   app.post<{ Params: { notificationId: string } }>(
     "/v1/notifications/:notificationId/read",
     async (request, reply) => {
-      const context = await requireReadyAccess(request, reply, accounts);
+      const context = await requireActiveCommunicationAccess(request, reply);
       if (!context) return;
       const notification = await communication.markNotificationRead(
         context.user.schoolId,
@@ -135,7 +156,7 @@ export function registerCommunicationRoutes(
   );
 
   app.post("/v1/notifications/devices", async (request, reply) => {
-    const context = await requireReadyAccess(request, reply, accounts);
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     try {
       const input = registerPushDeviceSchema.parse(request.body);
@@ -152,7 +173,7 @@ export function registerCommunicationRoutes(
   });
 
   app.post("/v1/notifications/devices/deactivate", async (request, reply) => {
-    const context = await requireReadyAccess(request, reply, accounts);
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     try {
       const input = registerPushDeviceSchema.parse(request.body);
@@ -170,7 +191,7 @@ export function registerCommunicationRoutes(
   app.get<{ Params: { studentId: string } }>(
     "/v1/parent/children/:studentId/fees",
     async (request, reply) => {
-      const context = await requireReadyAccess(request, reply, accounts);
+      const context = await requireActiveCommunicationAccess(request, reply);
       if (!context) return;
       if (context.user.role !== "PARENT") {
         return reply.code(403).send({ error: "forbidden", message: "Parent access is required." });
@@ -190,7 +211,7 @@ export function registerCommunicationRoutes(
   );
 
   app.get("/v1/student/fees", async (request, reply) => {
-    const context = await requireReadyAccess(request, reply, accounts);
+    const context = await requireActiveCommunicationAccess(request, reply);
     if (!context) return;
     if (context.user.role !== "STUDENT") {
       return reply.code(403).send({ error: "forbidden", message: "Student access is required." });

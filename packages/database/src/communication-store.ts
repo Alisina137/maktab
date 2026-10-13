@@ -67,6 +67,7 @@ export interface CommunicationStore {
   createAnnouncement(schoolId: string, actorUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
   createNegaranAnnouncement(schoolId: string, teacherUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
   archiveAnnouncement(schoolId: string, announcementId: string): Promise<Announcement>;
+  hasActiveStudentEnrollment(schoolId: string, userId: string): Promise<boolean>;
   getAnnouncementsForUser(schoolId: string, userId: string, role: UserRole): Promise<Announcement[]>;
   getAdminOverview(schoolId: string): Promise<CommunicationOverview>;
   createFeeInvoice(schoolId: string, actorUserId: string, input: CreateFeeInvoiceInput): Promise<FeeInvoice>;
@@ -194,22 +195,40 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     return new Set();
   }
 
+  async function eligibleAudienceUserIds(
+    schoolId: string,
+    recipients: Array<{ id: string; role: string }>
+  ): Promise<string[]> {
+    const studentUserIds = recipients.filter((row) => row.role === "STUDENT").map((row) => row.id);
+    if (studentUserIds.length === 0) return recipients.map((row) => row.id);
+    const active = await db.select({ userId: students.userId }).from(students)
+      .where(and(
+        eq(students.schoolId, schoolId),
+        eq(students.status, "ACTIVE"),
+        inArray(students.userId, studentUserIds)
+      ));
+    const activeStudentIds = new Set(active.map((row) => row.userId));
+    return recipients
+      .filter((row) => row.role !== "STUDENT" || activeStudentIds.has(row.id))
+      .map((row) => row.id);
+  }
+
   async function announcementRecipients(announcement: Announcement, effectiveAt = new Date()): Promise<string[]> {
     if (announcement.audienceScope === "SCHOOL") {
-      const rows = await db.select({ id: users.id }).from(users)
+      const rows = await db.select({ id: users.id, role: users.role }).from(users)
         .where(and(eq(users.schoolId, announcement.schoolId), ne(users.status, "ARCHIVED"), ne(users.status, "SUSPENDED")));
-      return rows.map((row) => row.id);
+      return eligibleAudienceUserIds(announcement.schoolId, rows);
     }
     if (announcement.audienceScope === "ROLE") {
       if (!announcement.audienceRole) return [];
-      const rows = await db.select({ id: users.id }).from(users)
+      const rows = await db.select({ id: users.id, role: users.role }).from(users)
         .where(and(
           eq(users.schoolId, announcement.schoolId),
           eq(users.role, announcement.audienceRole),
           ne(users.status, "ARCHIVED"),
           ne(users.status, "SUSPENDED")
         ));
-      return rows.map((row) => row.id);
+      return eligibleAudienceUserIds(announcement.schoolId, rows);
     }
     if (!announcement.classId) return [];
     const effectiveDate = await schoolDateAt(announcement.schoolId, effectiveAt);
@@ -349,6 +368,16 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         .where(and(eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId))).returning();
       if (!updated) throw new CommunicationNotFoundError("Announcement not found.");
       return updated;
+    },
+
+    async hasActiveStudentEnrollment(schoolId, userId) {
+      const [row] = await db.select({ id: students.id }).from(students)
+        .where(and(
+          eq(students.schoolId, schoolId),
+          eq(students.userId, userId),
+          eq(students.status, "ACTIVE")
+        )).limit(1);
+      return Boolean(row);
     },
 
     async getAnnouncementsForUser(schoolId, userId, role) {
@@ -577,6 +606,19 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let failed = 0;
       let skipped = 0;
       for (const notification of pending) {
+        const [recipient] = await db.select({ role: users.role, status: users.status }).from(users)
+          .where(and(eq(users.id, notification.userId), eq(users.schoolId, notification.schoolId)))
+          .limit(1);
+        const permitted = recipient?.status === "ACTIVE" &&
+          (recipient.role !== "STUDENT" ||
+            await this.hasActiveStudentEnrollment(notification.schoolId, notification.userId));
+        if (!permitted) {
+          // A queued notification must never reach a withdrawn/suspended user.
+          await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+            .where(and(eq(notifications.id, notification.id), eq(notifications.schoolId, notification.schoolId)));
+          skipped += 1;
+          continue;
+        }
         const userDevices = await db.select().from(devices)
           .where(and(eq(devices.schoolId, notification.schoolId), eq(devices.userId, notification.userId), eq(devices.active, true)));
         if (userDevices.length === 0) {

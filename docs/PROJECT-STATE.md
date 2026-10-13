@@ -1178,3 +1178,22 @@ Planned verification slices:
 - Fixed mobile API JSON headers: requests with no body no longer claim JSON. This prevents Fastify from rejecting notification mark-read POST and other bodyless actions before their handlers execute.
 - Extended the API regression for class-scoped Student announcement delivery and ownership-scoped notification mark-read (including denying a second Student).
 - Device smoke testing and CI verification remain separate acceptance gates, especially offline/reconnect and real push delivery.
+
+#### 11.7 — Student navigation, styling, RTL, and localization
+- Implemented Product Specification V1's four main Student bottom tabs: **Home, Homework, Results, More**. Timetable, Announcements, and Notifications remain accessible as dedicated Student detail screens from Home and More, rather than creating extra bottom tabs.
+- The main Student tab bar has translated Dari/Pashto/English labels, accessible tablist/selected states, RTL-aware ordering, compact icon-and-label targets, and the same inset active-tab treatment as Parent navigation.
+- Student More now groups the Timetable, Announcements, and Notifications routes with school administrator contact and Logout. These account/support actions are no longer repeated under the Student Home summary.
+- Homework and Results are primary Student navigation destinations and no longer show redundant back buttons. Nested Timetable/Updates retain a back action that returns to the originating Home or More section.
+- Selecting a main Student tab clears stale action feedback and scrolls the content to the top with reduced-motion support.
+- The Student navigation bar never appears on Teacher/Parent screens, login, password change, withdrawn/suspended views, or nested detail routes.
+
+#### 11.8 — Student permissions, enrollment, session, offline, and resilience
+- Audited Student read/write boundaries. Existing Student Home, timetable, learning, and published-results routes remain school-scoped and active-enrollment constrained; draft homework/results remain hidden.
+- Found and fixed a withdrawn-enrollment authorization gap in communication APIs: the server now rejects Student announcement, notification, fee, notification-read, and push-device requests when the linked Student enrollment is not ACTIVE, returning `account_unavailable` without destroying the account/session. The student status and school administrator contact endpoints remain accessible for recovery.
+- School-wide and Student-role announcement recipient expansion now excludes withdrawn Student enrollments even if the underlying user account is still ACTIVE. Pending push delivery is cancelled for withdrawn or suspended recipient identities, preventing queued messages from leaking after access is revoked.
+- Student Home now fetches timetable, learning, announcements, and notifications independently using `Promise.allSettled`. A temporary failure in one read no longer leaves unrelated Student dashboard sections loading forever; an authorization denial still overrides cached/partial data.
+- A Student `account_unavailable` response immediately activates the restricted withdrawn UI instead of waiting for the next periodic status poll.
+- The shared mobile single-flight token refresh, reconnect freshness, 7-day account-scoped cached GET fallback, non-replayed writes, and non-blocking push registration remain in place.
+- Expanded API regressions to deny withdrawn Student communication endpoints, confirm reactivation restores read access, restrict announcement notifications to active Students, and prevent cross-account notification acknowledgment.
+- Device-only gates remain unverified here: Android Expo tab/RTL/large-text smoke tests, real outage/reconnect and foreground/refresh, push delivery, and manual school-admin withdrawal/reactivation.
+- This is a source-code plus CI test slice, not certification of a live production deployment.
