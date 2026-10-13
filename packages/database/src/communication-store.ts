@@ -393,7 +393,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       if (input.audienceScope !== "CLASS" || !input.classId) {
         throw new CommunicationValidationError("Negaran announcements must target the supervised class.");
       }
-      const now = new Date().toISOString().slice(0, 10);
+      const now = await schoolDateAt(schoolId);
       const [assignment] = await db.select({ id: negaranAssignments.id }).from(negaranAssignments)
         .where(and(
           eq(negaranAssignments.schoolId, schoolId),
