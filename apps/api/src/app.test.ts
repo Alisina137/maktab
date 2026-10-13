@@ -4609,6 +4609,41 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   });
   assert.equal(acknowledged.statusCode, 200);
   assert.ok(acknowledged.json<{ notification: { readAt: string | null } }>().notification.readAt);
+  // Step 16: audience fields are exclusive except CLASS + optional role,
+  // which is an intersection (class membership AND the requested role).
+  for (const payload of [
+    { title: "Wrong scope", content: "No", audienceScope: "SCHOOL", audienceRole: "PARENT" },
+    { title: "Missing role", content: "No", audienceScope: "ROLE" },
+    { title: "Missing class", content: "No", audienceScope: "CLASS" },
+    { title: "Bad title", content: "No", audienceScope: "SCHOOL" },
+    { title: "Wrong class field", content: "No", audienceScope: "ROLE",
+      audienceRole: "STUDENT", classId: classA }
+  ]) {
+    const invalid = await app.inject({ method: "POST", url: "/v1/admin/announcements",
+      headers: admin, payload });
+    assert.equal(invalid.statusCode, 400, invalid.body);
+  }
+  const roleTarget = await app.inject({ method: "POST",
+    url: "/v1/admin/announcements", headers: admin,
+    payload: { title: "Class B students only", content: "Only students of B",
+      audienceScope: "CLASS", classId: classB, audienceRole: "STUDENT" } });
+  assert.equal(roleTarget.statusCode, 201);
+  const roleTargetId = roleTarget.json<{ announcement: { id: string } }>().announcement.id;
+  for (const [token, visible] of [
+    [studentAToken, false], [studentBToken, true],
+    [parentAToken, false], [parentBToken, false]
+  ] as const) {
+    const res = await app.inject({ method: "GET", url: "/v1/announcements",
+      headers: { authorization: `Bearer ${token}` } });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.json<{ announcements: Array<{ id: string }> }>()
+      .announcements.some(item => item.id === roleTargetId), visible);
+    const inbox = await app.inject({ method: "GET", url: "/v1/notifications",
+      headers: { authorization: `Bearer ${token}` } });
+    assert.equal(inbox.json<{ notifications: Array<{ metadata: { announcementId?: string } }> }>()
+      .notifications.some(item => item.metadata.announcementId === roleTargetId), visible);
+  }
+
 
   const invoiceResponse = await app.inject({
     method: "POST",
