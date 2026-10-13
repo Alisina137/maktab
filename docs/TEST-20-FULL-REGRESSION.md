@@ -43,7 +43,7 @@ The statuses below deliberately distinguish **automated API/store evidence**, **
 ## Changes identified in Step 20
 
 - Public website landing page contained **stale Phase 3 text** stating parent/family onboarding and attendance were not built. The page now accurately describes currently implemented workflows, retains a semantic heading hierarchy and responsive feature cards.
-- **Security regression discovered:** Switching a school to INACTIVE previously blocked new logins, but previously issued Admin/Teacher/Parent/Student access and refresh tokens were not consistently denied; an ARCHIVED account could also retain token-based access. The auth access/refresh guards now enforce school activation and archive status on each operation, with an API integration regression that checks blocked tokens and later school reactivation.
+- **Security regression explicitly verified:** Reviewed the shared session authenticator and confirmed it already rejects previously issued tokens for INACTIVE schools and ARCHIVED users as invalid (401), including refresh attempts. Added a full API integration regression that tests these denials and safe access restoration when a school returns to ACTIVE. Avoided redundant, unreachable authorization guards.
 - Previously, tests manually listed 19 of 20 SQL migration journal entries, skipping the teacher assignment uniqueness migration. Added a regression that replays the **full ordered journal** against PostgreSQL-compatible PGlite and inspects critical constraints.
 - Release coverage evidence and CI parent-resilience checks are being added as explicit gates to reduce the chance of silently dropping prior workflow tests.
 
