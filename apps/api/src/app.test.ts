@@ -3580,6 +3580,26 @@ test("homework stays private as draft, then becomes visible to parent and linked
 
   const studentPublished = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
   assert.equal(studentPublished.json<{ homework: Array<{ homework: { title: string } }> }>().homework[0]?.homework.title, "Read chapter 3");
+  assert.equal(studentPublished.json<{ homework: Array<{ homework: { content: string } }> }>()
+    .homework[0]?.homework.content, "Revised questions for chapter 3.");
+  const otherChildPublished = await app.inject({ method: "GET",
+    url: `/v1/parent/children/${otherChildId}/learning`, headers: parentAuth });
+  assert.equal(otherChildPublished.statusCode, 200);
+  assert.equal(otherChildPublished.json<{ homework: unknown[] }>().homework.length, 0);
+
+  // Publication fan-out: precisely one alert per authorized recipient.
+  for (const headers of [parentAuth, studentAuth]) {
+    const inbox = await app.inject({ method: "GET", url: "/v1/notifications", headers });
+    assert.equal(inbox.statusCode, 200);
+    assert.equal(inbox.json<{ notifications: Array<{ type: string; metadata: { homeworkId: string } }> }>()
+      .notifications.filter(x => x.type === "HOMEWORK_PUBLISHED" && x.metadata.homeworkId === homeworkId).length, 1);
+  }
+  const otherTeacherInbox = await app.inject({ method: "GET",
+    url: "/v1/notifications", headers: otherTeacherAuth });
+  assert.equal(otherTeacherInbox.statusCode, 200);
+  assert.equal(otherTeacherInbox.json<{ notifications: Array<{ type: string }> }>()
+    .notifications.filter(x => x.type === "HOMEWORK_PUBLISHED").length, 0);
+
 
   const visibleFile = await app.inject({method:"GET",url:`/v1/learning/files/${fileId}`,headers:studentAuth});
   assert.equal(visibleFile.statusCode,200);
