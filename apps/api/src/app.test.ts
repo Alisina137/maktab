@@ -3667,6 +3667,33 @@ test("homework stays private as draft, then becomes visible to parent and linked
   assert.equal(scheduledStudent.statusCode,200);
   assert.ok(scheduledStudent.json<{homework:Array<{homework:{id:string}}>}>().homework
     .some(item=>item.homework.id===futureId));
+
+  // 14.8: Close blocks new submissions/edits, preserves learner history.
+  const closed = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/close`, headers: teacherAuth });
+  assert.equal(closed.statusCode, 200);
+  assert.equal(closed.json<{ homework: { status: string } }>().homework.status, "CLOSED");
+  const repeatClose = await app.inject({ method: "POST",
+    url: `/v1/teacher/homework/${homeworkId}/close`, headers: teacherAuth });
+  assert.equal(repeatClose.statusCode, 409);
+  const editClosed = await app.inject({ method: "PATCH",
+    url: `/v1/teacher/homework/${homeworkId}`, headers: teacherAuth,
+    payload: { content: "Cannot revise closed homework" } });
+  assert.equal(editClosed.statusCode, 409);
+  const lateSubmission = await app.inject({ method: "POST",
+    url: `/v1/student/homework/${homeworkId}/submission`,
+    headers: studentAuth, payload: { answer: "Too late" } });
+  assert.equal(lateSubmission.statusCode, 404);
+  for (const [headers, url] of [
+    [parentAuth, `/v1/parent/children/${studentId}/learning`],
+    [studentAuth, "/v1/student/home"]
+  ] as const) {
+    const response = await app.inject({ method: "GET", url, headers });
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.json<{ homework: Array<{ homework: { id: string; status: string } }> }>()
+      .homework.some(x => x.homework.id === homeworkId && x.homework.status === "CLOSED"));
+  }
+
 });
 
 test("draft grades are hidden until admin publishes the complete exam, and unrelated teachers cannot grade", async (t) => {
