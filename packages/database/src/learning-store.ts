@@ -335,7 +335,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           eq(gradeRecords.schoolId, schoolId),
           eq(gradeRecords.studentId, student.id),
           eq(gradeRecords.status, "PUBLISHED"),
-          eq(exams.status, "PUBLISHED")
+          inArray(exams.status, ["PUBLISHED", "ARCHIVED"])
         )
       )
       .orderBy(desc(exams.publishedAt), asc(subjects.name));
