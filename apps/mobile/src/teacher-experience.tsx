@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
@@ -10,7 +11,9 @@ import {
   type SupportedLocale,
   type TranslationKey
 } from "@maktablink/localization";
-import type { TeacherTodayPayload, TeacherAcademicsPayload, AdminContactPayload } from "./api";
+import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type AdminContactPayload, type TeacherLearningPayload, type ParentNotification, type AnnouncementPayload } from "./api";
+import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
+import { teacherTime12 } from "./teacher-hub-data";
 import { AdminContactCard } from "./admin-contact-card";
 import { TeacherLearningPanel } from "./learning-ui";
 import { CommunicationPanel } from "./communication-ui";
@@ -84,7 +87,7 @@ function PeriodRow({ item, locale, textDirection, rtl }: {
 }) {
   return (
     <View style={[styles.periodRow, rtl && styles.rowRtl]}>
-      <View style={styles.timeChip}><Text style={styles.timeText}>{formatLocalizedTime(item.startsAt, locale)}</Text></View>
+      <View style={styles.timeChip}><Text style={styles.timeText}>{teacherTime12(item.startsAt)}</Text></View>
       <View style={styles.flex}>
         <Text style={[styles.itemTitle, textDirection]}>{item.subjectName}</Text>
         <Text style={[styles.muted, textDirection]}>{item.className} · {item.classCode}</Text>
@@ -114,7 +117,7 @@ function Empty({ message, rtl, textDirection }: { message: string; rtl: boolean;
 export function TeacherExperience({
   tab, today, academics, todayReady, academicsReady, schoolName, username, locale,
   textDirection, accessToken, adminContact, reconnectEpoch, onSelect, onAttendance,
-  onRetry, onError, onNotice, onLogout
+  onRetry, onError, onNotice, onLogout, onScrollTop
 }: {
   tab: TeacherTab;
   today: TeacherTodayPayload | null;
@@ -134,6 +137,7 @@ export function TeacherExperience({
   onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
   onNotice: (message: string | null) => void;
   onLogout: () => void;
+  onScrollTop: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const statusKey = (status: "PENDING" | "SUBMITTED") =>
@@ -146,6 +150,64 @@ export function TeacherExperience({
   const uniqueClassCount = new Set(assignments.map((item) => item.classId)).size;
   const currentWeekday = today?.weekday;
   const activeSupervisions = today?.supervisedClasses ?? [];
+  const [workflowSection, setWorkflowSection] = useState<TeacherWorkflowSection>("HOMEWORK");
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [hubLearning, setHubLearning] = useState<TeacherLearningPayload | null>(null);
+  const [hubAnnouncements, setHubAnnouncements] = useState<AnnouncementPayload[]>([]);
+  const [hubNotifications, setHubNotifications] = useState<ParentNotification[]>([]);
+  const [hubReady, setHubReady] = useState({ learning: false, announcements: false, notifications: false });
+  const [hubRefresh, setHubRefresh] = useState(0);
+  const hubRequestId = useRef(0);
+  const currentToken = useRef(accessToken);
+  const previousTab = useRef(tab);
+
+  useEffect(() => {
+    if (previousTab.current === "WORKFLOWS" && tab === "TODAY") {
+      setHubRefresh((value) => value + 1);
+    }
+    previousTab.current = tab;
+  }, [tab]);
+
+  useEffect(() => {
+    const requestId = ++hubRequestId.current;
+    currentToken.current = accessToken;
+    setHubReady({ learning: false, announcements: false, notifications: false });
+    const read = async () => {
+      const [learning, announcements, notifications] = await Promise.allSettled([
+        api.teacherLearning(accessToken),
+        api.announcements(accessToken),
+        api.notifications(accessToken)
+      ] as const);
+      if (hubRequestId.current !== requestId) return;
+      setHubLearning(learning.status === "fulfilled" ? learning.value : null);
+      setHubAnnouncements(announcements.status === "fulfilled" ? announcements.value.announcements : []);
+      setHubNotifications(notifications.status === "fulfilled" ? notifications.value.notifications : []);
+      setHubReady({ learning: true, announcements: true, notifications: true });
+    };
+    void read();
+    return () => { hubRequestId.current += 1; };
+  }, [accessToken, reconnectEpoch, hubRefresh]);
+
+  async function markTeacherNotificationRead(notificationId: string) {
+    try {
+      const token = accessToken;
+      const result = await api.markNotificationRead(token, notificationId);
+      if (currentToken.current !== token) return;
+      setHubNotifications((current) => current.map((item) =>
+        item.id === notificationId ? result.notification : item
+      ));
+    } catch {
+      // Leave the notification unread so it can be acknowledged after reconnect.
+    }
+  }
+
+  function goToWorkflow(section: TeacherWorkflowSection) {
+    setWorkflowSection(section);
+    onSelect("WORKFLOWS");
+    onScrollTop();
+  }
+
+  const unreadCount = hubNotifications.filter((item) => !item.readAt).length;
 
   return (
     <View style={styles.stack}>
@@ -156,10 +218,42 @@ export function TeacherExperience({
           <Text style={[styles.muted, textDirection]}>{today?.teacher.fullName ?? username}</Text>
           <Text style={[styles.context, textDirection]}>{schoolName}</Text>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={translate(locale, "teacher.notificationsCenter")}
+          onPress={() => setInboxOpen(true)}
+          style={styles.inboxButton}
+          testID="teacher-inbox-button"
+        >
+          <Ionicons name="notifications-outline" size={23} color={tokens.color.brandStrong} />
+          {unreadCount > 0 ? (
+            <View style={styles.inboxBadge}>
+              <Text style={styles.inboxBadgeText}>{unreadCount > 99 ? "99+" : formatLocalizedNumber(unreadCount, locale)}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
       {tab === "TODAY" ? (
         <>
+          <TeacherTodayInsights
+            today={today}
+            learning={hubLearning}
+            learningReady={hubReady.learning}
+            announcements={hubAnnouncements}
+            announcementsReady={hubReady.announcements}
+            notifications={hubNotifications}
+            locale={locale}
+            textDirection={textDirection}
+            onSchedule={() => onSelect("SCHEDULE")}
+            onClasses={() => onSelect("CLASSES")}
+            onHomework={() => goToWorkflow("HOMEWORK")}
+            onGrades={() => goToWorkflow("GRADES")}
+            onAnnouncements={() => goToWorkflow("ANNOUNCEMENTS")}
+            onNotifications={() => setInboxOpen(true)}
+            onAttendance={onAttendance}
+            onRetry={() => setHubRefresh((value) => value + 1)}
+          />
           <View style={styles.card}>
             <SectionHeading icon="today-outline" title={translate(locale, "teacher.todayTitle")} rtl={rtl} textDirection={textDirection} />
             <Text style={[styles.date, textDirection]}>
@@ -289,19 +383,45 @@ export function TeacherExperience({
           <View style={styles.card}>
             <SectionHeading icon="briefcase-outline" title={translate(locale, "teacher.navWorkflows")} rtl={rtl} textDirection={textDirection} />
             <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.workflowsHint")}</Text>
+            <View style={[styles.workflowTabs, rtl && styles.rowRtl]} accessibilityRole="tablist">
+              {([
+                ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
+                ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
+                ["ANNOUNCEMENTS", "teacher.workflowAnnouncements", "megaphone-outline"]
+              ] as const).map(([id, label, icon]) => (
+                <Pressable
+                  key={id} accessibilityRole="tab"
+                  accessibilityLabel={translate(locale, label)}
+                  accessibilityState={{ selected: workflowSection === id }}
+                  onPress={() => { setWorkflowSection(id); onScrollTop(); }}
+                  style={({ pressed }) => [
+                    styles.workflowTab, workflowSection === id && styles.workflowTabActive, pressed && styles.pressed
+                  ]}
+                >
+                  <Ionicons name={icon} size={18} color={workflowSection === id ? tokens.color.brandStrong : tokens.color.textMuted} />
+                  <Text numberOfLines={2} style={[styles.workflowTabText, workflowSection === id && styles.workflowTabTextActive]}>
+                    {translate(locale, label)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-          <TeacherLearningPanel
-            key={`teacher-learning-${reconnectEpoch}`}
-            accessToken={accessToken} locale={locale}
-            textDirection={textDirection} onError={onError} onNotice={onNotice}
-          />
-          <CommunicationPanel
-            key={`teacher-communication-${reconnectEpoch}`}
-            accessToken={accessToken} mode="TEACHER"
-            supervisedClasses={activeSupervisions}
-            locale={locale} textDirection={textDirection}
-            onError={onError} onNotice={onNotice}
-          />
+          {workflowSection !== "ANNOUNCEMENTS" ? (
+            <TeacherLearningPanel
+              key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
+              section={workflowSection}
+              accessToken={accessToken} locale={locale}
+              textDirection={textDirection} onError={onError} onNotice={onNotice}
+            />
+          ) : (
+            <CommunicationPanel
+              key={`teacher-communication-${reconnectEpoch}`}
+              accessToken={accessToken} mode="TEACHER" teacherSection="ANNOUNCEMENTS"
+              supervisedClasses={activeSupervisions}
+              locale={locale} textDirection={textDirection}
+              onError={onError} onNotice={onNotice}
+            />
+          )}
           <AdminContactCard contact={adminContact} locale={locale} />
           <Pressable accessibilityRole="button" style={styles.logout} onPress={onLogout}>
             <Ionicons name="log-out-outline" size={18} color={tokens.color.brandStrong} />
@@ -318,6 +438,18 @@ export function TeacherExperience({
           <Text style={styles.linkText}>{translate(locale, "action.retry")}</Text>
         </Pressable>
       ) : null}
+      <TeacherInboxModal
+        open={inboxOpen}
+        locale={locale}
+        notifications={hubNotifications}
+        announcements={hubAnnouncements}
+        notificationsReady={hubReady.notifications}
+        announcementsReady={hubReady.announcements}
+        textDirection={textDirection}
+        onClose={() => setInboxOpen(false)}
+        onMarkRead={(notificationId) => void markTeacherNotificationRead(notificationId)}
+        onRetry={() => setHubRefresh((value) => value + 1)}
+      />
     </View>
   );
 }
@@ -360,5 +492,13 @@ const styles = StyleSheet.create({
   navIconActive: { backgroundColor: "#e7efff" },
   navLabel: { color: tokens.color.textMuted, fontSize: 10.5, fontWeight: "700" },
   activeNavLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
+  inboxButton: { width: 49, height: 49, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: "#e7efff" },
+  inboxBadge: { position: "absolute", top: 1, right: 0, minWidth: 20, height: 20, paddingHorizontal: 3, borderRadius: 11, backgroundColor: "#c53549", alignItems: "center", justifyContent: "center" },
+  inboxBadgeText: { fontSize: 10, fontWeight: "900", color: "#fff" },
+  workflowTabs: { flexDirection: "row", gap: 6, paddingTop: 4 },
+  workflowTab: { flex: 1, minHeight: 59, gap: 3, borderRadius: 13, alignItems: "center", justifyContent: "center", padding: 7, borderWidth: 1, borderColor: "#e3e9f3", backgroundColor: "#f9fbfe" },
+  workflowTabActive: { borderColor: "#a7c2f3", backgroundColor: "#eaf2ff" },
+  workflowTabText: { color: tokens.color.textMuted, fontSize: 11, textAlign: "center", fontWeight: "700" },
+  workflowTabTextActive: { color: tokens.color.brandStrong, fontWeight: "900" },
   pressed: { opacity: 0.75 }
 });

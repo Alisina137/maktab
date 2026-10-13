@@ -2223,6 +2223,7 @@ function AppContent() {
             adminContact={adminContact}
             reconnectEpoch={reconnectEpoch}
             onSelect={selectTeacherTab}
+            onScrollTop={() => onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion })}
             onAttendance={(classId, date) => void openAttendance(classId, date)}
             onRetry={() => {
               setTeacherTodayReady(false);

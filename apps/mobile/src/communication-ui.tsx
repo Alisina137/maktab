@@ -35,6 +35,7 @@ type Props = {
   studentId?: string;
   selectedClassId?: string;
   supervisedClasses?: Array<{ classId: string; className: string; classCode: string }>;
+  teacherSection?: "ALL" | "ANNOUNCEMENTS";
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
   onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
@@ -48,6 +49,7 @@ export function CommunicationPanel({
   studentId,
   selectedClassId,
   supervisedClasses = [],
+  teacherSection = "ALL",
   locale,
   textDirection,
   onError,
@@ -70,7 +72,7 @@ export function CommunicationPanel({
     return () => {
       if (loadRequestId.current === requestId) loadRequestId.current += 1;
     };
-  }, [accessToken, mode, studentId]);
+  }, [accessToken, mode, studentId, teacherSection]);
 
   useEffect(() => {
     if (mode === "TEACHER") {
@@ -107,7 +109,7 @@ export function CommunicationPanel({
         );
       }
       let loadedNotifications: ParentNotification[] | null = null;
-      if (mode !== "PARENT") {
+      if (mode !== "PARENT" && teacherSection !== "ANNOUNCEMENTS") {
         tasks.push(
           api.notifications(accessToken).then((result) => {
             loadedNotifications = result.notifications;
@@ -303,7 +305,7 @@ export function CommunicationPanel({
         </View>
       ) : null}
 
-      {mode !== "PARENT" ? (
+      {mode !== "PARENT" && teacherSection !== "ANNOUNCEMENTS" ? (
         <View style={styles.card}>
           <View style={[styles.headingRow, rtl && styles.rowRtl]}>
             <View style={styles.iconShell}>

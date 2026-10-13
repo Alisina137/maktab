@@ -1250,3 +1250,15 @@ Planned verification slices:
 - The Teacher homework creation/edit form now opens a touch-friendly localized **calendar modal** instead of requiring teachers to type `YYYY-MM-DD`. The calendar supports month navigation, Saturday-first weeks, RTL alignment, selection state, and an accessible dismiss action. Due time remains separately editable as `HH:mm`; the existing ISO date/time submission and authorization rules are unchanged.
 - The app intentionally informs the user when airplane mode disconnects the API; cached reads and recovery remain available. Repeated network errors now preserve a previously minimized network error banner instead of force-expanding it for every failed request.
 - Android retest requested: update/restart the Expo bundle, confirm bottom tabs, pick a homework date and save/edit a draft, then test airplane-mode/offline and recovery. Latest CI and on-device acceptance remain separate gates.
+
+
+### Teacher Workspace Expansion — Phase 1 (2026-10-13)
+
+Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
+- Today has a compact workload overview, actual assigned-period count, teaching-assignment count, pending Negaran attendance, next upcoming school-local lesson, draft homework count, currently open exam-subject mark-entry count and unread notifications. Counts derive exclusively from authenticated Teacher Today/learning/communication endpoints, not global school data.
+- Today includes deep actions to Classes, Schedule, Homework, Marks, unread notifications, and active Negaran attendance; options are shown conditionally for available teaching/mark-entry/supervision assignments. Recent announcements are pulled only from the authenticated teacher's authorized audience.
+- Teacher header includes an unread notification badge and a dedicated notification center with announcements, explicit notification read acknowledgments, localized dates, loading/empty/retry states, and access-token guarded updates.
+- Workflows now has accessible localized Homework / Marks / Announcements tabs. Homework and Marks show only the matching panel; Announcements preserves Negaran-only class composition while allowing the regular Teacher to read school announcements. Account support and logout remain available.
+- Shared bottom navigation continues to use Today / Schedule / Classes / Workflows, with RTL focus states and selected labels. Teachers' timetable starting times now use 12-hour AM/PM formatting.
+- Auth-scoped hub reads load independently and invalidate stale requests when credentials/reconnect epochs change. Summary refreshes when returning from Workflows. No new database migration, no extra teacher permissions, and no persistent offline writes are introduced.
+- Added pure regression checks for teacher pending tasks, school-local next class and AM/PM formatting. Android device acceptance remains pending: verify new dashboard, Workflow tab switching, read notification, RTL, no unauthorized composer, and offline recovery.

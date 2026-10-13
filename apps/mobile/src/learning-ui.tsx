@@ -58,8 +58,8 @@ function dueAtFromFields(date: string, time: string) {
   return Number.isNaN(value.getTime()) ? null : value.toISOString();
 }
 
-export function TeacherLearningPanel(props: CommonProps) {
-  const { accessToken, locale, textDirection, onError, onNotice } = props;
+export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK" | "GRADES" | "BOTH" }) {
+  const { accessToken, locale, textDirection, onError, onNotice, section = "BOTH" } = props;
   const rtl = getDirection(locale) === "rtl";
   const [view, setView] = useState<TeacherLearningPayload | null>(null);
   const loadRequestId = useRef(0);
@@ -281,6 +281,7 @@ export function TeacherLearningPanel(props: CommonProps) {
 
   return (
     <View style={styles.stack}>
+      {section !== "GRADES" ? (
       <View style={styles.card}>
         <View style={[styles.headingRow, rtl && styles.rowRtl]}>
           <View style={styles.iconShell}>
@@ -402,7 +403,9 @@ export function TeacherLearningPanel(props: CommonProps) {
           ) : null}
         </View>
       </View>
+      ) : null}
 
+      {section !== "HOMEWORK" ? (
       <View style={styles.card}>
         <View style={[styles.headingRow, rtl && styles.rowRtl]}>
           <View style={styles.iconShell}>
@@ -477,6 +480,7 @@ export function TeacherLearningPanel(props: CommonProps) {
           </View>
         ) : null}
       </View>
+      ) : null}
     </View>
   );
 }

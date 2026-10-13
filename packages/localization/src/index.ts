@@ -108,6 +108,27 @@ export type TranslationKey =
   | "common.cachedOffline"
   | "common.serviceUnavailable"
   | "common.sessionExpired"
+  | "teacher.dayAtGlance"
+  | "teacher.attendancePending"
+  | "teacher.nextLesson"
+  | "teacher.noUpcomingLesson"
+  | "teacher.pendingTasks"
+  | "teacher.draftHomework"
+  | "teacher.gradesToEnter"
+  | "teacher.unreadNotifications"
+  | "teacher.noPendingTasks"
+  | "teacher.quickActions"
+  | "teacher.newHomework"
+  | "teacher.latestAnnouncements"
+  | "teacher.noAnnouncements"
+  | "teacher.allAnnouncements"
+  | "teacher.notificationsCenter"
+  | "teacher.noNotifications"
+  | "teacher.markRead"
+  | "teacher.closeNotifications"
+  | "teacher.workflowHomework"
+  | "teacher.workflowGrades"
+  | "teacher.workflowAnnouncements"
   | "teacher.workspace"
   | "teacher.navSchedule"
   | "teacher.navClasses"
@@ -380,6 +401,27 @@ const en: Record<TranslationKey, string> = {
   "common.connectionRestored": "MaktabLink reconnected successfully and refreshed your information.",
   "common.validationError": "Some of the information entered is not valid. Please review it and try again.",
   "common.requestFailed": "This action could not be completed. Please try again.",
+  "teacher.dayAtGlance": "Your day at a glance",
+  "teacher.attendancePending": "Attendance pending",
+  "teacher.nextLesson": "Next lesson",
+  "teacher.noUpcomingLesson": "No more scheduled lessons today.",
+  "teacher.pendingTasks": "Pending activities",
+  "teacher.draftHomework": "Homework drafts",
+  "teacher.gradesToEnter": "Exams open for marks",
+  "teacher.unreadNotifications": "Unread notifications",
+  "teacher.noPendingTasks": "You're all caught up with your current tasks.",
+  "teacher.quickActions": "Quick actions",
+  "teacher.newHomework": "Create homework",
+  "teacher.latestAnnouncements": "Latest school announcements",
+  "teacher.noAnnouncements": "No announcements available.",
+  "teacher.allAnnouncements": "View all announcements",
+  "teacher.notificationsCenter": "Notifications",
+  "teacher.noNotifications": "No notifications yet.",
+  "teacher.markRead": "Mark as read",
+  "teacher.closeNotifications": "Close notifications",
+  "teacher.workflowHomework": "Homework",
+  "teacher.workflowGrades": "Marks",
+  "teacher.workflowAnnouncements": "Announcements",
   "teacher.workspace": "Teacher workspace",
   "teacher.navSchedule": "Schedule",
   "teacher.navClasses": "Classes",
@@ -668,6 +710,27 @@ const dari: Record<TranslationKey, string> = {
   "common.connectionRestored": "ارتباط MaktabLink دوباره برقرار شد و معلومات شما تازه شد.",
   "common.validationError": "بعضی از معلومات واردشده درست نیست. لطفاً آن‌ها را بررسی کرده و دوباره کوشش کنید.",
   "common.requestFailed": "این کار انجام نشد. لطفاً دوباره کوشش کنید.",
+  "teacher.dayAtGlance": "نمای کلی روز شما",
+  "teacher.attendancePending": "حاضری ثبت‌نشده",
+  "teacher.nextLesson": "درس بعدی",
+  "teacher.noUpcomingLesson": "برای امروز درس دیگری در پیش نیست.",
+  "teacher.pendingTasks": "کارهای باقی‌مانده",
+  "teacher.draftHomework": "پیش‌نویس‌های وظیفه",
+  "teacher.gradesToEnter": "امتحان‌های آمادهٔ درج نمره",
+  "teacher.unreadNotifications": "اطلاعیه‌های ناخوانده",
+  "teacher.noPendingTasks": "فعلاً کار باقی‌مانده‌ای ندارید.",
+  "teacher.quickActions": "دسترسی سریع",
+  "teacher.newHomework": "ایجاد وظیفه",
+  "teacher.latestAnnouncements": "آخرین اعلان‌های مکتب",
+  "teacher.noAnnouncements": "فعلاً اعلانی موجود نیست.",
+  "teacher.allAnnouncements": "دیدن همه اعلان‌ها",
+  "teacher.notificationsCenter": "اطلاعیه‌ها",
+  "teacher.noNotifications": "هنوز اطلاعیه‌ای ندارید.",
+  "teacher.markRead": "نشان‌کردن به‌عنوان خوانده‌شده",
+  "teacher.closeNotifications": "بستن اطلاعیه‌ها",
+  "teacher.workflowHomework": "وظایف",
+  "teacher.workflowGrades": "نمرات",
+  "teacher.workflowAnnouncements": "اعلان‌ها",
   "teacher.workspace": "بخش آموزگار",
   "teacher.navSchedule": "تقسیم اوقات",
   "teacher.navClasses": "صنف‌ها",
@@ -956,6 +1019,27 @@ const pashto: Record<TranslationKey, string> = {
   "common.connectionRestored": "د MaktabLink اړیکه بېرته جوړه شوه او ستاسو معلومات تازه شول.",
   "common.validationError": "ځینې داخل شوي معلومات سم نه دي. مهرباني وکړئ یې وګورئ او بیا هڅه وکړئ.",
   "common.requestFailed": "دا کار بشپړ نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
+  "teacher.dayAtGlance": "ستاسو د ورځې لنډیز",
+  "teacher.attendancePending": "نا ثبت شوې حاضري",
+  "teacher.nextLesson": "راتلونکی درس",
+  "teacher.noUpcomingLesson": "نن نور ټاکل شوي درسونه نشته.",
+  "teacher.pendingTasks": "پاتې چارې",
+  "teacher.draftHomework": "د کورنۍ دندې مسودې",
+  "teacher.gradesToEnter": "د نمرو لپاره پرانیستې ازموینې",
+  "teacher.unreadNotifications": "نه لوستل شوې خبرتیاوې",
+  "teacher.noPendingTasks": "ستاسو اوسني کارونه بشپړ دي.",
+  "teacher.quickActions": "چټکې چارې",
+  "teacher.newHomework": "کورنۍ دنده جوړول",
+  "teacher.latestAnnouncements": "د ښوونځي وروستي اعلانونه",
+  "teacher.noAnnouncements": "اوس مهال اعلان نشته.",
+  "teacher.allAnnouncements": "ټول اعلانونه وګورئ",
+  "teacher.notificationsCenter": "خبرتیاوې",
+  "teacher.noNotifications": "تراوسه خبرتیا نشته.",
+  "teacher.markRead": "د لوستل شوې په توګه نښه کول",
+  "teacher.closeNotifications": "خبرتیاوې بندول",
+  "teacher.workflowHomework": "کورنۍ دندې",
+  "teacher.workflowGrades": "نمرې",
+  "teacher.workflowAnnouncements": "اعلانونه",
   "teacher.workspace": "د ښوونکي برخه",
   "teacher.navSchedule": "مهالویش",
   "teacher.navClasses": "ټولګي",
