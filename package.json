@@ -16,7 +16,7 @@
     "verify:dev-api": "node --check scripts/dev-api.mjs && node --check scripts/mobile-api-env.mjs && node scripts/test-mobile-api-env.mjs && node scripts/test-dev-api-startup.mjs",
     "dev:api": "node scripts/dev-api.mjs",
     "dev:web": "pnpm --filter @maktablink/web dev",
-    "dev:mobile": "pnpm --filter @maktablink/mobile start",
+    "dev:mobile": "pnpm --filter @maktablink/mobile exec expo start --tunnel --clear --go",
     "db:generate": "pnpm --filter @maktablink/database db:generate",
     "db:migrate": "pnpm --filter @maktablink/database db:migrate",
     "backup:db": "node scripts/backup-database.mjs",
