@@ -439,7 +439,8 @@ export type SaveGradeEntriesInput = z.infer<typeof saveGradeEntriesSchema>;
 export const correctPublishedGradeSchema = z.object({
   score: z.number().int().min(0).max(10000),
   remark: z.string().trim().max(500).optional(),
-  reason: z.string().trim().min(2).max(500)
+  reason: z.string().trim().min(2).max(500),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional()
 });
 export type CorrectPublishedGradeInput = z.infer<typeof correctPublishedGradeSchema>;
 
