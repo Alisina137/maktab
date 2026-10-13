@@ -359,16 +359,25 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
           .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, input.classId))).limit(1);
         if (!classRow) throw new CommunicationNotFoundError("Class not found.");
       }
+      const announcementId = randomUUID();
+      const publishAt = input.publishAt ? new Date(input.publishAt) : new Date();
+      const preview: Announcement = {
+        id: announcementId, schoolId, createdBy: actorUserId,
+        title: input.title, content: input.content, audienceScope: input.audienceScope,
+        classId: input.classId ?? null, audienceRole: input.audienceRole ?? null,
+        publishAt, archivedAt: null, createdAt: new Date(), updatedAt: new Date()
+      };
+      const recipients = publishAt.getTime() <= Date.now()
+        ? await announcementRecipients(preview) : [];
       return db.transaction(async tx => {
       const [created] = await tx.insert(announcements).values({
-        id: randomUUID(), schoolId, createdBy: actorUserId, title: input.title, content: input.content,
+        id: announcementId, schoolId, createdBy: actorUserId, title: input.title, content: input.content,
         audienceScope: input.audienceScope, classId: input.classId ?? null,
         audienceRole: input.audienceRole ?? null,
-        publishAt: input.publishAt ? new Date(input.publishAt) : new Date()
+        publishAt
       }).returning();
       if (!created) throw new Error("Announcement insert did not return a row.");
-      if (created.publishAt.getTime() <= Date.now()) {
-        const recipients = await announcementRecipients(created);
+      if (recipients.length) {
         for (const userId of recipients) {
           await tx.insert(notifications).values({
             id: randomUUID(), schoolId, userId, type: "ANNOUNCEMENT",
