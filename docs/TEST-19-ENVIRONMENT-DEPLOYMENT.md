@@ -50,3 +50,40 @@ connection, timeout and authentication error codes without exposing secrets.
 If the preflight passes but migration fails, retain the full migration error
 log and inspect the actual failed SQL and Drizzle migration journal against
 the local database before making any schema modification.
+
+## 2026-10-14 follow-up — Git succeeded, Neon connection timed out
+
+The user's `git pull --ff-only` successfully fast-forwarded to `93cb603`:
+the resilience verifier update is present locally. The next command,
+`pnpm db:check`, returned `CONNECT_TIMEOUT` against the configured
+`-pooler` Neon endpoint on port 5432. The fail-fast guard correctly stopped
+before migration and verification. **This is a connection-startup failure,
+not proof of migration SQL corruption or invalid credentials.**
+
+Repository improvements in this follow-up:
+- Extended the initial diagnostic startup timeout from 10 to 30 seconds to
+  tolerate transient Neon compute cold starts.
+- Classified `CONNECT_TIMEOUT` explicitly with network/host/5432 guidance.
+- `pnpm db:check` checks both the application URL and
+  `DATABASE_URL_UNPOOLED` when supplied, without printing credentials.
+- Drizzle migrations prefer the separately configured Neon direct URL;
+  the app may continue using a pooled runtime URL.
+- Updated `.env.example` to document the two-URL setup.
+
+### Next user-local checks (Windows PowerShell)
+
+```powershell
+# This is a hostname only, never paste the database password.
+Test-NetConnection -ComputerName 'ep-winter-night-b4fm2d0b-pooler.c-6.us-east-2.aws.neon.tech' -Port 5432 -InformationLevel Detailed
+Resolve-DnsName 'ep-winter-night-b4fm2d0b-pooler.c-6.us-east-2.aws.neon.tech'
+```
+
+If DNS or TCP/5432 fails, check firewall/VPN, router or ISP port blocking,
+and repeat on another network/mobile hotspot. If TCP works but the Postgres
+startup still times out, check Neon Console endpoint status and try its SQL
+editor (e.g. `SELECT 1`). For direct migrations, use the **Direct** URI
+copied from Neon Console's connection panel with connection pooling disabled
+and set `DATABASE_URL_UNPOOLED` in the private root `.env`.
+
+Never share the raw connection URL, password, or `.env` in chat. Do not use
+`db:push`, `reset --hard`, or disable TLS as a timeout workaround.
