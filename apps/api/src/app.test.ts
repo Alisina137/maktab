@@ -44,7 +44,8 @@ async function createTestApp() {
     "0015_teacher_learning_workflows.sql",
     "0016_teacher_teaching_plans.sql",
     "0017_teacher_productivity.sql",
-    "0018_exam_subject_dates.sql"
+    "0018_exam_subject_dates.sql",
+    "0019_fee_payment_idempotency.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -4790,7 +4791,24 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     }
   });
   assert.equal(invoiceResponse.statusCode, 201);
+
   const invoiceId = invoiceResponse.json<{ invoice: { id: string } }>().invoice.id;
+  const parentAAuth = { authorization: `Bearer ${parentAToken}` };
+  const parentBAuth = { authorization: `Bearer ${parentBToken}` };
+  const draftInvisible = await app.inject({ method: "GET", url: `/v1/parent/children/${studentA.id}/fees`, headers: parentAAuth });
+  assert.equal(draftInvisible.statusCode, 200);
+  assert.equal(draftInvisible.json<{ invoices: Array<{ invoice: { id: string } }> }>().invoices.some(x => x.invoice.id === invoiceId), false);
+  assert.equal((await app.inject({ method: "POST", url: "/v1/admin/fees/invoices", headers: parentAAuth,
+    payload: { studentId: studentA.id, amount: 50, dueDate: "2099-12-31" } })).statusCode, 403);
+  for (const payload of [
+    { studentId: studentA.id, amount: 0, dueDate: "2099-12-31" },
+    { studentId: studentA.id, amount: 1.5, dueDate: "2099-12-31" },
+    { studentId: studentA.id, amount: 200, dueDate: "2099-02-30" },
+    { studentId: "00000000-0000-0000-0000-000000000001", amount: 100, dueDate: "2099-12-31" }
+  ]) {
+    const invalid = await app.inject({ method: "POST", url: "/v1/admin/fees/invoices", headers: admin, payload });
+    assert.ok([400, 404].includes(invalid.statusCode), invalid.body);
+  }
 
   const issued = await app.inject({
     method: "POST",
@@ -4798,12 +4816,26 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     headers: admin
   });
   assert.equal(issued.statusCode, 200);
+  const issuedAgain = await app.inject({ method: "POST", url: `/v1/admin/fees/invoices/${invoiceId}/issue`, headers: admin });
+  assert.equal(issuedAgain.statusCode, 409);
+  assert.equal((await app.inject({ method: "GET", url: `/v1/parent/children/${studentA.id}/fees`,
+    headers: parentBAuth })).statusCode, 404);
+  const otherStudentFees = await app.inject({ method: "GET", url: "/v1/student/fees",
+    headers: { authorization: `Bearer ${studentBToken}` } });
+  assert.equal(otherStudentFees.statusCode, 200);
+  assert.equal(otherStudentFees.json<{ invoices: unknown[] }>().invoices.length, 0);
+  const ownStudentFees = await app.inject({ method: "GET", url: "/v1/student/fees",
+    headers: { authorization: `Bearer ${studentAToken}` } });
+  assert.equal(ownStudentFees.json<{ invoices: Array<{ invoice: { id: string } }> }>()
+    .invoices.some(x => x.invoice.id === invoiceId), true);
 
+  const paymentPayload = { amount: 400, method: "CASH", transactionReference: "RCPT-001",
+    idempotencyKey: "17000000-0000-4000-8000-000000000017" };
   const paymentResponse = await app.inject({
     method: "POST",
     url: `/v1/admin/fees/invoices/${invoiceId}/payments`,
     headers: admin,
-    payload: { amount: 400, method: "CASH", transactionReference: "RCPT-001" }
+    payload: paymentPayload
   });
   assert.equal(paymentResponse.statusCode, 201);
   const paidView = paymentResponse.json<{
@@ -4817,6 +4849,17 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(paidView.invoice.status, "PARTIALLY_PAID");
   const paymentId = paidView.payments.find((item) => item.kind === "PAYMENT")?.id;
   assert.ok(paymentId);
+  const safeRetry = await app.inject({ method: "POST",
+    url: `/v1/admin/fees/invoices/${invoiceId}/payments`, headers: admin, payload: paymentPayload });
+  assert.equal(safeRetry.statusCode, 201);
+  assert.equal(safeRetry.json<{ payments: unknown[]; paid: number }>().payments.length, 1);
+  assert.equal(safeRetry.json<{ paid: number }>().paid, 400);
+  assert.equal((await app.inject({ method: "POST", url: `/v1/admin/fees/invoices/${invoiceId}/payments`,
+    headers: admin, payload: { ...paymentPayload, amount: 300 } })).statusCode, 409);
+  assert.equal((await app.inject({ method: "POST", url: `/v1/admin/fees/invoices/${invoiceId}/payments`,
+    headers: admin, payload: { amount: 601, method: "CASH" } })).statusCode, 400);
+  assert.equal((await app.inject({ method: "POST", url: `/v1/admin/fees/invoices/${invoiceId}/cancel`,
+    headers: admin })).statusCode, 409);
 
   const reversed = await app.inject({
     method: "POST",

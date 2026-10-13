@@ -1424,3 +1424,16 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - **Device acceptance still outstanding**: real Android Teacher/Parent/Student flows, browser calendar, RTL, live push, offline/reconnect, school year transitions. Run the migration before API startup.
 
 - Follow-up compatibility hardening: older exam subject rows with NULL date can be repaired through the Admin **Update exam date** Solar Hijri form, backed by `PATCH /v1/admin/exam-subjects/:examSubjectId/date`. The endpoint is Admin-only and school/year scoped; it locks the exam, accepts dates only while DRAFT/SCHEDULED, validates actual year boundaries and audits previous/new dates atomically. Added API coverage for legacy date repair, invalid date, unauthorized Teacher and after-start rejection.
+
+
+### Testing Step 17 — Fees & Payments (2026-10-13)
+
+**Implementation and automated tests delivered; browser/device/production PostgreSQL acceptance remains outstanding.** See `docs/TEST-17-FEES-PAYMENTS.md`.
+
+- Admin invoice issue/cancel, payment and reversal operations use PostgreSQL invoice row locks, so payments cannot silently overpay during simultaneous writes; financial records and actor audit entries commit in a **single transaction**.
+- Creation and issue reject withdrawn pupils; DRAFTs remain private from learners, and all paths are school-scoped. Existing Parent/Student fees require the actively linked student.
+- New migration `0019_fee_payment_idempotency.sql` adds an optional per-school/invoice UUID payment retry key. The browser reuses the key across a lost response while fields are unchanged. Repeat POST is a no-op; mismatched payload with same key returns 409.
+- Completed/cancelled invoices cancel prior queued fee reminders, and inbox/push routing revalidates outstanding balance and current active parent-student ownership. Scheduler skips withdrawn students.
+- Expanded store and API regression tests cover validations, read scopes, transitions, overpayments, idempotent retries, reason-required reversal, audit counts, and reminder idempotency. The bank/cash entries remain school-recorded manual transactions; no online payment processing.
+- A cancelled pre-due reminder's original deduplication key is not reissued after a later payment reversal; overdue reminders use a separate key. Consider a versioned campaign if repeated pre-due notification cycles are required.
+- Apply `pnpm db:migrate` then `pnpm verify`. Manual double-Admin PostgreSQL concurrency, date-boundary, finance-office reconciliation, real push, RTL and Android acceptance still required.
