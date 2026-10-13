@@ -11,6 +11,7 @@ import type {
   UpdateHomeworkInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
+import { isUniqueConstraintViolation } from "./db-errors.js";
 import {
   academicYears,
   auditLogs,
@@ -152,8 +153,7 @@ export class LearningNotFoundError extends Error {
 }
 
 function isUniqueError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /unique|duplicate/i.test(message);
+  return isUniqueConstraintViolation(error);
 }
 
 export function createLearningStore(db: FoundationDatabase): LearningStore {
