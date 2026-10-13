@@ -1492,3 +1492,13 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Localized the new progress labels in Dari and Pashto, retaining English and RTL layout; preserved reduced-motion support.
 - The release static regression gate now checks source markers for localized, accessible progress and responsive cards.
 - Latest GitHub CI and actual browser screenshots/visual acceptance are required before claiming device-level confirmation.
+
+
+### Admin Accounts — Phase 1: Directory-first layout and styling (2026-10-14)
+
+- Implemented `/admin/accounts` directory-first screen with four selectable account summary cards (total, active, pending setup, suspended), filter synchronization and current-school directory counts.
+- Added Account directory / Create account view selector: wide desktops show the selected creation form beside the directory; tablet/phone view shows one selected panel at a time. The directory is selected by default.
+- Refined the role-colored account identities, status badges, input labels, keyboard focus and scroll/overflow handling in English, Dari and Pashto with RTL support.
+- Corrected parent/student account username placeholders to match the already-enforced alphanumeric-only family username contract; no backend validation or permissions were changed.
+- Added a source-level `pnpm verify:release` guard and `docs/ADMIN-ACCOUNTS-PHASES.md` acceptance guide. Follow-on details, credential safety, lifecycle and pagination work remain for Phases 2–6.
+- CI checks and browser visual acceptance are tracked separately; this styling phase adds no database migrations.
