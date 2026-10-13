@@ -151,7 +151,7 @@ export function TeacherClassDetailPage({
             <TeacherLearningPanel key={`${assignmentId}-${section}-${reconnectEpoch}`}
               section={section} assignmentContext={{ assignmentId: current.assignmentId, academicYearId: current.academicYearId,
                 classId: current.classId, subjectId: current.subjectId }}
-              accessToken={accessToken} locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice} />
+              accessToken={accessToken} locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice} onScrollTop={onScrollTop} />
           ) : null}
           {section === "SUPERVISION" && detail.canSuperviseToday ? (
             <View style={styles.stack}>

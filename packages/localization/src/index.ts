@@ -246,6 +246,24 @@ export type TranslationKey =
   | "weekday.tuesday"
   | "weekday.wednesday"
   | "weekday.thursday"
+  | "learning.newHomework"
+  | "learning.attachmentHint"
+  | "learning.searchHomework"
+  | "learning.allStatuses"
+  | "learning.openAttachment"
+  | "learning.useTemplate"
+  | "learning.templateReady"
+  | "learning.validAttachment"
+  | "learning.noMatchingHomework"
+  | "learning.noGradeChanges"
+  | "learning.marksEntered"
+  | "learning.marksMissing"
+  | "learning.searchStudents"
+  | "learning.showAllStudents"
+  | "learning.showMissingOnly"
+  | "learning.markRecorded"
+  | "learning.markMissing"
+  | "learning.noMatchingStudents"
   | "learning.homework"
   | "learning.homeworkHint"
   | "learning.assignments"
@@ -550,6 +568,24 @@ const en: Record<TranslationKey, string> = {
   "weekday.tuesday": "Tuesday",
   "weekday.wednesday": "Wednesday",
   "weekday.thursday": "Thursday",
+  "learning.newHomework": "New homework draft",
+  "learning.attachmentHint": "Optional: paste an HTTPS link to a PDF, image or worksheet. File upload is not available yet.",
+  "learning.searchHomework": "Search homework title or instructions",
+  "learning.allStatuses": "All statuses",
+  "learning.openAttachment": "Open attachment link",
+  "learning.useTemplate": "Use as template",
+  "learning.templateReady": "Homework copied into a new draft. Select the target class and due date, then save.",
+  "learning.validAttachment": "Use a valid HTTPS attachment link (maximum 500 characters).",
+  "learning.noMatchingHomework": "No homework matches your filters.",
+  "learning.noGradeChanges": "No new or changed marks to save.",
+  "learning.marksEntered": "Marks recorded",
+  "learning.marksMissing": "Marks missing",
+  "learning.searchStudents": "Search students by name or code",
+  "learning.showAllStudents": "Show all students",
+  "learning.showMissingOnly": "Show missing marks only",
+  "learning.markRecorded": "Recorded",
+  "learning.markMissing": "Missing",
+  "learning.noMatchingStudents": "No students match the filter.",
   "learning.homework": "Homework",
   "learning.homeworkHint": "Create work only for your active subject and class assignments.",
   "learning.assignments": "Teaching assignments",
@@ -870,6 +906,24 @@ const dari: Record<TranslationKey, string> = {
   "weekday.tuesday": "سه‌شنبه",
   "weekday.wednesday": "چهارشنبه",
   "weekday.thursday": "پنجشنبه",
+  "learning.newHomework": "وظیفه جدید",
+  "learning.attachmentHint": "اختیاری: لینک HTTPS یک PDF، عکس یا ورق کار را وارد کنید. بارگذاری فایل هنوز فعال نیست.",
+  "learning.searchHomework": "جستجوی عنوان یا رهنمای وظیفه",
+  "learning.allStatuses": "همه وضعیت‌ها",
+  "learning.openAttachment": "بازکردن لینک ضمیمه",
+  "learning.useTemplate": "استفاده به‌عنوان نمونه",
+  "learning.templateReady": "وظیفه به پیش‌نویس جدید کاپی شد. صنف و تاریخ تحویل را انتخاب و ذخیره کنید.",
+  "learning.validAttachment": "لینک معتبر HTTPS برای ضمیمه وارد کنید (حداکثر ۵۰۰ حرف).",
+  "learning.noMatchingHomework": "هیچ وظیفه‌ای با این فیلتر مطابقت ندارد.",
+  "learning.noGradeChanges": "نمره جدید یا تغییریافته برای ذخیره نیست.",
+  "learning.marksEntered": "نمرات ثبت‌شده",
+  "learning.marksMissing": "نمرات باقی‌مانده",
+  "learning.searchStudents": "جستجوی شاگرد با نام یا کد",
+  "learning.showAllStudents": "نمایش همه شاگردان",
+  "learning.showMissingOnly": "فقط نمرات باقی‌مانده",
+  "learning.markRecorded": "ثبت شده",
+  "learning.markMissing": "ثبت نشده",
+  "learning.noMatchingStudents": "هیچ شاگردی با فیلتر مطابقت ندارد.",
   "learning.homework": "وظیفه",
   "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
   "learning.assignments": "تکالیف تدریس",
@@ -1190,6 +1244,24 @@ const pashto: Record<TranslationKey, string> = {
   "weekday.tuesday": "سې‌شنبه",
   "weekday.wednesday": "چهارشنبه",
   "weekday.thursday": "پنجشنبه",
+  "learning.newHomework": "نوې کورنۍ دنده",
+  "learning.attachmentHint": "اختیاري: د PDF، انځور یا کاري پاڼې HTTPS لینک ولیکئ. د فایل پورته کول لا نه دي فعال.",
+  "learning.searchHomework": "د کورنۍ دندې سرلیک یا لارښوونې ولټوئ",
+  "learning.allStatuses": "ټول حالتونه",
+  "learning.openAttachment": "د ضمیمې لینک پرانیزئ",
+  "learning.useTemplate": "د بېلګې په توګه کارول",
+  "learning.templateReady": "کورنۍ دنده نوې مسودې ته کاپي شوه. ټولګی او د سپارلو نېټه وټاکئ، بیا یې خوندي کړئ.",
+  "learning.validAttachment": "د ضمیمې سم HTTPS لینک ورکړئ (تر ۵۰۰ تورو).",
+  "learning.noMatchingHomework": "له دې فلټر سره برابره کورنۍ دنده نشته.",
+  "learning.noGradeChanges": "د خوندي کولو لپاره نوې یا بدله شوې نمره نشته.",
+  "learning.marksEntered": "ثبت شوې نمرې",
+  "learning.marksMissing": "پاتې نمرې",
+  "learning.searchStudents": "د نوم یا کوډ له مخې زده کوونکي ولټوئ",
+  "learning.showAllStudents": "ټول زده کوونکي وښیئ",
+  "learning.showMissingOnly": "یوازې پاتې نمرې وښیئ",
+  "learning.markRecorded": "ثبت شوې",
+  "learning.markMissing": "نه ده ثبت شوې",
+  "learning.noMatchingStudents": "له دې فلټر سره زده کوونکی نشته.",
   "learning.homework": "کورنۍ دنده",
   "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
   "learning.assignments": "د تدریس دندې",

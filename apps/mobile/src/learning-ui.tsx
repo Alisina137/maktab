@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -21,11 +22,13 @@ import {
   api,
   type GradeSheetPayload,
   type HomeworkPayload,
+  type HomeworkStatus,
   type LearnerAcademicPayload,
   type TeacherLearningPayload
 } from "./api";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 import { HomeworkDueDatePicker } from "./homework-date-picker";
+import { filterHomework, gradeDraftsFromSheet, gradeProgress, homeworkDueAt, homeworkDueFields, pendingGradeEntries } from "./learning-workflow";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -40,24 +43,6 @@ type CommonProps = {
   onNotice: (message: string | null) => void;
 };
 
-function localDateParts(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { date: "", time: "" };
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return {
-    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`
-  };
-}
-
-function dueAtFromFields(date: string, time: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    return null;
-  }
-  const value = new Date(`${date}T${time}:00`);
-  return Number.isNaN(value.getTime()) ? null : value.toISOString();
-}
-
 export type TeacherAssignmentContext = {
   assignmentId: string;
   academicYearId: string;
@@ -67,8 +52,9 @@ export type TeacherAssignmentContext = {
 export function TeacherLearningPanel(props: CommonProps & {
   section?: "HOMEWORK" | "GRADES" | "BOTH";
   assignmentContext?: TeacherAssignmentContext;
+  onScrollTop?: () => void;
 }) {
-  const { accessToken, locale, textDirection, onError, onNotice, section = "BOTH", assignmentContext } = props;
+  const { accessToken, locale, textDirection, onError, onNotice, section = "BOTH", assignmentContext, onScrollTop } = props;
   const rtl = getDirection(locale) === "rtl";
   const [view, setView] = useState<TeacherLearningPayload | null>(null);
   const loadRequestId = useRef(0);
@@ -81,6 +67,10 @@ export function TeacherLearningPanel(props: CommonProps & {
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [homeworkQuery, setHomeworkQuery] = useState("");
+  const [homeworkStatus, setHomeworkStatus] = useState<HomeworkStatus | "ALL">("ALL");
+  const [gradeQuery, setGradeQuery] = useState("");
+  const [missingMarksOnly, setMissingMarksOnly] = useState(false);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
   const [remarkDraft, setRemarkDraft] = useState<Record<string, string>>({});
 
@@ -134,7 +124,7 @@ export function TeacherLearningPanel(props: CommonProps & {
   }
 
   function editHomework(homework: HomeworkPayload) {
-    const due = localDateParts(homework.dueAt);
+    const due = homeworkDueFields(homework.dueAt);
     setAssignmentId(homework.assignmentId);
     setEditingHomeworkId(homework.id);
     setHomeworkTitle(homework.title);
@@ -146,14 +136,49 @@ export function TeacherLearningPanel(props: CommonProps & {
     onNotice(null);
   }
 
+  function useHomeworkTemplate(homework: HomeworkPayload) {
+    const selected = visibleAssignments.find((item) => item.assignmentId === homework.assignmentId)
+      ?? visibleAssignments[0];
+    if (!selected) {
+      onError("learning.noAssignments");
+      return;
+    }
+    setAssignmentId(selected.assignmentId);
+    setEditingHomeworkId(null);
+    setHomeworkTitle(homework.title);
+    setHomeworkContent(homework.content);
+    setAttachmentUrl(homework.attachmentUrl ?? "");
+    setDueDate("");
+    setDueTime("");
+    onError(null);
+    onNotice(translate(locale, "learning.templateReady"));
+    onScrollTop?.();
+  }
+
+  async function openHomeworkAttachment(url: string) {
+    if (!/^https:\/\//i.test(url)) {
+      onError("learning.validAttachment");
+      return;
+    }
+    try {
+      await Linking.openURL(url);
+    } catch {
+      onError("common.requestFailed");
+    }
+  }
+
   async function saveHomework() {
     if (!assignmentId || !homeworkTitle.trim() || !homeworkContent.trim()) {
       onError("learning.completeHomework");
       return;
     }
-    const dueAt = dueAtFromFields(dueDate, dueTime);
+    const dueAt = homeworkDueAt(dueDate, dueTime);
     if (!dueAt) {
       onError("learning.invalidDueDate");
+      return;
+    }
+    if (attachmentUrl.trim() && (!/^https:\/\//i.test(attachmentUrl.trim()) || attachmentUrl.trim().length > 500)) {
+      onError("learning.validAttachment");
       return;
     }
 
@@ -225,16 +250,11 @@ export function TeacherLearningPanel(props: CommonProps & {
     try {
       const sheet = await api.gradeSheet(accessToken, examSubjectId);
       setGradeSheet(sheet);
-      setScoreDraft(
-        Object.fromEntries(
-          sheet.students.map((item) => [item.student.id, item.grade ? String(item.grade.score) : ""])
-        )
-      );
-      setRemarkDraft(
-        Object.fromEntries(
-          sheet.students.map((item) => [item.student.id, item.grade?.remark ?? ""])
-        )
-      );
+      const drafts = gradeDraftsFromSheet(sheet);
+      setScoreDraft(drafts.scores);
+      setRemarkDraft(drafts.remarks);
+      setGradeQuery("");
+      setMissingMarksOnly(false);
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
@@ -245,15 +265,13 @@ export function TeacherLearningPanel(props: CommonProps & {
 
   async function saveGrades() {
     if (!gradeSheet) return;
-    const entries = gradeSheet.students
-      .filter((item) => scoreDraft[item.student.id]?.trim())
-      .map((item) => ({
-        studentId: item.student.id,
-        score: Number(scoreDraft[item.student.id]),
-        remark: remarkDraft[item.student.id]?.trim() || undefined
-      }));
-    if (entries.length === 0 || entries.some((entry) => !Number.isInteger(entry.score))) {
+    const { entries, invalid } = pendingGradeEntries(gradeSheet, { scores: scoreDraft, remarks: remarkDraft });
+    if (invalid) {
       onError("learning.validScores");
+      return;
+    }
+    if (!entries.length) {
+      onNotice(translate(locale, "learning.noGradeChanges"));
       return;
     }
 
@@ -263,6 +281,9 @@ export function TeacherLearningPanel(props: CommonProps & {
     try {
       const result = await api.saveDraftGrades(accessToken, gradeSheet.examSubject.id, entries);
       setGradeSheet(result.sheet);
+      const saved = gradeDraftsFromSheet(result.sheet);
+      setScoreDraft(saved.scores);
+      setRemarkDraft(saved.remarks);
       onNotice(translate(locale, "learning.marksSaved"));
       await load();
     } catch (cause) {
@@ -298,6 +319,15 @@ export function TeacherLearningPanel(props: CommonProps & {
           item.examSubject.subjectId === assignmentContext.subjectId)
       : view.examSubjects, [view, assignmentContext?.academicYearId,
           assignmentContext?.classId, assignmentContext?.subjectId]);
+
+  const listedHomeworks = filterHomework(visibleHomeworks, homeworkQuery, homeworkStatus);
+  const gradeCounts = gradeSheet ? gradeProgress(gradeSheet) : null;
+  const visibleGradeStudents = gradeSheet?.students.filter((item) =>
+    (!missingMarksOnly || !item.grade) &&
+    (!gradeQuery.trim() || [item.student.fullName, item.student.studentCode].some((value) =>
+      value.toLocaleLowerCase().includes(gradeQuery.trim().toLocaleLowerCase())))
+  ) ?? [];
+  const pendingGrades = gradeSheet ? pendingGradeEntries(gradeSheet, { scores: scoreDraft, remarks: remarkDraft }) : null;
 
   if (busy && !view) {
     return (
@@ -336,7 +366,10 @@ export function TeacherLearningPanel(props: CommonProps & {
           {visibleAssignments.map((assignment) => (
             <Pressable
               key={assignment.assignmentId}
-              onPress={() => startHomework(assignment)}
+              onPress={() => {
+                if (editingHomeworkId) startHomework(assignment);
+                else setAssignmentId(assignment.assignmentId);
+              }}
               style={[
                 styles.chip,
                 assignment.assignmentId === assignmentId && styles.chipActive
@@ -357,6 +390,12 @@ export function TeacherLearningPanel(props: CommonProps & {
             <Text style={[styles.muted, textDirection]}>
               {selectedAssignment.subjectName} · {selectedAssignment.className}
             </Text>
+            {editingHomeworkId ? (
+              <Pressable accessibilityRole="button" style={styles.smallButton}
+                onPress={() => startHomework(selectedAssignment)}>
+                <Text style={styles.smallButtonText}>{translate(locale, "learning.newHomework")}</Text>
+              </Pressable>
+            ) : null}
             <TextInput
               value={homeworkTitle}
               onChangeText={setHomeworkTitle}
@@ -392,6 +431,7 @@ export function TeacherLearningPanel(props: CommonProps & {
               placeholder={translate(locale, "learning.attachmentUrl")}
               style={[styles.input, textDirection]}
             />
+            <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.attachmentHint")}</Text>
             <Pressable
               disabled={busy}
               onPress={() => void saveHomework()}
@@ -405,7 +445,30 @@ export function TeacherLearningPanel(props: CommonProps & {
         )}
 
         <View style={styles.list}>
-          {visibleHomeworks.map((homework) => (
+          <TextInput testID="teacher-homework-search"
+            value={homeworkQuery} onChangeText={setHomeworkQuery}
+            placeholder={translate(locale, "learning.searchHomework")}
+            style={[styles.input, textDirection]} autoCapitalize="none"
+          />
+          <View style={[styles.chips, rtl && styles.rowRtl]}>
+            {(["ALL", "DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"] as const).map((status) => (
+              <Pressable key={status} accessibilityRole="button"
+                accessibilityState={{ selected: homeworkStatus === status }}
+                onPress={() => setHomeworkStatus(status)}
+                style={[styles.chip, homeworkStatus === status && styles.chipActive]}>
+                <Text style={homeworkStatus === status ? styles.chipTextActive : styles.chipText}>
+                  {translate(locale, status === "ALL" ? "learning.allStatuses"
+                    : status === "DRAFT" ? "teacher.statusDraft"
+                    : status === "PUBLISHED" ? "teacher.statusPublished"
+                    : status === "CLOSED" ? "teacher.statusClosed" : "teacher.statusArchived")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.muted, textDirection]}>
+            {formatLocalizedNumber(listedHomeworks.length, locale)} / {formatLocalizedNumber(visibleHomeworks.length, locale)}
+          </Text>
+          {listedHomeworks.map((homework) => (
             <View key={homework.id} style={styles.listItem}>
               <View style={[styles.headingRow, rtl && styles.rowRtl]}>
                 <View style={styles.flex}>
@@ -434,10 +497,22 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </View>
               </View>
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
+              {homework.attachmentUrl ? (
+                <Pressable accessibilityRole="link" onPress={() => void openHomeworkAttachment(homework.attachmentUrl!)}>
+                  <Text style={[styles.linkText, textDirection]}>{translate(locale, "learning.openAttachment")}</Text>
+                </Pressable>
+              ) : null}
+              {visibleAssignments.length ? (
+                <Pressable accessibilityRole="button" onPress={() => useHomeworkTemplate(homework)}
+                  style={[styles.smallButton, styles.templateButton]}>
+                  <Ionicons name="copy-outline" size={15} color={tokens.color.brandStrong} />
+                  <Text style={styles.smallButtonText}>{translate(locale, "learning.useTemplate")}</Text>
+                </Pressable>
+              ) : null}
             </View>
           ))}
-          {visibleHomeworks.length === 0 ? (
-            <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noHomework")}</Text>
+          {listedHomeworks.length === 0 ? (
+            <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noMatchingHomework")}</Text>
           ) : null}
         </View>
       </View>
@@ -480,11 +555,44 @@ export function TeacherLearningPanel(props: CommonProps & {
               {gradeSheet.exam.name} · {gradeSheet.subject.name}
             </Text>
             <Text style={[styles.muted, textDirection]}>
-              {gradeSheet.classSection.name} · {translate(locale, "learning.maxScore")} {gradeSheet.examSubject.maxScore}
+              {gradeSheet.classSection.name} · {translate(locale, "learning.maxScore")} {formatLocalizedNumber(gradeSheet.examSubject.maxScore, locale)}
             </Text>
-            {gradeSheet.students.map((item) => (
+            <View style={[styles.progressRow, rtl && styles.rowRtl]}>
+              <Text style={[styles.progressText, textDirection]}>
+                {translate(locale, "learning.marksEntered")}: {formatLocalizedNumber(gradeCounts?.recorded ?? 0, locale)}
+              </Text>
+              <Text style={[styles.progressText, textDirection]}>
+                {translate(locale, "learning.marksMissing")}: {formatLocalizedNumber(gradeCounts?.missing ?? 0, locale)}
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: gradeCounts?.total
+                ? (`${100 * gradeCounts.recorded / gradeCounts.total}%` as `${number}%`) : "0%" }]} />
+            </View>
+            <TextInput testID="teacher-grade-search" value={gradeQuery} onChangeText={setGradeQuery}
+              placeholder={translate(locale, "learning.searchStudents")}
+              style={[styles.input, textDirection]} autoCapitalize="none" />
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: missingMarksOnly }}
+              style={[styles.chip, missingMarksOnly && styles.chipActive, styles.gradeFilter]}
+              onPress={() => setMissingMarksOnly((current) => !current)}>
+              <Text style={missingMarksOnly ? styles.chipTextActive : styles.chipText}>
+                {translate(locale, missingMarksOnly ? "learning.showAllStudents" : "learning.showMissingOnly")}
+              </Text>
+            </Pressable>
+            <Text style={[styles.muted, textDirection]}>
+              {formatLocalizedNumber(visibleGradeStudents.length, locale)} / {formatLocalizedNumber(gradeCounts?.total ?? 0, locale)}
+            </Text>
+            {visibleGradeStudents.map((item) => (
               <View key={item.student.id} style={styles.gradeRow}>
-                <Text style={[styles.itemTitle, textDirection]}>{item.student.fullName}</Text>
+                <View style={[styles.headingRow, rtl && styles.rowRtl]}>
+                  <View style={styles.flex}>
+                    <Text style={[styles.itemTitle, textDirection]}>{item.student.fullName}</Text>
+                    <Text style={[styles.muted, textDirection]}>{item.student.studentCode}</Text>
+                  </View>
+                  <Text style={styles.gradeStatus}>
+                    {translate(locale, item.grade ? "learning.markRecorded" : "learning.markMissing")}
+                  </Text>
+                </View>
                 <View style={[styles.twoColumns, rtl && styles.rowRtl]}>
                   <TextInput
                     editable={gradeSheet.canEdit}
@@ -504,13 +612,19 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </View>
               </View>
             ))}
+            {!visibleGradeStudents.length ? (
+              <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noMatchingStudents")}</Text>
+            ) : null}
             {gradeSheet.canEdit ? (
               <Pressable
                 disabled={busy}
                 onPress={() => void saveGrades()}
                 style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, busy && styles.disabled]}
               >
-                <Text style={styles.primaryText}>{translate(locale, "learning.saveMarks")}</Text>
+                <Text style={styles.primaryText}>
+                  {translate(locale, "learning.saveMarks")}
+                  {pendingGrades && !pendingGrades.invalid ? ` · ${formatLocalizedNumber(pendingGrades.entries.length, locale)}` : ""}
+                </Text>
               </Pressable>
             ) : (
               <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.marksReadOnly")}</Text>
@@ -679,5 +793,12 @@ const styles = StyleSheet.create({
   studentName: { color: tokens.color.text, fontSize: 21, fontWeight: "900" },
   linkText: { color: tokens.color.brandStrong, fontSize: 12, fontWeight: "700" },
   pressed: { opacity: 0.75 },
+  templateButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, alignItems: "center" },
+  gradeFilter: { alignSelf: "flex-start" },
+  gradeStatus: { fontSize: 11, color: tokens.color.brandStrong, fontWeight: "700" },
+  progressRow: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  progressText: { fontSize: 12, fontWeight: "800", color: tokens.color.text },
+  progressTrack: { height: 8, borderRadius: 6, backgroundColor: "#edf1f7", overflow: "hidden" },
+  progressFill: { height: 8, borderRadius: 6, backgroundColor: tokens.color.brand },
   disabled: { opacity: 0.45 }
 });

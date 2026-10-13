@@ -429,6 +429,7 @@ export function TeacherExperience({
             <TeacherLearningPanel
               key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
               section={workflowSection}
+              onScrollTop={onScrollTop}
               accessToken={accessToken} locale={locale}
               textDirection={textDirection} onError={onError} onNotice={onNotice}
             />
