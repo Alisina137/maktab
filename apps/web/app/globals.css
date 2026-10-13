@@ -2196,6 +2196,207 @@ button,
   font-size: 12px;
 }
 
+/* Pilot onboarding: gentle progress overview and scannable completion cards. */
+.pilot-section {
+  border-top: 0;
+  padding-top: 0;
+  gap: 20px;
+}
+
+.pilot-section > .admin-section-header {
+  align-items: center;
+  padding: 22px 26px;
+  border: 1px solid #dfe8f6;
+  border-radius: 18px;
+  background: linear-gradient(115deg, #f1f6ff 0%, #fbfdff 75%);
+}
+
+.pilot-section > .admin-section-header h2 {
+  margin-block: 6px 8px;
+}
+
+.pilot-summary-grid .academic-summary {
+  border-color: #e0e8f4;
+  border-radius: 16px;
+  background: linear-gradient(155deg, #fff, #f9fbff);
+  box-shadow: 0 5px 15px rgba(34, 65, 111, 0.035);
+}
+
+.pilot-summary-grid .academic-summary strong {
+  color: #214e99;
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot-onboarding-card {
+  display: grid;
+  gap: 20px;
+}
+
+.pilot-onboarding-header {
+  align-items: center;
+}
+
+.pilot-onboarding-header h3 {
+  margin: 5px 0 7px;
+}
+
+.pilot-onboarding-progress {
+  padding: 16px 18px;
+  border: 1px solid #e1e9f5;
+  border-radius: 14px;
+  background: #f6f9fe;
+}
+
+.pilot-onboarding-progress-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: #52637e;
+  font-size: 13px;
+}
+
+.pilot-onboarding-progress-copy strong {
+  color: #234b87;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot-onboarding-meter {
+  display: block;
+  width: 100%;
+  height: 9px;
+  margin-block-start: 13px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e1e9f4;
+  color: #3676d5;
+  accent-color: #3676d5;
+}
+
+.pilot-onboarding-meter::-webkit-progress-bar {
+  background: #e1e9f4;
+  border-radius: 999px;
+}
+
+.pilot-onboarding-meter::-webkit-progress-value {
+  background: linear-gradient(90deg, #3c83df, #2371c4);
+  border-radius: 999px;
+}
+
+.pilot-onboarding-meter::-moz-progress-bar {
+  background: linear-gradient(90deg, #3c83df, #2371c4);
+  border-radius: 999px;
+}
+
+.pilot-onboarding-card .pilot-check-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pilot-onboarding-card .pilot-check {
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #e3eaf5;
+  border-radius: 14px;
+  background: #fbfcff;
+}
+
+.pilot-onboarding-card .pilot-check-passed {
+  border-color: #d7e9df;
+  background: #f7fcf9;
+}
+
+.pilot-onboarding-card .pilot-check-pending {
+  border-color: #f1e1c8;
+  background: #fffbf5;
+}
+
+.pilot-onboarding-card .pilot-check > .pilot-check-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  color: #956320;
+  background: #fff1d9;
+  font-size: 16px;
+}
+
+.pilot-onboarding-card .pilot-check-passed > .pilot-check-icon {
+  color: #247449;
+  background: #e4f5eb;
+}
+
+.pilot-check-copy {
+  min-width: 0;
+}
+
+.pilot-check-copy strong {
+  display: block;
+  color: #293b58;
+  font-size: 14px;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.pilot-check-copy p {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.pilot-check-state {
+  align-self: start;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #8a5b20;
+  background: #fff0d9;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.pilot-check-passed .pilot-check-state {
+  color: #206b43;
+  background: #e2f3e9;
+}
+
+@media (max-width: 1140px) {
+  .pilot-onboarding-card .pilot-check-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .pilot-section > .admin-section-header,
+  .pilot-onboarding-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pilot-section > .admin-section-header {
+    padding: 18px;
+  }
+
+  .pilot-section > .admin-section-header button {
+    align-self: flex-start;
+  }
+
+  .pilot-onboarding-card .pilot-check {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+
+  .pilot-onboarding-card .pilot-check-state {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 @media (max-width: 980px) {
   .pilot-summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
