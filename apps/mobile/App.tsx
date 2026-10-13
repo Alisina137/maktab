@@ -71,6 +71,7 @@ import {
   type ParentTab
 } from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
+import { notificationDestination } from "./src/notification-destination";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
   NETWORK_WARNING_GRACE_MS, NETWORK_RECOVERY_CHECK_INTERVAL_MS,
@@ -1442,6 +1443,31 @@ function AppContent() {
     }
   }
 
+  function openNotification(notification: ParentNotification) {
+    if (!session) return;
+    const role = session.user.role;
+    if (role !== "PARENT" && role !== "STUDENT" && role !== "TEACHER") return;
+    const destination = notificationDestination(role, notification);
+    void readNotification(notification.id);
+    if (!destination) return;
+    if (destination === "PARENT_ANNOUNCEMENTS") setParentTab("ANNOUNCEMENTS");
+    else if (destination === "PARENT_HOMEWORK") setParentTab("HOMEWORK");
+    else if (destination === "PARENT_RESULTS") setParentTab("MORE");
+    else if (destination === "PARENT_HOME") setParentTab("HOME");
+    else if (destination === "STUDENT_ANNOUNCEMENTS") {
+      setStudentDetailReturnScreen("home");
+      setStudentCommunicationTab("ANNOUNCEMENTS");
+      setScreen("student-communication");
+    } else if (destination === "STUDENT_HOMEWORK") setScreen("student-homework");
+    else if (destination === "STUDENT_RESULTS") setScreen("student-results");
+    else if (destination === "STUDENT_HOME") setScreen("home");
+    else if (destination.startsWith("TEACHER_")) setTeacherTab(
+      destination === "TEACHER_TODAY" ? "TODAY" : "WORKFLOWS"
+    );
+    setNotice(null);
+    setAppError(null);
+  }
+
   async function signIn() {
     if (!school || !role) return;
     setBusy(true);
@@ -2197,7 +2223,7 @@ function AppContent() {
                       {parentNotifications.slice(0, 5).map((notification) => (
                         <Pressable
                           key={notification.id}
-                          onPress={() => void readNotification(notification.id)}
+                          onPress={() => openNotification(notification)}
                           style={[
                             styles.notificationRow,
                             direction === "rtl" && styles.rowRtl,
@@ -2663,6 +2689,7 @@ function AppContent() {
               textDirection={textDirection}
               onSelectTab={setStudentCommunicationTab}
               onMarkRead={(notificationId) => void readNotification(notificationId)}
+              onOpenNotification={openNotification}
             />
           </View>
         ) : null}
