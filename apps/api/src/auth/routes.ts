@@ -76,6 +76,23 @@ async function requireAccess(
     await reply.code(401).send({ error: "session_invalid", message: "Your session has expired or is no longer valid." });
     return null;
   }
+  // School deactivation and account archival must immediately apply to
+  // previously issued access tokens. Login already enforces school status,
+  // but token-based API calls and refreshes must not bypass that policy.
+  if (context.school.status !== "ACTIVE") {
+    await reply.code(503).send({
+      error: "school_service_unavailable",
+      message: "This school is currently inactive. Contact the school administration."
+    });
+    return null;
+  }
+  if (context.user.status === "ARCHIVED") {
+    await reply.code(403).send({
+      error: "account_unavailable",
+      message: "This account is no longer active."
+    });
+    return null;
+  }
   if (context.user.status === "SUSPENDED" && !options.allowSuspended) {
     await reply.code(403).send({
       error: "account_suspended",
@@ -479,6 +496,18 @@ export function registerAuthRoutes(
       const context = await authenticateRefresh(store, input.refreshToken);
       if (!context) {
         return reply.code(401).send({ error: "refresh_invalid", message: "Refresh session is expired or invalid." });
+      }
+      if (context.school.status !== "ACTIVE") {
+        return reply.code(503).send({
+          error: "school_service_unavailable",
+          message: "This school is currently inactive. Contact the school administration."
+        });
+      }
+      if (context.user.status === "ARCHIVED") {
+        return reply.code(403).send({
+          error: "account_unavailable",
+          message: "This account is no longer active."
+        });
       }
       if (endUserBlockedBySubscription(context) && context.user.status !== "SUSPENDED") {
         return reply.code(503).send({
