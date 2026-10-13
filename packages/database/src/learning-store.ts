@@ -934,32 +934,50 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
     },
 
     async correctPublishedGrade(schoolId, actorUserId, gradeId, input) {
-      const [current] = await db
-        .select({ grade: gradeRecords, examSubject: examSubjects, exam: exams })
-        .from(gradeRecords)
-        .innerJoin(examSubjects, and(eq(examSubjects.id, gradeRecords.examSubjectId), eq(examSubjects.schoolId, gradeRecords.schoolId)))
-        .innerJoin(exams, and(eq(exams.id, examSubjects.examId), eq(exams.schoolId, examSubjects.schoolId)))
-        .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.id, gradeId)))
-        .limit(1);
-      if (!current) throw new LearningNotFoundError("Grade record not found.");
-      if (current.exam.status !== "PUBLISHED" || current.grade.status !== "PUBLISHED") {
-        throw new LearningConflictError("Only published grades use the administrator correction workflow.");
-      }
-      if (input.score > current.examSubject.maxScore) {
-        throw new LearningValidationError(`Score cannot exceed the maximum score of ${current.examSubject.maxScore}.`);
-      }
-      const [grade] = await db
-        .update(gradeRecords)
-        .set({
-          score: input.score,
-          remark: input.remark ?? null,
-          updatedBy: actorUserId,
-          updatedAt: new Date()
-        })
-        .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.id, gradeId)))
-        .returning();
-      if (!grade) throw new LearningNotFoundError("Grade record not found.");
-      return { grade, previousScore: current.grade.score, previousRemark: current.grade.remark };
+      return db.transaction(async (tx) => {
+        // Lock the grade so audit.previousScore reflects exactly the value
+        // being replaced, even when two administrators correct concurrently.
+        const [previous] = await tx.select().from(gradeRecords).where(and(
+          eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.id, gradeId)
+        )).limit(1).for("update");
+        if (!previous) throw new LearningNotFoundError("Grade record not found.");
+        const [context] = await tx.select({
+          examSubject: examSubjects, exam: exams
+        }).from(examSubjects)
+          .innerJoin(exams, and(eq(exams.id, examSubjects.examId),
+            eq(exams.schoolId, examSubjects.schoolId)))
+          .where(and(eq(examSubjects.schoolId, schoolId),
+            eq(examSubjects.id, previous.examSubjectId))).limit(1);
+        if (!context || context.exam.status !== "PUBLISHED" || previous.status !== "PUBLISHED") {
+          throw new LearningConflictError("Only published grades use the administrator correction workflow.");
+        }
+        if (input.score > context.examSubject.maxScore) {
+          throw new LearningValidationError(`Score cannot exceed the maximum score of ${context.examSubject.maxScore}.`);
+        }
+        if (input.expectedUpdatedAt &&
+            previous.updatedAt.toISOString() !== input.expectedUpdatedAt) {
+          throw new LearningConflictError("This grade changed since you opened it. Reload before correcting.");
+        }
+        const remark = input.remark ?? null;
+        if (previous.score === input.score && (previous.remark ?? null) === remark) {
+          throw new LearningValidationError("A correction must change the score or remark.");
+        }
+        const [grade] = await tx.update(gradeRecords).set({
+          score: input.score, remark, updatedBy: actorUserId,
+          updatedAt: new Date(Math.max(Date.now(), previous.updatedAt.getTime() + 1))
+        }).where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.id, gradeId),
+          eq(gradeRecords.status, "PUBLISHED"))).returning();
+        if (!grade) throw new LearningConflictError("Grade was changed. Reload and retry.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId,
+          action: "grade.corrected", entityType: "grade_record", entityId: gradeId,
+          metadata: { previousScore: previous.score, score: grade.score,
+            previousRemark: previous.remark, remark: grade.remark,
+            reason: input.reason, examId: context.exam.id,
+            examSubjectId: previous.examSubjectId, studentId: previous.studentId }
+        });
+        return { grade, previousScore: previous.score, previousRemark: previous.remark };
+      });
     }
   };
 }
