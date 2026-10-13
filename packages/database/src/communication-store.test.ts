@@ -236,7 +236,11 @@ test("Step 17 fees: tenant isolation, replay, exact balances, immutable reversal
     reason: "Second reversal" }), /already been reversed/);
   assert.equal((await fees.runScheduledNotifications(new Date("2100-01-02T06:00:00Z")))
     .overdueInvoices, 1);
-  assert.equal((await fees.getParentFees(schoolId, parent.user.id, student.id))[0]?.invoice.status, "OVERDUE");
+  // The worker uses a simulated future clock; read the persisted status rather than the
+  // family view, whose live school-local projection deliberately uses the real clock.
+  const { rows: overdueRows } = await client.query<{ status: string }>(
+    "SELECT status FROM fee_invoices WHERE id = $1", [invoice.id]);
+  assert.equal(overdueRows[0]?.status, "OVERDUE");
   assert.equal((await fees.runScheduledNotifications(new Date("2100-01-02T06:00:00Z")))
     .feeReminders, 0);
 
