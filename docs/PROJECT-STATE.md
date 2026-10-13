@@ -1437,3 +1437,16 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Expanded store and API regression tests cover validations, read scopes, transitions, overpayments, idempotent retries, reason-required reversal, audit counts, and reminder idempotency. The bank/cash entries remain school-recorded manual transactions; no online payment processing.
 - A cancelled pre-due reminder's original deduplication key is not reissued after a later payment reversal; overdue reminders use a separate key. Consider a versioned campaign if repeated pre-due notification cycles are required.
 - Apply `pnpm db:migrate` then `pnpm verify`. Manual double-Admin PostgreSQL concurrency, date-boundary, finance-office reconciliation, real push, RTL and Android acceptance still required.
+
+
+### Testing Step 18 — Subscriptions, Pilot Onboarding and Release Readiness (2026-10-13)
+
+**Automated regression coverage expanded; deployment and physical-device acceptance remain outstanding.** Matrix: `docs/TEST-18-SUBSCRIPTIONS-PILOT.md`.
+
+- Pilot onboarding now creates school, settings, subscription, first admin and audit in **one database transaction**. A failed insert cannot strand a partially onboarded school; duplicate schools still return a conflict.
+- Subscription updates now validate the merged persisted date timeline when only one field is supplied. CANCELLED subscriptions cannot be reactivated by patch.
+- Pilot readiness now counts active administrator/Teacher/Parent accounts, active enrollments, active-year classes and active-year Teacher assignments. INVITED/SUSPENDED/ARCHIVED accounts and historical classes no longer falsely satisfy the checklist.
+- Subscription reminders now require an active admin recipient and use database conflict handling instead of a race-prone select-then-insert. Scheduler transition counts reflect successful conditional status changes.
+- `verify-parent-resilience.mjs` no longer asserts a stale comment marker after the ngrok reconnect refactor; it inspects the actual cache/network handoff inside `retryServiceConnection`.
+- Added Step 18 API regressions for platform provisioning key, invalid onboarding, duplicate school protection, subscription date changes, cancelled reactivation and active-admin readiness count.
+- **Pending:** latest GitHub CI, browser/Android pilot flow, production PostgreSQL concurrent cron test, EAS push receipts, external metrics, encrypted backup/restore drill, and real school operator acceptance.
