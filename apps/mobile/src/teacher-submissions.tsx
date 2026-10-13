@@ -58,7 +58,7 @@ export function TeacherSubmissionReview({
                 </Pressable>
               )}
               {entry.submission.feedback&&<Text style={[styles.body,textDirection]}>{entry.submission.feedback}</Text>}
-              {entry.submission.status==="SUBMITTED"&&(
+              {homework.status!=="ARCHIVED"&&entry.submission.status==="SUBMITTED"&&(
                 <>
                   <TextInput multiline value={feedback[entry.submission.id]??""} editable={!busy}
                     onChangeText={value=>setFeedback(prev=>({...prev,[entry.submission.id]:value}))}
