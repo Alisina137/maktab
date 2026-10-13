@@ -4040,6 +4040,37 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(unrelated.statusCode, 400);
   assert.equal(unrelated.json<{ error: string }>().error, "learning_validation");
 
+  // 15.2, 15.4: grade-sheet roster includes only ACTIVE students in the
+  // configured class and cannot be read by a second teacher or Parent.
+  const roster = await app.inject({ method: "GET",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth });
+  assert.equal(roster.statusCode, 200);
+  assert.equal(roster.json<{ students: Array<{ student: { id: string } }> }>().students.length, 1);
+  assert.equal(roster.json<{ students: Array<{ student: { id: string } }> }>().students[0]?.student.id, studentId);
+  assert.equal(roster.json<{ canEdit: boolean }>().canEdit, true);
+  const parentCannotReadRoster = await app.inject({ method: "GET",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`, headers: parentAuth });
+  assert.equal(parentCannotReadRoster.statusCode, 403);
+
+  // 15.5: nonnumeric, fractional, out-of-range, missing, duplicate and
+  // wrong-class marks all fail without mutating stored grades.
+  for (const entries of [
+    [{ studentId, score: -1 }], [{ studentId, score: 1.5 }],
+    [{ studentId, score: "ten" }], [{ studentId }],
+    [{ studentId, score: 50 }, { studentId, score: 60 }],
+    [{ studentId: outsideStudentId, score: 10 }]
+  ]) {
+    const rejected = await app.inject({ method: "POST",
+      url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+      headers: assignedTeacher.auth, payload: { entries } });
+    assert.equal(rejected.statusCode, 400, rejected.body);
+  }
+  const unrelatedMarkWrite = await app.inject({ method: "POST",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: unrelatedTeacher.auth, payload: { entries: [{ studentId, score: 5 }] } });
+  assert.equal(unrelatedMarkWrite.statusCode, 400);
+
   const invalidScore = await app.inject({
     method: "POST",
     url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
@@ -4055,6 +4086,19 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     payload: { entries: [{ studentId, score: 88, remark: "Good work" }] }
   });
   assert.equal(save.statusCode, 200);
+  const firstReadyDenied = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/status`, headers: admin,
+    payload: { status: "RESULTS_READY" } });
+  assert.equal(firstReadyDenied.statusCode, 409);
+  const saveZoology = await app.inject({ method: "POST",
+    url: `/v1/teacher/exam-subjects/${secondExamSubjectId}/grades`,
+    headers: assignedTeacher.auth,
+    payload: { entries: [{ studentId, score: 40, remark: "Well done" }] } });
+  assert.equal(saveZoology.statusCode, 200);
+  const repeatedGrade = await app.inject({ method: "POST",
+    url: `/v1/teacher/exam-subjects/${secondExamSubjectId}/grades`,
+    headers: assignedTeacher.auth, payload: { entries: [{ studentId, score: 40, remark: "Well done" }] } });
+  assert.equal(repeatedGrade.statusCode, 200);
 
   const parentDraft = await app.inject({
     method: "GET",
