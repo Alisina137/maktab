@@ -4176,7 +4176,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/parent/children/${studentId}/learning`,
     headers: parentAuth
   });
-  const results = parentPublished.json<{ results: Array<{ grade: { id: string; score: number; status: string } }> }>().results;
+  const results = parentPublished.json<{ results: Array<{ grade: { id: string; score: number; status: string; updatedAt: string } }> }>().results;
   assert.equal(results.length, 2);
   assert.equal(results[0]?.grade.score, 88);
   assert.equal(results.reduce((sum, row) => sum + row.grade.score, 0), 128);
@@ -4206,7 +4206,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
 
   // 15.10/15.12: post-publication edits are Admin-only and validated.
   const gradeIdToCorrect = results[0]!.grade.id;
-  const initialGradeRevision = (results[0] as { grade: { updatedAt: string } }).grade.updatedAt;
+  const initialGradeRevision = results[0]!.grade.updatedAt;
   for (const payload of [
     { score: -1, reason: "Bad value" },
     { score: 101, reason: "Out of range" },
