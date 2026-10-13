@@ -88,6 +88,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   const [examId, setExamId] = useState("");
   const [examClassId, setExamClassId] = useState("");
   const [examDate, setExamDate] = useState("");
+  const [dateEditSubjectId, setDateEditSubjectId] = useState("");
+  const [revisedExamDate, setRevisedExamDate] = useState("");
 
   useEffect(() => {
     void load();
@@ -164,6 +166,33 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function changeExamDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!dateEditSubjectId || !revisedExamDate || !selectedAcademicYear ||
+      revisedExamDate < selectedAcademicYear.startDate ||
+      revisedExamDate > selectedAcademicYear.endDate) {
+      setError(t("Choose an exam date within the academic year."));
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await request(accessToken,
+        `/v1/admin/exam-subjects/${encodeURIComponent(dateEditSubjectId)}/date`, {
+          method: "PATCH", body: JSON.stringify({ examDate: revisedExamDate })
+        });
+      setNotice(t("Exam date updated and recorded in the audit history."));
+      setDateEditSubjectId("");
+      setRevisedExamDate("");
+      await load();
+    } catch (cause) {
+      setError(adminErrorText(locale, cause, "Could not update the exam date."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function examAction(exam: Exam) {
     setBusy(true);
     setError("");
@@ -227,6 +256,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     if (!learning) return;
     setExamClassId("");
     setExamDate("");
+    setDateEditSubjectId("");
+    setRevisedExamDate("");
     setExamId(
       learning.exams.find(
         (exam) =>
@@ -307,6 +338,42 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
             <label>{t("Exam date")}<AdminHijriDatePicker locale={locale} value={examDate} onChange={setExamDate} required disabled={busy} /></label>
             <label>{t("Maximum score")}<input name="maxScore" type="number" min={1} max={10000} step={1} defaultValue={100} required /></label>
             <button className="admin-primary" disabled={busy || !examId || !examClassId || !examDate || examSubjects.length === 0}>{t("Add subject")}</button>
+          </form>
+        </article>
+        <article className="admin-panel academic-form-card">
+          <div>
+            <h2>{t("Update exam date")}</h2>
+            <p>{t("Update dates of drafted or scheduled subjects, including older records created before exam scheduling was introduced.")}</p>
+          </div>
+          <form className="admin-form" onSubmit={changeExamDate}>
+            <label>{t("Exam subject")}
+              <select value={dateEditSubjectId} required
+                onChange={(event) => {
+                  const id = event.target.value;
+                  setDateEditSubjectId(id);
+                  setRevisedExamDate(yearExamSubjects.find(item =>
+                    item.examSubject.id === id)?.examSubject.examDate ?? "");
+                }}>
+                <option value="">{t("Select exam subject")}</option>
+                {yearExamSubjects.filter(item =>
+                  yearExams.some(exam => exam.id === item.examSubject.examId &&
+                    ["DRAFT", "SCHEDULED"].includes(exam.status))
+                ).map(item => (
+                  <option key={item.examSubject.id} value={item.examSubject.id}>
+                    {item.className} · {item.subjectName} · {yearExams.find(exam =>
+                      exam.id === item.examSubject.examId)?.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>{t("Exam date")}
+              <AdminHijriDatePicker locale={locale} value={revisedExamDate}
+                onChange={setRevisedExamDate} required disabled={busy} />
+            </label>
+            <button className="admin-secondary"
+              disabled={busy || historicalReadOnly || !dateEditSubjectId || !revisedExamDate}>
+              {t("Save exam date")}
+            </button>
           </form>
         </article>
       </div>
