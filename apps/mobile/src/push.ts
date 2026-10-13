@@ -88,3 +88,25 @@ export async function deactivatePushForSession(accessToken: string) {
     registeredPlatform = null;
   }
 }
+
+
+// Expo Go does not support remote push in the installed SDK. In a device
+// build, never navigate directly from untrusted provider payloads: callers
+// must resolve the ID using the authenticated inbox API first.
+export async function subscribeToPushOpens(onNotificationId: (id: string) => void) {
+  const Notifications = await loadNotifications();
+  if (!Notifications) return () => {};
+  let lastId = "";
+  const handle = (response: {
+    notification: { request: { content: { data: Record<string, unknown> } } }
+  }) => {
+    const id = response.notification.request.content.data.notificationId;
+    if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) || id === lastId) return;
+    lastId = id;
+    onNotificationId(id);
+  };
+  const listener = Notifications.addNotificationResponseReceivedListener(handle);
+  const initial = await Notifications.getLastNotificationResponseAsync();
+  if (initial) handle(initial);
+  return () => listener.remove();
+}
