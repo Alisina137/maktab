@@ -23,3 +23,12 @@ Create two Admin sessions, two parents and an unrelated school. Create/issue a d
 
 ## Deployment
 Run `pnpm db:migrate` for migration `0019_fee_payment_idempotency.sql` before starting the new API. Run `pnpm verify`. No schema changes delete or alter historical payment rows. Formerly cancelled pre-due alerts retain their original deduplication keys following later reversals; the app still exposes current outstanding balance and separate overdue alerts.
+
+## Additional Step 17 retry and cancelled-invoice regression
+
+- Replay of the original payment idempotency key after all payments are reversed and the invoice is CANCELLED cannot append a payment, restore the balance, or change the cancelled status.
+- New payments on CANCELLED invoices remain rejected, while the original receipt and reversal rows remain in history.
+- A different school cannot reverse another tenant's payment even with its UUID.
+- The former guardian's fee alerts remain absent after cancellation; cancelled invoice remains in linked family's historical ledger.
+
+These cases have been added to `packages/database/src/communication-store.test.ts`. CI verification and real Android/browser acceptance remain separate gates.
