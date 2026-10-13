@@ -27,7 +27,7 @@ import {
   type AcademicStore,
   type AccountStore
 } from "@maktablink/database";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
 
@@ -733,6 +733,31 @@ export function registerAcademicRoutes(
       return sendAcademicError(reply, error);
     }
   });
+
+  app.get<{ Params: { assignmentId: string } }>(
+    "/v1/teacher/classes/:assignmentId",
+    async (request, reply) => {
+      const context = await requireAccess(request, reply, accounts);
+      if (!context) return;
+      if (context.user.mustChangePassword) {
+        return reply.code(403).send({
+          error: "password_change_required",
+          message: "Change the temporary password before using teacher features."
+        });
+      }
+      if (context.user.role !== "TEACHER") {
+        return reply.code(403).send({ error: "forbidden", message: "Teacher access is required." });
+      }
+      try {
+        const assignmentId = z.string().uuid().parse(request.params.assignmentId);
+        return await academics.getTeacherClassDetail(
+          context.user.schoolId, context.user.id, assignmentId
+        );
+      } catch (error) {
+        return sendAcademicError(reply, error);
+      }
+    }
+  );
 
   app.get("/v1/teacher/academics", async (request, reply) => {
     const context = await requireAccess(request, reply, accounts);

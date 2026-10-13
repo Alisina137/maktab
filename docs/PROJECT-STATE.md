@@ -1270,3 +1270,17 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - If public verification still fails, startup logs the final HTTP/transport reason and a copyable PowerShell `curl.exe` diagnostic command. It deliberately does not claim the public endpoint is healthy or overwrite the Expo URL on failure. API and ngrok keep running for investigation.
 - Added offline deterministic tests for ngrok HTML warning/502/network failures, header injection, retry and timeout; they run in CI with the dev launcher checks.
 - Follow-up Android acceptance: restart `pnpm dev:api` **first**, check a successful public API health before starting `pnpm dev:mobile`, scan a fresh Expo QR code and check live Teacher navigation and reconnect.
+
+
+### Teacher Workspace Expansion — Phase 2 (2026-10-13)
+
+**Implementation submitted for CI; Android device acceptance remains to be verified.**
+
+- Teacher **Classes** now opens a dedicated, assignment-scoped class detail rather than sending users to the generic Workflows tab. The detail supports Back to Classes, Overview, Students, Homework, Grades, and a conditional **Supervision** tab for active Negaran on the school-local date.
+- The new `GET /v1/teacher/classes/:assignmentId` API checks authenticated TEACHER + changed-password completion and enforces exact school + teacher + current ACTIVE academic-year teaching assignment **before** returning any class data. Unassigned/other-teacher/other-school/stale assignment requests return 404; normal non-teacher access returns 403.
+- Class detail includes class/subject/year, active student roster with name and student code **only** (no parent/phone/fee or other sensitive fields), sorted own-subject weekly periods, school-local date and active Negaran capability flag. Withdrawn students are excluded.
+- Student items expand to limited read-only details and a link to the authorized subject grade workflow; official exam publication permissions remain with School Admin.
+- Class Homework and Grades use explicit assignment/class/subject/year filters; the create-homework assignment stays fixed in class context, while existing backend authorization continues to protect writes.
+- A Teacher who teaches in the same class but is **not Negaran** cannot see its Supervision tab or submit class attendance/announcements. Active Negaran gets attendance and class-scoped announcement actions, reusing protected server endpoints.
+- Added regression coverage for assigned roster and periods, same-class subject isolation, normal Teacher-vs-Negaran differences, malformed IDs, withdrawn student exclusion, and unauthorized role access.
+- No new database migrations/dependencies. Real-device retest: select Class, inspect Students, create draft homework for correct class, inspect Grades, check supervision for normal Teacher vs Negaran, back navigation, RTL, and offline/reconnect.

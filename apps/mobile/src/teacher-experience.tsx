@@ -14,6 +14,7 @@ import {
 import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type AdminContactPayload, type TeacherLearningPayload, type ParentNotification, type AnnouncementPayload } from "./api";
 import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
 import { teacherTime12 } from "./teacher-hub-data";
+import { TeacherClassDetailPage } from "./teacher-class-detail";
 import { AdminContactCard } from "./admin-contact-card";
 import { TeacherLearningPanel } from "./learning-ui";
 import { CommunicationPanel } from "./communication-ui";
@@ -151,6 +152,7 @@ export function TeacherExperience({
   const currentWeekday = today?.weekday;
   const activeSupervisions = today?.supervisedClasses ?? [];
   const [workflowSection, setWorkflowSection] = useState<TeacherWorkflowSection>("HOMEWORK");
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [hubLearning, setHubLearning] = useState<TeacherLearningPayload | null>(null);
   const [hubAnnouncements, setHubAnnouncements] = useState<AnnouncementPayload[]>([]);
@@ -327,6 +329,22 @@ export function TeacherExperience({
       ) : null}
 
       {tab === "CLASSES" ? (
+        selectedAssignmentId ? (
+          <TeacherClassDetailPage
+            key={selectedAssignmentId}
+            assignmentId={selectedAssignmentId}
+            accessToken={accessToken}
+            reconnectEpoch={reconnectEpoch}
+            locale={locale}
+            textDirection={textDirection}
+            teacherToday={today}
+            onBack={() => { setSelectedAssignmentId(null); onScrollTop(); }}
+            onAttendance={onAttendance}
+            onError={onError}
+            onNotice={onNotice}
+            onScrollTop={onScrollTop}
+          />
+        ) : (
         <>
           <View style={styles.card}>
             <SectionHeading icon="book-outline" title={translate(locale, "teacher.myAssignments")} rtl={rtl} textDirection={textDirection} />
@@ -338,7 +356,7 @@ export function TeacherExperience({
                 {assignments.map((item) => (
                   <Pressable key={item.assignmentId} accessibilityRole="button"
                     accessibilityLabel={`${item.className} · ${item.subjectName}`}
-                    onPress={() => onSelect("WORKFLOWS")}
+                    onPress={() => { setSelectedAssignmentId(item.assignmentId); onScrollTop(); }}
                     style={({ pressed }) => [styles.actionRow, rtl && styles.rowRtl, pressed && styles.pressed]}>
                     <Ionicons name="book-outline" color={tokens.color.brandStrong} size={20} />
                     <View style={styles.flex}>
@@ -376,6 +394,7 @@ export function TeacherExperience({
             )}
           </View>
         </>
+        )
       ) : null}
 
       {tab === "WORKFLOWS" ? (

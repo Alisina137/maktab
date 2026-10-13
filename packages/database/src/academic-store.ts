@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
 import type {
   AcademicYearStatus,
   CreateAcademicYearInput,
@@ -32,6 +32,7 @@ import {
   homeworks,
   negaranAssignments,
   studentClassHistory,
+  schoolSettings,
   students,
   subjects,
   teacherAssignments,
@@ -88,6 +89,28 @@ export interface TeacherAcademicView {
   }>;
 }
 
+export interface TeacherClassDetail {
+  assignment: {
+    assignmentId: string;
+    academicYearId: string;
+    academicYearName: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  };
+  students: Array<{ id: string; fullName: string; studentCode: string }>;
+  schedule: Array<{
+    id: string;
+    weekday: TimetablePeriod["weekday"];
+    startsAt: string;
+    endsAt: string;
+  }>;
+  today: string;
+  canSuperviseToday: boolean;
+}
+
 export interface ClassTimetableView {
   period: TimetablePeriod;
   subjectName: string;
@@ -105,6 +128,11 @@ export interface StudentTimetableView {
 export interface AcademicStore {
   getOverview(schoolId: string): Promise<AcademicOverview>;
   getTeacherView(schoolId: string, teacherUserId: string): Promise<TeacherAcademicView>;
+  getTeacherClassDetail(
+    schoolId: string,
+    teacherUserId: string,
+    assignmentId: string
+  ): Promise<TeacherClassDetail>;
   getClassTimetable(
     schoolId: string,
     academicYearId: string,
@@ -420,6 +448,93 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           .orderBy(asc(timetablePeriods.startsAt), asc(timetablePeriods.classId))
       ]);
       return { assignments, negaranAssignments: negarans, timetable, assignmentDetails, schedule };
+    },
+
+    async getTeacherClassDetail(schoolId, teacherUserId, assignmentId) {
+      await getTeacher(schoolId, teacherUserId);
+      // Assignment id + school + teacher + ACTIVE academic year form the
+      // authorization boundary. Never load a general school class roster first.
+      const [assignment] = await db.select({
+        assignmentId: teacherAssignments.id,
+        academicYearId: teacherAssignments.academicYearId,
+        academicYearName: academicYears.name,
+        classId: classSections.id,
+        className: classSections.name,
+        classCode: classSections.code,
+        subjectId: subjects.id,
+        subjectName: subjects.name
+      }).from(teacherAssignments)
+        .innerJoin(academicYears, and(
+          eq(academicYears.id, teacherAssignments.academicYearId),
+          eq(academicYears.schoolId, teacherAssignments.schoolId),
+          eq(academicYears.status, "ACTIVE")
+        ))
+        .innerJoin(classSections, and(
+          eq(classSections.id, teacherAssignments.classId),
+          eq(classSections.schoolId, teacherAssignments.schoolId),
+          eq(classSections.academicYearId, teacherAssignments.academicYearId)
+        ))
+        .innerJoin(subjects, and(
+          eq(subjects.id, teacherAssignments.subjectId),
+          eq(subjects.schoolId, teacherAssignments.schoolId)
+        ))
+        .where(and(
+          eq(teacherAssignments.schoolId, schoolId),
+          eq(teacherAssignments.teacherUserId, teacherUserId),
+          eq(teacherAssignments.id, assignmentId)
+        )).limit(1);
+      if (!assignment) {
+        throw new AcademicNotFoundError("Active teaching assignment not found.");
+      }
+
+      const [roster, schedule, settings] = await Promise.all([
+        db.select({
+          id: students.id,
+          fullName: students.fullName,
+          studentCode: students.studentCode
+        }).from(students).where(and(
+          eq(students.schoolId, schoolId),
+          eq(students.academicYearId, assignment.academicYearId),
+          eq(students.classId, assignment.classId),
+          eq(students.status, "ACTIVE")
+        )).orderBy(asc(students.fullName), asc(students.studentCode)),
+        db.select({
+          id: timetablePeriods.id,
+          weekday: timetablePeriods.weekday,
+          startsAt: timetablePeriods.startsAt,
+          endsAt: timetablePeriods.endsAt
+        }).from(timetablePeriods).where(and(
+          eq(timetablePeriods.schoolId, schoolId),
+          eq(timetablePeriods.academicYearId, assignment.academicYearId),
+          eq(timetablePeriods.teacherUserId, teacherUserId),
+          eq(timetablePeriods.classId, assignment.classId),
+          eq(timetablePeriods.subjectId, assignment.subjectId)
+        )).orderBy(asc(timetablePeriods.startsAt)),
+        db.select({ timezone: schoolSettings.timezone })
+          .from(schoolSettings)
+          .where(eq(schoolSettings.schoolId, schoolId))
+          .limit(1)
+      ]);
+      const timezone = settings[0]?.timezone ?? "Asia/Kabul";
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        year: "numeric", month: "2-digit", day: "2-digit"
+      }).formatToParts(new Date());
+      const datePart = (part: string) => parts.find((item) => item.type === part)?.value ?? "";
+      const today = `${datePart("year")}-${datePart("month")}-${datePart("day")}`;
+      const [supervision] = await db.select({ id: negaranAssignments.id })
+        .from(negaranAssignments).where(and(
+          eq(negaranAssignments.schoolId, schoolId),
+          eq(negaranAssignments.academicYearId, assignment.academicYearId),
+          eq(negaranAssignments.teacherUserId, teacherUserId),
+          eq(negaranAssignments.classId, assignment.classId),
+          // When assignment is historic or not yet started, no supervision UI.
+          // Attendance and announcement writes enforce this rule again server-side.
+          lte(negaranAssignments.startDate, today),
+          or(isNull(negaranAssignments.endDate), gte(negaranAssignments.endDate, today))
+        )).limit(1);
+
+      return { assignment, students: roster, schedule, today, canSuperviseToday: !!supervision };
     },
 
     async getClassTimetable(schoolId, academicYearId, classId) {

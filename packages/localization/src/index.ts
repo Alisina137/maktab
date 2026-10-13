@@ -129,6 +129,17 @@ export type TranslationKey =
   | "teacher.workflowHomework"
   | "teacher.workflowGrades"
   | "teacher.workflowAnnouncements"
+  | "teacher.classOverview"
+  | "teacher.classStudents"
+  | "teacher.classSupervision"
+  | "teacher.backToClasses"
+  | "teacher.weeklyPeriods"
+  | "teacher.subjectSchedule"
+  | "teacher.studentRosterHint"
+  | "teacher.studentReadOnly"
+  | "teacher.noActiveStudents"
+  | "teacher.supervisionHint"
+  | "teacher.supervisionUnavailable"
   | "teacher.workspace"
   | "teacher.navSchedule"
   | "teacher.navClasses"
@@ -422,6 +433,17 @@ const en: Record<TranslationKey, string> = {
   "teacher.workflowHomework": "Homework",
   "teacher.workflowGrades": "Marks",
   "teacher.workflowAnnouncements": "Announcements",
+  "teacher.classOverview": "Overview",
+  "teacher.classStudents": "Students",
+  "teacher.classSupervision": "Supervision",
+  "teacher.backToClasses": "Back to my classes",
+  "teacher.weeklyPeriods": "Weekly periods",
+  "teacher.subjectSchedule": "Subject timetable",
+  "teacher.studentRosterHint": "Active students in this class · names and codes only.",
+  "teacher.studentReadOnly": "Read-only student information. Marks are managed by assigned subject.",
+  "teacher.noActiveStudents": "No active students in this class.",
+  "teacher.supervisionHint": "Only active Negaran assignments can record attendance or publish class announcements.",
+  "teacher.supervisionUnavailable": "Supervision permissions are not active for today's date. Refresh or contact the school administrator.",
   "teacher.workspace": "Teacher workspace",
   "teacher.navSchedule": "Schedule",
   "teacher.navClasses": "Classes",
@@ -731,6 +753,17 @@ const dari: Record<TranslationKey, string> = {
   "teacher.workflowHomework": "وظایف",
   "teacher.workflowGrades": "نمرات",
   "teacher.workflowAnnouncements": "اعلان‌ها",
+  "teacher.classOverview": "معرفی صنف",
+  "teacher.classStudents": "شاگردان",
+  "teacher.classSupervision": "نظارت",
+  "teacher.backToClasses": "بازگشت به صنف‌ها",
+  "teacher.weeklyPeriods": "ساعات درسی هفته",
+  "teacher.subjectSchedule": "تقسیم اوقات مضمون",
+  "teacher.studentRosterHint": "شاگردان فعال این صنف · فقط نام و کد.",
+  "teacher.studentReadOnly": "معلومات شاگرد فقط برای مشاهده است. نمرات از طریق مضمون سپرده‌شده مدیریت می‌شود.",
+  "teacher.noActiveStudents": "در این صنف شاگرد فعال موجود نیست.",
+  "teacher.supervisionHint": "فقط نگران فعال می‌تواند حاضری ثبت کند یا اعلان صنفی نشر کند.",
+  "teacher.supervisionUnavailable": "اجازه نظارت برای امروز فعال نیست. تازه‌سازی کنید یا با اداره مکتب تماس بگیرید.",
   "teacher.workspace": "بخش آموزگار",
   "teacher.navSchedule": "تقسیم اوقات",
   "teacher.navClasses": "صنف‌ها",
@@ -1040,6 +1073,17 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.workflowHomework": "کورنۍ دندې",
   "teacher.workflowGrades": "نمرې",
   "teacher.workflowAnnouncements": "اعلانونه",
+  "teacher.classOverview": "د ټولګي پېژندنه",
+  "teacher.classStudents": "زده کوونکي",
+  "teacher.classSupervision": "څارنه",
+  "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
+  "teacher.weeklyPeriods": "د اونۍ درسي ساعتونه",
+  "teacher.subjectSchedule": "د مضمون مهالویش",
+  "teacher.studentRosterHint": "د دې ټولګي فعال زده کوونکي · یوازې نوم او کوډ.",
+  "teacher.studentReadOnly": "د زده کوونکي معلومات یوازې د لیدو لپاره دي. نمرې د ټاکل شوي مضمون له لارې اداره کېږي.",
+  "teacher.noActiveStudents": "په دې ټولګي کې فعال زده کوونکي نشته.",
+  "teacher.supervisionHint": "یوازې فعال نګران حاضري ثبتولای او د ټولګي اعلان خپرولای شي.",
+  "teacher.supervisionUnavailable": "د نن ورځې د څارنې اجازه فعاله نه ده. تازه یې کړئ یا له ادارې سره اړیکه ونیسئ.",
   "teacher.workspace": "د ښوونکي برخه",
   "teacher.navSchedule": "مهالویش",
   "teacher.navClasses": "ټولګي",

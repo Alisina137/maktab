@@ -1077,6 +1077,90 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.equal(otherView.statusCode, 200);
   assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().assignmentDetails, []);
   assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().schedule, []);
+  // Phase 2: class details derive from exact active teacher assignment.
+  const ownAssignmentId = assignmentResponse.json<{ assignment: { id: string } }>().assignment.id;
+  const createdParent = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents", headers: auth,
+    payload: { username: "parent.classroster", fullName: "Roster Parent" }
+  });
+  assert.equal(createdParent.statusCode, 201);
+  const parentId = createdParent.json<{ user: { id: string } }>().user.id;
+  const createdStudent = await app.inject({
+    method: "POST", url: "/v1/admin/families/students", headers: auth,
+    payload: {
+      parentUserId: parentId, studentCode: "S-CLASS-ROSTER",
+      fullName: "Roster Learner", academicYearId: yearId, classId
+    }
+  });
+  assert.equal(createdStudent.statusCode, 201);
+  const studentId = createdStudent.json<{ student: { id: string } }>().student.id;
+  const ownDetail = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${ownAssignmentId}`, headers: teacherHeaders
+  });
+  assert.equal(ownDetail.statusCode, 200);
+  const ownBody = ownDetail.json<{
+    assignment: { assignmentId: string; subjectName: string; classId: string };
+    students: Array<{ id: string; fullName: string; studentCode: string }>;
+    schedule: Array<{ weekday: string; startsAt: string }>;
+    canSuperviseToday: boolean;
+  }>();
+  assert.equal(ownBody.assignment.assignmentId, ownAssignmentId);
+  assert.equal(ownBody.assignment.subjectName, "Mathematics");
+  assert.equal(ownBody.canSuperviseToday, true);
+  assert.deepEqual(ownBody.students, [{ id: studentId, fullName: "Roster Learner", studentCode: "S-CLASS-ROSTER" }]);
+  assert.equal(ownBody.schedule[0]?.startsAt, "08:00");
+  assert.equal(ownBody.schedule[0]?.weekday, "SATURDAY");
+
+  const colleagueDenied = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${ownAssignmentId}`,
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(colleagueDenied.statusCode, 404);
+  const adminDenied = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${ownAssignmentId}`, headers: auth
+  });
+  assert.equal(adminDenied.statusCode, 403);
+  const badId = await app.inject({
+    method: "GET", url: "/v1/teacher/classes/not-a-uuid", headers: teacherHeaders
+  });
+  assert.equal(badId.statusCode, 400);
+
+  // A normal teacher in the SAME class gets a roster, not Negaran privileges.
+  const physics = await app.inject({
+    method: "POST", url: "/v1/admin/academics/subjects", headers: auth,
+    payload: { code: "PHYS-7A", name: "Physics" }
+  });
+  assert.equal(physics.statusCode, 201);
+  const physicsId = physics.json<{ subject: { id: string } }>().subject.id;
+  const physicsAssignment = await app.inject({
+    method: "POST", url: "/v1/admin/academics/assignments", headers: auth,
+    payload: { academicYearId: yearId, classId, subjectId: physicsId, teacherUserId: secondTeacherUserId }
+  });
+  assert.equal(physicsAssignment.statusCode, 201);
+  const otherAssignmentId = physicsAssignment.json<{ assignment: { id: string } }>().assignment.id;
+  const otherDetail = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${otherAssignmentId}`,
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(otherDetail.statusCode, 200);
+  assert.equal(otherDetail.json<{ canSuperviseToday: boolean }>().canSuperviseToday, false);
+  assert.equal(otherDetail.json<{ students: unknown[] }>().students.length, 1);
+  const otherAssignmentDenied = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${otherAssignmentId}`, headers: teacherHeaders
+  });
+  assert.equal(otherAssignmentDenied.statusCode, 404);
+
+  const withdraw = await app.inject({
+    method: "PATCH", url: `/v1/admin/families/students/${studentId}`,
+    headers: auth, payload: { status: "WITHDRAWN" }
+  });
+  assert.equal(withdraw.statusCode, 200);
+  const afterWithdrawal = await app.inject({
+    method: "GET", url: `/v1/teacher/classes/${ownAssignmentId}`, headers: teacherHeaders
+  });
+  assert.equal(afterWithdrawal.statusCode, 200);
+  assert.deepEqual(afterWithdrawal.json<{ students: unknown[] }>().students, []);
+
   const nonNegaran = await app.inject({
     method: "GET", url: `/v1/teacher/negaran/${classId}/attendance?date=${teacherTodayData.date}`,
     headers: { authorization: `Bearer ${otherToken}` }
@@ -1101,7 +1185,7 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     timetable: unknown[];
   }>();
   assert.equal(body.teachers.length, 2);
-  assert.equal(body.assignments.length, 1);
+  assert.equal(body.assignments.length, 2);
   assert.equal(body.negaranAssignments.length, 1);
   assert.equal(body.timetable.length, 1);
 });

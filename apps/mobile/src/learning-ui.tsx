@@ -58,8 +58,17 @@ function dueAtFromFields(date: string, time: string) {
   return Number.isNaN(value.getTime()) ? null : value.toISOString();
 }
 
-export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK" | "GRADES" | "BOTH" }) {
-  const { accessToken, locale, textDirection, onError, onNotice, section = "BOTH" } = props;
+export type TeacherAssignmentContext = {
+  assignmentId: string;
+  academicYearId: string;
+  classId: string;
+  subjectId: string;
+};
+export function TeacherLearningPanel(props: CommonProps & {
+  section?: "HOMEWORK" | "GRADES" | "BOTH";
+  assignmentContext?: TeacherAssignmentContext;
+}) {
+  const { accessToken, locale, textDirection, onError, onNotice, section = "BOTH", assignmentContext } = props;
   const rtl = getDirection(locale) === "rtl";
   const [view, setView] = useState<TeacherLearningPayload | null>(null);
   const loadRequestId = useRef(0);
@@ -83,7 +92,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
     return () => {
       loadRequestId.current++;
     };
-  }, [accessToken]);
+  }, [accessToken, assignmentContext?.assignmentId, assignmentContext?.classId, assignmentContext?.subjectId]);
 
   async function load(requestId = ++loadRequestId.current) {
     setBusy(true);
@@ -91,9 +100,17 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
       const result = await api.teacherLearning(accessToken);
       if (requestId !== loadRequestId.current) return;
       setView(result);
+      const visible = assignmentContext
+        ? result.assignments.filter((item) =>
+            item.assignmentId === assignmentContext.assignmentId &&
+            item.academicYearId === assignmentContext.academicYearId &&
+            item.classId === assignmentContext.classId &&
+            item.subjectId === assignmentContext.subjectId
+          )
+        : result.assignments;
       setAssignmentId((current) =>
-        result.assignments.some((item) => item.assignmentId === current)
-          ? current : result.assignments[0]?.assignmentId ?? ""
+        visible.some((item) => item.assignmentId === current)
+          ? current : visible[0]?.assignmentId ?? ""
       );
     } catch (cause) {
       if (requestId !== loadRequestId.current) return;
@@ -256,10 +273,31 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
     }
   }
 
-  const selectedAssignment = useMemo(
-    () => view?.assignments.find((item) => item.assignmentId === assignmentId) ?? null,
-    [view, assignmentId]
-  );
+  const visibleAssignments = useMemo(() => {
+    if (!view) return [];
+    return assignmentContext ? view.assignments.filter((item) =>
+      item.assignmentId === assignmentContext.assignmentId &&
+      item.academicYearId === assignmentContext.academicYearId &&
+      item.classId === assignmentContext.classId &&
+      item.subjectId === assignmentContext.subjectId
+    ) : view.assignments;
+  }, [view, assignmentContext?.assignmentId, assignmentContext?.academicYearId,
+      assignmentContext?.classId, assignmentContext?.subjectId]);
+  const selectedAssignment = visibleAssignments.find((item) => item.assignmentId === assignmentId) ?? null;
+  const visibleHomeworks = useMemo(() =>
+    !view ? [] : assignmentContext
+      ? view.homeworks.filter((item) => item.assignmentId === assignmentContext.assignmentId &&
+          item.classId === assignmentContext.classId && item.subjectId === assignmentContext.subjectId &&
+          item.academicYearId === assignmentContext.academicYearId)
+      : view.homeworks, [view, assignmentContext?.assignmentId, assignmentContext?.classId]);
+  const visibleExamSubjects = useMemo(() =>
+    !view ? [] : assignmentContext
+      ? view.examSubjects.filter((item) =>
+          item.exam.academicYearId === assignmentContext.academicYearId &&
+          item.examSubject.classId === assignmentContext.classId &&
+          item.examSubject.subjectId === assignmentContext.subjectId)
+      : view.examSubjects, [view, assignmentContext?.academicYearId,
+          assignmentContext?.classId, assignmentContext?.subjectId]);
 
   if (busy && !view) {
     return (
@@ -295,7 +333,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
 
         <Text style={[styles.label, textDirection]}>{translate(locale, "learning.assignments")}</Text>
         <View style={[styles.chips, rtl && styles.rowRtl]}>
-          {view.assignments.map((assignment) => (
+          {visibleAssignments.map((assignment) => (
             <Pressable
               key={assignment.assignmentId}
               onPress={() => startHomework(assignment)}
@@ -367,7 +405,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
         )}
 
         <View style={styles.list}>
-          {view.homeworks.map((homework) => (
+          {visibleHomeworks.map((homework) => (
             <View key={homework.id} style={styles.listItem}>
               <View style={[styles.headingRow, rtl && styles.rowRtl]}>
                 <View style={styles.flex}>
@@ -398,7 +436,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
             </View>
           ))}
-          {view.homeworks.length === 0 ? (
+          {visibleHomeworks.length === 0 ? (
             <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noHomework")}</Text>
           ) : null}
         </View>
@@ -417,7 +455,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
           </View>
         </View>
 
-        {view.examSubjects.map((item) => (
+        {visibleExamSubjects.map((item) => (
           <Pressable
             key={item.examSubject.id}
             onPress={() => void openGrades(item.examSubject.id)}
@@ -432,7 +470,7 @@ export function TeacherLearningPanel(props: CommonProps & { section?: "HOMEWORK"
             <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted} />
           </Pressable>
         ))}
-        {view.examSubjects.length === 0 ? (
+        {visibleExamSubjects.length === 0 ? (
           <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noExamSubjects")}</Text>
         ) : null}
 
