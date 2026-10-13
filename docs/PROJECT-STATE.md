@@ -1391,3 +1391,19 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Negaran initial submission/same-day corrections and Admin corrections now commit their audit events in the **same transaction** as marks/alerts. A failed audit insert cannot silently leave a changed attendance record, and no-op retries generate no new audit event. Added integration assertions for one audit per actual edit, correct actor, same-day correction, read alert cancellation/reopening, conflict rejection, and Admin note preservation.
 - No new migration is required. Pending: CI confirmation and actual Android checks for two devices/sessions, school-local date boundary, airplane-mode retry, RTL, roster edge cases, and real push delivery.
 - Calendar-valid date checks now cover Teacher sheets/submission, Parent history and Admin reports (as well as existing Negaran history), preventing malformed dates such as February 30 from reaching PostgreSQL as server errors. The attendance integration test now walks **all four states**: Absent, Present, Excused and Late.
+
+
+### Testing Step 14 — Homework (2026-10-13)
+
+**Implementation fixes and automated regression coverage added; Android pilot acceptance remains outstanding.** Detailed matrix: `docs/TEST-14-HOMEWORK.md`.
+
+- Tested Teacher-only active assignment-derived class/subject/year creation, missing/invalid title/content, invalid/past deadline and HTTPS-only attachment links; unrelated Teachers and Parents cannot create/edit/publish.
+- DRAFT content/attachment remains invisible to Parent/Student; draft edits are guarded by an SQL DRAFT condition, preventing an already-published item from being overwritten by a stale editor.
+- Manual publication now changes lifecycle state, inserts academic-year/class-scoped deduplicated parent/student notifications, and writes an audit record **in one PostgreSQL transaction**. Repeated publish/close/archive requests cannot bypass the strict state machine and return a conflict.
+- Scheduled publication now also creates its audit in the same transaction and verifies the recipients' academic year. This does not claim guaranteed timed delivery when the development API is offline.
+- Published and closed homework cannot be edited (including file changes); close prevents new Student submissions while preserving Parent/Student read-only access.
+- Archived homework disappears from Parent/Student academic feeds **per Product Specification V1**, but remains in Teacher history with historical submissions. Archived submission review is read-only. A Teacher can view archived submission history after the academic year is closed.
+- Parent Homework displays published/closed status and supports an HTTPS link or authenticated attached-file open action with error feedback.
+- Teacher actions now require localized confirmation before Publish/Close/Archive, and a concurrent status conflict refreshes canonical data rather than encouraging a duplicate mutation.
+- Expanded API tests cover all 14.1–14.12 categories including sibling/class isolation, unauthorised roles, notification fan-out and acknowledgement, status transitions, historical read access and archive privacy.
+- Run `pnpm verify` locally after pulling to repeat automated verification. Real Teacher/Parent/Student Android workflows, attachment opening, notification navigation, TalkBack/RTL and flaky-tunnel/airplane-mode manual checks still require device testing.
