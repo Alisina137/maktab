@@ -147,7 +147,7 @@ assert.ok(css.includes('.account-create-field-error') &&
   "Phase 2 form errors and credential panel must remain responsive");
 for (const key of ['"Step 1 · Account role":', '"Copy username":',
                    '"Copy password":', '"Select an eligible student":',
-                   '"Username must contain between 3 and 64 characters":',
+                   '"Username must contain between 3 and 64 characters.":',
                    '"Parent and student usernames may contain English letters and numbers only.":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase2 is missing a Dari or Pashto translation: ${key}`);
