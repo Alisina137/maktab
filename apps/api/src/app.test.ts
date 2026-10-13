@@ -43,7 +43,8 @@ async function createTestApp() {
     "0014_student_phone.sql",
     "0015_teacher_learning_workflows.sql",
     "0016_teacher_teaching_plans.sql",
-    "0017_teacher_productivity.sql"
+    "0017_teacher_productivity.sql",
+    "0018_exam_subject_dates.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -3916,7 +3917,7 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     method: "POST",
     url: "/v1/admin/exam-subjects",
     headers: admin,
-    payload: { examId, subjectId, classId, maxScore: 100 }
+    payload: { examId, subjectId, classId, maxScore: 100, examDate: "2028-09-15" }
   });
   const examSubjectId = examSubject.json<{ examSubject: { id: string } }>().examSubject.id;
 
