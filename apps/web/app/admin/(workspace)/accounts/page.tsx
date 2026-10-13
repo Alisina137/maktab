@@ -176,7 +176,7 @@ export default function AccountsPage() {
       showToast({
         kind: "error",
         title: t("School accounts"),
-        message: t("Close the temporary credential panel before creating another account.")
+        message: t("Close the temporary credential panel before continuing.")
       });
       return;
     }
