@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Pressable,
   StyleSheet,
@@ -202,12 +203,12 @@ export function TeacherLearningPanel(props: CommonProps & {
   }
 
   async function saveHomework() {
-    if (!assignmentId || !homeworkTitle.trim() || !homeworkContent.trim()) {
+    if (!assignmentId || homeworkTitle.trim().length < 2 || !homeworkContent.trim()) {
       onError("learning.completeHomework");
       return;
     }
     const dueAt = homeworkDueAt(dueDate, dueTime);
-    if (!dueAt) {
+    if (!dueAt || new Date(dueAt).getTime() <= Date.now()) {
       onError("learning.invalidDueDate");
       return;
     }
@@ -269,7 +270,7 @@ export function TeacherLearningPanel(props: CommonProps & {
     }
   }
 
-  async function homeworkAction(homework: HomeworkPayload) {
+  async function performHomeworkAction(homework: HomeworkPayload) {
     const action =
       homework.status === "DRAFT" ? "publish" :
       homework.status === "PUBLISHED" ? "close" :
@@ -292,6 +293,22 @@ export function TeacherLearningPanel(props: CommonProps & {
     } finally {
       setBusy(false);
     }
+  }
+
+  function confirmHomeworkAction(homework: HomeworkPayload) {
+    if (busy) return;
+    const action = homework.status === "DRAFT" ? "learning.publish"
+      : homework.status === "PUBLISHED" ? "learning.close"
+      : homework.status === "CLOSED" ? "learning.archive" : null;
+    const message = homework.status === "DRAFT" ? "learning.confirmPublish"
+      : homework.status === "PUBLISHED" ? "learning.confirmClose"
+      : homework.status === "CLOSED" ? "learning.confirmArchive" : null;
+    if (!action || !message) return;
+    Alert.alert(translate(locale, action), translate(locale, message), [
+      { text: translate(locale, "attendance.cancel"), style: "cancel" },
+      { text: translate(locale, action),
+        onPress: () => { void performHomeworkAction(homework); } }
+    ], { cancelable: true });
   }
 
   async function openGrades(examSubjectId: string) {
@@ -551,12 +568,12 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </View>
                 <View style={styles.actions}>
                   {homework.status === "DRAFT" ? (
-                    <Pressable style={styles.smallButton} onPress={() => editHomework(homework)}>
+                    <Pressable style={styles.smallButton} disabled={busy} onPress={() => editHomework(homework)}>
                       <Text style={styles.smallButtonText}>{translate(locale, "learning.edit")}</Text>
                     </Pressable>
                   ) : null}
                   {homework.status !== "ARCHIVED" ? (
-                    <Pressable style={styles.smallButton} disabled={busy} onPress={() => void homeworkAction(homework)}>
+                    <Pressable style={styles.smallButton} disabled={busy} onPress={() => confirmHomeworkAction(homework)}>
                       <Text style={styles.smallButtonText}>
                         {homework.status === "DRAFT"
                           ? translate(locale, "learning.publish")
