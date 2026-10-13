@@ -172,8 +172,15 @@ export default function AccountsPage() {
 
   async function action(user: User, action: "reset-password" | "suspend" | "reactivate") {
     if (user.id === stored.session.user.id && (action === "reset-password" || action === "suspend")) return;
+    if (credential) {
+      showToast({
+        kind: "error",
+        title: t("School accounts"),
+        message: t("Close the temporary credential panel before creating another account.")
+      });
+      return;
+    }
     setBusy(true);
-    setCredential(null);
     try {
       const result = await adminApi<{ user: User; temporaryPassword?: string }>(
         `/v1/admin/users/${user.id}/${action}`,
@@ -187,6 +194,7 @@ export default function AccountsPage() {
       );
       if (result.temporaryPassword) {
         setCredential({ username: result.user.username, password: result.temporaryPassword });
+        setView("DIRECTORY");
       }
       showToast({
         kind: "success",
@@ -351,6 +359,7 @@ export default function AccountsPage() {
               {t("Role")}
               <select
                 value={newRole}
+                disabled={busy}
                 onChange={(e) => {
                   const role = e.target.value as User["role"];
                   setNewRole(role);
@@ -379,6 +388,7 @@ export default function AccountsPage() {
                   {t("Parent full name")}
                   <input
                     value={parentFullName}
+                    disabled={busy}
                     onChange={(e) => setParentFullName(e.target.value)}
                     aria-invalid={showNameIssue && Boolean(creationIssues.parentFullName)}
                     aria-describedby={creationIssues.parentFullName && showNameIssue ? "account-create-parent-name-error" : undefined}
@@ -392,6 +402,7 @@ export default function AccountsPage() {
                   {t("Phone")}
                   <input
                     value={parentPhone}
+                    disabled={busy}
                     onChange={(e) => setParentPhone(e.target.value)}
                     aria-invalid={showPhoneIssue && Boolean(creationIssues.parentPhone)}
                     aria-describedby={creationIssues.parentPhone && showPhoneIssue ? "account-create-parent-phone-error" : undefined}
@@ -410,6 +421,7 @@ export default function AccountsPage() {
                   {t("Search student records")}
                   <input
                     value={studentSearch}
+                    disabled={busy}
                     onChange={(e) => { setStudentSearch(e.target.value); setStudentRecordId(""); }}
                     type="search"
                     placeholder={t("Search by student name, code or class")}
@@ -424,7 +436,7 @@ export default function AccountsPage() {
                     required
                     aria-invalid={creationAttempted && Boolean(creationIssues.studentRecordId)}
                     aria-describedby={creationAttempted && creationIssues.studentRecordId ? "account-create-student-error" : undefined}
-                    disabled={availableStudentRecords.length === 0}
+                    disabled={busy || availableStudentRecords.length === 0}
                   >
                     <option value="">{t(availableStudentRecords.length === 0 ? "No students without login" : "Select an eligible student")}</option>
                     {matchingStudentRecords.map((item) => (
@@ -451,6 +463,7 @@ export default function AccountsPage() {
               {t("Username")}
               <input
                 value={newUsername}
+                disabled={busy}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder={newRole === "PARENT" ? "parent001" : newRole === "STUDENT" ? "student001" : "teacher001"}
                 minLength={3}
