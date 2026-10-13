@@ -4204,15 +4204,41 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
       .notifications.some((notification) => notification.type === "RESULTS_PUBLISHED")
   );
 
+  // 15.10/15.12: post-publication edits are Admin-only and validated.
+  const gradeIdToCorrect = results[0]!.grade.id;
+  const initialGradeRevision = (results[0] as { grade: { updatedAt: string } }).grade.updatedAt;
+  for (const payload of [
+    { score: -1, reason: "Bad value" },
+    { score: 101, reason: "Out of range" },
+    { score: 92, reason: " " },
+    { score: 88, remark: null, reason: "No actual change" }
+  ]) {
+    const invalid = await app.inject({ method: "PATCH",
+      url: `/v1/admin/grades/${gradeIdToCorrect}/correct`, headers: admin,
+      payload });
+    assert.equal(invalid.statusCode, 400, invalid.body);
+  }
+  const teacherCannotCorrect = await app.inject({ method: "PATCH",
+    url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
+    headers: assignedTeacher.auth,
+    payload: { score: 91, reason: "Not an administrator" } });
+  assert.equal(teacherCannotCorrect.statusCode, 403);
+
   const corrected = await app.inject({
     method: "PATCH",
     url: `/v1/admin/grades/${results[0]!.grade.id}/correct`,
     headers: admin,
-    payload: { score: 91, remark: "Reviewed", reason: "Verified scoring correction" }
+    payload: { score: 91, remark: "Reviewed", reason: "Verified scoring correction",
+      expectedUpdatedAt: initialGradeRevision }
   });
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
   assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
+  const staleCorrection = await app.inject({ method: "PATCH",
+    url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
+    headers: admin, payload: { score: 90, reason: "Stale overwrite",
+      expectedUpdatedAt: initialGradeRevision } });
+  assert.equal(staleCorrection.statusCode, 409);
 
   const parentCorrected = await app.inject({
     method: "GET",
