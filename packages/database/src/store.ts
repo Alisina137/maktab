@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 import type {
   CreateSchoolInput,
+  PilotOnboardSchoolInput,
   SubscriptionStatus,
   UpdateSchoolSettingsInput,
   UpdateSubscriptionInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
+  auditLogs,
   notificationPushDeliveries,
   notifications,
   schoolSettings,
@@ -16,7 +18,8 @@ import {
   users,
   type School,
   type SchoolSettings,
-  type Subscription
+  type Subscription,
+  type User
 } from "./schema.js";
 
 export interface SchoolContext {
@@ -44,6 +47,7 @@ export interface PlatformOperationalSummary {
 
 export interface PlatformSchoolStore {
   createSchool(input: CreateSchoolInput): Promise<SchoolContext>;
+  onboardPilotSchool(input: PilotOnboardSchoolInput, passwordHash: string): Promise<SchoolContext & { admin: User }>;
   listSchools(): Promise<School[]>;
   listPublicSchools(query?: string): Promise<PublicSchool[]>;
   getSchoolContext(schoolId: string): Promise<SchoolContext | null>;
@@ -136,6 +140,71 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
 
           if (!subscription) throw new Error("School subscription insert did not return a row.");
           return { school, settings, subscription };
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/unique|duplicate/i.test(message)) {
+          throw new SchoolConflictError("A school with that code or slug already exists.");
+        }
+        throw error;
+      }
+    },
+
+    // Pilot creation must be all-or-nothing: no orphan school can remain if
+    // its admin, subscription customization, or audit insert fails.
+    async onboardPilotSchool(input, passwordHash) {
+      const schoolId = randomUUID();
+      const today = utcDate();
+      const defaultExpiry = addDays(today, 30);
+      const defaultGrace = addDays(today, 44);
+      const overrides = input.subscription;
+      const startsOn = overrides?.startsOn === undefined ? today : overrides.startsOn;
+      const expiresOn = overrides?.expiresOn === undefined ? defaultExpiry : overrides.expiresOn;
+      const graceEndsOn = overrides?.graceEndsOn === undefined ? defaultGrace : overrides.graceEndsOn;
+      if ((startsOn && expiresOn && startsOn > expiresOn) ||
+          (expiresOn && graceEndsOn && expiresOn > graceEndsOn)) {
+        throw new SchoolConflictError("Subscription dates must follow start, expiry, then grace end.");
+      }
+      try {
+        return await db.transaction(async tx => {
+          const [school] = await tx.insert(schools).values({
+            id: schoolId, code: input.school.code, name: input.school.name,
+            slug: input.school.slug, province: input.school.province,
+            city: input.school.city, imageUrl: input.school.imageUrl ?? null
+          }).returning();
+          if (!school) throw new Error("School insert did not return a row.");
+          const [settings] = await tx.insert(schoolSettings).values({
+            schoolId, defaultLanguage: input.school.defaultLanguage
+          }).returning();
+          if (!settings) throw new Error("School settings insert did not return a row.");
+          const [subscription] = await tx.insert(subscriptions).values({
+            schoolId,
+            planCode: overrides?.planCode ?? "PILOT",
+            status: overrides?.status ?? "TRIAL",
+            billingCycle: overrides?.billingCycle ?? "ANNUAL",
+            priceAfn: overrides?.priceAfn ?? 0,
+            setupFeeAfn: overrides?.setupFeeAfn ?? 0,
+            startsOn, expiresOn, graceEndsOn,
+            supportNotes: overrides?.supportNotes ?? null
+          }).returning();
+          if (!subscription) throw new Error("Subscription insert did not return a row.");
+          const [admin] = await tx.insert(users).values({
+            id: randomUUID(), schoolId, username: input.adminUsername,
+            passwordHash, role: "SCHOOL_ADMIN", status: "INVITED",
+            mustChangePassword: true
+          }).returning();
+          if (!admin) throw new Error("Admin insert did not return a row.");
+          await tx.insert(auditLogs).values({
+            id: randomUUID(), schoolId, actorUserId: null,
+            action: "pilot.school_onboarded", entityType: "school",
+            entityId: schoolId,
+            metadata: {
+              code: school.code,
+              adminUsername: admin.username,
+              subscriptionStatus: subscription.status
+            }
+          });
+          return { school, settings, subscription, admin };
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
