@@ -664,7 +664,7 @@ export function TeacherLearningPanel(props: CommonProps & {
             <View style={styles.flex}>
               <Text style={[styles.itemTitle, textDirection]}>{item.exam.name} · {item.subjectName}</Text>
               <Text style={[styles.muted, textDirection]}>
-                {item.className} · {translate(locale, "learning.maxScore")} {formatLocalizedNumber(item.examSubject.maxScore, locale)}
+                {item.className} · {item.examSubject.examDate ? `${formatLocalizedDate(item.examSubject.examDate, locale)} · ` : ""}{translate(locale, "learning.maxScore")} {formatLocalizedNumber(item.examSubject.maxScore, locale)}
               </Text>
             </View>
             <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted} />
@@ -680,7 +680,7 @@ export function TeacherLearningPanel(props: CommonProps & {
               {gradeSheet.exam.name} · {gradeSheet.subject.name}
             </Text>
             <Text style={[styles.muted, textDirection]}>
-              {gradeSheet.classSection.name} · {translate(locale, "learning.maxScore")} {formatLocalizedNumber(gradeSheet.examSubject.maxScore, locale)}
+              {gradeSheet.classSection.name} · {gradeSheet.examSubject.examDate ? `${formatLocalizedDate(gradeSheet.examSubject.examDate, locale)} · ` : ""}{translate(locale, "learning.maxScore")} {formatLocalizedNumber(gradeSheet.examSubject.maxScore, locale)}
             </Text>
             <View style={[styles.progressRow, rtl && styles.rowRtl]}>
               <Text style={[styles.progressText, textDirection]}>
