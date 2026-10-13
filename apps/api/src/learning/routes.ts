@@ -3,6 +3,7 @@ import {
   correctPublishedGradeSchema,
   createExamSchema,
   createExamSubjectSchema,
+  updateExamSubjectDateSchema,
   createHomeworkSchema,
   saveGradeEntriesSchema,
   setExamStatusSchema,
@@ -244,6 +245,24 @@ export function registerLearningRoutes(
       return sendLearningError(reply, error);
     }
   });
+
+  app.patch<{ Params: { examSubjectId: string } }>(
+    "/v1/admin/exam-subjects/:examSubjectId/date",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const { examDate } = updateExamSubjectDateSchema.parse(request.body);
+        const examSubject = await learning.updateExamSubjectDate(
+          context.user.schoolId, context.user.id,
+          request.params.examSubjectId, examDate
+        );
+        return { examSubject };
+      } catch (error) {
+        return sendLearningError(reply, error);
+      }
+    }
+  );
 
   app.post<{ Params: { examId: string } }>("/v1/admin/exams/:examId/status", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
