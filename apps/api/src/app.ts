@@ -39,7 +39,7 @@ export function buildApp(options: BuildAppOptions) {
 
   void app.register(cors, {
     origin: [webOrigin, "http://127.0.0.1:3000"],
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "x-platform-provisioning-key"],
     exposedHeaders: ["x-request-id"]
   });

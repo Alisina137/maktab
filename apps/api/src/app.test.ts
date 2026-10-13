@@ -10,6 +10,7 @@ import {
   createCommunicationStore,
   createFamilyStore,
   createLearningStore,
+  createLearningExtensionsStore,
   createPilotStore,
   createSchoolStore,
   type PushProvider,
@@ -37,7 +38,8 @@ async function createTestApp() {
     "0010_admin_profiles.sql",
     "0011_admin_contact_profile.sql",
     "0012_admin_password_2fa.sql",
-    "0014_student_phone.sql"
+    "0014_student_phone.sql",
+    "0015_teacher_learning_workflows.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -65,6 +67,7 @@ async function createTestApp() {
       passwordVerificationMessages.sms.push({ to, code });
     }
   };
+  const learningExtensionsStore = createLearningExtensionsStore(db);
   const app = buildApp({
     schoolStore: createSchoolStore(db),
     accountStore: createAccountStore(db),
@@ -72,6 +75,7 @@ async function createTestApp() {
     familyStore: createFamilyStore(db),
     attendanceStore: createAttendanceStore(db),
     learningStore: createLearningStore(db),
+    learningExtensionsStore,
     communicationStore: createCommunicationStore(db),
     pilotStore: createPilotStore(db),
     pushProvider,
@@ -79,7 +83,7 @@ async function createTestApp() {
     passwordVerificationSecret: "test-password-verification-secret-2026",
     provisioningKey
   });
-  return { app, client, passwordVerificationMessages };
+  return { app, client, learningExtensionsStore, passwordVerificationMessages };
 }
 
 async function provisionSchool(app: Awaited<ReturnType<typeof createTestApp>>["app"], code: string) {
@@ -2756,7 +2760,7 @@ test("teacher without Negaran assignment cannot access another class attendance"
 
 
 test("homework stays private as draft, then becomes visible to parent and linked student after publish", async (t) => {
-  const { app, client } = await createTestApp();
+  const { app, client, learningExtensionsStore } = await createTestApp();
   t.after(async () => {
     await app.close();
     await client.close();
@@ -2922,6 +2926,69 @@ test("homework stays private as draft, then becomes visible to parent and linked
   const homeworkId = created.json<{ homework: { id: string; status: string } }>().homework.id;
   assert.equal(created.json<{ homework: { status: string } }>().homework.status, "DRAFT");
 
+  // Real PDF bytes are validated and only available to authorized users.
+  const pdf = Buffer.from("%PDF-1.7\\n1 0 obj\\n<<>>\\nendobj").toString("base64");
+  const invalidMime = await app.inject({
+    method:"POST",url:"/v1/learning/files",headers:teacherAuth,
+    payload:{fileName:"bad.pdf",mimeType:"text/html",base64:pdf}
+  });
+  assert.equal(invalidMime.statusCode,400);
+  const uploaded = await app.inject({
+    method:"POST",url:"/v1/learning/files",headers:teacherAuth,
+    payload:{fileName:"worksheet.pdf",mimeType:"application/pdf",base64:pdf}
+  });
+  assert.equal(uploaded.statusCode,201);
+  const fileId=uploaded.json<{file:{id:string}}>().file.id;
+  const forbiddenFileBeforePublish=await app.inject({
+    method:"GET",url:`/v1/learning/files/${fileId}`,headers:studentAuth
+  });
+  assert.equal(forbiddenFileBeforePublish.statusCode,404);
+  const attached=await app.inject({
+    method:"PUT",url:`/v1/teacher/homework/${homeworkId}/file`,
+    headers:teacherAuth,payload:{fileId}
+  });
+  assert.equal(attached.statusCode,200);
+
+  // A scheduled date must be after now AND before the due date.
+  const invalidScheduled = await app.inject({
+    method:"PUT",url:`/v1/teacher/homework/${homeworkId}/schedule`,
+    headers:teacherAuth,payload:{scheduledAt:"2000-01-01T00:00:00.000Z"}
+  });
+  assert.equal(invalidScheduled.statusCode,400);
+  const scheduled=await app.inject({
+    method:"PUT",url:`/v1/teacher/homework/${homeworkId}/schedule`,
+    headers:teacherAuth,payload:{scheduledAt:"2098-12-31T09:00:00.000Z"}
+  });
+  assert.equal(scheduled.statusCode,200);
+  const scheduleUnauthorized=await app.inject({
+    method:"PUT",url:`/v1/teacher/homework/${homeworkId}/schedule`,
+    headers:studentAuth,payload:{scheduledAt:null}
+  });
+  assert.equal(scheduleUnauthorized.statusCode,403);
+  const assessment=await app.inject({
+    method:"POST",url:"/v1/teacher/assessments",headers:teacherAuth,
+    payload:{assignmentId,title:"Weekly quiz",category:"QUIZ",maxScore:20,assessedOn:"2026-10-13"}
+  });
+  assert.equal(assessment.statusCode,201);
+  const assessmentId=assessment.json<{assessment:{id:string}}>().assessment.id;
+  const assessmentSheet=await app.inject({method:"GET",url:`/v1/teacher/assessments/${assessmentId}`,headers:teacherAuth});
+  assert.equal(assessmentSheet.statusCode,200);
+  assert.equal(assessmentSheet.json<{students:unknown[]}>().students.length,1);
+  const scoreSave=await app.inject({
+    method:"POST",url:`/v1/teacher/assessments/${assessmentId}/scores`,headers:teacherAuth,
+    payload:{entries:[{studentId,score:18}]}
+  });
+  assert.equal(scoreSave.statusCode,200);
+  const scoreDenied=await app.inject({
+    method:"POST",url:`/v1/teacher/assessments/${assessmentId}/scores`,headers:teacherAuth,
+    payload:{entries:[{studentId,score:100}]}
+  });
+  assert.equal(scoreDenied.statusCode,400);
+  const studentAssessmentDenied=await app.inject({
+    method:"GET",url:`/v1/teacher/assessments/${assessmentId}`,headers:studentAuth
+  });
+  assert.equal(studentAssessmentDenied.statusCode,403);
+
   const parentDraft = await app.inject({
     method: "GET",
     url: `/v1/parent/children/${studentId}/learning`,
@@ -2950,6 +3017,68 @@ test("homework stays private as draft, then becomes visible to parent and linked
 
   const studentPublished = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
   assert.equal(studentPublished.json<{ homework: Array<{ homework: { title: string } }> }>().homework[0]?.homework.title, "Read chapter 3");
+
+  const visibleFile = await app.inject({method:"GET",url:`/v1/learning/files/${fileId}`,headers:studentAuth});
+  assert.equal(visibleFile.statusCode,200);
+  assert.equal(visibleFile.json<{file:{base64:string}}>().file.base64,pdf);
+  const submission = await app.inject({
+    method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
+    headers:studentAuth,payload:{answer:"My chapter answers."}
+  });
+  assert.equal(submission.statusCode,200);
+  const submissionId=submission.json<{submission:{id:string}}>().submission.id;
+  const duplicate=await app.inject({
+    method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
+    headers:studentAuth,payload:{answer:"Duplicate"}
+  });
+  assert.equal(duplicate.statusCode,409);
+  const submittedView=await app.inject({
+    method:"GET",url:`/v1/teacher/homework/${homeworkId}/submissions`,headers:teacherAuth
+  });
+  assert.equal(submittedView.statusCode,200);
+  assert.equal(submittedView.json<{submissions:unknown[]}>().submissions.length,1);
+  const review=await app.inject({
+    method:"POST",url:`/v1/teacher/homework/${homeworkId}/submissions/${submissionId}/review`,
+    headers:teacherAuth,payload:{status:"REVISION_REQUESTED",feedback:"Add page numbers."}
+  });
+  assert.equal(review.statusCode,200);
+  const revised=await app.inject({
+    method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
+    headers:studentAuth,payload:{answer:"Updated answers with pages."}
+  });
+  assert.equal(revised.statusCode,200);
+  const reviewComplete=await app.inject({
+    method:"POST",url:`/v1/teacher/homework/${homeworkId}/submissions/${submissionId}/review`,
+    headers:teacherAuth,payload:{status:"REVIEWED",feedback:"Good work."}
+  });
+  assert.equal(reviewComplete.statusCode,200);
+  const ownSubmission=await app.inject({
+    method:"GET",url:"/v1/student/homework/submissions",headers:studentAuth
+  });
+  assert.equal(ownSubmission.statusCode,200);
+  assert.equal(ownSubmission.json<{submissions:Array<{submission:{feedback:string}}>}>().submissions[0]?.submission.feedback,"Good work.");
+
+  // Durable scheduling: claim once, even if the scheduler checks repeatedly.
+  const future = await app.inject({
+    method:"POST",url:"/v1/teacher/homework",headers:teacherAuth,
+    payload:{assignmentId,title:"Scheduled chapter",content:"Read before exam",
+      dueAt:"2099-12-30T12:00:00Z"}
+  });
+  assert.equal(future.statusCode,201);
+  const futureId=future.json<{homework:{id:string}}>().homework.id;
+  const setFuture=await app.inject({
+    method:"PUT",url:`/v1/teacher/homework/${futureId}/schedule`,
+    headers:teacherAuth,payload:{scheduledAt:"2098-12-29T12:00:00.000Z"}
+  });
+  assert.equal(setFuture.statusCode,200);
+  await client.query(`UPDATE homeworks SET scheduled_at = now() - interval '1 second'
+    WHERE id = '${futureId}'`);
+  assert.equal(await learningExtensionsStore.publishDueHomeworks(),1);
+  assert.equal(await learningExtensionsStore.publishDueHomeworks(),0);
+  const scheduledStudent=await app.inject({method:"GET",url:"/v1/student/home",headers:studentAuth});
+  assert.equal(scheduledStudent.statusCode,200);
+  assert.ok(scheduledStudent.json<{homework:Array<{homework:{id:string}}>}>().homework
+    .some(item=>item.homework.id===futureId));
 });
 
 test("draft grades are hidden until admin publishes the complete exam, and unrelated teachers cannot grade", async (t) => {

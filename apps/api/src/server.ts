@@ -9,6 +9,7 @@ import {
   createFamilyStore,
   createExpoPushProvider,
   createLearningStore,
+  createLearningExtensionsStore,
   createPilotStore,
   createSchoolStore
 } from "@maktablink/database";
@@ -33,6 +34,7 @@ if (!provisioningKey || provisioningKey.length < 24) {
 }
 
 const database = createDatabaseClient(databaseUrl);
+const learningExtensionsStore = createLearningExtensionsStore(database.db);
 const app = buildApp({
   schoolStore: createSchoolStore(database.db),
   accountStore: createAccountStore(database.db),
@@ -40,6 +42,7 @@ const app = buildApp({
   familyStore: createFamilyStore(database.db),
   attendanceStore: createAttendanceStore(database.db),
   learningStore: createLearningStore(database.db),
+  learningExtensionsStore,
   communicationStore: createCommunicationStore(database.db),
   pilotStore: createPilotStore(database.db),
   pushProvider: createExpoPushProvider(),
@@ -59,3 +62,17 @@ process.once("SIGINT", () => void close().finally(() => process.exit(0)));
 process.once("SIGTERM", () => void close().finally(() => process.exit(0)));
 
 await app.listen({ host, port });
+// Scheduled publications persist in PostgreSQL; repeatable atomic claims
+// prevent duplicate publishing across API instances and server restarts.
+async function publishScheduled() {
+  try {
+    const published = await learningExtensionsStore.publishDueHomeworks();
+    if (published) app.log.info({ event: "scheduled_homework_published", count: published });
+  } catch (error) {
+    app.log.error({ event: "scheduled_homework_publish_failed", error });
+  }
+}
+void publishScheduled();
+const scheduleTimer = setInterval(() => void publishScheduled(), 60_000);
+scheduleTimer.unref();
+app.addHook("onClose", async () => clearInterval(scheduleTimer));

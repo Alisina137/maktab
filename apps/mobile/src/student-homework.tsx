@@ -1,4 +1,6 @@
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { shareLearningFile } from "./learning-files";
+import { StudentSubmissionPanel } from "./student-submission";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -20,15 +22,21 @@ type HomeworkItem = LearnerAcademicPayload["homework"][number];
 function HomeworkCard({
   item,
   locale,
-  textDirection
+  textDirection,
+  accessToken
 }: {
   item: HomeworkItem;
+  accessToken: string;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
   const rtl = getDirection(locale) === "rtl";
 
   async function openAttachment() {
+    if (item.homework.attachmentFileId) {
+      try { await shareLearningFile(accessToken,item.homework.attachmentFileId); } catch {}
+      return;
+    }
     const url = item.homework.attachmentUrl?.trim();
     if (!url || !/^https?:\/\//i.test(url)) return;
     try {
@@ -64,7 +72,7 @@ function HomeworkCard({
 
       <Text style={[styles.instructions, textDirection]}>{item.homework.content}</Text>
 
-      {item.homework.attachmentUrl ? (
+      {item.homework.attachmentUrl || item.homework.attachmentFileId ? (
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={translate(locale, "student.openAttachment")}
@@ -81,6 +89,8 @@ function HomeworkCard({
           </Text>
         </Pressable>
       ) : null}
+      <StudentSubmissionPanel homework={item.homework} accessToken={accessToken}
+        locale={locale} textDirection={textDirection}/>
     </View>
   );
 }
@@ -89,10 +99,12 @@ function HomeworkSection({
   title,
   items,
   locale,
-  textDirection
+  textDirection,
+  accessToken
 }: {
   title: string;
   items: HomeworkItem[];
+  accessToken: string;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
@@ -112,6 +124,7 @@ function HomeworkSection({
         <HomeworkCard
           key={item.homework.id}
           item={item}
+          accessToken={accessToken}
           locale={locale}
           textDirection={textDirection}
         />
@@ -124,9 +137,11 @@ export function StudentHomeworkContent({
   learning,
   ready,
   locale,
-  textDirection
+  textDirection,
+  accessToken
 }: {
   learning: LearnerAcademicPayload | null;
+  accessToken: string;
   ready: boolean;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
@@ -177,12 +192,14 @@ export function StudentHomeworkContent({
       <HomeworkSection
         title={translate(locale, "student.upcomingHomework")}
         items={upcoming}
+        accessToken={accessToken}
         locale={locale}
         textDirection={textDirection}
       />
       <HomeworkSection
         title={translate(locale, "student.pastHomework")}
         items={past}
+        accessToken={accessToken}
         locale={locale}
         textDirection={textDirection}
       />

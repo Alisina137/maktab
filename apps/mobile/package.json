@@ -20,7 +20,10 @@
     "react-native-safe-area-context": "~5.7.0",
     "@expo/vector-icons": "^15.0.3",
     "expo-device": "~57.0.2",
-    "expo-notifications": "~57.0.21"
+    "expo-notifications": "~57.0.21",
+    "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
+    "expo-sharing": "~57.0.19"
   },
   "devDependencies": {
     "@expo/ngrok": "^4.1.0",

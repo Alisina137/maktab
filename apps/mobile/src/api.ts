@@ -215,6 +215,21 @@ export interface ParentNotification {
   metadata: Record<string, unknown>;
 }
 
+export interface HomeworkSubmissionPayload {
+  id: string; homeworkId: string; studentId: string; answer: string;
+  attachmentFileId: string | null; status: "SUBMITTED" | "REVIEWED" | "REVISION_REQUESTED";
+  feedback: string | null; submittedAt: string; reviewedAt: string | null;
+}
+export interface ContinuousAssessmentPayload {
+  id: string; assignmentId: string; title: string;
+  category: "QUIZ" | "CLASSWORK" | "HOMEWORK" | "PARTICIPATION" | "MONTHLY";
+  maxScore: number; assessedOn: string;
+}
+export interface ContinuousAssessmentSheetPayload {
+  assessment: ContinuousAssessmentPayload;
+  students: Array<{ student: { id: string; fullName: string; studentCode: string };
+    score: { score: number; remark: string | null } | null }>;
+}
 export type HomeworkStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
 export type ExamStatus = "DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "RESULTS_READY" | "PUBLISHED" | "ARCHIVED";
 
@@ -230,6 +245,8 @@ export interface HomeworkPayload {
   content: string;
   dueAt: string;
   attachmentUrl: string | null;
+  attachmentFileId: string | null;
+  scheduledAt: string | null;
   status: HomeworkStatus;
   publishedAt: string | null;
   createdAt: string;
@@ -552,6 +569,87 @@ async function request<T>(
 }
 
 export const api = {
+  uploadLearningFile(accessToken: string, fileName: string, mimeType: string, base64: string) {
+    return request<{ file: { id: string; fileName: string; mimeType: string; byteCount: number } }>("/v1/learning/files", {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ fileName, mimeType, base64 })
+    }, { cache: false, timeoutMs: 30_000 });
+  },
+  readLearningFile(accessToken: string, fileId: string) {
+    return request<{ file: { fileName: string; mimeType: string; base64: string } }>(
+      `/v1/learning/files/${encodeURIComponent(fileId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }, { cache: false, timeoutMs: 30_000 });
+  },
+  attachHomeworkFile(accessToken: string, homeworkId: string, fileId: string | null) {
+    return request<{ attachmentFileId: string | null }>(
+      `/v1/teacher/homework/${encodeURIComponent(homeworkId)}/file`, {
+        method: "PUT", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ fileId })
+      }, { cache: false });
+  },
+  scheduleHomework(accessToken: string, homeworkId: string, scheduledAt: string | null) {
+    return request<{ scheduledAt: string | null }>(
+      `/v1/teacher/homework/${encodeURIComponent(homeworkId)}/schedule`, {
+        method: "PUT", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ scheduledAt })
+      }, { cache: false });
+  },
+  studentHomeworkSubmissions(accessToken: string) {
+    return request<{ submissions: Array<{ submission: HomeworkSubmissionPayload }> }>(
+      "/v1/student/homework/submissions", { headers: { Authorization: `Bearer ${accessToken}` } });
+  },
+  submitStudentHomework(accessToken: string, homeworkId: string, answer: string, attachmentFileId: string | null) {
+    return request<{ submission: HomeworkSubmissionPayload }>(
+      `/v1/student/homework/${encodeURIComponent(homeworkId)}/submission`, {
+        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ answer, attachmentFileId })
+      }, { cache: false });
+  },
+  teacherHomeworkSubmissions(accessToken: string, homeworkId: string) {
+    return request<{ submissions: Array<{
+      submission: HomeworkSubmissionPayload;
+      student: { id: string; fullName: string; studentCode: string };
+    }> }>(`/v1/teacher/homework/${encodeURIComponent(homeworkId)}/submissions`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+  reviewHomeworkSubmission(accessToken: string, homeworkId: string, submissionId: string,
+    status: "REVIEWED" | "REVISION_REQUESTED", feedback: string) {
+    return request<{ submission: HomeworkSubmissionPayload }>(
+      `/v1/teacher/homework/${encodeURIComponent(homeworkId)}/submissions/${encodeURIComponent(submissionId)}/review`, {
+        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ status, feedback })
+      }, { cache: false });
+  },
+  teacherAssessments(accessToken: string, assignmentId: string) {
+    return request<{ assessments: ContinuousAssessmentPayload[] }>(
+      `/v1/teacher/assignments/${encodeURIComponent(assignmentId)}/assessments`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+  },
+  createTeacherAssessment(accessToken: string, input: {
+    assignmentId: string; title: string; category: ContinuousAssessmentPayload["category"];
+    maxScore: number; assessedOn: string
+  }) {
+    return request<{ assessment: ContinuousAssessmentPayload }>("/v1/teacher/assessments", {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input)
+    }, { cache: false });
+  },
+  teacherAssessmentSheet(accessToken: string, assessmentId: string) {
+    return request<ContinuousAssessmentSheetPayload>(
+      `/v1/teacher/assessments/${encodeURIComponent(assessmentId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+  },
+  saveTeacherAssessmentScores(accessToken: string, assessmentId: string,
+    entries: Array<{ studentId: string; score: number; remark?: string }>) {
+    return request<ContinuousAssessmentSheetPayload>(
+      `/v1/teacher/assessments/${encodeURIComponent(assessmentId)}/scores`, {
+        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ entries })
+      }, { cache: false });
+  },
   health(timeoutMs = 5_000) {
     return request<{ status: string }>("/health", undefined, { cache: false, timeoutMs });
   },

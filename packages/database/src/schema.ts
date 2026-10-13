@@ -582,6 +582,8 @@ export const homeworks = pgTable(
     content: text("content").notNull(),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
     attachmentUrl: varchar("attachment_url", { length: 500 }),
+    attachmentFileId: uuid("attachment_file_id"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     status: homeworkStatusEnum("status").notNull().default("DRAFT"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -593,6 +595,60 @@ export const homeworks = pgTable(
     index("homeworks_status_idx").on(table.schoolId, table.status)
   ]
 );
+
+export const learningFiles = pgTable("learning_files", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  uploadedBy: uuid("uploaded_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  fileName: varchar("file_name", { length: 160 }).notNull(),
+  mimeType: varchar("mime_type", { length: 80 }).notNull(),
+  byteCount: integer("byte_count").notNull(),
+  base64Data: text("base64_data").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [index("learning_files_school_uploader_idx").on(table.schoolId, table.uploadedBy)]);
+
+export const homeworkSubmissions = pgTable("homework_submissions", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  homeworkId: uuid("homework_id").notNull().references(() => homeworks.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "restrict" }),
+  answer: text("answer").notNull(),
+  attachmentFileId: uuid("attachment_file_id").references(() => learningFiles.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 24 }).notNull().default("SUBMITTED"),
+  feedback: varchar("feedback", { length: 2000 }),
+  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("homework_submissions_unique").on(table.homeworkId, table.studentId),
+  index("homework_submissions_class_idx").on(table.schoolId, table.homeworkId)
+]);
+
+export const continuousAssessments = pgTable("continuous_assessments", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  assignmentId: uuid("assignment_id").notNull().references(() => teacherAssignments.id, { onDelete: "restrict" }),
+  teacherUserId: uuid("teacher_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  category: varchar("category", { length: 24 }).notNull(),
+  maxScore: integer("max_score").notNull(),
+  assessedOn: date("assessed_on").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [index("continuous_assessments_assignment_idx").on(table.schoolId, table.assignmentId)]);
+
+export const continuousScores = pgTable("continuous_scores", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  assessmentId: uuid("assessment_id").notNull().references(() => continuousAssessments.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "restrict" }),
+  score: integer("score").notNull(),
+  remark: varchar("remark", { length: 500 }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("continuous_scores_unique").on(table.assessmentId, table.studentId),
+  index("continuous_scores_school_idx").on(table.schoolId, table.assessmentId)
+]);
 
 export const exams = pgTable(
   "exams",
@@ -816,6 +872,10 @@ export const databaseSchema = {
   studentAttendances,
   notifications,
   homeworks,
+  learningFiles,
+  homeworkSubmissions,
+  continuousAssessments,
+  continuousScores,
   exams,
   examSubjects,
   gradeRecords,
@@ -852,6 +912,9 @@ export type StudentAttendance = typeof studentAttendances.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 
 export type Homework = typeof homeworks.$inferSelect;
+export type LearningFile = typeof learningFiles.$inferSelect;
+export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
+export type ContinuousAssessment = typeof continuousAssessments.$inferSelect;
 export type Exam = typeof exams.$inferSelect;
 export type ExamSubject = typeof examSubjects.$inferSelect;
 export type GradeRecord = typeof gradeRecords.$inferSelect;

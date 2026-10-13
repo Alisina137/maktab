@@ -264,6 +264,45 @@ export type TranslationKey =
   | "learning.markRecorded"
   | "learning.markMissing"
   | "learning.noMatchingStudents"
+  | "learning.fileAttached"
+  | "learning.fileReady"
+  | "learning.fileUploadFailed"
+  | "learning.removeFile"
+  | "learning.selectDeviceFile"
+  | "learning.schedulePublication"
+  | "learning.publicationTime"
+  | "learning.scheduleHint"
+  | "learning.invalidSchedule"
+  | "learning.hideSubmissions"
+  | "learning.reviewSubmissions"
+  | "learning.studentSubmissions"
+  | "learning.noSubmissions"
+  | "learning.feedback"
+  | "learning.feedbackRequired"
+  | "learning.markReviewed"
+  | "learning.requestRevision"
+  | "learning.feedbackSaved"
+  | "learning.continuousAssessments"
+  | "learning.assessmentHint"
+  | "learning.assessmentTitle"
+  | "learning.assessmentInvalid"
+  | "learning.assessmentCreated"
+  | "learning.assessmentSaved"
+  | "learning.createAssessment"
+  | "learning.assessmentList"
+  | "learning.noAssessments"
+  | "learning.categoryQUIZ"
+  | "learning.categoryCLASSWORK"
+  | "learning.categoryHOMEWORK"
+  | "learning.categoryPARTICIPATION"
+  | "learning.categoryMONTHLY"
+  | "learning.studentSubmitAction"
+  | "learning.submissionStatus"
+  | "learning.studentAnswer"
+  | "learning.submissionInvalid"
+  | "learning.submissionSaved"
+  | "learning.submissionFailed"
+  | "learning.submissionClosed"
   | "learning.homework"
   | "learning.homeworkHint"
   | "learning.assignments"
@@ -586,6 +625,45 @@ const en: Record<TranslationKey, string> = {
   "learning.markRecorded": "Recorded",
   "learning.markMissing": "Missing",
   "learning.noMatchingStudents": "No students match the filter.",
+  "learning.fileAttached": "File attached",
+  "learning.fileReady": "File uploaded securely",
+  "learning.fileUploadFailed": "Could not upload file. Only PDF/images up to 1 MB are supported.",
+  "learning.removeFile": "Remove file",
+  "learning.selectDeviceFile": "Choose PDF or image",
+  "learning.schedulePublication": "Schedule publication (optional)",
+  "learning.publicationTime": "Time HH:mm",
+  "learning.scheduleHint": "If set, homework publishes automatically before its due date while the server is running.",
+  "learning.invalidSchedule": "Select a future publication time before the due date.",
+  "learning.hideSubmissions": "Hide submissions",
+  "learning.reviewSubmissions": "Review submissions",
+  "learning.studentSubmissions": "Student submissions",
+  "learning.noSubmissions": "No student submissions yet.",
+  "learning.feedback": "Feedback",
+  "learning.feedbackRequired": "Enter feedback first.",
+  "learning.markReviewed": "Mark reviewed",
+  "learning.requestRevision": "Request revision",
+  "learning.feedbackSaved": "Feedback saved.",
+  "learning.continuousAssessments": "Continuous assessments",
+  "learning.assessmentHint": "Quizzes and classwork are separate from official exam grades.",
+  "learning.assessmentTitle": "Assessment title",
+  "learning.assessmentInvalid": "Enter a title, valid date and maximum mark.",
+  "learning.assessmentCreated": "Assessment created.",
+  "learning.assessmentSaved": "Assessment marks saved.",
+  "learning.createAssessment": "Create assessment",
+  "learning.assessmentList": "My assessments",
+  "learning.noAssessments": "No assessments yet.",
+  "learning.categoryQUIZ": "Quiz",
+  "learning.categoryCLASSWORK": "Classwork",
+  "learning.categoryHOMEWORK": "Homework",
+  "learning.categoryPARTICIPATION": "Participation",
+  "learning.categoryMONTHLY": "Monthly",
+  "learning.studentSubmitAction": "Submit homework",
+  "learning.submissionStatus": "Submission status",
+  "learning.studentAnswer": "Write your answer",
+  "learning.submissionInvalid": "Provide an answer or attachment before the deadline.",
+  "learning.submissionSaved": "Homework submitted.",
+  "learning.submissionFailed": "Could not submit or load homework. Check your connection or deadline.",
+  "learning.submissionClosed": "Submission is closed for this homework.",
   "learning.homework": "Homework",
   "learning.homeworkHint": "Create work only for your active subject and class assignments.",
   "learning.assignments": "Teaching assignments",
@@ -924,6 +1002,45 @@ const dari: Record<TranslationKey, string> = {
   "learning.markRecorded": "ثبت شده",
   "learning.markMissing": "ثبت نشده",
   "learning.noMatchingStudents": "هیچ شاگردی با فیلتر مطابقت ندارد.",
+  "learning.fileAttached": "فایل ضمیمه شد",
+  "learning.fileReady": "فایل با موفقیت بارگذاری شد",
+  "learning.fileUploadFailed": "فایل بارگذاری نشد. فقط PDF و عکس تا ۱ MB مجاز است.",
+  "learning.removeFile": "حذف فایل",
+  "learning.selectDeviceFile": "انتخاب PDF یا عکس",
+  "learning.schedulePublication": "زمان‌بندی نشر (اختیاری)",
+  "learning.publicationTime": "ساعت HH:mm",
+  "learning.scheduleHint": "در زمان تعیین‌شده وظیفه پیش از تاریخ تحویل خودکار نشر می‌شود.",
+  "learning.invalidSchedule": "زمان نشر را بعد از اکنون و پیش از موعد تحویل انتخاب کنید.",
+  "learning.hideSubmissions": "پنهان کردن تسلیمی‌ها",
+  "learning.reviewSubmissions": "بررسی تسلیمی‌ها",
+  "learning.studentSubmissions": "وظایف سپرده‌شده شاگردان",
+  "learning.noSubmissions": "هنوز تسلیمی موجود نیست.",
+  "learning.feedback": "نظر معلم",
+  "learning.feedbackRequired": "لطفاً نظر خود را بنویسید.",
+  "learning.markReviewed": "تأیید بررسی",
+  "learning.requestRevision": "درخواست اصلاح",
+  "learning.feedbackSaved": "نظر ثبت شد.",
+  "learning.continuousAssessments": "ارزیابی‌های دوامدار",
+  "learning.assessmentHint": "کوئیز و کار صنفی از نمرات رسمی امتحان جدا هستند.",
+  "learning.assessmentTitle": "عنوان ارزیابی",
+  "learning.assessmentInvalid": "عنوان، تاریخ و نمره اعظمی معتبر وارد کنید.",
+  "learning.assessmentCreated": "ارزیابی ایجاد شد.",
+  "learning.assessmentSaved": "نمرات ارزیابی ثبت شد.",
+  "learning.createAssessment": "ایجاد ارزیابی",
+  "learning.assessmentList": "ارزیابی‌های من",
+  "learning.noAssessments": "هنوز ارزیابی موجود نیست.",
+  "learning.categoryQUIZ": "کوئیز",
+  "learning.categoryCLASSWORK": "کار صنفی",
+  "learning.categoryHOMEWORK": "وظیفه خانگی",
+  "learning.categoryPARTICIPATION": "اشتراک در صنف",
+  "learning.categoryMONTHLY": "ماهانه",
+  "learning.studentSubmitAction": "سپردن وظیفه",
+  "learning.submissionStatus": "وضعیت تسلیمی",
+  "learning.studentAnswer": "پاسخ خود را بنویسید",
+  "learning.submissionInvalid": "پیش از موعد پاسخ یا ضمیمه اضافه کنید.",
+  "learning.submissionSaved": "وظیفه سپرده شد.",
+  "learning.submissionFailed": "سپردن یا دریافت وظیفه ممکن نشد. اتصال یا موعد را بررسی کنید.",
+  "learning.submissionClosed": "مهلت سپردن این وظیفه پایان یافته است.",
   "learning.homework": "وظیفه",
   "learning.homeworkHint": "فقط برای مضمون و صنفی که به شما سپرده شده وظیفه بسازید.",
   "learning.assignments": "تکالیف تدریس",
@@ -1262,6 +1379,45 @@ const pashto: Record<TranslationKey, string> = {
   "learning.markRecorded": "ثبت شوې",
   "learning.markMissing": "نه ده ثبت شوې",
   "learning.noMatchingStudents": "له دې فلټر سره زده کوونکی نشته.",
+  "learning.fileAttached": "فایل ضمیمه شو",
+  "learning.fileReady": "فایل په بریالیتوب پورته شو",
+  "learning.fileUploadFailed": "فایل پورته نشو. یوازې PDF او انځور تر ۱ MB پورې منل کېږي.",
+  "learning.removeFile": "فایل لرې کول",
+  "learning.selectDeviceFile": "PDF یا انځور ټاکل",
+  "learning.schedulePublication": "د خپرولو مهالویش (اختیاري)",
+  "learning.publicationTime": "وخت HH:mm",
+  "learning.scheduleHint": "په ټاکلي وخت کې د سپارلو تر نېټې مخکې دنده په خپله خپرېږي.",
+  "learning.invalidSchedule": "د خپرولو وخت باید راتلونکی او د سپارلو له نېټې مخکې وي.",
+  "learning.hideSubmissions": "سپارنې پټول",
+  "learning.reviewSubmissions": "سپارنې کتل",
+  "learning.studentSubmissions": "د زده کوونکو سپارنې",
+  "learning.noSubmissions": "تر اوسه کومه سپارنه نشته.",
+  "learning.feedback": "د ښوونکي نظر",
+  "learning.feedbackRequired": "لومړی خپل نظر ولیکئ.",
+  "learning.markReviewed": "کتل شوې نښه کول",
+  "learning.requestRevision": "د سمون غوښتنه",
+  "learning.feedbackSaved": "نظر خوندي شو.",
+  "learning.continuousAssessments": "دوامدارې ارزونې",
+  "learning.assessmentHint": "کوېزونه او ټولګیز کارونه له رسمي ازموینو جلا دي.",
+  "learning.assessmentTitle": "د ارزونې سرلیک",
+  "learning.assessmentInvalid": "سرلیک، نېټه او اعظمي نمره ولیکئ.",
+  "learning.assessmentCreated": "ارزونه جوړه شوه.",
+  "learning.assessmentSaved": "د ارزونې نمرې خوندي شوې.",
+  "learning.createAssessment": "ارزونه جوړول",
+  "learning.assessmentList": "زما ارزونې",
+  "learning.noAssessments": "تر اوسه ارزونه نشته.",
+  "learning.categoryQUIZ": "کوېز",
+  "learning.categoryCLASSWORK": "ټولګیز کار",
+  "learning.categoryHOMEWORK": "کورنۍ دنده",
+  "learning.categoryPARTICIPATION": "ګډون",
+  "learning.categoryMONTHLY": "میاشتنۍ",
+  "learning.studentSubmitAction": "دنده سپارل",
+  "learning.submissionStatus": "د سپارنې حالت",
+  "learning.studentAnswer": "خپل ځواب ولیکئ",
+  "learning.submissionInvalid": "له وخته مخکې ځواب یا ضمیمه ورکړئ.",
+  "learning.submissionSaved": "دنده وسپارل شوه.",
+  "learning.submissionFailed": "دنده ونه سپارل شوه. انټرنېټ یا وخت وګورئ.",
+  "learning.submissionClosed": "د دې دندې د سپارلو وخت پای ته رسېدلی.",
   "learning.homework": "کورنۍ دنده",
   "learning.homeworkHint": "یوازې د خپلو فعالو مضمون او ټولګي دندو لپاره کار جوړ کړئ.",
   "learning.assignments": "د تدریس دندې",

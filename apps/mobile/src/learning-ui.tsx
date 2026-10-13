@@ -28,6 +28,9 @@ import {
 } from "./api";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 import { HomeworkDueDatePicker } from "./homework-date-picker";
+import { pickAndUploadLearningFile, shareLearningFile } from "./learning-files";
+import { TeacherSubmissionReview } from "./teacher-submissions";
+import { TeacherContinuousAssessmentPanel } from "./teacher-assessments";
 import { filterHomework, gradeDraftsFromSheet, gradeProgress, homeworkDueAt, homeworkDueFields, pendingGradeEntries } from "./learning-workflow";
 
 type TextDirectionStyle = {
@@ -67,6 +70,10 @@ export function TeacherLearningPanel(props: CommonProps & {
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFileId, setAttachmentFileId] = useState<string | null>(null);
+  const [attachmentName, setAttachmentName] = useState("");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
   const [homeworkQuery, setHomeworkQuery] = useState("");
   const [homeworkStatus, setHomeworkStatus] = useState<HomeworkStatus | "ALL">("ALL");
   const [gradeQuery, setGradeQuery] = useState("");
@@ -119,6 +126,10 @@ export function TeacherLearningPanel(props: CommonProps & {
     setDueDate("");
     setDueTime("");
     setAttachmentUrl("");
+    setAttachmentFileId(null);
+    setAttachmentName("");
+    setScheduleDate("");
+    setScheduleTime("");
     onError(null);
     onNotice(null);
   }
@@ -132,6 +143,11 @@ export function TeacherLearningPanel(props: CommonProps & {
     setDueDate(due.date);
     setDueTime(due.time);
     setAttachmentUrl(homework.attachmentUrl ?? "");
+    setAttachmentFileId(homework.attachmentFileId ?? null);
+    setAttachmentName(homework.attachmentFileId ? translate(locale,"learning.fileAttached") : "");
+    const schedule = homework.scheduledAt ? homeworkDueFields(homework.scheduledAt) : null;
+    setScheduleDate(schedule?.date ?? "");
+    setScheduleTime(schedule?.time ?? "");
     onError(null);
     onNotice(null);
   }
@@ -148,6 +164,10 @@ export function TeacherLearningPanel(props: CommonProps & {
     setHomeworkTitle(homework.title);
     setHomeworkContent(homework.content);
     setAttachmentUrl(homework.attachmentUrl ?? "");
+    setAttachmentFileId(homework.attachmentFileId ?? null);
+    setAttachmentName(homework.attachmentFileId ? translate(locale,"learning.fileAttached") : "");
+    setScheduleDate("");
+    setScheduleTime("");
     setDueDate("");
     setDueTime("");
     onError(null);
@@ -167,6 +187,20 @@ export function TeacherLearningPanel(props: CommonProps & {
     }
   }
 
+  async function pickHomeworkFile() {
+    setBusy(true);
+    try {
+      const file = await pickAndUploadLearningFile(accessToken);
+      if (file) {
+        setAttachmentFileId(file.id);
+        setAttachmentName(file.fileName);
+        onNotice(translate(locale,"learning.fileReady"));
+      }
+    } catch {
+      onError("learning.fileUploadFailed");
+    } finally { setBusy(false); }
+  }
+
   async function saveHomework() {
     if (!assignmentId || !homeworkTitle.trim() || !homeworkContent.trim()) {
       onError("learning.completeHomework");
@@ -182,11 +216,17 @@ export function TeacherLearningPanel(props: CommonProps & {
       return;
     }
 
+    const schedule = scheduleDate || scheduleTime ? homeworkDueAt(scheduleDate, scheduleTime) : null;
+    if ((scheduleDate || scheduleTime) && (!schedule || new Date(schedule) <= new Date() || schedule >= dueAt)) {
+      onError("learning.invalidSchedule"); return;
+    }
     setBusy(true);
     onError(null);
     onNotice(null);
     try {
+      let savedId: string;
       if (editingHomeworkId) {
+        savedId = editingHomeworkId;
         await api.updateHomework(accessToken, editingHomeworkId, {
           title: homeworkTitle.trim(),
           content: homeworkContent.trim(),
@@ -194,14 +234,19 @@ export function TeacherLearningPanel(props: CommonProps & {
           attachmentUrl: attachmentUrl.trim() || null
         });
       } else {
-        await api.createHomework(accessToken, {
+        const created = await api.createHomework(accessToken, {
           assignmentId,
           title: homeworkTitle.trim(),
           content: homeworkContent.trim(),
           dueAt,
           attachmentUrl: attachmentUrl.trim() || undefined
         });
+        savedId = created.homework.id;
       }
+      // Never silently ignore a failed file link or scheduled publication.
+      if (attachmentFileId) await api.attachHomeworkFile(accessToken, savedId, attachmentFileId);
+      else if (editingHomeworkId) await api.attachHomeworkFile(accessToken, savedId, null);
+      await api.scheduleHomework(accessToken, savedId, schedule);
       onNotice(translate(locale, "learning.homeworkSaved"));
       setEditingHomeworkId(null);
       setHomeworkTitle("");
@@ -209,6 +254,8 @@ export function TeacherLearningPanel(props: CommonProps & {
       setDueDate("");
       setDueTime("");
       setAttachmentUrl("");
+      setAttachmentFileId(null);setAttachmentName("");
+      setScheduleDate("");setScheduleTime("");
       await load();
     } catch (cause) {
       const failure = appErrorFromCause(cause);
@@ -432,6 +479,27 @@ export function TeacherLearningPanel(props: CommonProps & {
               style={[styles.input, textDirection]}
             />
             <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.attachmentHint")}</Text>
+            <Pressable accessibilityRole="button" disabled={busy} style={styles.smallButton}
+              onPress={() => void pickHomeworkFile()}>
+              <Text style={styles.smallButtonText}>{translate(locale,"learning.selectDeviceFile")}</Text>
+            </Pressable>
+            {attachmentFileId ? (
+              <View style={styles.actions}>
+                <Text style={[styles.muted, textDirection]}>{attachmentName || translate(locale,"learning.fileAttached")}</Text>
+                <Pressable accessibilityRole="button" onPress={() => setAttachmentFileId(null)}>
+                  <Text style={styles.linkText}>{translate(locale,"learning.removeFile")}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+            <Text style={[styles.label,textDirection]}>{translate(locale,"learning.schedulePublication")}</Text>
+            <View style={[styles.twoColumns, rtl && styles.rowRtl]}>
+              <HomeworkDueDatePicker value={scheduleDate} onChange={setScheduleDate}
+                locale={locale} textDirection={textDirection} disabled={busy}/>
+              <TextInput value={scheduleTime} onChangeText={setScheduleTime}
+                placeholder={translate(locale,"learning.publicationTime")}
+                style={[styles.input,styles.flexInput,textDirection]}/>
+            </View>
+            <Text style={[styles.muted,textDirection]}>{translate(locale,"learning.scheduleHint")}</Text>
             <Pressable
               disabled={busy}
               onPress={() => void saveHomework()}
@@ -497,10 +565,25 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </View>
               </View>
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
+              {homework.scheduledAt ? (
+                <Text style={[styles.muted,textDirection]}>
+                  {translate(locale,"learning.schedulePublication")}: {formatLocalizedDate(homework.scheduledAt,locale)}
+                </Text>
+              ) : null}
+              {homework.attachmentFileId ? (
+                <Pressable accessibilityRole="button" onPress={() =>
+                  void shareLearningFile(accessToken, homework.attachmentFileId!).catch(() => onError("common.requestFailed"))}>
+                  <Text style={styles.linkText}>{translate(locale,"learning.openAttachment")}</Text>
+                </Pressable>
+              ) : null}
               {homework.attachmentUrl ? (
                 <Pressable accessibilityRole="link" onPress={() => void openHomeworkAttachment(homework.attachmentUrl!)}>
                   <Text style={[styles.linkText, textDirection]}>{translate(locale, "learning.openAttachment")}</Text>
                 </Pressable>
+              ) : null}
+              {(homework.status === "PUBLISHED" || homework.status === "CLOSED") ? (
+                <TeacherSubmissionReview homework={homework} accessToken={accessToken}
+                  locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice}/>
               ) : null}
               {visibleAssignments.length ? (
                 <Pressable accessibilityRole="button" onPress={() => useHomeworkTemplate(homework)}
@@ -632,6 +715,11 @@ export function TeacherLearningPanel(props: CommonProps & {
           </View>
         ) : null}
       </View>
+      ) : null}
+      {section !== "HOMEWORK" && selectedAssignment ? (
+        <TeacherContinuousAssessmentPanel accessToken={accessToken}
+          assignmentId={selectedAssignment.assignmentId} locale={locale}
+          textDirection={textDirection} onError={onError} onNotice={onNotice}/>
       ) : null}
     </View>
   );

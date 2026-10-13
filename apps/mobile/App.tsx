@@ -2536,6 +2536,7 @@ function AppContent() {
             </View>
 
             <StudentHomeworkContent
+              accessToken={session.accessToken}
               learning={studentLearning}
               ready={studentLearningReady}
               locale={locale}
