@@ -13,6 +13,7 @@ import {
 } from "@maktablink/localization";
 import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type AdminContactPayload, type TeacherLearningPayload, type ParentNotification, type AnnouncementPayload } from "./api";
 import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
+import { notificationDestination } from "./notification-destination";
 import { teacherTime12 } from "./teacher-hub-data";
 import { TeacherClassDetailPage } from "./teacher-class-detail";
 import { AdminContactCard } from "./admin-contact-card";
@@ -510,6 +511,15 @@ export function TeacherExperience({
         textDirection={textDirection}
         onClose={() => setInboxOpen(false)}
         onMarkRead={(notificationId) => void markTeacherNotificationRead(notificationId)}
+        onOpenNotification={(item) => {
+          void markTeacherNotificationRead(item.id);
+          setInboxOpen(false);
+          const target = notificationDestination("TEACHER", item);
+          if (target === "TEACHER_ANNOUNCEMENTS") goToWorkflow("ANNOUNCEMENTS");
+          else if (target === "TEACHER_HOMEWORK") goToWorkflow("HOMEWORK");
+          else if (target === "TEACHER_GRADES") goToWorkflow("GRADES");
+          else if (target === "TEACHER_TODAY") onSelect("TODAY");
+        }}
         onMarkAllRead={() => void markAllTeacherNotificationsRead()}
         onRetry={() => setHubRefresh((value) => value + 1)}
       />
