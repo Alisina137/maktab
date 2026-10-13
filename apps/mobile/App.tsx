@@ -704,9 +704,20 @@ function AppContent() {
       }
     }
 
+    // Keep status polling lightweight while the app is in use. Polling /me
+    // every 3 seconds over a free ngrok edge caused unnecessary requests,
+    // and backgrounded Expo Go connections can fail transiently.
     void syncStatus();
-    const interval = setInterval(syncStatus, 3000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (AppState.currentState === "active") void syncStatus();
+    }, 15_000);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncStatus();
+    });
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, [
     screen,
     school?.id,
