@@ -5115,6 +5115,97 @@ test("Step 18 readiness counts only active administrator accounts", async (t) =>
   assert.equal(data.checks.find(row => row.key === "academic-year")?.passed, false);
 });
 
+test("Step 20 deactivated schools and archived users cannot reuse existing access or refresh tokens", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolId = await provisionSchool(app, "SCHOOL-INACTIVE-20");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const adminAuth = { authorization: `Bearer ${adminToken}` };
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents", headers: adminAuth,
+    payload: { username: "inactiveparent20", fullName: "Inactive Parent" }
+  });
+  assert.equal(created.statusCode, 201, created.body);
+  const parent = created.json<{ user: { id: string }; temporaryPassword: string }>();
+  const login = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "inactiveparent20", password: parent.temporaryPassword,
+      expectedRole: "PARENT" }
+  });
+  assert.equal(login.statusCode, 200, login.body);
+  const changed = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "InactiveParent20!" }
+  });
+  assert.equal(changed.statusCode, 200, changed.body);
+  const active = changed.json<{ accessToken: string; refreshToken: string }>();
+  const parentAuth = { authorization: `Bearer ${active.accessToken}` };
+
+  for (const headers of [adminAuth, parentAuth]) {
+    const before = await app.inject({ method: "GET", url: "/v1/auth/me", headers });
+    assert.equal(before.statusCode, 200, before.body);
+  }
+
+  const deactivate = await app.inject({
+    method: "PATCH", url: `/v1/platform/schools/${schoolId}/status`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "INACTIVE" }
+  });
+  assert.equal(deactivate.statusCode, 200, deactivate.body);
+
+  for (const headers of [adminAuth, parentAuth]) {
+    const blocked = await app.inject({ method: "GET", url: "/v1/auth/me", headers });
+    assert.equal(blocked.statusCode, 503, blocked.body);
+    assert.equal(blocked.json<{ error: string }>().error, "school_service_unavailable");
+  }
+  const blockedContact = await app.inject({
+    method: "GET", url: "/v1/school/admin-contact", headers: parentAuth
+  });
+  assert.equal(blockedContact.statusCode, 503, blockedContact.body);
+  const blockedRefresh = await app.inject({
+    method: "POST", url: "/v1/auth/refresh",
+    payload: { refreshToken: active.refreshToken }
+  });
+  assert.equal(blockedRefresh.statusCode, 503, blockedRefresh.body);
+  const blockedNewLogin = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "inactiveparent20", password: "InactiveParent20!",
+      expectedRole: "PARENT" }
+  });
+  assert.equal(blockedNewLogin.statusCode, 401, blockedNewLogin.body);
+
+  const reactivate = await app.inject({
+    method: "PATCH", url: `/v1/platform/schools/${schoolId}/status`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "ACTIVE" }
+  });
+  assert.equal(reactivate.statusCode, 200, reactivate.body);
+  const restored = await app.inject({ method: "GET", url: "/v1/auth/me", headers: parentAuth });
+  assert.equal(restored.statusCode, 200, restored.body);
+  const rotated = await app.inject({
+    method: "POST", url: "/v1/auth/refresh", payload: { refreshToken: active.refreshToken }
+  });
+  assert.equal(rotated.statusCode, 200, rotated.body);
+  const resumed = rotated.json<{ accessToken: string; refreshToken: string }>();
+
+  // Archived accounts are terminal: if an old refresh/access credential
+  // remains in storage, it must not confer operational rights.
+  await client.query("UPDATE users SET status = 'ARCHIVED' WHERE school_id = $1 AND id = $2",
+    [schoolId, parent.user.id]);
+  const archivedMe = await app.inject({
+    method: "GET", url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${resumed.accessToken}` }
+  });
+  assert.equal(archivedMe.statusCode, 403, archivedMe.body);
+  assert.equal(archivedMe.json<{ error: string }>().error, "account_unavailable");
+  const archivedRefresh = await app.inject({
+    method: "POST", url: "/v1/auth/refresh", payload: { refreshToken: resumed.refreshToken }
+  });
+  assert.equal(archivedRefresh.statusCode, 403, archivedRefresh.body);
+});
+
 test("Phase 8 subscription suspension blocks end users and operational admin writes but preserves billing and export access", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {
