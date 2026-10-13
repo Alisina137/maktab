@@ -69,6 +69,10 @@ import {
 import { deactivatePushForSession, registerPushForSession } from "./src/push";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
+  NETWORK_WARNING_GRACE_MS, NETWORK_RECOVERY_CHECK_INTERVAL_MS,
+  recoveryProbeStreak, recoveryIsStable, showRecoveryNotice
+} from "./src/connection-stability";
+import {
   setReadCacheFallbackListener,
   setReadCacheScope
 } from "./src/read-cache";
@@ -226,6 +230,15 @@ function AppContent() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const errorKeyRef = useRef<TranslationKey | null>(null);
   const errorKindRef = useRef<AppErrorKind | null>(null);
+  // Free ngrok tunnels can miss an isolated request. Do not display a
+  // blocking "disconnected/reconnected" popup for a single failed fetch.
+  const pendingNetworkWarningRef = useRef<{
+    id: number;
+    timer: ReturnType<typeof setTimeout> | null;
+  } | null>(null);
+  const networkWarningSequenceRef = useRef(0);
+  const networkOfflineSinceRef = useRef<number | null>(null);
+  const networkHealthyChecksRef = useRef(0);
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
   const studentHomeLoadRequestId = useRef(0);
@@ -712,11 +725,64 @@ function AppContent() {
       void retryServiceConnection(false).finally(() => {
         checking = false;
       });
-    }, 3000);
+    }, NETWORK_RECOVERY_CHECK_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [errorKind, retryingConnection, errorExitRequested, locale, screen, session?.accessToken, session?.user.role, selectedChildId, query]);
 
+  function cancelPendingNetworkWarning() {
+    const pending = pendingNetworkWarningRef.current;
+    if (pending?.timer) clearTimeout(pending.timer);
+    pendingNetworkWarningRef.current = null;
+    networkWarningSequenceRef.current++;
+  }
+
+  useEffect(() => () => cancelPendingNetworkWarning(), []);
+
   function setAppError(key: TranslationKey | null, kind: AppErrorKind = "general") {
+    // Delay the offline popup until the tunnel actually stays unavailable.
+    // A retry through /health can resolve a one-off ngrok edge timeout
+    // without interrupting the user or claiming a disconnect/reconnect.
+    if (key && kind === "network" && errorKindRef.current !== "network") {
+      if (pendingNetworkWarningRef.current) return;
+      const id = ++networkWarningSequenceRef.current;
+      const pending: { id: number; timer: ReturnType<typeof setTimeout> | null } = {
+        id, timer: null
+      };
+      pendingNetworkWarningRef.current = pending;
+      pending.timer = setTimeout(() => {
+        pending.timer = null;
+        void (async () => {
+          try {
+            await api.health(3500);
+            if (pendingNetworkWarningRef.current !== pending) return;
+            pendingNetworkWarningRef.current = null;
+            setPreferCachedReads(false);
+            // The originally failing read may have left a screen stale.
+            setReconnectEpoch((current) => current + 1);
+          } catch {
+            if (pendingNetworkWarningRef.current !== pending) return;
+            pendingNetworkWarningRef.current = null;
+            // Show a persistent outage only after the grace period AND
+            // a fresh health probe both confirm the connection is down.
+            networkOfflineSinceRef.current = Date.now();
+            networkHealthyChecksRef.current = 0;
+            errorKeyRef.current = key;
+            errorKindRef.current = "network";
+            setErrorKey(key);
+            setErrorKind("network");
+            setConnectionRecovered(false);
+            setErrorExitRequested(false);
+            setErrorMinimized(false);
+          }
+        })();
+      }, NETWORK_WARNING_GRACE_MS);
+      return;
+    }
+    if (kind !== "network" || !key) {
+      cancelPendingNetworkWarning();
+      networkHealthyChecksRef.current = 0;
+      networkOfflineSinceRef.current = null;
+    }
     if (key === "auth.accountUnavailable" && sessionRef.current?.user.role === "STUDENT") {
       setStudentEnrollmentUnavailable(true);
       setPreferCachedReads(false);
@@ -810,7 +876,10 @@ function AppContent() {
     setAppError(failure.key, failure.kind);
   }
 
-  function finishConnectionRecovery() {
+  function finishConnectionRecovery(showNotice = true) {
+    cancelPendingNetworkWarning();
+    networkHealthyChecksRef.current = 0;
+    networkOfflineSinceRef.current = null;
     setPreferCachedReads(false);
     errorKeyRef.current = null;
     errorKindRef.current = null;
@@ -818,7 +887,7 @@ function AppContent() {
     setErrorKind(null);
     setErrorMinimized(false);
     setErrorExitRequested(false);
-    setConnectionRecovered(true);
+    setConnectionRecovered(showNotice);
 
     if (screen === "school") {
       void loadSchools(query);
@@ -827,6 +896,7 @@ function AppContent() {
 
   async function retryServiceConnection(manual = true) {
     if (manual) {
+      networkHealthyChecksRef.current = 0;
       setRetryingConnection(true);
       setErrorMinimized(false);
     }
@@ -870,7 +940,9 @@ function AppContent() {
             if (!refreshed) return false;
             setPreferCachedReads(false);
             setReconnectEpoch((current) => current + 1);
-            if (errorKindRef.current === "network") setErrorExitRequested(true);
+            if (errorKindRef.current === "network") {
+              finishConnectionRecovery(showRecoveryNotice(manual, networkOfflineSinceRef.current, Date.now()));
+            }
             return true;
           }
           if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
@@ -889,18 +961,24 @@ function AppContent() {
         }
       }
 
-      // Connectivity is confirmed. Network-backed refreshes triggered by the
-      // reconnect epoch must not short-circuit back to stale cached reads.
+      // One successful request can occur during ngrok edge flapping.
+      // Require TWO successful (health + authenticated /me) probes, spaced
+      // by the recovery interval, before showing the session as recovered.
+      if (!manual && errorKindRef.current === "network") {
+        networkHealthyChecksRef.current = recoveryProbeStreak(networkHealthyChecksRef.current, true);
+        if (!recoveryIsStable(networkHealthyChecksRef.current, false)) return false;
+      }
+
       setPreferCachedReads(false);
       setReconnectEpoch((current) => current + 1);
 
-      // A health check that started for a network error must not dismiss a
-      // newer account-state or validation popup that appeared while it ran.
+      // Never override a newer authorization or account-status error.
       if (errorKindRef.current !== "network") return true;
-
-      setErrorExitRequested(true);
+      const showNotice = showRecoveryNotice(manual, networkOfflineSinceRef.current, Date.now());
+      finishConnectionRecovery(showNotice);
       return true;
     } catch {
+      networkHealthyChecksRef.current = recoveryProbeStreak(networkHealthyChecksRef.current, false);
       setPreferCachedReads(true);
       if (manual) {
         setAppError("common.apiStillUnavailable", "network");

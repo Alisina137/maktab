@@ -354,6 +354,10 @@ async function main() {
       apiPort +
       " after API readiness..."
   );
+  console.log(
+    "[dev:api] Port " + apiPort +
+    " = MaktabLink API/forwarding target. Port 4040 = local ngrok INSPECTOR only (not the API)."
+  );
 
   if (!start("ngrok", "ngrok", ["http", String(apiPort)])) {
     console.error(
