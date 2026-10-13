@@ -8,7 +8,7 @@ Date: 2026-10-13. Scope: all steps 15.1–15.12. Product authority: MaktabLink P
 | --- | --- | --- |
 | 15.1 | Create exam only for school admin and ACTIVE academic year; duplicate name and blank name rejected. | API 201 / role 403 / invalid 400 / conflict 409, audit. |
 | 15.2 | Exam subject requires the same school's exam, class, subject and existing teacher assignment; only that teacher can read/write marks. | Subject setup rejects unassigned class, other teacher denied and parent roster denied. |
-| 15.3 | Required real subject-specific exam date inside the academic year, max score integer in [1,10000], no duplicate class/subject for exam. | Strict API Zod/date-range checks, Admin Solar Hijri picker and migration 0018. |
+| 15.3 | Required real subject-specific exam date inside the academic year, max score integer in [1,10000], no duplicate class/subject for exam. | Strict API Zod/date-range checks, Admin Solar Hijri create/edit date pickers and migration 0018. |
 | 15.4 | Grade entry roster contains only ACTIVE students for specified year/class, with current mark and missing-mark UI. | GET returns one expected student and canEdit flag. |
 | 15.5 | Mark 0..configured maximum inclusive; missing/invalid/negative/fractional/duplicate/wrong-class marks rejected. | API rejection, database unchanged; READY rejects incomplete subjects. |
 | 15.6 | DRAFT and RESULTS_READY marks never appear in parent/student feeds. | Parent/Student GET results empty before publication. |
@@ -21,7 +21,7 @@ Date: 2026-10-13. Scope: all steps 15.1–15.12. Product authority: MaktabLink P
 
 ## Data migration
 
-`packages/database/drizzle/0018_exam_subject_dates.sql` adds nullable `exam_subjects.exam_date` and an index. **New** subject setup requires a valid date within the exam's academic year. Existing historical records are not assigned made-up dates; they remain nullable and readable. Scheduling an exam with an old undated subject requires administrative data reconciliation before progression.
+`packages/database/drizzle/0018_exam_subject_dates.sql` adds nullable `exam_subjects.exam_date` and an index. **New** subject setup requires a valid date within the exam's academic year. Existing historical records are not assigned made-up dates; they remain nullable and readable. An older draft/scheduled exam with an undated subject can be updated using the **Update exam date** Admin form or authenticated `PATCH /v1/admin/exam-subjects/:examSubjectId/date` endpoint. Its date must be real, within the academic year, and set before IN_PROGRESS; the date correction is audit logged. Existing historical records are never automatically assigned fictional dates.
 
 Run after pull:
 
