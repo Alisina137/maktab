@@ -108,6 +108,22 @@ export type TranslationKey =
   | "common.cachedOffline"
   | "common.serviceUnavailable"
   | "common.sessionExpired"
+  | "teacher.workspace"
+  | "teacher.navSchedule"
+  | "teacher.navClasses"
+  | "teacher.navWorkflows"
+  | "teacher.periodCount"
+  | "teacher.viewFullSchedule"
+  | "teacher.viewAssignments"
+  | "teacher.fullSchedule"
+  | "teacher.noClassesForDay"
+  | "teacher.noSchedule"
+  | "teacher.myAssignments"
+  | "teacher.classesCount"
+  | "teacher.subjectsCount"
+  | "teacher.noAssignments"
+  | "teacher.negaranHint"
+  | "teacher.workflowsHint"
   | "teacher.todayTitle"
   | "teacher.supervisedClass"
   | "teacher.schedule"
@@ -356,6 +372,22 @@ const en: Record<TranslationKey, string> = {
   "common.connectionRestored": "MaktabLink reconnected successfully and refreshed your information.",
   "common.validationError": "Some of the information entered is not valid. Please review it and try again.",
   "common.requestFailed": "This action could not be completed. Please try again.",
+  "teacher.workspace": "Teacher workspace",
+  "teacher.navSchedule": "Schedule",
+  "teacher.navClasses": "Classes",
+  "teacher.navWorkflows": "Workflows",
+  "teacher.periodCount": "Classes today",
+  "teacher.viewFullSchedule": "View full weekly schedule",
+  "teacher.viewAssignments": "View my classes and subjects",
+  "teacher.fullSchedule": "My weekly schedule",
+  "teacher.noClassesForDay": "No classes on this day.",
+  "teacher.noSchedule": "You have no timetable periods in the active academic year.",
+  "teacher.myAssignments": "My assigned classes and subjects",
+  "teacher.classesCount": "classes",
+  "teacher.subjectsCount": "subjects",
+  "teacher.noAssignments": "No subjects or classes have been assigned to you for the active year.",
+  "teacher.negaranHint": "Only classes assigned to you as Negaran can open daily attendance or post class announcements.",
+  "teacher.workflowsHint": "Manage homework and draft grades for your own teaching assignments; class announcements require active Negaran supervision.",
   "teacher.todayTitle": "Today",
   "teacher.supervisedClass": "My supervised class",
   "teacher.schedule": "Today's schedule",
@@ -620,6 +652,22 @@ const dari: Record<TranslationKey, string> = {
   "common.connectionRestored": "ارتباط MaktabLink دوباره برقرار شد و معلومات شما تازه شد.",
   "common.validationError": "بعضی از معلومات واردشده درست نیست. لطفاً آن‌ها را بررسی کرده و دوباره کوشش کنید.",
   "common.requestFailed": "این کار انجام نشد. لطفاً دوباره کوشش کنید.",
+  "teacher.workspace": "بخش آموزگار",
+  "teacher.navSchedule": "تقسیم اوقات",
+  "teacher.navClasses": "صنف‌ها",
+  "teacher.navWorkflows": "فعالیت‌ها",
+  "teacher.periodCount": "دروس امروز",
+  "teacher.viewFullSchedule": "دیدن تقسیم اوقات هفته",
+  "teacher.viewAssignments": "دیدن صنف‌ها و مضامین من",
+  "teacher.fullSchedule": "تقسیم اوقات هفتگی من",
+  "teacher.noClassesForDay": "در این روز درسی ندارید.",
+  "teacher.noSchedule": "در سال تعلیمی فعال تقسیم اوقاتی برای شما ثبت نشده است.",
+  "teacher.myAssignments": "صنف‌ها و مضامین سپرده‌شده به من",
+  "teacher.classesCount": "صنف",
+  "teacher.subjectsCount": "مضمون",
+  "teacher.noAssignments": "در سال تعلیمی فعال صنف یا مضمونی به شما سپرده نشده است.",
+  "teacher.negaranHint": "فقط برای صنفی که نگران آن هستید می‌توانید حاضری بگیرید یا اطلاعیهٔ صنفی نشر کنید.",
+  "teacher.workflowsHint": "کارخانگی و نمرات مسوده را برای مضامین مربوط خود مدیریت کنید؛ اطلاعیهٔ صنفی فقط برای نگران فعال است.",
   "teacher.todayTitle": "امروز",
   "teacher.supervisedClass": "صنف تحت نظارت من",
   "teacher.schedule": "برنامه امروز",
@@ -884,6 +932,22 @@ const pashto: Record<TranslationKey, string> = {
   "common.connectionRestored": "د MaktabLink اړیکه بېرته جوړه شوه او ستاسو معلومات تازه شول.",
   "common.validationError": "ځینې داخل شوي معلومات سم نه دي. مهرباني وکړئ یې وګورئ او بیا هڅه وکړئ.",
   "common.requestFailed": "دا کار بشپړ نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
+  "teacher.workspace": "د ښوونکي برخه",
+  "teacher.navSchedule": "مهالویش",
+  "teacher.navClasses": "ټولګي",
+  "teacher.navWorkflows": "چارې",
+  "teacher.periodCount": "د نن درسونه",
+  "teacher.viewFullSchedule": "د اونۍ بشپړ مهالویش",
+  "teacher.viewAssignments": "زما ټولګي او مضمونونه",
+  "teacher.fullSchedule": "زما اونیز مهالویش",
+  "teacher.noClassesForDay": "په دې ورځ درس نه لرئ.",
+  "teacher.noSchedule": "په فعال ښوونیز کال کې ستاسو لپاره مهالویش نشته.",
+  "teacher.myAssignments": "زما ټاکل شوي ټولګي او مضمونونه",
+  "teacher.classesCount": "ټولګي",
+  "teacher.subjectsCount": "مضمونونه",
+  "teacher.noAssignments": "په فعال کال کې تاسو ته مضمون یا ټولګی نه دی ټاکل شوی.",
+  "teacher.negaranHint": "یوازې هغه ټولګی چې تاسو یې نګران یاست، د حاضري او ټولګي اعلان اجازه لري.",
+  "teacher.workflowsHint": "د خپلو درسونو کورنۍ دندې او مسوده نمرې تنظیم کړئ؛ د ټولګي اعلان د فعال نګران لپاره دی.",
   "teacher.todayTitle": "نن",
   "teacher.supervisedClass": "زما تر څار لاندې ټولګی",
   "teacher.schedule": "د نن ورځې مهالویش",

@@ -64,6 +64,28 @@ export interface TeacherAcademicView {
   assignments: TeacherAssignment[];
   negaranAssignments: NegaranAssignment[];
   timetable: TimetablePeriod[];
+  /** Only the authenticated teacher's current-year teaching assignments. */
+  assignmentDetails: Array<{
+    assignmentId: string;
+    academicYearId: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
+  /** Joined and sorted current-year periods, without leaking other teachers' timetables. */
+  schedule: Array<{
+    id: string;
+    weekday: TimetablePeriod["weekday"];
+    startsAt: string;
+    endsAt: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
 }
 
 export interface ClassTimetableView {
@@ -338,22 +360,66 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
 
     async getTeacherView(schoolId, teacherUserId) {
       await getTeacher(schoolId, teacherUserId);
-      const [assignments, negarans, timetable] = await Promise.all([
-        db
-          .select()
-          .from(teacherAssignments)
+      const [assignments, negarans, timetable, assignmentDetails, schedule] = await Promise.all([
+        db.select().from(teacherAssignments)
           .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.teacherUserId, teacherUserId))),
-        db
-          .select()
-          .from(negaranAssignments)
+        db.select().from(negaranAssignments)
           .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.teacherUserId, teacherUserId))),
-        db
-          .select()
-          .from(timetablePeriods)
+        db.select().from(timetablePeriods)
           .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.teacherUserId, teacherUserId)))
-          .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt))
+          .orderBy(asc(timetablePeriods.weekday), asc(timetablePeriods.startsAt)),
+        db.select({
+          assignmentId: teacherAssignments.id,
+          academicYearId: teacherAssignments.academicYearId,
+          classId: classSections.id,
+          className: classSections.name,
+          classCode: classSections.code,
+          subjectId: subjects.id,
+          subjectName: subjects.name
+        }).from(teacherAssignments)
+          .innerJoin(academicYears, and(
+            eq(academicYears.id, teacherAssignments.academicYearId),
+            eq(academicYears.schoolId, teacherAssignments.schoolId),
+            eq(academicYears.status, "ACTIVE")
+          ))
+          .innerJoin(classSections, and(
+            eq(classSections.id, teacherAssignments.classId),
+            eq(classSections.schoolId, teacherAssignments.schoolId)
+          ))
+          .innerJoin(subjects, and(
+            eq(subjects.id, teacherAssignments.subjectId),
+            eq(subjects.schoolId, teacherAssignments.schoolId)
+          ))
+          .where(and(eq(teacherAssignments.schoolId, schoolId), eq(teacherAssignments.teacherUserId, teacherUserId)))
+          .orderBy(asc(classSections.name), asc(subjects.name)),
+        db.select({
+          id: timetablePeriods.id,
+          weekday: timetablePeriods.weekday,
+          startsAt: timetablePeriods.startsAt,
+          endsAt: timetablePeriods.endsAt,
+          classId: classSections.id,
+          className: classSections.name,
+          classCode: classSections.code,
+          subjectId: subjects.id,
+          subjectName: subjects.name
+        }).from(timetablePeriods)
+          .innerJoin(academicYears, and(
+            eq(academicYears.id, timetablePeriods.academicYearId),
+            eq(academicYears.schoolId, timetablePeriods.schoolId),
+            eq(academicYears.status, "ACTIVE")
+          ))
+          .innerJoin(classSections, and(
+            eq(classSections.id, timetablePeriods.classId),
+            eq(classSections.schoolId, timetablePeriods.schoolId)
+          ))
+          .innerJoin(subjects, and(
+            eq(subjects.id, timetablePeriods.subjectId),
+            eq(subjects.schoolId, timetablePeriods.schoolId)
+          ))
+          .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.teacherUserId, teacherUserId)))
+          .orderBy(asc(timetablePeriods.startsAt), asc(timetablePeriods.classId))
       ]);
-      return { assignments, negaranAssignments: negarans, timetable };
+      return { assignments, negaranAssignments: negarans, timetable, assignmentDetails, schedule };
     },
 
     async getClassTimetable(schoolId, academicYearId, classId) {

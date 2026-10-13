@@ -141,6 +141,13 @@ test("a teacher can teach several classes and subjects while separately supervis
   assert.equal(view.assignments.length, 2);
   assert.equal(view.negaranAssignments.length, 1);
   assert.equal(view.negaranAssignments[0]?.id, negaran.id);
+  assert.deepEqual(view.assignmentDetails.map((item) => [item.classCode, item.subjectName]), [
+    ["7A", "Mathematics"], ["8A", "Physics"]
+  ]);
+  assert.equal(view.schedule.length, 0);
+  const otherTeacherView = await academics.getTeacherView(school.school.id, secondTeacherUser.id);
+  assert.deepEqual(otherTeacherView.assignmentDetails.map((item) => item.subjectName), ["Physics"]);
+  assert.deepEqual(otherTeacherView.schedule, []);
 
   await academics.createTimetablePeriod(school.school.id, {
     academicYearId: year.id,
@@ -164,6 +171,12 @@ test("a teacher can teach several classes and subjects while separately supervis
     }),
     /teacher is already scheduled/i
   );
+  const currentSchedule = await academics.getTeacherView(school.school.id, teacherUser.id);
+  assert.deepEqual(
+    currentSchedule.schedule.map((item) => [item.weekday, item.startsAt, item.className, item.subjectName]),
+    [["SATURDAY", "08:00", "Grade 7 A", "Mathematics"]]
+  );
+  assert.deepEqual((await academics.getTeacherView(school.school.id, secondTeacherUser.id)).schedule, []);
 
   await assert.rejects(
     academics.createTimetablePeriod(school.school.id, {

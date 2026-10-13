@@ -11,6 +11,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   getDirection,
+  formatLocalizedDate,
+  formatLocalizedNumber,
   translate,
   type SupportedLocale,
   type TranslationKey
@@ -59,6 +61,7 @@ export function TeacherLearningPanel(props: CommonProps) {
   const { accessToken, locale, textDirection, onError, onNotice } = props;
   const rtl = getDirection(locale) === "rtl";
   const [view, setView] = useState<TeacherLearningPayload | null>(null);
+  const loadRequestId = useRef(0);
   const [gradeSheet, setGradeSheet] = useState<GradeSheetPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [assignmentId, setAssignmentId] = useState("");
@@ -72,20 +75,31 @@ export function TeacherLearningPanel(props: CommonProps) {
   const [remarkDraft, setRemarkDraft] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    void load();
+    const requestId = ++loadRequestId.current;
+    setView(null);
+    setGradeSheet(null);
+    void load(requestId);
+    return () => {
+      loadRequestId.current++;
+    };
   }, [accessToken]);
 
-  async function load() {
+  async function load(requestId = ++loadRequestId.current) {
     setBusy(true);
     try {
       const result = await api.teacherLearning(accessToken);
+      if (requestId !== loadRequestId.current) return;
       setView(result);
-      setAssignmentId((current) => current || result.assignments[0]?.assignmentId || "");
+      setAssignmentId((current) =>
+        result.assignments.some((item) => item.assignmentId === current)
+          ? current : result.assignments[0]?.assignmentId ?? ""
+      );
     } catch (cause) {
+      if (requestId !== loadRequestId.current) return;
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
     } finally {
-      setBusy(false);
+      if (requestId === loadRequestId.current) setBusy(false);
     }
   }
 
@@ -247,9 +261,22 @@ export function TeacherLearningPanel(props: CommonProps) {
   );
 
   if (busy && !view) {
-    return <ActivityIndicator color={tokens.color.brand} />;
+    return (
+      <View style={[styles.card, styles.headingRow]}>
+        <ActivityIndicator color={tokens.color.brand} />
+        <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
+      </View>
+    );
   }
-  if (!view) return null;
+  if (!view) {
+    return (
+      <Pressable accessibilityRole="button" onPress={() => void load()}
+        style={styles.card}>
+        <Ionicons name="refresh-outline" size={22} color={tokens.color.brandStrong} />
+        <Text style={[styles.muted, textDirection]}>{translate(locale, "action.retry")}</Text>
+      </Pressable>
+    );
+  }
 
   return (
     <View style={styles.stack}>
@@ -343,7 +370,7 @@ export function TeacherLearningPanel(props: CommonProps) {
                 <View style={styles.flex}>
                   <Text style={[styles.itemTitle, textDirection]}>{homework.title}</Text>
                   <Text style={[styles.muted, textDirection]}>
-                    {homework.status} · {translate(locale, "learning.due")} {homework.dueAt.slice(0, 10)}
+                    {translate(locale, homework.status === "DRAFT" ? "learning.saveDraft" : homework.status === "PUBLISHED" ? "learning.publish" : homework.status === "CLOSED" ? "learning.close" : "learning.archive")} · {translate(locale, "learning.due")} {formatLocalizedDate(homework.dueAt, locale)}
                   </Text>
                 </View>
                 <View style={styles.actions}>
@@ -394,7 +421,7 @@ export function TeacherLearningPanel(props: CommonProps) {
             <View style={styles.flex}>
               <Text style={[styles.itemTitle, textDirection]}>{item.exam.name} · {item.subjectName}</Text>
               <Text style={[styles.muted, textDirection]}>
-                {item.className} · {translate(locale, "learning.maxScore")} {item.examSubject.maxScore}
+                {item.className} · {translate(locale, "learning.maxScore")} {formatLocalizedNumber(item.examSubject.maxScore, locale)}
               </Text>
             </View>
             <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted} />

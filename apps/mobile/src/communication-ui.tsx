@@ -10,6 +10,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
+  formatLocalizedDate,
   getDirection,
   translate,
   type SupportedLocale,
@@ -247,7 +248,7 @@ export function CommunicationPanel({
           <View key={item.id} style={styles.listItem}>
             <Text style={[styles.itemTitle, textDirection]}>{item.title}</Text>
             <Text style={[styles.body, textDirection]}>{item.content}</Text>
-            <Text style={[styles.muted, textDirection]}>{item.publishAt.slice(0, 10)}</Text>
+            <Text style={[styles.muted, textDirection]}>{formatLocalizedDate(item.publishAt, locale)}</Text>
           </View>
         ))}
         {visibleAnnouncements.length === 0 ? (

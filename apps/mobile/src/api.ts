@@ -97,6 +97,29 @@ export interface TeacherTodayPayload {
   }>;
 }
 
+export interface TeacherAcademicsPayload {
+  assignmentDetails: Array<{
+    assignmentId: string;
+    academicYearId: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
+  schedule: Array<{
+    id: string;
+    weekday: "SATURDAY" | "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
+    startsAt: string;
+    endsAt: string;
+    classId: string;
+    className: string;
+    classCode: string;
+    subjectId: string;
+    subjectName: string;
+  }>;
+}
+
 export interface AttendanceSheetPayload {
   date: string;
   classSection: { id: string; name: string; code: string; academicYearId: string };
@@ -647,6 +670,12 @@ export const api = {
 
   teacherToday(accessToken: string) {
     return request<TeacherTodayPayload>("/v1/teacher/today", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+  },
+
+  teacherAcademics(accessToken: string) {
+    return request<TeacherAcademicsPayload>("/v1/teacher/academics", {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
   },

@@ -1208,3 +1208,39 @@ Planned verification slices:
 - On 2026-10-13 the user confirmed completing the Android device acceptance testing for Step 11. Record this as a **user-reported manual acceptance**, not as independently captured device logs or an automated device-test result.
 - As a result, **Step 11 is closed**. No additional Step 11 implementation remains planned; any newly discovered bugs or enhancements will be handled as follow-up work.
 - This Step 11 acceptance does not replace the separate real-production readiness gates, such as production deployment, server scheduler operations, backup/restore rehearsal, or external observability integrations.
+
+
+## Testing Step 12 — Teacher mobile experience (implementation and automated verification)
+
+### 12.1 — Teacher identity and school context
+- Shared login continues to enforce school-issued credentials, expected role, mandatory password change, tenant-bound session and suspension restrictions. Teacher workspace displays the authenticated teacher's profile/name and selected school. Backend teacher endpoints re-authorize the role and scope all data by the session's school/user, rather than trusting client role or school selectors.
+
+### 12.2 — Today page
+- Replaced the overloaded all-in-one Teacher Home with a compact Today summary showing the server's school-local date, localized day/date, only the authenticated teacher's classes and subjects in time order, and active Negaran attendance links.
+- Displaying only the class start time keeps the schedule easy to scan. Backend Today already filters to the ACTIVE academic year and current school-local weekday; the mobile display sorts by start time as a defensive invariant.
+- A periodic refresh every 60 seconds keeps the date and live assignments accurate across midnight or administrator changes without requiring a logout.
+
+### 12.3–12.4 — Full schedule and teaching assignments
+- Expanded the existing authorized `GET /v1/teacher/academics` response with `schedule` and `assignmentDetails`, joined with same-school class/subject records and ACTIVE academic-year scope. The existing raw fields remain available to preserve clients.
+- Mobile weekly schedule groups Saturday–Thursday, orders periods by start time, highlights the server-reported current weekday and shows a clear empty state for unscheduled days. Friday is omitted consistently with the Student timetable.
+- Classes shows distinct teaching assignments (class code, class name and subject), separate from supervision privileges. Selecting a teaching assignment opens the Teacher Workflows tab.
+
+### 12.5–12.6 — Active Negaran vs regular Teacher
+- Today and Classes offer attendance only for classes returned as active supervised Negaran assignments. The backend validates the exact school, teacher, class and assignment dates before showing or accepting attendance.
+- Teacher workflows continue to permit homework/draft grade actions solely against their own teaching assignments. Publishing class announcements requires active Negaran supervision and presents no announcement-composer controls when no classes are supervised.
+- Negaran is an assignment, not a separate login role. No Teacher gains attendance or announcement permissions solely by teaching a subject.
+
+### 12.7 — Navigation and workflows
+- Added four persistent bottom tabs: Today, Schedule, Classes, Workflows. Tabs have icon + translated label, clear active state, accessible selected-tab semantics, direction-aware layout, and scroll reset on change.
+- Workflows contains teaching homework/draft-grade operations, active Negaran class announcements, school administrator contact and Logout. Opening Negaran attendance shows its dedicated screen; returning preserves the selected Teacher tab.
+
+### 12.8–12.9 — Recovery, RTL and UI
+- Teacher Today and Academic assignment/schedule requests load independently and use request-generation guards to prevent outdated or cross-account responses. Temporary failure in one resource no longer blocks the other; permanent auth/suspension denial is authoritative. Failed resource views offer Retry.
+- Today's summary and full timetable use app localization helpers for dates, numbers and class starting times. School context and schedule have loading/empty cards, responsive rows, RTL-aware layout and accessible navigation.
+- Teacher learning panel now invalidates stale request responses and provides a Retry state. Homework due dates, exam max scores and announcement dates display using localized formatting rather than raw ISO slices or untranslated status identifiers.
+- Existing token refresh, scoped offline read cache, connection-recovery mechanism and non-blocking push registration continue to apply to Teacher routes.
+
+### Acceptance status
+- **Code changes and automated regression tests:** submitted for TypeScript checks, API/database regression tests and production builds through GitHub Actions CI.
+- **Real Android Teacher smoke tests:** not independently run in this conversation. Validate authentic Teacher/Negaran accounts, Today date/order, weekly navigation, RTL/large text, attendance permissions, network loss/reconnect and token refresh before marking the entire Step 12 manual acceptance complete.
+- No new database migration is necessary.

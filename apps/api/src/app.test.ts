@@ -1020,6 +1020,74 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   });
   assert.equal(timetableResponse.statusCode, 201);
 
+  // Step 12: teacher identity, school-scoped schedule, linked assignments and
+  // the distinction between normal teaching and Negaran supervision.
+  const teacherPassword = teacherAccount.json<{ temporaryPassword: string }>().temporaryPassword;
+  const teacherToken = await activateRoleLogin(
+    app, schoolId, "TEACHER", "teacher.academic", teacherPassword, "TeacherAcademic2026!"
+  );
+  const teacherHeaders = { authorization: `Bearer ${teacherToken}` };
+  const teacherAcademics = await app.inject({
+    method: "GET", url: "/v1/teacher/academics", headers: teacherHeaders
+  });
+  assert.equal(teacherAcademics.statusCode, 200);
+  const teacherView = teacherAcademics.json<{
+    assignmentDetails: Array<{ classCode: string; subjectName: string; classId: string }>;
+    schedule: Array<{ classId: string; classCode: string; subjectName: string; startsAt: string; weekday: string }>;
+  }>();
+  assert.deepEqual(teacherView.assignmentDetails.map((item) => [item.classCode, item.subjectName]), [
+    ["7A", "Mathematics"]
+  ]);
+  assert.deepEqual(teacherView.schedule.map((item) => [item.classCode, item.subjectName, item.startsAt, item.weekday]), [
+    ["7A", "Mathematics", "08:00", "SATURDAY"]
+  ]);
+  assert.equal(teacherView.schedule[0]?.classId, classId);
+
+  const teacherToday = await app.inject({
+    method: "GET", url: "/v1/teacher/today", headers: teacherHeaders
+  });
+  assert.equal(teacherToday.statusCode, 200);
+  const teacherTodayData = teacherToday.json<{
+    date: string;
+    weekday: string;
+    teacher: { userId: string; fullName: string };
+    supervisedClasses: Array<{ classId: string }>;
+    schedule: Array<{ startsAt: string }>;
+  }>();
+  assert.equal(teacherTodayData.teacher.userId, teacherUserId);
+  assert.equal(teacherTodayData.teacher.fullName, "Academic Teacher");
+  const todayParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kabul", year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const getDatePart = (type: "year" | "month" | "day") =>
+    todayParts.find((part) => part.type === type)?.value;
+  assert.equal(teacherTodayData.date, `${getDatePart("year")}-${getDatePart("month")}-${getDatePart("day")}`);
+  assert.equal(teacherTodayData.supervisedClasses[0]?.classId, classId);
+  assert.deepEqual(teacherTodayData.schedule.map((item) => item.startsAt),
+    [...teacherTodayData.schedule.map((item) => item.startsAt)].sort());
+
+  const otherPassword = secondTeacherAccount.json<{ temporaryPassword: string }>().temporaryPassword;
+  const otherToken = await activateRoleLogin(
+    app, schoolId, "TEACHER", "teacher.academic.two", otherPassword, "TeacherAcademicTwo2026!"
+  );
+  const otherView = await app.inject({
+    method: "GET", url: "/v1/teacher/academics",
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(otherView.statusCode, 200);
+  assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().assignmentDetails, []);
+  assert.deepEqual(otherView.json<{ assignmentDetails: unknown[]; schedule: unknown[] }>().schedule, []);
+  const nonNegaran = await app.inject({
+    method: "GET", url: `/v1/teacher/negaran/${classId}/attendance?date=${teacherTodayData.date}`,
+    headers: { authorization: `Bearer ${otherToken}` }
+  });
+  assert.equal(nonNegaran.statusCode, 400);
+  assert.equal(nonNegaran.json<{ error: string }>().error, "attendance_validation");
+  const parentViewDenied = await app.inject({
+    method: "GET", url: "/v1/parent/home", headers: teacherHeaders
+  });
+  assert.equal(parentViewDenied.statusCode, 403);
+
   const overview = await app.inject({
     method: "GET",
     url: "/v1/admin/academics",

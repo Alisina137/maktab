@@ -46,11 +46,12 @@ import {
   type SchoolOption,
   type SessionPayload,
   type StudentTimetablePayload,
+  type TeacherAcademicsPayload,
   type TeacherTodayPayload
 } from "./src/api";
 import { AdminContactCard } from "./src/admin-contact-card";
-import { CommunicationPanel } from "./src/communication-ui";
-import { TeacherLearningPanel } from "./src/learning-ui";
+
+import { TeacherBottomNavigation, TeacherExperience, type TeacherTab } from "./src/teacher-experience";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
@@ -196,6 +197,10 @@ function AppContent() {
   const [parentCommunicationReady, setParentCommunicationReady] = useState(false);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
+  const [teacherAcademics, setTeacherAcademics] = useState<TeacherAcademicsPayload | null>(null);
+  const [teacherTodayReady, setTeacherTodayReady] = useState(false);
+  const [teacherAcademicsReady, setTeacherAcademicsReady] = useState(false);
+  const [teacherTab, setTeacherTab] = useState<TeacherTab>("TODAY");
   const [studentEnrollmentUnavailable, setStudentEnrollmentUnavailable] = useState(false);
   const [studentTimetable, setStudentTimetable] = useState<StudentTimetablePayload | null>(null);
   const [studentTimetableReady, setStudentTimetableReady] = useState(false);
@@ -224,6 +229,7 @@ function AppContent() {
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
   const studentHomeLoadRequestId = useRef(0);
+  const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
@@ -280,9 +286,8 @@ function AppContent() {
   }, [school]);
 
   useEffect(() => {
-    if (session?.user.role === "PARENT") {
-      setParentTab("HOME");
-    }
+    if (session?.user.role === "PARENT") setParentTab("HOME");
+    if (session?.user.role === "TEACHER") setTeacherTab("TODAY");
   }, [session?.user.id]);
 
   async function refreshActiveSession(): Promise<SessionPayload | null> {
@@ -485,6 +490,7 @@ function AppContent() {
   }, [selectedChildId, reduceMotion, childOpacity, childScale]);
 
   useEffect(() => {
+    const requestId = ++teacherHomeLoadRequestId.current;
     if (screen !== "home" || !session) return;
     void loadAdminContact(session.accessToken);
     if (session.user.status === "SUSPENDED" || session.mustChangePassword) return;
@@ -492,7 +498,13 @@ function AppContent() {
       void loadParentHome(session.accessToken);
       void loadParentNotifications(session.accessToken);
     }
-    if (session.user.role === "TEACHER") void loadTeacherToday(session.accessToken);
+    if (session.user.role === "TEACHER") {
+      setTeacherToday(null);
+      setTeacherAcademics(null);
+      setTeacherTodayReady(false);
+      setTeacherAcademicsReady(false);
+      void loadTeacherData(session.accessToken, requestId);
+    }
   }, [
     screen,
     session?.accessToken,
@@ -501,6 +513,21 @@ function AppContent() {
     session?.mustChangePassword,
     reconnectEpoch
   ]);
+
+  useEffect(() => {
+    if (screen !== "home" || session?.user.role !== "TEACHER" ||
+        session.user.status === "SUSPENDED" || session.mustChangePassword) return;
+    // Keep the school-local Today date, schedule and Negaran status accurate
+    // if the app remains open across midnight or the administrator changes
+    // assignments while the Teacher is already signed in.
+    const interval = setInterval(() => {
+      const current = sessionRef.current;
+      if (current?.user.role === "TEACHER") {
+        void loadTeacherData(current.accessToken);
+      }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [screen, session?.user.id, session?.user.role, session?.user.status, session?.mustChangePassword]);
 
   useEffect(() => {
     const requestId = ++parentChildLoadRequestId.current;
@@ -1177,16 +1204,32 @@ function AppContent() {
     }
   }
 
-  async function loadTeacherToday(accessToken: string) {
-    setBusy(true);
-    setAppError(null);
-    try {
-      setTeacherToday(await api.teacherToday(accessToken));
-    } catch (cause) {
-      showCause(cause);
-    } finally {
-      setBusy(false);
+  async function loadTeacherData(accessToken: string, requestId = ++teacherHomeLoadRequestId.current) {
+    // Each resource is independent, but account/security failures take priority
+    // over partial cached data. Request generations prevent cross-login races.
+    const [todayResult, academicResult] = await Promise.allSettled([
+      api.teacherToday(accessToken),
+      api.teacherAcademics(accessToken)
+    ] as const);
+    if (requestId !== teacherHomeLoadRequestId.current ||
+        sessionRef.current?.user.role !== "TEACHER") return;
+
+    const denied = [todayResult, academicResult].find(
+      (result) => result.status === "rejected" &&
+        result.reason instanceof ApiRequestError &&
+        ["account_suspended", "school_service_unavailable", "session_invalid", "password_change_required"].includes(result.reason.code ?? "")
+    );
+    if (denied?.status === "rejected") {
+      showCause(denied.reason);
+      return;
     }
+
+    setTeacherToday(todayResult.status === "fulfilled" ? todayResult.value : null);
+    setTeacherAcademics(academicResult.status === "fulfilled" ? academicResult.value : null);
+    setTeacherTodayReady(true);
+    setTeacherAcademicsReady(true);
+    const failure = [todayResult, academicResult].find((result) => result.status === "rejected");
+    if (failure?.status === "rejected") showCause(failure.reason);
   }
 
   async function openAttendance(classId: string, date: string) {
@@ -1234,7 +1277,7 @@ function AppContent() {
       });
       setAttendanceSheet(result.sheet);
       setNotice(result.changed ? translate(locale, "attendance.saved") : translate(locale, "attendance.noChanges"));
-      await loadTeacherToday(session.accessToken);
+      // Returning to Teacher Today/Classes reloads the current attendance status.
     } catch (cause) {
       showCause(cause);
     } finally {
@@ -1351,7 +1394,12 @@ function AppContent() {
       setParentFees([]);
       setParentCommunicationReady(false);
       setParentNotifications([]);
+      teacherHomeLoadRequestId.current += 1;
       setTeacherToday(null);
+      setTeacherAcademics(null);
+      setTeacherTodayReady(false);
+      setTeacherAcademicsReady(false);
+      setTeacherTab("TODAY");
       setStudentEnrollmentUnavailable(false);
       setStudentTimetable(null);
       setStudentTimetableReady(false);
@@ -1392,6 +1440,11 @@ function AppContent() {
     screen === "home" &&
     session?.user.role === "PARENT" &&
     session.user.status !== "SUSPENDED";
+  const showTeacherNavigation =
+    screen === "home" &&
+    session?.user.role === "TEACHER" &&
+    session.user.status !== "SUSPENDED" &&
+    !session.mustChangePassword;
   const showStudentNavigation =
     (screen === "home" || screen === "student-homework" ||
       screen === "student-results" || screen === "student-more") &&
@@ -1411,6 +1464,16 @@ function AppContent() {
       tab === "RESULTS" ? "student-results" : "student-more";
     if (screen === destination) return;
     setScreen(destination);
+    setNotice(null);
+    setAppError(null);
+    setTimeout(() => {
+      onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+    }, 0);
+  }
+
+  function selectTeacherTab(tab: TeacherTab) {
+    if (teacherTab === tab) return;
+    setTeacherTab(tab);
     setNotice(null);
     setAppError(null);
     setTimeout(() => {
@@ -1457,7 +1520,7 @@ function AppContent() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         onScrollBeginDrag={() => setLanguageMenuOpen(false)}
-        contentContainerStyle={[styles.content, (showParentNavigation || showStudentNavigation) && styles.contentWithParentNav]}
+        contentContainerStyle={[styles.content, (showParentNavigation || showStudentNavigation || showTeacherNavigation) && styles.contentWithParentNav]}
       >
         <View style={styles.topbar}>
           <View style={styles.brandRow}>
@@ -2140,100 +2203,35 @@ function AppContent() {
           </View>
         )}
 
-        {screen === "home" && session?.user.role === "TEACHER" && session.user.status !== "SUSPENDED" && (
-          <View style={styles.section}>
-            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="today-outline" size={24} color={tokens.color.brandStrong} />
-              </View>
-              <View style={styles.flexCopy}>
-                <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.todayTitle")}</Text>
-                <Text style={[styles.subtitle, textDirection]}>
-                  {teacherToday?.date ?? ""} · {teacherToday?.teacher.fullName ?? session.user.username}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.phaseCard}>
-              <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "teacher.supervisedClass")}</Text>
-              {teacherToday?.supervisedClasses.map((item) => (
-                <Pressable
-                  key={item.assignmentId}
-                  onPress={() => void openAttendance(item.classId, teacherToday.date)}
-                  style={({ pressed }) => [
-                    styles.supervisedCard,
-                    direction === "rtl" && styles.rowRtl,
-                    pressed && styles.cardPressed
-                  ]}
-                >
-                  <View style={styles.smallIconShell}>
-                    <Ionicons name="people-outline" size={21} color={tokens.color.brandStrong} />
-                  </View>
-                  <View style={styles.flexCopy}>
-                    <Text style={[styles.cardTitle, textDirection]}>{item.className}</Text>
-                    <Text style={[styles.muted, textDirection]}>
-                      {item.attendanceStatus === "PENDING"
-                        ? translate(locale, "attendance.pending")
-                        : translate(locale, "attendance.submitted")}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name={direction === "rtl" ? "chevron-back" : "chevron-forward"}
-                    size={19}
-                    color={tokens.color.textMuted}
-                  />
-                </Pressable>
-              ))}
-              {teacherToday && teacherToday.supervisedClasses.length === 0 ? (
-                <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noSupervisedClass")}</Text>
-              ) : null}
-            </View>
-
-            <View style={styles.phaseCard}>
-              <Text style={[styles.sectionLabel, textDirection]}>{translate(locale, "teacher.schedule")}</Text>
-              {teacherToday?.schedule.map((period) => (
-                <View key={period.id} style={[styles.scheduleRow, direction === "rtl" && styles.rowRtl]}>
-                  <View style={styles.timePill}>
-                    <Text style={styles.timePillText}>{period.startsAt}</Text>
-                  </View>
-                  <View style={styles.flexCopy}>
-                    <Text style={[styles.cardTitle, textDirection]}>{period.subjectName}</Text>
-                    <Text style={[styles.muted, textDirection]}>{period.className} · {period.endsAt}</Text>
-                  </View>
-                </View>
-              ))}
-              {teacherToday && teacherToday.schedule.length === 0 ? (
-                <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noClassesToday")}</Text>
-              ) : null}
-            </View>
-
-            <TeacherLearningPanel
-              key={`teacher-learning-${reconnectEpoch}`}
-              accessToken={session.accessToken}
-              locale={locale}
-              textDirection={textDirection}
-              onError={setAppError}
-              onNotice={setNotice}
-            />
-
-            <CommunicationPanel
-              key={`teacher-communication-${reconnectEpoch}`}
-              accessToken={session.accessToken}
-              mode="TEACHER"
-              supervisedClasses={teacherToday?.supervisedClasses ?? []}
-              locale={locale}
-              textDirection={textDirection}
-              onError={setAppError}
-              onNotice={setNotice}
-            />
-
-            <AdminContactCard contact={adminContact} locale={locale} />
-
-            <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => void logout()}>
-              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
-            </Pressable>
-          </View>
-        )}
+        {screen === "home" &&
+        session?.user.role === "TEACHER" &&
+        session.user.status !== "SUSPENDED" &&
+        !session.mustChangePassword ? (
+          <TeacherExperience
+            tab={teacherTab}
+            today={teacherToday}
+            academics={teacherAcademics}
+            todayReady={teacherTodayReady}
+            academicsReady={teacherAcademicsReady}
+            schoolName={school?.name ?? ""}
+            username={session.user.username}
+            locale={locale}
+            textDirection={textDirection}
+            accessToken={session.accessToken}
+            adminContact={adminContact}
+            reconnectEpoch={reconnectEpoch}
+            onSelect={selectTeacherTab}
+            onAttendance={(classId, date) => void openAttendance(classId, date)}
+            onRetry={() => {
+              setTeacherTodayReady(false);
+              setTeacherAcademicsReady(false);
+              void loadTeacherData(session.accessToken);
+            }}
+            onError={setAppError}
+            onNotice={setNotice}
+            onLogout={() => void logout()}
+          />
+        ) : null}
 
         {screen === "home" &&
         session?.user.role === "STUDENT" &&
@@ -2539,7 +2537,7 @@ function AppContent() {
               <View style={styles.flexCopy}>
                 <Text style={[styles.title, textDirection]}>{translate(locale, "attendance.dailyTitle")}</Text>
                 <Text style={[styles.subtitle, textDirection]}>
-                  {attendanceSheet.classSection.name} · {attendanceSheet.date}
+                  {attendanceSheet.classSection.name} · {formatLocalizedDate(attendanceSheet.date, locale)}
                 </Text>
               </View>
             </View>
@@ -2629,6 +2627,9 @@ function AppContent() {
           locale={locale}
           onSelect={selectParentTab}
         />
+      ) : null}
+      {showTeacherNavigation ? (
+        <TeacherBottomNavigation tab={teacherTab} locale={locale} onSelect={selectTeacherTab} />
       ) : null}
       {showStudentNavigation ? (
         <StudentBottomNavigation
