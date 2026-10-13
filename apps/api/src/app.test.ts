@@ -4281,6 +4281,54 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/parent/children/${outsideStudentId}/learning`, headers: parentAuth });
   assert.equal(otherClassResults.statusCode, 200);
   assert.equal(otherClassResults.json<{ results: unknown[] }>().results.length, 0);
+  // Published aggregate results remain durable after archival, without
+  // re-publishing or making archived grades editable.
+  const archived = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/status`, headers: admin,
+    payload: { status: "ARCHIVED" } });
+  assert.equal(archived.statusCode, 200);
+  const archivedRoster = await app.inject({ method: "GET",
+    url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
+    headers: assignedTeacher.auth });
+  assert.equal(archivedRoster.statusCode, 200);
+  assert.equal(archivedRoster.json<{ canEdit: boolean }>().canEdit, false);
+  const archivedCorrection = await app.inject({ method: "PATCH",
+    url: `/v1/admin/grades/${gradeIdToCorrect}/correct`,
+    headers: admin, payload: { score: 93, reason: "Archived results locked" } });
+  assert.equal(archivedCorrection.statusCode, 409);
+  for (const [headers, url] of [
+    [parentAuth, `/v1/parent/children/${studentId}/learning`],
+    [studentAuth, "/v1/student/home"]
+  ] as const) {
+    const history = await app.inject({ method: "GET", url, headers });
+    assert.equal(history.statusCode, 200);
+    assert.equal(history.json<{ results: Array<{ exam: { status: string } }> }>()
+      .results.length, 2);
+    assert.ok(history.json<{ results: Array<{ exam: { status: string } }> }>()
+      .results.every(x => x.exam.status === "ARCHIVED"));
+  }
+
+  const auditLog = await client.query<{
+    action: string; entity_id: string; metadata: Record<string, unknown>
+  }>(
+    "SELECT action, entity_id, metadata FROM audit_logs WHERE school_id = $1 ORDER BY created_at",
+    [schoolId]
+  );
+  const forExam = auditLog.rows.filter(x => x.entity_id === examId);
+  assert.equal(forExam.filter(x => x.action === "exam.created").length, 1);
+  assert.equal(forExam.filter(x => x.action === "exam.status_changed").length, 4);
+  assert.equal(forExam.filter(x => x.action === "exam.results_published").length, 1);
+  assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_added" &&
+    [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
+  assert.equal(auditLog.rows.filter(x => x.action === "grades.draft_saved" &&
+    [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
+  const correctionAudit = auditLog.rows.filter(x =>
+    x.action === "grade.corrected" && x.entity_id === gradeIdToCorrect);
+  assert.equal(correctionAudit.length, 1);
+  assert.equal(correctionAudit[0]?.metadata.previousScore, 88);
+  assert.equal(correctionAudit[0]?.metadata.score, 91);
+  assert.equal(correctionAudit[0]?.metadata.reason, "Verified scoring correction");
+
 
 });
 
