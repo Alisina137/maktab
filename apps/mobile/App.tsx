@@ -1443,6 +1443,21 @@ function AppContent() {
     }
   }
 
+  async function markAllNotificationsRead() {
+    if (!session) return;
+    try {
+      await api.markAllNotificationsRead(session.accessToken);
+      const now = new Date().toISOString();
+      if (sessionRef.current?.user.id !== session.user.id) return;
+      setParentNotifications(items => items.map(item =>
+        item.readAt ? item : { ...item, readAt: now }));
+      setStudentNotifications(items => items.map(item =>
+        item.readAt ? item : { ...item, readAt: now }));
+    } catch {
+      // Preserve unread state until the request succeeds on retry.
+    }
+  }
+
   function openNotification(notification: ParentNotification) {
     if (!session) return;
     const role = session.user.role;
@@ -2219,8 +2234,22 @@ function AppContent() {
                         <Text style={[styles.sectionLabel, styles.flexCopy, textDirection]}>
                           {translate(locale, "notifications.title")}
                         </Text>
+                        {parentNotifications.some(item => !item.readAt) ? (
+                          <Text style={styles.notificationTitle} accessibilityRole="text">
+                            {formatLocalizedNumber(parentNotifications.filter(item => !item.readAt).length, locale)}
+                          </Text>
+                        ) : null}
                       </View>
-                      {parentNotifications.slice(0, 5).map((notification) => (
+                      {parentNotifications.some(item => !item.readAt) ? (
+                        <Pressable accessibilityRole="button"
+                          onPress={() => void markAllNotificationsRead()}
+                          style={styles.secondaryButton}>
+                          <Text style={styles.notificationTitle}>
+                            {translate(locale, "teacher.markAllRead")}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      {parentNotifications.slice(0, 20).map((notification) => (
                         <Pressable
                           key={notification.id}
                           onPress={() => openNotification(notification)}
