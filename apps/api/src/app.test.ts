@@ -3843,6 +3843,26 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     payload: { academicYearId: yearId, classId, subjectId, teacherUserId: assignedTeacher.userId }
   });
 
+  // Step 15: an exam cycle can contain multiple independently dated subjects.
+  const secondSubject = await app.inject({
+    method: "POST", url: "/v1/admin/academics/subjects", headers: admin,
+    payload: { code: "ZOO5", name: "Zoology 5" }
+  });
+  assert.equal(secondSubject.statusCode, 201);
+  const secondSubjectId = secondSubject.json<{ subject: { id: string } }>().subject.id;
+  const secondAssignment = await app.inject({
+    method: "POST", url: "/v1/admin/academics/assignments", headers: admin,
+    payload: { academicYearId: yearId, classId, subjectId: secondSubjectId,
+      teacherUserId: assignedTeacher.userId }
+  });
+  assert.equal(secondAssignment.statusCode, 201);
+  const outsideClass = await app.inject({
+    method: "POST", url: "/v1/admin/academics/classes", headers: admin,
+    payload: { academicYearId: yearId, gradeLevelId: gradeId, code: "5B", name: "Grade 5 B" }
+  });
+  assert.equal(outsideClass.statusCode, 201);
+  const outsideClassId = outsideClass.json<{ class: { id: string } }>().class.id;
+
   const parentResponse = await app.inject({
     method: "POST",
     url: "/v1/admin/families/parents",
@@ -3863,6 +3883,13 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     }
   });
   const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+  const outsideStudent = await app.inject({
+    method: "POST", url: "/v1/admin/families/students", headers: admin,
+    payload: { parentUserId: parent.user.id, studentCode: "MRK-002",
+      fullName: "Other Class Marks Student", academicYearId: yearId, classId: outsideClassId }
+  });
+  assert.equal(outsideStudent.statusCode, 201);
+  const outsideStudentId = outsideStudent.json<{ student: { id: string } }>().student.id;
 
   const studentAccount = await app.inject({
     method: "POST",
