@@ -3594,6 +3594,17 @@ test("homework stays private as draft, then becomes visible to parent and linked
     assert.equal(inbox.json<{ notifications: Array<{ type: string; metadata: { homeworkId: string } }> }>()
       .notifications.filter(x => x.type === "HOMEWORK_PUBLISHED" && x.metadata.homeworkId === homeworkId).length, 1);
   }
+  // Published-homework notification acknowledgement persists on the server.
+  const parentInboxBeforeRead = await app.inject({ method: "GET",
+    url: "/v1/notifications", headers: parentAuth });
+  const parentNotificationId = parentInboxBeforeRead.json<{
+    notifications: Array<{ id: string; type: string }>
+  }>().notifications.find(x => x.type === "HOMEWORK_PUBLISHED")?.id;
+  assert.ok(parentNotificationId);
+  const parentAcknowledgement = await app.inject({ method: "POST",
+    url: `/v1/notifications/${parentNotificationId}/read`, headers: parentAuth });
+  assert.equal(parentAcknowledgement.statusCode, 200);
+  assert.ok(parentAcknowledgement.json<{ notification: { readAt: string } }>().notification.readAt);
   const otherTeacherInbox = await app.inject({ method: "GET",
     url: "/v1/notifications", headers: otherTeacherAuth });
   assert.equal(otherTeacherInbox.statusCode, 200);
