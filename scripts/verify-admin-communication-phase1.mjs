@@ -22,6 +22,8 @@ for(const marker of [
   'loadResource("academics")', 'requestGeneration.current[key] !== generation',
   'resourceOwner.communication === accessToken', 'resourceOwner.families === accessToken',
   'resourceOwner.academics === accessToken',
+  'setEditingNotice(null)', 'setPaymentDraft({})',
+  'paymentAttempts.current = {}', 'setReversalReason({})',
   'resourceStatus.communication === "ready"',
   'resourceStatus.families === "ready"', 'resourceStatus.academics === "ready"',
   'adminApi<T>(', 'feeDashboard(', 'announcementDashboard(',
