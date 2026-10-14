@@ -45,7 +45,8 @@ assert.ok(app.includes("parentHomeRequestId") &&
   app.includes("parentNotificationsRequestId") &&
   app.includes("parentChildLoadRequestId.current += 1;") &&
   app.includes("sessionRef.current?.accessToken === accessToken") &&
-  app.includes("selectedChildIdRef.current !== studentId"),
+  app.includes("selectedChildIdRef.current === studentId") &&
+  app.includes("isCurrentParentChildRequest(accessToken, studentId, requestId)"),
   "Parent requests must reject stale session and switched-child responses");
 assert.ok(app.includes("Promise.allSettled([") &&
   app.includes("api.parentFees(accessToken, studentId)"),
