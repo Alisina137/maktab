@@ -7,13 +7,15 @@ import { validateAccountCreation } from "../../account-create-rules";
 import { AccountTemporaryCredentialPanel } from "../../account-temporary-credential";
 import { AdminAccountDetailsDrawer } from "../../admin-account-details-drawer";
 import { AdminAccountActionConfirm, type AccountPendingAction, type AccountSecurityAction } from "../../admin-account-action-confirm";
+import { AdminAccountBulkConfirm } from "../../admin-account-bulk-confirm";
+import { AdminAccountDirectory, emptyDirectory,
+  type AccountGroup, type AccountHighlight, type AccountSort, type AccountOrder,
+  type AccountDirectoryResult } from "../../admin-account-directory";
 import type { AccountFamilyOverview } from "../../account-details-data";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
-type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 type AccountView = "DIRECTORY" | "CREATE";
-type AccountHighlight = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
 
 function roleCreationHelp(role: User["role"]): string {
   switch (role) {
@@ -25,21 +27,33 @@ function roleCreationHelp(role: User["role"]): string {
   }
 }
 
-function needsActivation(user: User): boolean {
-  return user.status === "INVITED" || (user.status === "ACTIVE" && user.mustChangePassword);
-}
-
 type FamilyStudent = AccountFamilyOverview["students"][number];
 
 export default function AccountsPage() {
   const { stored, locale, t, showToast } = useAdminWorkspace();
-  const [users, setUsers] = useState<User[]>([]);
+  const [directory, setDirectory] = useState<AccountDirectoryResult>(emptyDirectory);
+  const users = directory.users;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [sortBy, setSortBy] = useState<AccountSort>("username");
+  const [order, setOrder] = useState<AccountOrder>("asc");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [directoryError, setDirectoryError] = useState("");
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState<{ action: "suspend" | "reactivate"; ids: string[]; names: string[] } | null>(null);
+  const closeBulkPending = useCallback(() => setBulkPending(null), []);
+  const [usernameAvailability, setUsernameAvailability] = useState<{ username: string; available: boolean } | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
   const [parentFullName, setParentFullName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [familyStudents, setFamilyStudents] = useState<FamilyStudent[]>([]);
   const [familyOverview, setFamilyOverview] = useState<AccountFamilyOverview | null>(null);
+  const [familyLoading, setFamilyLoading] = useState(false);
+  const [familyError, setFamilyError] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const closeAccountDetails = useCallback(() => setSelectedAccountId(null), []);
   const [studentRecordId, setStudentRecordId] = useState("");
@@ -57,37 +71,137 @@ export default function AccountsPage() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    void loadUsers();
-  }, [stored.session.accessToken]);
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-  async function loadUsers() {
+  useEffect(() => {
+    const controller = new AbortController();
+    setDirectoryLoading(true);
+    setDirectoryError("");
+    const params = new URLSearchParams({
+      query: debouncedQuery, group, status, highlight, sortBy, order,
+      page: String(page), pageSize: String(pageSize)
+    });
+    void adminApi<AccountDirectoryResult>(`/v1/admin/users/directory?${params}`, {
+      headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+      signal: controller.signal
+    }).then((result) => {
+      if (controller.signal.aborted) return;
+      setDirectory(result);
+      if (page > result.pages) setPage(result.pages);
+    }).catch((error) => {
+      if (controller.signal.aborted) return;
+      setDirectoryError(friendlyAdminError(error, "Could not load school accounts.", locale));
+      setDirectory((previous) => ({ ...previous, users: [] }));
+    }).finally(() => {
+      if (!controller.signal.aborted) {
+        setDirectoryLoading(false);
+        setInitialLoading(false);
+      }
+    });
+    return () => controller.abort();
+  }, [stored.session.accessToken, debouncedQuery, group, status, highlight, sortBy, order, page, pageSize, refreshNonce]);
+
+  const selectedRole = users.find((user) => user.id === selectedAccountId)?.role;
+  const needsFamily = (view === "CREATE" && newRole === "STUDENT") ||
+    (selectedAccountId !== null && (selectedRole === "PARENT" || selectedRole === "STUDENT"));
+  useEffect(() => {
+    if (!needsFamily || familyOverview) return;
+    let cancelled = false;
+    setFamilyLoading(true);
+    setFamilyError("");
+    void adminApi<AccountFamilyOverview>("/v1/admin/families", {
+      headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+    }).then((result) => {
+      if (cancelled) return;
+      setFamilyOverview(result);
+      setFamilyStudents(result.students);
+      setStudentRecordId((current) =>
+        result.students.some((row) =>
+          row.student.id === current && !row.student.userId && row.student.status === "ACTIVE"
+        ) ? current : ""
+      );
+    }).catch((error) => {
+      if (!cancelled) setFamilyError(friendlyAdminError(error, "Could not load school accounts.", locale));
+    }).finally(() => {
+      if (!cancelled) setFamilyLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [needsFamily, familyOverview, stored.session.accessToken]);
+
+  useEffect(() => {
+    const value = newUsername.trim();
+    setUsernameAvailability(null);
+    const valid = value.length >= 3 && value.length <= 64 &&
+      ((newRole === "PARENT" || newRole === "STUDENT")
+        ? /^[A-Za-z0-9]+$/.test(value) : /^[A-Za-z0-9._@+-]+$/.test(value));
+    if (!valid) { setUsernameChecking(false); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setUsernameChecking(true);
+      void adminApi<{ available: boolean }>(
+        `/v1/admin/users/username-check?username=${encodeURIComponent(value)}`, {
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+        }
+      ).then((response) => {
+        if (!cancelled) setUsernameAvailability({ username: value, available: response.available });
+      }).catch(() => {
+        if (!cancelled) setUsernameAvailability(null);
+      }).finally(() => {
+        if (!cancelled) setUsernameChecking(false);
+      });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [newUsername, newRole, stored.session.accessToken]);
+
+  function refreshDirectory() { setRefreshNonce((current) => current + 1); }
+  function resetSelection() { setSelectedIds(new Set()); }
+  function updateGroup(next: AccountGroup) { setGroup(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateStatus(next: "ALL" | User["status"]) { setStatus(next); setHighlight("ALL"); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateQuery(next: string) { setQuery(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateSort(next: AccountSort) { setSortBy(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateOrder(next: AccountOrder) { setOrder(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updatePage(next: number) { setPage(next); resetSelection(); setSelectedAccountId(null); }
+  function updatePageSize(next: number) { setPageSize(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function setSelection(ids: string[], selected: boolean) {
+    setSelectedIds((old) => {
+      const next = new Set(old);
+      ids.forEach((id) => selected ? next.add(id) : next.delete(id));
+      return next;
+    });
+  }
+  function requestBulk(action: "suspend" | "reactivate") {
+    if (busy || credential || directoryLoading) return;
+    const entries = users.filter((user) => selectedIds.has(user.id));
+    if (!entries.length || entries.length > 20 || entries.some((user) =>
+      user.id === stored.session.user.id || user.role === "SCHOOL_ADMIN" ||
+      (action === "suspend" ? !["ACTIVE", "INVITED"].includes(user.status) : user.status !== "SUSPENDED")
+    )) return;
+    setBulkPending({ action, ids: entries.map((entry) => entry.id),
+      names: entries.map((entry) => entry.profile?.fullName || entry.username) });
+  }
+  async function executeBulk(reason?: string) {
+    if (!bulkPending || busy) return;
+    setBusy(true);
     try {
-      const [accountsResult, familyResult] = await Promise.all([
-        adminApi<{ users: User[] }>("/v1/admin/users", {
-          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
-        }),
-        adminApi<AccountFamilyOverview>("/v1/admin/families", {
-          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+      const result = await adminApi<{ updated: number }>("/v1/admin/users/bulk-status", {
+        method: "POST", headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+        body: JSON.stringify({
+          action: bulkPending.action, userIds: bulkPending.ids,
+          ...(bulkPending.action === "suspend" && reason ? { reason } : {})
         })
-      ]);
-      setUsers(accountsResult.users);
-      setFamilyOverview(familyResult);
-      setFamilyStudents(familyResult.students);
-      setStudentRecordId((current) => {
-        const available = familyResult.students.filter(
-          (item) => item.student.userId === null && item.student.status === "ACTIVE"
-        );
-        return available.some((item) => item.student.id === current) ? current : "";
       });
-    } catch (cause) {
-      showToast({
-        kind: "error",
-        title: t("School accounts"),
-        message: friendlyAdminError(cause, "Could not load school accounts.", locale)
-      });
-    } finally {
-      setInitialLoading(false);
-    }
+      setBulkPending(null);
+      resetSelection();
+      refreshDirectory();
+      showToast({ kind: "success", title: t("Bulk account actions"),
+        message: adminFormat(locale, "{count} accounts updated.", { count: result.updated }) });
+    } catch (error) {
+      showToast({ kind: "error", title: t("Bulk account actions"),
+        message: friendlyAdminError(error, "Could not update accounts.", locale) });
+      refreshDirectory();
+    } finally { setBusy(false); }
   }
 
   async function createUser(event: FormEvent) {
@@ -104,6 +218,15 @@ export default function AccountsPage() {
     }
     setBusy(true);
     try {
+      const availability = await adminApi<{ available: boolean }>(
+        `/v1/admin/users/username-check?username=${encodeURIComponent(newUsername.trim())}`, {
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+        }
+      );
+      if (!availability.available) {
+        setUsernameAvailability({ username: newUsername.trim(), available: false });
+        return;
+      }
       let result: { user: User; temporaryPassword: string };
 
       if (newRole === "PARENT") {
@@ -145,10 +268,12 @@ export default function AccountsPage() {
       setParentFullName("");
       setParentPhone("");
       setStudentSearch("");
+      setFamilyOverview(null);
+      setFamilyStudents([]);
       setCreationAttempted(false);
       setCredential({ username: result.user.username, password: result.temporaryPassword });
       setView("DIRECTORY");
-      await loadUsers();
+      refreshDirectory();
       showToast({
         kind: "success",
         title: t("Temporary credential created"),
@@ -193,10 +318,15 @@ export default function AccountsPage() {
           ...(action === "suspend" ? { body: JSON.stringify(reason ? { reason } : {}) } : {})
         }
       );
-      setUsers((current) =>
-        current.map((item) => item.id === result.user.id ? { ...item, ...result.user, profile: item.profile } : item)
-      );
+      setDirectory((current) => ({
+        ...current,
+        users: current.users.map((item) =>
+          item.id === result.user.id ? { ...item, ...result.user, profile: item.profile } : item
+        )
+      }));
       setPendingAction(null);
+      resetSelection();
+      refreshDirectory();
       if (result.temporaryPassword) {
         setSelectedAccountId(null);
         setCredential({ username: result.user.username, password: result.temporaryPassword });
@@ -238,55 +368,27 @@ export default function AccountsPage() {
   const showPhoneIssue = creationAttempted || parentPhone.length > 0;
 
   const selectedAccount = selectedAccountId ? users.find((user) => user.id === selectedAccountId) ?? null : null;
-  const staffCount = users.filter((u) => u.role === "SCHOOL_ADMIN" || u.role === "SCHOOL_STAFF").length;
-  const counts: Record<AccountGroup, number> = {
-    ALL: users.length,
-    PARENT: users.filter((u) => u.role === "PARENT").length,
-    TEACHER: users.filter((u) => u.role === "TEACHER").length,
-    STUDENT: users.filter((u) => u.role === "STUDENT").length,
-    STAFF: staffCount
-  };
+  const summaryCounts = directory.counts;
   const summaries = [
-    { id: "ALL", label: "Total accounts", value: users.length, symbol: "▦" },
-    { id: "ACTIVE", label: "Active accounts", value: users.filter((user) => user.status === "ACTIVE").length, symbol: "✓" },
-    { id: "PENDING", label: "Pending activation", value: users.filter(needsActivation).length, symbol: "◷" },
-    { id: "SUSPENDED", label: "Suspended accounts", value: users.filter((user) => user.status === "SUSPENDED").length, symbol: "!" }
+    { id: "ALL", label: "Total accounts", value: summaryCounts.total, symbol: "▦" },
+    { id: "ACTIVE", label: "Active accounts", value: summaryCounts.active, symbol: "✓" },
+    { id: "PENDING", label: "Pending activation", value: summaryCounts.pending, symbol: "◷" },
+    { id: "SUSPENDED", label: "Suspended accounts", value: summaryCounts.suspended, symbol: "!" }
   ] as const;
-
   function selectSummary(next: AccountHighlight) {
     setHighlight(next);
     setGroup("ALL");
     setStatus("ALL");
     setQuery("");
+    setPage(1);
+    resetSelection();
     setView("DIRECTORY");
+    setSelectedAccountId(null);
   }
-
   function clearFilters() {
-    setQuery("");
-    setGroup("ALL");
-    setStatus("ALL");
-    setHighlight("ALL");
+    setQuery(""); setGroup("ALL"); setStatus("ALL"); setHighlight("ALL");
+    setPage(1); resetSelection(); setSelectedAccountId(null);
   }
-
-  const q = query.trim().toLowerCase();
-  const filtered = users.filter((user) => {
-    const groupMatch =
-      group === "ALL" ||
-      (group === "STAFF" ? user.role === "SCHOOL_ADMIN" || user.role === "SCHOOL_STAFF" : user.role === group);
-    const statusMatch = status === "ALL" || user.status === status;
-    const summaryMatch =
-      highlight === "ALL" ||
-      (highlight === "PENDING" ? needsActivation(user) : user.status === highlight);
-    const haystack = [
-      user.username,
-      user.profile?.fullName,
-      user.profile?.phone,
-      user.profile?.code,
-      user.role,
-      user.status
-    ].filter(Boolean).join(" ").toLowerCase();
-    return groupMatch && statusMatch && summaryMatch && (!q || haystack.includes(q));
-  });
 
   if (initialLoading) {
     return (
