@@ -56,7 +56,10 @@ import { AdminContactCard } from "./src/admin-contact-card";
 import { TeacherBottomNavigation, TeacherExperience, type TeacherTab } from "./src/teacher-experience";
 import { NegaranHistoryPanel } from "./src/negaran-history";
 import { countAttendance, fillUnmarkedPresent } from "./src/negaran-attendance-utils";
-import { ParentDashboardPanel } from "./src/parent-dashboard";
+import { ParentDashboardPanel, type ParentDashboardDestination } from "./src/parent-dashboard";
+import { initialParentResources, loadingParentChildResources,
+  type ParentHomeResource, type ParentHomeResourceMap, type ParentHomeResourceStatus
+} from "./src/parent-home-model";
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
 import { ParentTimetableContent } from "./src/parent-timetable";
 import { ParentNotificationsContent } from "./src/parent-inbox";
@@ -210,6 +213,11 @@ function AppContent() {
   const [parentFees, setParentFees] = useState<FeeInvoiceViewPayload[]>([]);
   const [parentCommunicationReady, setParentCommunicationReady] = useState(false);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
+  const [parentResourceStatus, setParentResourceStatus] =
+    useState<ParentHomeResourceMap>({ ...initialParentResources });
+  const [parentDataChildId, setParentDataChildId] = useState<string | null>(null);
+  const [parentHomeLoadStatus, setParentHomeLoadStatus] =
+    useState<ParentHomeResourceStatus>("idle");
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [teacherAcademics, setTeacherAcademics] = useState<TeacherAcademicsPayload | null>(null);
   const [teacherTodayReady, setTeacherTodayReady] = useState(false);
@@ -254,6 +262,10 @@ function AppContent() {
   const parentChildLoadRequestId = useRef(0);
   const parentHomeRequestId = useRef(0);
   const parentNotificationsRequestId = useRef(0);
+  const parentResourceRequests = useRef<Record<ParentHomeResource, number>>({
+    attendance: 0, timetable: 0, learning: 0,
+    announcements: 0, fees: 0, notifications: 0
+  });
   const studentHomeLoadRequestId = useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
@@ -575,6 +587,10 @@ function AppContent() {
       setParentAnnouncements([]);
       setParentFees([]);
       setParentCommunicationReady(false);
+      setParentDataChildId(selectedChildId);
+      setParentResourceStatus((current) => ({
+        ...loadingParentChildResources(), notifications: current.notifications
+      }));
       void loadParentAttendance(session.accessToken, selectedChildId, requestId);
       void loadParentTimetable(session.accessToken, selectedChildId, requestId);
       void loadParentLearningData(session.accessToken, selectedChildId, requestId);
@@ -868,6 +884,9 @@ function AppContent() {
     setParentFees([]);
     setParentCommunicationReady(false);
     setParentNotifications([]);
+    setParentResourceStatus({ ...initialParentResources });
+    setParentDataChildId(null);
+    setParentHomeLoadStatus("idle");
     setTeacherToday(null);
     setStudentTimetable(null);
     setStudentTimetableReady(false);
@@ -1212,6 +1231,7 @@ function AppContent() {
       sessionRef.current?.accessToken === accessToken &&
       sessionRef.current?.user.id === identity &&
       sessionRef.current?.user.role === "PARENT";
+    setParentHomeLoadStatus("loading");
     setBusy(true);
     setAppError(null);
     try {
@@ -1234,6 +1254,7 @@ function AppContent() {
           : result.children[0]?.student.id ?? "";
       selectedChildIdRef.current = nextChildId;
       setParentHome(result);
+      setParentHomeLoadStatus("ready");
       setSelectedChildId(nextChildId);
       if (nextChildId && schoolRef.current) {
         void savePreferredParentChild(schoolRef.current.id, identity, nextChildId).catch(() => {
@@ -1241,7 +1262,13 @@ function AppContent() {
         });
       }
     } catch (cause) {
-      if (valid()) showCause(cause);
+      if (valid()) {
+        setParentHomeLoadStatus("error");
+        if (cause instanceof ApiRequestError && ["account_suspended", "session_invalid",
+          "school_service_unavailable", "password_change_required"].includes(cause.code ?? "")) {
+          showCause(cause);
+        }
+      }
     } finally {
       if (valid()) setBusy(false);
     }
@@ -1251,6 +1278,18 @@ function AppContent() {
     if (selectedChildIdRef.current === studentId) return;
     selectedChildIdRef.current = studentId;
     parentChildLoadRequestId.current += 1;
+    setParentDataChildId(null);
+    setParentAttendance([]);
+    setParentToday("");
+    setParentTimetable([]);
+    setParentTimetableReady(false);
+    setParentLearning(null);
+    setParentAnnouncements([]);
+    setParentFees([]);
+    setParentCommunicationReady(false);
+    setParentResourceStatus((current) => ({
+      ...loadingParentChildResources(), notifications: current.notifications
+    }));
     setNotice(null);
     setSelectedChildId(studentId);
     if (school && session?.user.role === "PARENT") {
@@ -1260,67 +1299,120 @@ function AppContent() {
     }
   }
 
-  async function loadParentAttendance(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  function beginParentResourceRequest(resource: ParentHomeResource) {
+    const id = ++parentResourceRequests.current[resource];
+    updateParentResource(resource, "loading");
+    return id;
+  }
+  function resourceRequestCurrent(resource: ParentHomeResource, id: number,
+    accessToken: string, studentId: string, requestId: number) {
+    return parentResourceRequests.current[resource] === id &&
+      isCurrentParentChildRequest(accessToken, studentId, requestId);
+  }
+
+  function updateParentResource(resource: ParentHomeResource, status: ParentHomeResourceStatus) {
+    setParentResourceStatus((current) => ({ ...current, [resource]: status }));
+  }
+
+  function handleParentResourceFailure(resource: ParentHomeResource, cause: unknown) {
+    updateParentResource(resource, "error");
+    // A recoverable failure in one card must not hide unrelated data. Account
+    // and authentication failures still go through the existing global guard.
+    if (cause instanceof ApiRequestError && ["account_suspended", "session_invalid",
+      "school_service_unavailable", "password_change_required"].includes(cause.code ?? "")) {
+      showCause(cause);
+    }
+  }
+
+  function isCurrentParentChildRequest(accessToken: string, studentId: string, requestId: number) {
+    return requestId === parentChildLoadRequestId.current &&
+      sessionRef.current?.accessToken === accessToken &&
+      sessionRef.current?.user.role === "PARENT" &&
+      selectedChildIdRef.current === studentId;
+  }
+
+  async function loadParentAttendance(accessToken: string, studentId: string, requestId: number) {
+    const generation = beginParentResourceRequest("attendance");
     try {
       const result = await api.parentAttendance(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!resourceRequestCurrent("attendance", generation, accessToken, studentId, requestId)) return;
       setParentToday(result.today);
       setParentAttendance(result.days);
+      updateParentResource("attendance", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (resourceRequestCurrent("attendance", generation, accessToken, studentId, requestId)) {
+        handleParentResourceFailure("attendance", cause);
+      }
     }
   }
 
-  async function loadParentTimetable(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  async function loadParentTimetable(accessToken: string, studentId: string, requestId: number) {
+    const generation = beginParentResourceRequest("timetable");
     try {
       const result = await api.parentTimetable(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!resourceRequestCurrent("timetable", generation, accessToken, studentId, requestId)) return;
       setParentTimetable(result.periods);
       setParentTimetableReady(true);
+      updateParentResource("timetable", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (resourceRequestCurrent("timetable", generation, accessToken, studentId, requestId)) {
+        setParentTimetableReady(true);
+        handleParentResourceFailure("timetable", cause);
+      }
     }
   }
 
-  async function loadParentLearningData(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  async function loadParentLearningData(accessToken: string, studentId: string, requestId: number) {
+    const generation = beginParentResourceRequest("learning");
     try {
       const result = await api.parentLearning(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!resourceRequestCurrent("learning", generation, accessToken, studentId, requestId)) return;
       setParentLearning(result);
+      updateParentResource("learning", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (resourceRequestCurrent("learning", generation, accessToken, studentId, requestId)) {
+        handleParentResourceFailure("learning", cause);
+      }
     }
   }
 
-  async function loadParentCommunicationData(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
-    const [announcementsResult, feesResult] = await Promise.allSettled([
-      api.announcements(accessToken),
-      api.parentFees(accessToken, studentId)
-    ] as const);
-    if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
-    if (announcementsResult.status === "fulfilled") {
-      setParentAnnouncements(announcementsResult.value.announcements);
+  async function loadParentAnnouncementsData(accessToken: string, studentId: string, requestId: number) {
+    const generation = beginParentResourceRequest("announcements");
+    try {
+      const result = await api.announcements(accessToken);
+      if (!resourceRequestCurrent("announcements", generation, accessToken, studentId, requestId)) return;
+      setParentAnnouncements(result.announcements);
+      updateParentResource("announcements", "ready");
+    } catch (cause) {
+      if (resourceRequestCurrent("announcements", generation, accessToken, studentId, requestId)) {
+        handleParentResourceFailure("announcements", cause);
+      }
     }
-    if (feesResult.status === "fulfilled") setParentFees(feesResult.value.invoices);
-    setParentCommunicationReady(true);
-    const failure = [announcementsResult, feesResult].find((item) => item.status === "rejected");
-    if (failure?.status === "rejected") showCause(failure.reason);
+  }
+
+  async function loadParentFeesData(accessToken: string, studentId: string, requestId: number) {
+    const generation = beginParentResourceRequest("fees");
+    try {
+      const result = await api.parentFees(accessToken, studentId);
+      if (!resourceRequestCurrent("fees", generation, accessToken, studentId, requestId)) return;
+      setParentFees(result.invoices);
+      updateParentResource("fees", "ready");
+    } catch (cause) {
+      if (resourceRequestCurrent("fees", generation, accessToken, studentId, requestId)) {
+        handleParentResourceFailure("fees", cause);
+      }
+    }
+  }
+
+  async function loadParentCommunicationData(accessToken: string, studentId: string, requestId: number) {
+    // Separate request outcomes: broken announcements do not make fees fail.
+    await Promise.allSettled([
+      loadParentAnnouncementsData(accessToken, studentId, requestId),
+      loadParentFeesData(accessToken, studentId, requestId)
+    ] as const);
+    if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+      setParentCommunicationReady(true);
+    }
   }
 
   async function loadParentNotifications(accessToken: string) {
@@ -1332,11 +1424,15 @@ function AppContent() {
       sessionRef.current?.accessToken === accessToken &&
       sessionRef.current?.user.id === identity &&
       sessionRef.current?.user.role === "PARENT";
+    updateParentResource("notifications", "loading");
     try {
       const result = await api.parentNotifications(accessToken);
-      if (valid()) setParentNotifications(result.notifications);
+      if (valid()) {
+        setParentNotifications(result.notifications);
+        updateParentResource("notifications", "ready");
+      }
     } catch (cause) {
-      if (valid()) showCause(cause);
+      if (valid()) handleParentResourceFailure("notifications", cause);
     }
   }
 
@@ -1635,6 +1731,9 @@ function AppContent() {
       setParentFees([]);
       setParentCommunicationReady(false);
       setParentNotifications([]);
+      setParentResourceStatus({ ...initialParentResources });
+      setParentDataChildId(null);
+      setParentHomeLoadStatus("idle");
       teacherHomeLoadRequestId.current += 1;
       setTeacherToday(null);
       setTeacherAcademics(null);
@@ -1729,6 +1828,57 @@ function AppContent() {
     setTimeout(() => {
       onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
     }, 0);
+  }
+
+  function openParentDashboardDestination(destination: ParentDashboardDestination) {
+    switch (destination) {
+      case "ATTENDANCE": setParentTab("ATTENDANCE"); break;
+      case "ACADEMICS_TIMETABLE":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("TIMETABLE"); break;
+      case "ACADEMICS_HOMEWORK":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("HOMEWORK"); break;
+      case "ACADEMICS_RESULTS":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("RESULTS"); break;
+      case "MORE_FEES": setParentTab("MORE"); break;
+      case "INBOX_ANNOUNCEMENTS":
+        setParentTab("INBOX"); setParentInboxTab("ANNOUNCEMENTS"); break;
+      case "INBOX_NOTIFICATIONS":
+        setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS"); break;
+    }
+    setNotice(null);
+    onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+  }
+
+  function retryParentResource(resource: ParentHomeResource) {
+    const active = sessionRef.current;
+    const studentId = selectedChildIdRef.current;
+    if (screen !== "home" || active?.user.role !== "PARENT" ||
+        active.user.status === "SUSPENDED" || active.mustChangePassword) return;
+    if (resource === "notifications") {
+      void loadParentNotifications(active.accessToken);
+      return;
+    }
+    if (!studentId) return;
+    const requestId = parentChildLoadRequestId.current;
+    const token = active.accessToken;
+    switch (resource) {
+      case "attendance": void loadParentAttendance(token, studentId, requestId); break;
+      case "timetable": void loadParentTimetable(token, studentId, requestId); break;
+      case "learning": void loadParentLearningData(token, studentId, requestId); break;
+      case "announcements": void loadParentAnnouncementsData(token, studentId, requestId); break;
+      case "fees": void loadParentFeesData(token, studentId, requestId); break;
+    }
+  }
+
+  function refreshParentDashboard() {
+    const active = sessionRef.current;
+    if (screen !== "home" || active?.user.role !== "PARENT" ||
+        active.user.status === "SUSPENDED" || active.mustChangePassword) return;
+    for (const resource of [
+      "attendance", "timetable", "learning", "announcements", "fees", "notifications"
+    ] as const) {
+      retryParentResource(resource);
+    }
   }
 
   const attendanceSummary = attendanceSheet
@@ -2118,13 +2268,28 @@ function AppContent() {
 
         {screen === "home" && session?.user.role === "PARENT" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
-            <ParentChildSwitcher
-              key={session.user.id}
-              childrenList={parentHome?.children ?? null}
-              selectedChildId={selectedChildId}
-              onSelect={selectParentChild}
-              locale={locale}
-            />
+            {parentHomeLoadStatus === "error" && !parentHome ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void loadParentHome(session.accessToken)}
+                style={[styles.parentSectionCard, { paddingVertical: 15 }]}
+              >
+                <Text style={[styles.muted, textDirection]}>
+                  {translate(locale, "parent.unavailable")}
+                </Text>
+                <Text style={[styles.notificationTitle, textDirection]}>
+                  {translate(locale, "parent.tryAgain")}
+                </Text>
+              </Pressable>
+            ) : (
+              <ParentChildSwitcher
+                key={session.user.id}
+                childrenList={parentHome?.children ?? null}
+                selectedChildId={selectedChildId}
+                onSelect={selectParentChild}
+                locale={locale}
+              />
+            )}
             {parentTab === "HOME" ? (
               <>
                 <View style={[styles.parentHeroCard, direction === "rtl" && styles.rowRtl]}>
@@ -2143,72 +2308,21 @@ function AppContent() {
                     </Text>
                   </View>
                 </View>
-                <Text style={[styles.parentIntro, textDirection]}>
-                  {translate(locale, "parent.homeSubtitle")}
-                </Text>
-
-                {parentHome ? (
-                  <>
-                    {parentHome.children.length > 0 ? (
-                      <>
-                        {selectedChild ? (
-                          <Animated.View
-                            style={[
-                              styles.childCard,
-                              {
-                                opacity: childOpacity,
-                                transform: [{ scale: childScale }]
-                              }
-                            ]}
-                          >
-                            <View style={[styles.childIdentityRow, direction === "rtl" && styles.rowRtl]}>
-                              <View style={styles.childBadge}>
-                                <Text style={styles.childBadgeText}>{selectedChild.student.fullName.slice(0, 1)}</Text>
-                              </View>
-                              <View style={styles.flexCopy}>
-                                <Text style={[styles.childName, textDirection]}>{selectedChild.student.fullName}</Text>
-                                <Text style={[styles.childIdentityMeta, textDirection]}>
-                                  {selectedChild.classSection.name} · {selectedChild.classSection.code}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={[styles.childMetaGrid, direction === "rtl" && styles.childMetaGridRtl]}>
-                              <View style={styles.childMetaCell}>
-                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.studentCode")}</Text>
-                                <Text
-                                  style={[styles.childDetailValue, styles.identifierValue, direction === "rtl" && styles.identifierValueRtl]}
-                                  numberOfLines={1}
-                                >
-                                  {selectedChild.student.studentCode}
-                                </Text>
-                              </View>
-                              <View style={styles.childMetaCell}>
-                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.class")}</Text>
-                                <Text
-                                  style={[styles.childDetailValue, styles.identifierValue, direction === "rtl" && styles.identifierValueRtl]}
-                                  numberOfLines={2}
-                                >
-                                  {selectedChild.classSection.code}
-                                </Text>
-                              </View>
-                              <View style={styles.childMetaCell}>
-                                <Text style={[styles.childDetailLabel, textDirection]}>{translate(locale, "parent.academicYear")}</Text>
-                                <Text style={[styles.childDetailValue, textDirection]} numberOfLines={2}>
-                                  {localizeDigits(selectedChild.academicYear.name, locale)}
-                                </Text>
-                              </View>
-                            </View>
-                          </Animated.View>
-                        ) : null}
-                      </>
-                    ) : (
-                      <View style={styles.emptyCard}>
-                        <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
-                      </View>
-                    )}
-                  </>
+                {parentHome && parentHome.children.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Text style={[styles.subtitle, textDirection]}>
+                      {translate(locale, "parent.noChildren")}
+                    </Text>
+                  </View>
                 ) : null}
-
+                {selectedChild ? (
+                  <Text style={[styles.parentIntro, textDirection]}>
+                    {translate(locale, "parent.studentCode")}:
+                    {" "}{localizeDigits(selectedChild.student.studentCode, locale)}
+                    {"  ·  "}{translate(locale, "parent.academicYear")}:
+                    {" "}{localizeDigits(selectedChild.academicYear.name, locale)}
+                  </Text>
+                ) : null}
                 {selectedChild ? (
                   <>
                     <ParentDashboardPanel
@@ -2219,13 +2333,18 @@ function AppContent() {
                         parentAttendance.find((item) => item.date === parentToday)?.status ?? null
                       }
                       timetable={parentTimetable}
-                      timetableReady={parentTimetableReady}
                       learning={parentLearning}
                       announcements={parentAnnouncements}
                       fees={parentFees}
-                      communicationReady={parentCommunicationReady}
+                      notifications={parentNotifications}
+                      resourceStatus={parentDataChildId === selectedChildId
+                        ? parentResourceStatus
+                        : { ...loadingParentChildResources(), notifications: parentResourceStatus.notifications }}
                       locale={locale}
                       textDirection={textDirection}
+                      onNavigate={openParentDashboardDestination}
+                      onRetry={retryParentResource}
+                      onRefresh={refreshParentDashboard}
                     />
 
                     <View style={styles.parentSectionCard}>
@@ -2237,15 +2356,26 @@ function AppContent() {
                           {translate(locale, "attendance.recent")}
                         </Text>
                       </View>
-                      {parentAttendance.slice(0, 7).map((day) => (
+                      {parentResourceStatus.attendance === "error" ? (
+                        <Pressable accessibilityRole="button"
+                          onPress={() => retryParentResource("attendance")}>
+                          <Text style={[styles.muted, textDirection]}>
+                            {translate(locale, "parent.unavailable")} · {translate(locale, "parent.tryAgain")}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      {parentResourceStatus.attendance === "loading" ? (
+                        <ActivityIndicator size="small" color={tokens.color.brand} />
+                      ) : null}
+                      {parentResourceStatus.attendance === "ready" ? parentAttendance.slice(0, 4).map((day) => (
                         <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
                           <Text style={[styles.historyDate, textDirection]}>
                             {formatLocalizedDate(day.date, locale)}
                           </Text>
                           <AttendanceBadge locale={locale} status={day.status} />
                         </View>
-                      ))}
-                      {parentAttendance.length === 0 ? (
+                      )) : null}
+                      {parentResourceStatus.attendance === "ready" && parentAttendance.length === 0 ? (
                         <View style={styles.parentEmptyState}>
                           <Ionicons name="calendar-clear-outline" size={22} color={tokens.color.textMuted} />
                           <Text style={[styles.muted, styles.flexCopy, textDirection]}>{translate(locale, "attendance.noHistory")}</Text>
@@ -2276,7 +2406,20 @@ function AppContent() {
                           </Text>
                         </Pressable>
                       ) : null}
-                      {parentNotifications.slice(0, 20).map((notification) => (
+                      {parentResourceStatus.notifications === "error" ? (
+                        <Pressable accessibilityRole="button"
+                          onPress={() => retryParentResource("notifications")}>
+                          <Text style={[styles.muted, textDirection]}>
+                            {translate(locale, "parent.unavailable")} · {translate(locale, "parent.tryAgain")}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      {parentResourceStatus.notifications === "loading" ? (
+                        <ActivityIndicator size="small" color={tokens.color.brand} />
+                      ) : null}
+                      {parentResourceStatus.notifications === "ready" ?
+                        [...parentNotifications].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+                          .slice(0, 3).map((notification) => (
                         <Pressable
                           key={notification.id}
                           onPress={() => openNotification(notification)}
@@ -2306,12 +2449,22 @@ function AppContent() {
                             </Text>
                           </View>
                         </Pressable>
-                      ))}
-                      {parentNotifications.length === 0 ? (
+                      )) : null}
+                      {parentResourceStatus.notifications === "ready" &&
+                        parentNotifications.length === 0 ? (
                         <View style={styles.parentEmptyState}>
                           <Ionicons name="notifications-off-outline" size={22} color={tokens.color.textMuted} />
                           <Text style={[styles.muted, styles.flexCopy, textDirection]}>{translate(locale, "notifications.empty")}</Text>
                         </View>
+                      ) : null}
+                      {parentResourceStatus.notifications === "ready" && parentNotifications.length > 0 ? (
+                        <Pressable accessibilityRole="button"
+                          onPress={() => openParentDashboardDestination("INBOX_NOTIFICATIONS")}
+                          style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+                          <Text style={styles.notificationTitle}>
+                            {translate(locale, "parent.viewAllNotifications")}
+                          </Text>
+                        </Pressable>
                       ) : null}
                     </View>
                   </>

@@ -74,6 +74,22 @@ export type TranslationKey =
   | "parent.studentCode"
   | "parent.class"
   | "parent.academicYear"
+  | "parent.refreshHome"
+  | "parent.actionRequired"
+  | "parent.noAlerts"
+  | "parent.someDataUnavailable"
+  | "parent.alertAbsent"
+  | "parent.alertLate"
+  | "parent.alertHomeworkToday"
+  | "parent.alertHomeworkTomorrow"
+  | "parent.alertFeeOverdue"
+  | "parent.alertFeeSoon"
+  | "parent.alertUnread"
+  | "parent.unavailable"
+  | "parent.tryAgain"
+  | "parent.viewDetails"
+  | "parent.unreadNotifications"
+  | "parent.viewAllNotifications"
   | "parent.dashboard"
   | "parent.todaySchedule"
   | "parent.noClassesToday"
@@ -548,6 +564,22 @@ const en: Record<TranslationKey, string> = {
   "parent.navInbox": "Inbox",
   "parent.navTimetable": "Timetable",
   "parent.noTimetable": "No timetable has been published.",
+  "parent.refreshHome": "Refresh Home",
+  "parent.actionRequired": "Needs your attention",
+  "parent.noAlerts": "No urgent items right now",
+  "parent.someDataUnavailable": "Some information could not be loaded. You can retry individual cards.",
+  "parent.alertAbsent": "Absent today",
+  "parent.alertLate": "Late today",
+  "parent.alertHomeworkToday": "Homework due today",
+  "parent.alertHomeworkTomorrow": "Homework due tomorrow",
+  "parent.alertFeeOverdue": "Outstanding fee is overdue",
+  "parent.alertFeeSoon": "Fee payment due soon",
+  "parent.alertUnread": "You have unread notifications",
+  "parent.unavailable": "Information unavailable",
+  "parent.tryAgain": "Try again",
+  "parent.viewDetails": "View details",
+  "parent.unreadNotifications": "Unread notifications",
+  "parent.viewAllNotifications": "View all notifications",
   "parent.navHome": "Home",
   "parent.navHomework": "Homework",
   "parent.navAnnouncements": "Announcements",
@@ -1015,6 +1047,22 @@ const dari: Record<TranslationKey, string> = {
   "parent.navInbox": "صندوق پیام‌ها",
   "parent.navTimetable": "تقسیم اوقات",
   "parent.noTimetable": "تقسیم اوقات نشر نشده است.",
+  "parent.refreshHome": "تازه‌سازی خانه",
+  "parent.actionRequired": "نیازمند توجه شما",
+  "parent.noAlerts": "فعلاً مورد عاجل وجود ندارد",
+  "parent.someDataUnavailable": "بخشی از معلومات بارگذاری نشد؛ کارت‌ها را جداگانه دوباره امتحان کنید.",
+  "parent.alertAbsent": "امروز غیرحاضر",
+  "parent.alertLate": "امروز ناوقت",
+  "parent.alertHomeworkToday": "مهلت کارخانگی امروز است",
+  "parent.alertHomeworkTomorrow": "مهلت کارخانگی فردا است",
+  "parent.alertFeeOverdue": "فیس پرداخت‌نشده از موعد گذشته است",
+  "parent.alertFeeSoon": "مهلت پرداخت فیس نزدیک است",
+  "parent.alertUnread": "اطلاعیه‌های ناخوانده دارید",
+  "parent.unavailable": "معلومات در دسترس نیست",
+  "parent.tryAgain": "دوباره امتحان کنید",
+  "parent.viewDetails": "دیدن جزئیات",
+  "parent.unreadNotifications": "اطلاعیه‌های ناخوانده",
+  "parent.viewAllNotifications": "دیدن همه اطلاعیه‌ها",
   "parent.navHome": "خانه",
   "parent.navHomework": "کارخانگی",
   "parent.navAnnouncements": "اعلانات",
@@ -1482,6 +1530,22 @@ const pashto: Record<TranslationKey, string> = {
   "parent.navInbox": "پیغامونه",
   "parent.navTimetable": "مهالوېش",
   "parent.noTimetable": "مهالوېش لا نه دی خپور شوی.",
+  "parent.refreshHome": "کور تازه کړئ",
+  "parent.actionRequired": "ستاسو پاملرنې ته اړتیا لري",
+  "parent.noAlerts": "اوس مهال بېړنۍ موضوع نشته",
+  "parent.someDataUnavailable": "ځینې معلومات بار نه شول؛ کارتونه جلا بیا وازمویئ.",
+  "parent.alertAbsent": "نن غیر حاضر",
+  "parent.alertLate": "نن ناوخته",
+  "parent.alertHomeworkToday": "د کورنۍ دندې وروستۍ ورځ نن ده",
+  "parent.alertHomeworkTomorrow": "د کورنۍ دندې وروستۍ ورځ سبا ده",
+  "parent.alertFeeOverdue": "د پاتې فیس نېټه تېره شوې ده",
+  "parent.alertFeeSoon": "د فیس د ورکړې نېټه رانږدې ده",
+  "parent.alertUnread": "تاسو نالوستې خبرتیاوې لرئ",
+  "parent.unavailable": "معلومات نشته",
+  "parent.tryAgain": "بیا هڅه وکړئ",
+  "parent.viewDetails": "تفصیل وګورئ",
+  "parent.unreadNotifications": "نالوستې خبرتیاوې",
+  "parent.viewAllNotifications": "ټولې خبرتیاوې وګورئ",
   "parent.navHome": "کور",
   "parent.navHomework": "کورنی کار",
   "parent.navAnnouncements": "اعلانونه",
