@@ -427,23 +427,23 @@ test("school-scoped credentials, forced password change, role matching, and susp
     url: "/v1/auth/me",
     headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
-  assert.equal(meAfterSuspend.statusCode, 200);
-  assert.equal(meAfterSuspend.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+  assert.equal(meAfterSuspend.statusCode, 401);
+  assert.equal(meAfterSuspend.json<{ error: string }>().error, "session_invalid");
 
   const blockedHome = await app.inject({
     method: "GET",
     url: "/v1/parent/home",
     headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
-  assert.equal(blockedHome.statusCode, 403);
-  assert.equal(blockedHome.json<{ error: string }>().error, "account_suspended");
+  assert.equal(blockedHome.statusCode, 401);
+  assert.equal(blockedHome.json<{ error: string }>().error, "session_invalid");
 
   const contactWhileSuspended = await app.inject({
     method: "GET",
     url: "/v1/school/admin-contact",
     headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
-  assert.equal(contactWhileSuspended.statusCode, 200);
+  assert.equal(contactWhileSuspended.statusCode, 401);
 
   const suspendedLogin = await app.inject({
     method: "POST",
@@ -456,7 +456,19 @@ test("school-scoped credentials, forced password change, role matching, and susp
     }
   });
   assert.equal(suspendedLogin.statusCode, 200);
-  assert.equal(suspendedLogin.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+  const restrictedToken = suspendedLogin.json<{ accessToken: string; refreshToken: string; user: { status: string } }>();
+  assert.equal(restrictedToken.user.status, "SUSPENDED");
+  const restrictedHome = await app.inject({
+    method: "GET", url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${restrictedToken.accessToken}` }
+  });
+  assert.equal(restrictedHome.statusCode, 403);
+  assert.equal(restrictedHome.json<{ error: string }>().error, "account_suspended");
+  const restrictedContact = await app.inject({
+    method: "GET", url: "/v1/school/admin-contact",
+    headers: { authorization: `Bearer ${restrictedToken.accessToken}` }
+  });
+  assert.equal(restrictedContact.statusCode, 200);
 
   const reactivate = await app.inject({
     method: "POST",
@@ -470,7 +482,27 @@ test("school-scoped credentials, forced password change, role matching, and susp
     url: "/v1/parent/home",
     headers: { authorization: `Bearer ${activeParentAccessToken}` }
   });
-  assert.equal(homeAfterReactivate.statusCode, 200);
+  assert.equal(homeAfterReactivate.statusCode, 401);
+  const staleRestricted = await app.inject({
+    method: "GET", url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${restrictedToken.accessToken}` }
+  });
+  assert.equal(staleRestricted.statusCode, 401);
+  const staleRefresh = await app.inject({
+    method: "POST", url: "/v1/auth/refresh",
+    payload: { refreshToken: restrictedToken.refreshToken }
+  });
+  assert.equal(staleRefresh.statusCode, 401);
+  const newLogin = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId: schoolA, expectedRole: "PARENT", username: "parentone", password: "ParentSecure2026!" }
+  });
+  assert.equal(newLogin.statusCode, 200);
+  const newHome = await app.inject({
+    method: "GET", url: "/v1/parent/home",
+    headers: { authorization: `Bearer ${newLogin.json<{ accessToken: string }>().accessToken}` }
+  });
+  assert.equal(newHome.statusCode, 200);
 });
 
 test("student entry enforces role, temporary password, active enrollment, and suspension", async (t) => {
@@ -769,8 +801,8 @@ test("student entry enforces role, temporary password, active enrollment, and su
     url: "/v1/student/home",
     headers: { authorization: `Bearer ${activeSession.accessToken}` }
   });
-  assert.equal(suspendedHome.statusCode, 403);
-  assert.equal(suspendedHome.json<{ error: string }>().error, "account_suspended");
+  assert.equal(suspendedHome.statusCode, 401);
+  assert.equal(suspendedHome.json<{ error: string }>().error, "session_invalid");
 });
 
 test("refresh sessions rotate once and logout revokes the current session", async (t) => {
