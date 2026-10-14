@@ -3,6 +3,10 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { announcementDashboard, feeDashboard } from "./communication-overview-model";
+import { ANNOUNCEMENT_PAGE_SIZE, announcementStatus, findAnnouncements,
+  pageAnnouncements, schoolLocalTimeToIso,
+  type AnnouncementAudienceFilter, type AnnouncementStatusFilter
+} from "./communication-announcements-model";
 import { AdminLoader } from "./admin-loader";
 import {
   AdminHijriDatePicker,
@@ -112,6 +116,23 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const sectionRefs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({});
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [scope, setScope] = useState<AnnouncementScope>("SCHOOL");
+  const [targetClassId, setTargetClassId] = useState("");
+  const [targetRole, setTargetRole] = useState<AudienceRole | "">("");
+  const [publishMode, setPublishMode] = useState<"NOW" | "SCHEDULE">("NOW");
+  const [scheduledLocal, setScheduledLocal] = useState("");
+  const [schoolTimezone, setSchoolTimezone] = useState<string | null>(null);
+  const [recipientCount, setRecipientCount] = useState<number | null>(null);
+  const [recipientStatus, setRecipientStatus] = useState<ResourceStatus>("idle");
+  const [recipientError, setRecipientError] = useState("");
+  const recipientGeneration = useRef(0);
+  const [announcementSearch, setAnnouncementSearch] = useState("");
+  const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<AnnouncementStatusFilter>("ALL");
+  const [announcementAudienceFilter, setAnnouncementAudienceFilter] = useState<AnnouncementAudienceFilter>("ALL");
+  const [announcementClassFilter, setAnnouncementClassFilter] = useState("");
+  const [announcementLimit, setAnnouncementLimit] = useState(ANNOUNCEMENT_PAGE_SIZE);
+  const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
   const [editingNotice, setEditingNotice] = useState<Announcement | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editMessage, setEditMessage] = useState("");
@@ -130,7 +151,13 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setEditTitle("");
     setEditMessage("");
     setEditPublishAt("");
-    setScope("SCHOOL");
+    setScope("SCHOOL"); setTargetClassId(""); setTargetRole("");
+    setPublishMode("NOW"); setScheduledLocal(""); setSchoolTimezone(null);
+    setRecipientCount(null); setRecipientStatus("idle"); setRecipientError("");
+    setAnnouncementSearch(""); setAnnouncementStatusFilter("ALL");
+    setAnnouncementAudienceFilter("ALL"); setAnnouncementClassFilter("");
+    setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE); setExpandedAnnouncementId(null);
+    setNewTitle(""); setNewContent(""); recipientGeneration.current += 1;
     setPaymentDraft({});
     paymentAttempts.current = {};
     setReversalReason({});
