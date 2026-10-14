@@ -1673,3 +1673,11 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - English/Dari/Pashto RTL, preview states, timezone labels, confirmation, localized counts and source/integration/unit regressions included in `pnpm verify:admin-communication:phase2` and CI.
 - Real browser/device testing, manual preview/recipient comparison, DST/school-zone edge cases and independent Step 20 review remain **NOT RUN / NO-GO**. No schema migration.
 - Phase 3 next: invoices, status filters, draft editing, safe numbering and invoice detail workflows.
+
+## Admin Communication & Fees — Phase 3 (2026-10-14)
+
+- Fees directory now uses `GET /v1/admin/fees/invoices` with server-side authorized pagination (20/page), name/code/description/invoice-number search, status/academic-year/class/student filtering and independent loading/error/retry. Expanded invoice details preserve the existing payment/reversal ledger.
+- New migration `0022_fee_invoice_numbers.sql` backfills immutable per-school sequential invoice numbers and establishes a transactional school-local allocator with unique school-number index. Run `pnpm db:migrate` on the target PostgreSQL database **before deploying the new API**.
+- Only `DRAFT` invoices can change student, amount, description or due date: audited `PATCH /v1/admin/fees/invoices/:invoiceId` with row locks, expected updatedAt token, school identity checks and active student rule. Issues and cancellations now have confirmations.
+- Existing financial balances, tenant boundaries and parent/student invoice visibility are preserved. The full overview endpoint still aggregates authorized invoices on read; targeted server-side summary work is deferred.
+- Unit/integration tests and guard script added to `pnpm verify:admin-communication:phase3` and Linux/Windows CI. Exact deployed PostgreSQL migration, RTL small-screen browser checks, external payments and production Step 20 operator signoff remain **NOT RUN / NO-GO**. Phase 4 next: payment method selection, per-student balances and printable receipts.
