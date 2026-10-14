@@ -6263,3 +6263,197 @@ html[dir="rtl"] body {
     flex: 1 1 auto;
   }
 }
+
+
+/* Admin Accounts Phase 5: scalable directory and page-only selection. */
+.account-directory-scaled .account-directory-filters {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(112px, 1fr)) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.account-directory-scaled .account-directory-filters > input,
+.account-directory-scaled .account-directory-filters > select {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.account-directory-select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  margin: 10px 0;
+  border: 1px solid #e3eaf4;
+  border-radius: 11px;
+  background: #f8fbff;
+  color: #596c89;
+  font-size: 12px;
+}
+
+.account-directory-select-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-weight: 750;
+  color: #344d70;
+}
+
+.account-directory-select-row input,
+.account-directory-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: #3767b1;
+  cursor: pointer;
+}
+
+.account-directory-select-row input:disabled,
+.account-directory-check input:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.account-directory-check {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 8px 5px;
+}
+
+.account-directory-bulk-toolbar {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 13px 0;
+  padding: 13px;
+  border: 1px solid #cddbf0;
+  border-radius: 12px;
+  background: #edf4ff;
+}
+
+.account-directory-bulk-toolbar strong {
+  color: #28578f;
+  font-size: 13px;
+  margin-inline-end: 5px;
+}
+
+.account-directory-bulk-toolbar > span {
+  flex: 1 1 100%;
+  font-size: 11px;
+  color: #627794;
+  line-height: 1.6;
+}
+
+.account-directory-pagination {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid #edf1f6;
+  color: #596b82;
+  font-size: 12px;
+}
+
+.account-directory-pagination label,
+.account-directory-pagination > div {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-directory-pagination select {
+  padding: 8px 11px;
+  border: 1px solid #dce4ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #344963;
+  font-weight: 650;
+}
+
+.account-directory-pagination button {
+  min-height: 36px;
+}
+
+.account-directory-pagination button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.account-bulk-preview {
+  display: flex;
+  max-height: 170px;
+  overflow-y: auto;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 15px 0;
+  padding: 12px;
+  border: 1px solid #e0e9f4;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.account-bulk-preview span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eaf1fc;
+  color: #385a85;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-directory-scaled :is(button, select, input):focus-visible,
+.account-directory-pagination :is(button, select):focus-visible {
+  outline: 3px solid #4286d5;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1280px) {
+  .account-directory-scaled .account-directory-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-directory-scaled .account-directory-filters > input {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .account-directory-scaled .account-directory-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-directory-scaled .account-directory-filters > input {
+    grid-column: auto;
+  }
+
+  .account-directory-pagination {
+    align-items: stretch;
+  }
+
+  .account-directory-pagination > div {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .account-directory-pagination button {
+    flex: 0 1 auto;
+  }
+
+  .account-directory-bulk-toolbar button {
+    flex: 1 1 auto;
+  }
+}
