@@ -32,6 +32,11 @@ for(const marker of [
   'money.collectionRate === null', 'formElement.reset()',
   'ready && visibleOverview'
 ]) assert.ok(panel.includes(marker),"Phase 1 UI/stale-session invariant missing: "+marker);
+assert.ok(panel.indexOf('Edit scheduled announcement') < panel.indexOf('section === "FEES"'),
+  "Announcement editor must remain in Communication, not Fees");
+assert.ok(panel.includes("if (accessRef.current !== accessToken) return;") &&
+  panel.includes("if (accessRef.current === accessToken) setBusy(false);"),
+  "Stale mutation completions must not update a new school session");
 assert.ok(!panel.includes('Promise.all([\n        request<CommunicationOverview>'),
   "Do not couple overview to family/academic read failures");
 for(const marker of [
