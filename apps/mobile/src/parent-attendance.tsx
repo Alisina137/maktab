@@ -7,7 +7,7 @@ import {
   translate, type SupportedLocale, type TranslationKey
 } from "@maktablink/localization";
 import { api, type AttendanceStatus, type ParentAttendanceDay } from "./api";
-import { adjacentAttendanceMonth, attendanceMonth, summarizeAttendance } from "./parent-attendance-model";
+import { adjacentAttendanceMonth, attendanceMonth, summarizeAttendance, validIsoDay } from "./parent-attendance-model";
 
 type LoadState = "loading" | "ready" | "error";
 const statuses: AttendanceStatus[] = ["PRESENT", "ABSENT", "LATE", "EXCUSED"];
@@ -41,7 +41,7 @@ export function ParentAttendanceContent({
   onSensitiveError: (cause: unknown) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
-  const validFocus = focusedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(focusedDate) &&
+  const validFocus = focusedDate && validIsoDay(focusedDate) &&
     focusedDate <= today ? focusedDate : null;
   const [anchor, setAnchor] = useState(validFocus ?? today);
   const [selectedDay, setSelectedDay] = useState(validFocus ?? today);
