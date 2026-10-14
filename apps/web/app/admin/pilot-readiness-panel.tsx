@@ -4,7 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
-import { formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
@@ -105,13 +105,48 @@ type ImportHistoryPage = {
 
 type AuditLog = {
   id: string;
-  actorUserId: string | null;
   action: string;
+  category: string;
+  actorUsername: string | null;
   entityType: string;
-  entityId: string | null;
-  metadata: Record<string, unknown>;
+  targetLabel: string | null;
+  metadata: Record<string, string | number | boolean>;
   createdAt: string;
 };
+type AuditFilters = {
+  category: string;
+  search: string;
+  dateFrom: string;
+  dateTo: string;
+  actorUserId: string;
+};
+const EMPTY_AUDIT_FILTERS: AuditFilters = {
+  category: "all", search: "", dateFrom: "", dateTo: "", actorUserId: ""
+};
+const AUDIT_CATEGORIES = [
+  "all", "accounts", "academics", "attendance", "learning", "communication", "fees", "operations"
+] as const;
+function auditTitle(action: string): string {
+  const known: Record<string, string> = {
+    "user.suspended": "Account suspended",
+    "user.reactivated": "Account reactivated",
+    "user.password_reset": "Account password reset",
+    "pilot.exported": "School data exported",
+    "pilot.audit_exported": "Audit history exported",
+    "families.import_committed": "Family import completed",
+    "student.attendance_corrected": "Attendance corrected"
+  };
+  return known[action] ?? action.replace(/[._]/g, " ").replace(/^./, (char) => char.toUpperCase());
+}
+function auditQuery(filters: AuditFilters, offset: number, limit = 20) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (filters.category && filters.category !== "all") params.set("category", filters.category);
+  if (filters.search.trim()) params.set("search", filters.search.trim());
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.actorUserId.trim()) params.set("actorUserId", filters.actorUserId.trim());
+  return params.toString();
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -189,6 +224,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [audit, setAudit] = useState<AuditLog[]>([]);
+  const [auditDraftFilters, setAuditDraftFilters] = useState<AuditFilters>({ ...EMPTY_AUDIT_FILTERS });
+  const [auditAppliedFilters, setAuditAppliedFilters] = useState<AuditFilters>({ ...EMPTY_AUDIT_FILTERS });
+  const [selectedAudit, setSelectedAudit] = useState<AuditLog | null>(null);
   const [importHistory, setImportHistory] = useState<ImportHistoryPage | null>(null);
   const [importHistoryBusy, setImportHistoryBusy] = useState(false);
   const [importHistoryError, setImportHistoryError] = useState("");
@@ -215,6 +253,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     setSubscription(null);
     setReadiness(null);
     setAudit([]);
+    setSelectedAudit(null);
     setAuditOffset(0);
     setAuditHasMore(false);
     setAuditLoaded(false);
@@ -254,7 +293,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     }
   }
 
-  async function load(offset = auditOffset) {
+  async function load(offset = auditOffset, filters: AuditFilters = auditAppliedFilters) {
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
@@ -268,10 +307,11 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       // Audit failure cannot hide subscription/readiness and vice versa.
       if (section === "audit") {
         const auditResult = await request<{ logs: AuditLog[]; hasMore: boolean }>(
-          accessToken, "/v1/admin/audit?limit=20&offset=" + offset
+          accessToken, "/v1/admin/pilot/audit?" + auditQuery(filters, offset)
         );
         if (version !== requestVersion.current) return;
         setAudit(auditResult.logs);
+        setSelectedAudit(null);
         setAuditOffset(offset);
         setAuditHasMore(auditResult.hasMore);
         setAuditLoaded(true);
@@ -311,6 +351,23 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         if (!wantsCoverage) setAdvancedBusy(false);
       }
     }
+  }
+
+  function applyAuditFilters() {
+    setAuditAppliedFilters({ ...auditDraftFilters });
+    void load(0, auditDraftFilters);
+  }
+
+  function resetAuditFilters() {
+    const cleared = { ...EMPTY_AUDIT_FILTERS };
+    setAuditDraftFilters(cleared);
+    setAuditAppliedFilters(cleared);
+    void load(0, cleared);
+  }
+
+  async function downloadSensitive(path: string, filename: string, message: string) {
+    if (!window.confirm(t("This export contains sensitive school records. Download only to a trusted device and store it securely. Continue?"))) return;
+    await download(path, filename, message);
   }
 
   async function openIssues(metric: CoverageMetric["key"], offset = 0) {
@@ -817,7 +874,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             className="admin-primary"
             type="button"
             disabled={busy}
-            onClick={() => void download("/v1/admin/pilot/export", "maktablink-school-export.json", t("School export downloaded."))}
+            onClick={() => void downloadSensitive("/v1/admin/pilot/export", "maktablink-school-export.json", t("School export downloaded."))}
           >{t("Download core export")}</button>
           <p className="pilot-security-note">{t("Exports may contain private school and family information. Store the file securely.")}</p>
         </article>
@@ -853,41 +910,115 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {section === "audit" && auditLoaded ? (
-      <article className="admin-panel">
-        <div className="admin-section-header">
-          <div>
-            <h3>{t("Audit review")}</h3>
-            <p>{t("Sensitive changes are recorded here for school review.")}</p>
-          </div>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="admin-secondary"
-              disabled={busy || auditOffset === 0}
-              onClick={() => void load(Math.max(0, auditOffset - 20))}
-            >{t("Newer")}</button>
-            <button
-              type="button"
-              className="admin-secondary"
-              disabled={busy || !auditHasMore}
-              onClick={() => void load(auditOffset + 20)}
-            >{t("Older")}</button>
-          </div>
-        </div>
-
-        <div className="pilot-audit-list">
-          {audit.map((item) => (
-            <div className="pilot-audit-row" key={item.id}>
+        <>
+          <article className="admin-panel pilot-audit-filters">
+            <div className="admin-section-header">
               <div>
-                <strong>{item.action}</strong>
-                <span>{item.entityType}{item.entityId ? ` · ${item.entityId}` : ""}</span>
+                <h3>{t("Audit filters")}</h3>
+                <p>{t("Find school activity by category, action, actor or Solar Hijri date range.")}</p>
               </div>
-              <time dateTime={item.createdAt}>{formatAdminHijriDateTime(locale, item.createdAt)}</time>
             </div>
-          ))}
-          {audit.length === 0 ? <p className="admin-copy">{t("No audit events on this page.")}</p> : null}
-        </div>
-      </article>
+            <div className="pilot-audit-form">
+              <label>{t("Category")}
+                <select value={auditDraftFilters.category}
+                  onChange={(event) => setAuditDraftFilters((previous) => ({ ...previous, category: event.target.value }))}>
+                  {AUDIT_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{t(category === "all" ? "All categories" : category)}</option>
+                  ))}
+                </select>
+              </label>
+              <label>{t("Search actions or usernames")}
+                <input value={auditDraftFilters.search} maxLength={100} placeholder={t("Search audit history")}
+                  onChange={(event) => setAuditDraftFilters((previous) => ({ ...previous, search: event.target.value }))} />
+              </label>
+              <label>{t("Actor user ID (optional)")}
+                <input value={auditDraftFilters.actorUserId} maxLength={36} placeholder={t("Filter by administrator ID")}
+                  onChange={(event) => setAuditDraftFilters((previous) => ({ ...previous, actorUserId: event.target.value }))} />
+              </label>
+              <div className="pilot-audit-date-label">
+                <span>{t("Start date")}</span>
+                <AdminHijriDatePicker locale={locale} value={auditDraftFilters.dateFrom}
+                  onChange={(date) => setAuditDraftFilters((previous) => ({ ...previous, dateFrom: date }))} />
+              </div>
+              <div className="pilot-audit-date-label">
+                <span>{t("End date")}</span>
+                <AdminHijriDatePicker locale={locale} value={auditDraftFilters.dateTo}
+                  onChange={(date) => setAuditDraftFilters((previous) => ({ ...previous, dateTo: date }))} />
+              </div>
+            </div>
+            <div className="admin-actions">
+              <button className="admin-primary" type="button" disabled={busy}
+                onClick={applyAuditFilters}>{t("Apply filters")}</button>
+              <button className="admin-secondary" type="button" disabled={busy}
+                onClick={resetAuditFilters}>{t("Clear filters")}</button>
+              <button className="admin-secondary" type="button" disabled={busy}
+                onClick={() => void downloadSensitive(
+                  "/v1/admin/pilot/audit/export?" + auditQuery(auditAppliedFilters, 0),
+                  "maktablink-audit-history.csv", t("Audit history exported.")
+                )}>{t("Export filtered audit CSV")}</button>
+            </div>
+            <p className="pilot-security-note">{t("CSV audit export includes up to 500 matching events, omits credentials and is recorded in the audit history.")}</p>
+          </article>
+
+          <article className="admin-panel">
+            <div className="admin-section-header">
+              <div>
+                <h3>{t("Audit review")}</h3>
+                <p>{t("Only safe audit details from the current school are visible.")}</p>
+              </div>
+              <div className="admin-actions">
+                <button className="admin-secondary" type="button" disabled={busy || auditOffset === 0}
+                  onClick={() => void load(Math.max(0, auditOffset - 20))}>{t("Newer")}</button>
+                <button className="admin-secondary" type="button" disabled={busy || !auditHasMore}
+                  onClick={() => void load(auditOffset + 20)}>{t("Older")}</button>
+              </div>
+            </div>
+            <div className="pilot-audit-list">
+              {audit.map((item) => (
+                <div className="pilot-audit-row pilot-audit-row-readable" key={item.id}>
+                  <div>
+                    <strong>{t(auditTitle(item.action))}</strong>
+                    <span>{t("Performed by")}: {item.actorUsername ?? t("System")}</span>
+                    <span>{t("Affected record")}: {item.targetLabel ?? t(item.entityType)}</span>
+                  </div>
+                  <div className="pilot-audit-row-end">
+                    <time dateTime={item.createdAt}>{formatAdminHijriDateTime(locale, item.createdAt)}</time>
+                    <button className="admin-secondary" type="button"
+                      aria-expanded={selectedAudit?.id === item.id}
+                      onClick={() => setSelectedAudit(item)}>{t("View details")}</button>
+                  </div>
+                </div>
+              ))}
+              {audit.length === 0 ? <p className="admin-copy">{t("No audit events on this page.")}</p> : null}
+            </div>
+          </article>
+          {selectedAudit ? (
+            <div className="pilot-audit-drawer-overlay" role="presentation"
+              onClick={() => setSelectedAudit(null)}>
+              <section className="pilot-audit-drawer" role="dialog" aria-modal="true"
+                aria-labelledby="pilot-audit-detail-title"
+                onKeyDown={(event) => { if (event.key === "Escape") setSelectedAudit(null); }}
+                onClick={(event) => event.stopPropagation()}>
+                <div className="admin-section-header">
+                  <h3 id="pilot-audit-detail-title">{t("Activity details")}</h3>
+                  <button className="admin-secondary" type="button" onClick={() => setSelectedAudit(null)}
+                    autoFocus>{t("Close")}</button>
+                </div>
+                <dl className="pilot-detail-grid">
+                  <div><dt>{t("Action")}</dt><dd>{t(auditTitle(selectedAudit.action))}</dd></div>
+                  <div><dt>{t("Category")}</dt><dd>{t(selectedAudit.category)}</dd></div>
+                  <div><dt>{t("Performed by")}</dt><dd>{selectedAudit.actorUsername ?? t("System")}</dd></div>
+                  <div><dt>{t("Affected record")}</dt><dd>{selectedAudit.targetLabel ?? t(selectedAudit.entityType)}</dd></div>
+                  <div><dt>{t("Date")}</dt><dd>{formatAdminHijriDateTime(locale, selectedAudit.createdAt)}</dd></div>
+                  {Object.entries(selectedAudit.metadata).map(([key, value]) => (
+                    <div key={key}><dt>{t(key)}</dt><dd>{String(value)}</dd></div>
+                  ))}
+                </dl>
+                <p className="pilot-security-note">{t("Sensitive metadata, passwords, tokens and raw record changes are not available in this view.")}</p>
+              </section>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );
