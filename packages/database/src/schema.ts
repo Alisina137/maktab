@@ -912,7 +912,31 @@ export const notificationPushDeliveries = pgTable(
   ]
 );
 
+
+export const familyImportBatches = pgTable(
+  "family_import_batches",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    entityType: varchar("entity_type", { length: 16 }).notNull(),
+    fingerprint: varchar("fingerprint", { length: 64 }),
+    rowCount: integer("row_count").notNull(),
+    importedCount: integer("imported_count").notNull().default(0),
+    rejectedCount: integer("rejected_count").notNull().default(0),
+    status: varchar("status", { length: 16 }).notNull(),
+    reason: varchar("reason", { length: 200 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("family_import_batches_school_key_unique").on(table.schoolId, table.idempotencyKey),
+    index("family_import_batches_school_time_idx").on(table.schoolId, table.createdAt)
+  ]
+);
+
 export const databaseSchema = {
+  familyImportBatches,
   schools,
   subscriptions,
   schoolSettings,
@@ -997,3 +1021,5 @@ export type FeePayment = typeof feePayments.$inferSelect;
 export type Device = typeof devices.$inferSelect;
 export type NotificationPushDelivery = typeof notificationPushDeliveries.$inferSelect;
 export type CommunicationSettings = typeof communicationSettings.$inferSelect;
+
+export type FamilyImportBatch = typeof familyImportBatches.$inferSelect;

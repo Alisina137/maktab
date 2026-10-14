@@ -6554,3 +6554,23 @@ html[dir="rtl"] body {
   .pilot-coverage-card { padding:14px; }
   .pilot-coverage-top { flex-wrap:wrap; }
 }
+
+/* Pilot Operations Phase 3 — guided onboarding and safe import history. */
+.pilot-step-content { min-width: 0; display: grid; justify-items: start; gap: 9px; }
+.pilot-step-content .pilot-badge { max-width: 100%; overflow-wrap: anywhere; }
+.pilot-import-history { min-width: 0; }
+.pilot-import-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 14px; }
+.pilot-import-filters label { display: grid; gap: 7px; min-width: 170px; font-size: 13px; }
+.pilot-import-filters select { min-height: 44px; }
+.pilot-import-list { display: grid; gap: 11px; }
+.pilot-import-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr);
+  gap: 16px; padding: 16px; border: 1px solid var(--ml-color-border);
+  background: #fbfcff; border-radius: 13px; }
+.pilot-import-meta, .pilot-import-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 13px; min-width: 0; }
+.pilot-import-meta > strong { flex-basis: 100%; overflow-wrap: anywhere; }
+.pilot-import-meta > span, .pilot-import-summary > span:not(.pilot-badge) {
+  color: var(--ml-color-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.pilot-import-summary .pilot-badge { font-size: 12px; }
+.pilot-import-pagination { justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 700px) { .pilot-import-row { grid-template-columns: 1fr; gap: 10px; padding: 14px; } }
+@media (max-width: 360px) { .pilot-import-filters label { min-width: 0; width: 100%; } }

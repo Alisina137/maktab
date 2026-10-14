@@ -48,8 +48,27 @@
 6. Run `pnpm verify:pilot:phase2`, `pnpm verify` and verify the exact merged main SHA in Linux/Windows CI.
 
 
-## Phase 3 — Durable onboarding history
-Import history, duplicate/conflict reporting, retry safety while reusing existing Families import validation.
+## Phase 3 — Durable onboarding history (implemented)
+
+- Uses a new school-scoped `family_import_batches` ledger with actor, record counts, status and timestamp. SQL migration `0020_pilot_import_history` records no passwords, raw CSV contents or authentication tokens.
+- Integrates the existing Families CSV/XLSX workflow: upload → column mapping → validation (with row-level duplicate checks) → confirm → atomic import. Does not duplicate import logic inside Pilot Operations.
+- New `GET /v1/admin/families/import/history` school-admin-only endpoint returns paginated, optionally entity-filtered COMPLETED/REJECTED/FAILED summaries. Validation rejections and commit failures are metadata-only.
+- Each import commit supports a UUID idempotency key. The Families UI creates it after successful validation and retains the same key after a failed/uncertain response. The backend uses a school/key unique constraint **in the same transaction** as all parent, teacher or student creations. Successful retries return alreadyCommitted with an empty credential array, and different content under the same key is rejected. New credentials are **never stored or replayed**.
+- Overview of guided onboarding shows existing setup steps with real server-derived progress where available and links to the owning Academics, Accounts or Families modules. The Data Onboarding tab displays filtered school import history and paginated outcomes without private row data.
+- Migration must be applied before running the updated API (`pnpm db:migrate`). Prior CSV templates and accounts/import behavior remain compatible with old requests without an idempotency key; those old requests remain protected by username/student-code/employee-code uniqueness, not by retry-key replay.
+- Limitations: network failures before server commit cannot always be distinguished from rejected transactions without retrying with the same UUID; if the first response was lost, use authorized password-reset flows to issue fresh credentials. Historical imports before this migration are not retroactively reconstructed from audit logs.
+- Full browser/Android/manual acceptance and final live-database/backup/restore approval remain outstanding under Step 20.
+
+### Phase 3 acceptance
+
+1. Validate Parent, Student and Teacher CSVs with duplicated usernames/student codes/teacher employee codes and invalid relationships. No invalid submission should commit data.
+2. Import one valid file. Verify the ledger has a single COMPLETED record with actor, timestamp and counts, no CSV rows or passwords.
+3. Replay identical validated rows with the same UUID: HTTP 200, alreadyCommitted true, no new accounts, no password material. Reuse the UUID for different rows: HTTP 409.
+4. Repeat a validated import using a fresh UUID but existing account identifiers: conflict, no partial accounts, record a generic FAILED outcome.
+5. Confirm invalid validation creates REJECTED metadata only. Test filter/pagination (20 per page) and role/tenant isolation for history.
+6. Test lost HTTP responses, tab refreshes, RTL English/Dari/Pashto, mobile widths, accessibility and post-import PDF credential handling. Verify the warning when a replay omits credentials.
+7. Apply migrations on test/staging DB, run `pnpm verify:pilot:phase3`, `pnpm verify`, inspect CI on main, and keep Step 20 release gates open.
+
 
 ## Phase 4 — Audit and export security
 Filters, human-readable details, redaction, export limits and event audit.

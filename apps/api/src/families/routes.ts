@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   bulkImportEntitySchema,
@@ -37,8 +38,16 @@ const validateSchema = z.object({
 });
 const commitSchema = z.object({
   entityType: bulkImportEntitySchema,
-  rows: z.array(z.record(z.string(), z.unknown())).min(1).max(1000)
+  rows: z.array(z.record(z.string(), z.unknown())).min(1).max(1000),
+  idempotencyKey: z.string().uuid().optional()
 });
+
+
+const importHistoryQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
+  entityType: bulkImportEntitySchema.optional()
+}).strict();
 
 type ImportErrorRow = { row: number; field?: string; message: string };
 
@@ -296,6 +305,18 @@ export function registerFamilyRoutes(
     }
   );
 
+
+  app.get("/v1/admin/families/import/history", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const options = importHistoryQuerySchema.parse(request.query);
+      return families.listImportBatches(context.user.schoolId, options);
+    } catch (error) {
+      return sendFamilyError(reply, error);
+    }
+  });
+
   app.post("/v1/admin/families/import/preview", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
@@ -457,6 +478,13 @@ export function registerFamilyRoutes(
         }
       }
 
+      if (errors.length > 0) {
+        // Only counts and a generic outcome are persisted; CSV contents are not.
+        await families.recordImportAttempt(context.user.schoolId, context.user.id, {
+          entityType: input.entityType, rowCount: input.rows.length,
+          rejectedCount: errors.length, status: "REJECTED", reason: "Validation rejected."
+        });
+      }
       return {
         entityType: input.entityType,
         valid: errors.length === 0,
@@ -476,6 +504,30 @@ export function registerFamilyRoutes(
     try {
       const input = commitSchema.parse(request.body);
       const entityType: BulkImportEntity = input.entityType;
+      const idempotencyKey = input.idempotencyKey ?? randomUUID();
+      const fingerprint = createHash("sha256")
+        .update(JSON.stringify({ entityType, rows: input.rows })).digest("hex");
+      const existing = await families.getImportBatch(context.user.schoolId, idempotencyKey);
+      if (existing) {
+        if (existing.fingerprint !== fingerprint || existing.entityType !== entityType) {
+          return reply.code(409).send({
+            error: "import_key_conflict", message: "Import key was already used for different rows."
+          });
+        }
+        if (existing.status === "COMPLETED") {
+          return reply.code(200).send({
+            entityType, importedCount: existing.importedCount, credentials: [],
+            alreadyCommitted: true, requiresCredentialReset: true
+          });
+        }
+        return reply.code(409).send({
+          error: "import_key_conflict", message: "Import key is not available for this operation."
+        });
+      }
+      const batch = {
+        key: idempotencyKey, fingerprint, actorUserId: context.user.id,
+        entityType, rowCount: input.rows.length
+      };
       let importedCount = 0;
       const credentials: Array<{ username: string; temporaryPassword: string }> = [];
 
@@ -486,7 +538,7 @@ export function registerFamilyRoutes(
           credentials.push({ username: row.username, temporaryPassword });
           return { ...row, passwordHash: await hashPassword(temporaryPassword) };
         }));
-        importedCount = (await families.importParents(context.user.schoolId, prepared)).length;
+        importedCount = (await families.importParents(context.user.schoolId, prepared, batch)).length;
       } else if (entityType === "TEACHER") {
         const rows = z.array(teacherImportRowSchema).parse(input.rows);
         const prepared = await Promise.all(rows.map(async (row) => {
@@ -494,7 +546,7 @@ export function registerFamilyRoutes(
           credentials.push({ username: row.username, temporaryPassword });
           return { ...row, passwordHash: await hashPassword(temporaryPassword) };
         }));
-        importedCount = (await families.importTeachers(context.user.schoolId, prepared)).length;
+        importedCount = (await families.importTeachers(context.user.schoolId, prepared, batch)).length;
       } else {
         const rows = z.array(studentImportRowSchema).parse(input.rows);
         const prepared = await Promise.all(rows.map(async (row) => {
@@ -502,7 +554,7 @@ export function registerFamilyRoutes(
           credentials.push({ username: row.username, temporaryPassword });
           return { ...row, passwordHash: await hashPassword(temporaryPassword) };
         }));
-        importedCount = (await families.importStudents(context.user.schoolId, prepared)).length;
+        importedCount = (await families.importStudents(context.user.schoolId, prepared, batch)).length;
       }
 
       await accounts.writeAudit({
@@ -510,11 +562,40 @@ export function registerFamilyRoutes(
         actorUserId: context.user.id,
         action: "family.import_completed",
         entityType: "bulk_import",
-        metadata: { entityType, importedCount }
+        metadata: { entityType, importedCount, batchKey: idempotencyKey }
       });
 
-      return reply.code(201).send({ entityType, importedCount, credentials });
+      return reply.code(201).send({
+        entityType, importedCount, credentials, alreadyCommitted: false
+      });
     } catch (error) {
+      // A concurrent retry may have committed its marker before this request
+      // reached its unique constraint. Never create accounts twice or expose old passwords.
+      const maybe = commitSchema.safeParse(request.body);
+      if (maybe.success && maybe.data.idempotencyKey && error instanceof FamilyConflictError) {
+        const previous = await families.getImportBatch(context.user.schoolId, maybe.data.idempotencyKey);
+        const digest = createHash("sha256")
+          .update(JSON.stringify({ entityType: maybe.data.entityType, rows: maybe.data.rows })).digest("hex");
+        if (previous?.status === "COMPLETED" && previous.fingerprint === digest &&
+            previous.entityType === maybe.data.entityType) {
+          return reply.code(200).send({
+            entityType: previous.entityType, importedCount: previous.importedCount,
+            credentials: [], alreadyCommitted: true, requiresCredentialReset: true
+          });
+        }
+      }
+      if (maybe.success) {
+        try {
+          await families.recordImportAttempt(context.user.schoolId, context.user.id, {
+            entityType: maybe.data.entityType, rowCount: maybe.data.rows.length,
+            rejectedCount: maybe.data.rows.length, status: "FAILED",
+            reason: error instanceof FamilyConflictError ? "Existing records conflict with this import." :
+              "Import could not be completed."
+          });
+        } catch {
+          // Preserve the original error response when history writing fails.
+        }
+      }
       return sendFamilyError(reply, error);
     }
   });

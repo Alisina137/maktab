@@ -84,6 +84,25 @@ const coverageDestinations: Record<CoverageMetric["key"], string> = {
   teacher_logins: "/admin/accounts"
 };
 
+
+type ImportHistoryRow = {
+  id: string;
+  entityType: "PARENT" | "STUDENT" | "TEACHER";
+  rowCount: number;
+  importedCount: number;
+  rejectedCount: number;
+  status: "COMPLETED" | "REJECTED" | "FAILED";
+  reason: string | null;
+  createdAt: string;
+  actorUsername: string | null;
+};
+type ImportHistoryPage = {
+  rows: ImportHistoryRow[];
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 type AuditLog = {
   id: string;
   actorUserId: string | null;
@@ -165,10 +184,15 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const pilotNavRef = useRef<HTMLElement | null>(null);
   const requestVersion = useRef(0);
   const issueRequestVersion = useRef(0);
+  const importHistoryRequestVersion = useRef(0);
   const t = (english: string) => adminText(locale, english);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [audit, setAudit] = useState<AuditLog[]>([]);
+  const [importHistory, setImportHistory] = useState<ImportHistoryPage | null>(null);
+  const [importHistoryBusy, setImportHistoryBusy] = useState(false);
+  const [importHistoryError, setImportHistoryError] = useState("");
+  const [importEntityFilter, setImportEntityFilter] = useState("");
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
   const [auditLoaded, setAuditLoaded] = useState(false);
@@ -203,11 +227,38 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     return () => { requestVersion.current += 1; };
   }, [accessToken, section]);
 
+  useEffect(() => {
+    setImportHistory(null);
+    setImportHistoryError("");
+    setImportEntityFilter("");
+    if (section === "onboarding") void loadImportHistory(0, "");
+    return () => { importHistoryRequestVersion.current += 1; };
+  }, [accessToken, section]);
+
+  async function loadImportHistory(offset: number, entityType = importEntityFilter) {
+    const version = ++importHistoryRequestVersion.current;
+    setImportHistoryBusy(true);
+    setImportHistoryError("");
+    try {
+      const query = new URLSearchParams({ limit: "20", offset: String(offset) });
+      if (entityType) query.set("entityType", entityType);
+      const page = await request<ImportHistoryPage>(accessToken,
+        "/v1/admin/families/import/history?" + query.toString());
+      if (version === importHistoryRequestVersion.current) setImportHistory(page);
+    } catch (cause) {
+      if (version === importHistoryRequestVersion.current) {
+        setImportHistoryError(adminErrorText(locale, cause, "Could not load import history."));
+      }
+    } finally {
+      if (version === importHistoryRequestVersion.current) setImportHistoryBusy(false);
+    }
+  }
+
   async function load(offset = auditOffset) {
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
-    const wantsCoverage = section === "overview" || section === "readiness";
+    const wantsCoverage = section === "overview" || section === "readiness" || section === "onboarding";
     setAdvancedBusy(wantsCoverage);
     if (wantsCoverage) {
       setAdvancedError("");
@@ -618,20 +669,101 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           </div>
           <div className="pilot-steps">
             {([
-              ["Academic year", "/admin/academics/years"],
-              ["Classes and subjects", "/admin/academics"],
-              ["School accounts", "/admin/accounts"],
-              ["Teaching assignments", "/admin/academics/assignments"],
-              ["Negaran and timetable", "/admin/academics/negaran"],
-              ["Families and students", "/admin/families"]
-            ] as const).map(([label, href], index) => (
+              ["Academic year", "/admin/academics/years", readiness.counts.activeAcademicYears === 1],
+              ["Classes and subjects", "/admin/academics", readiness.counts.classes > 0 && readiness.counts.subjects > 0],
+              ["School accounts", "/admin/accounts", readiness.counts.teachers > 0],
+              ["Teaching assignments", "/admin/academics/assignments", advanced?.metrics.find((m) => m.key === "teaching")?.status === "complete"],
+              ["Negaran and timetable", "/admin/academics/negaran", advanced?.metrics.find((m) => m.key === "negaran")?.status === "complete" &&
+                advanced?.metrics.find((m) => m.key === "timetable")?.status === "complete"],
+              ["Families and students", "/admin/families", readiness.counts.students > 0 &&
+                advanced?.metrics.find((m) => m.key === "family_links")?.status === "complete"]
+            ] as const).map(([label, href, done], index) => (
               <article className="admin-panel pilot-step-card" key={href}>
-                <span className="pilot-step-number">{index + 1}</span>
-                <div><h3>{t(label)}</h3><Link className="pilot-inline-link" href={href}>{t("Open section")}</Link></div>
+                <span className="pilot-step-number" aria-hidden="true">{index + 1}</span>
+                <div className="pilot-step-content">
+                  <h3>{t(label)}</h3>
+                  <span className={done ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
+                    {t(done ? "Configured" : advancedBusy ? "Checking configuration coverage…" : "Review setup")}
+                  </span>
+                  <Link className="pilot-inline-link" href={href}>{t("Open section")}</Link>
+                </div>
               </article>
             ))}
           </div>
         </>
+      ) : null}
+
+      {section === "onboarding" ? (
+        <article className="admin-panel pilot-import-history">
+          <div className="admin-section-header">
+            <div>
+              <h3>{t("Import history")}</h3>
+              <p>{t("Completed imports and rejected validation attempts. Temporary passwords and uploaded files are never stored here.")}</p>
+            </div>
+            <button className="admin-secondary" type="button"
+              disabled={importHistoryBusy}
+              onClick={() => void loadImportHistory(0)}>{t("Refresh")}</button>
+          </div>
+          <div className="pilot-import-filters">
+            <label>
+              {t("Import type")}
+              <select value={importEntityFilter} disabled={importHistoryBusy}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setImportEntityFilter(next);
+                  void loadImportHistory(0, next);
+                }}>
+                <option value="">{t("All types")}</option>
+                <option value="PARENT">{t("Parents")}</option>
+                <option value="STUDENT">{t("Students")}</option>
+                <option value="TEACHER">{t("Teachers")}</option>
+              </select>
+            </label>
+          </div>
+          {importHistoryBusy ? <p role="status">{t("Loading import history…")}</p> : null}
+          {importHistoryError ? (
+            <div className="admin-error" role="alert">
+              {importHistoryError}
+              <button className="admin-secondary" type="button"
+                onClick={() => void loadImportHistory(importHistory?.offset ?? 0)}>{t("Retry")}</button>
+            </div>
+          ) : null}
+          {importHistory ? (
+            <>
+              <div className="pilot-import-list">
+                {importHistory.rows.map((item) => (
+                  <div className="pilot-import-row" key={item.id}>
+                    <div className="pilot-import-meta">
+                      <strong>{t(item.entityType === "PARENT" ? "Parents" : item.entityType === "TEACHER" ? "Teachers" : "Students")}</strong>
+                      <span>{formatAdminHijriDateTime(locale, item.createdAt)}</span>
+                      <span>{item.actorUsername ?? t("Unknown administrator")}</span>
+                    </div>
+                    <div className="pilot-import-summary">
+                      <span className={item.status === "COMPLETED" ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
+                        {t(item.status === "COMPLETED" ? "Completed" : item.status === "REJECTED" ? "Rejected" : "Failed")}
+                      </span>
+                      <span>{adminFormat(locale, "{count} rows submitted", { count: item.rowCount })}</span>
+                      <span>{adminFormat(locale, "{count} imported", { count: item.importedCount })}</span>
+                      {item.rejectedCount > 0 ? (
+                        <span>{adminFormat(locale, "{count} rejected", { count: item.rejectedCount })}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+                {!importHistory.rows.length ? <p className="admin-copy">{t("No import history found.")}</p> : null}
+              </div>
+              <div className="admin-actions pilot-import-pagination">
+                <button className="admin-secondary" type="button"
+                  disabled={importHistoryBusy || importHistory.offset === 0}
+                  onClick={() => void loadImportHistory(Math.max(0, importHistory.offset - importHistory.limit))}>{t("Newer")}</button>
+                <button className="admin-secondary" type="button"
+                  disabled={importHistoryBusy || !importHistory.hasMore}
+                  onClick={() => void loadImportHistory(importHistory.offset + importHistory.limit)}>{t("Older")}</button>
+              </div>
+            </>
+          ) : null}
+          <p className="pilot-security-note">{t("If a previous import succeeded but its response was lost, retry using the same request key. Accounts will not be created twice; reset passwords individually when credentials were not received.")}</p>
+        </article>
       ) : null}
 
       {section === "subscription" && subscription ? (
