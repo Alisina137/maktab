@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z, ZodError } from "zod";
 import {
-  PILOT_EVIDENCE_CATEGORIES, PilotWorkflowConflict, PilotWorkflowNotFound,
+  PILOT_EVIDENCE_CATEGORIES, PilotWorkflowConflict, PilotWorkflowNotFound, evaluateSchoolReleaseReadiness,
   type AccountStore, type PilotLaunchStore, type PilotStore
 } from "@maktablink/database";
 import { requireSchoolAdmin } from "../users/routes.js";
@@ -64,6 +64,22 @@ export function registerPilotLaunchRoutes(
     return { ...overview, configurationReady: readiness.ready,
       effectiveApproved: overview.decision?.status === "APPROVED" && readiness.ready &&
         overview.verifiedCount === overview.totalRequired && overview.openCriticalTickets === 0 };
+  });
+
+  app.get("/v1/admin/pilot/release-readiness", async (request, reply) => {
+    const ctx = await requireSchoolAdmin(request, reply, accounts);
+    if (!ctx) return;
+    const [overview, readiness] = await Promise.all([
+      launch.getOverview(ctx.user.schoolId), pilot.getAdvancedReadiness(ctx.user.schoolId)
+    ]);
+    reply.header("cache-control", "no-store");
+    return evaluateSchoolReleaseReadiness({
+      setupReady: readiness.ready,
+      recordedPilotApproval: overview.decision?.status === "APPROVED",
+      evidenceVerified: overview.verifiedCount,
+      evidenceRequired: overview.totalRequired,
+      openCriticalTickets: overview.openCriticalTickets
+    });
   });
 
   app.put("/v1/admin/pilot/launch/evidence", async (request, reply) => {
