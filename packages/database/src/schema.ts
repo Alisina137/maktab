@@ -825,12 +825,18 @@ export const announcements = pgTable(
   ]
 );
 
+export const feeInvoiceCounters = pgTable("fee_invoice_counters", {
+  schoolId: uuid("school_id").primaryKey().references(() => schools.id, { onDelete: "cascade" }),
+  lastNumber: integer("last_number").notNull().default(0)
+});
+
 export const feeInvoices = pgTable(
   "fee_invoices",
   {
     id: uuid("id").primaryKey(),
     schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
     studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "restrict" }),
+    invoiceNumber: integer("invoice_number").notNull(),
     amount: integer("amount").notNull(),
     currency: varchar("currency", { length: 8 }).notNull().default("AFN"),
     description: varchar("description", { length: 240 }),
@@ -843,6 +849,7 @@ export const feeInvoices = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => [
+    uniqueIndex("fee_invoices_school_number_unique").on(table.schoolId, table.invoiceNumber),
     index("fee_invoices_student_idx").on(table.schoolId, table.studentId),
     index("fee_invoices_due_idx").on(table.schoolId, table.dueDate),
     index("fee_invoices_status_idx").on(table.schoolId, table.status)
@@ -1045,6 +1052,7 @@ export const databaseSchema = {
   communicationSettings,
   announcements,
   feeInvoices,
+  feeInvoiceCounters,
   feePayments,
   devices,
   notificationPushDeliveries
