@@ -1642,3 +1642,12 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Phase 6 tests: `scripts/test-parent-more-model.test.ts` and `pnpm verify:parent:phase6` in Linux/Windows CI and monorepo verify.
 - No database migrations. Real Android finance, cross-child isolation, password rotation, offline/retry, RTL and accessibility verification remains pending. Production Step 20 is **NO-GO**.
 - Next: Parent Phase 7 full end-to-end and device/regression acceptance, while keeping pilot release and exact-build evidence constraints.
+
+
+## Parent Experience — Phase 7 automated acceptance and Android runbook (2026-10-14)
+
+- Parent Phases 1–6 workflows are now covered by individual model/source checks and new Phase 7 integrated real Fastify/PGlite API tests across two parent accounts: forbidden foreign timetable/attendance/learning/fees, authorized own invoice history, published-only invoice visibility, and password change with old-token rejection.
+- Fixed a same-account session race: mobile password-change and refresh results check exact access/refresh tokens, user, tenant and school; old refresh cannot replace or revoke the new credentials, and logout blocks late installation.
+- The More subnavigation scrolls at small widths with auto-focus for its four tabs and preserves existing two/three-tab navigation and localized RTL.
+- Automated evidence checks added in `pnpm verify:parent:phase7`, CI (Linux/Windows) and a conservative Android manual readiness report `scripts/parent-phase7-acceptance.mjs`. The source of truth for 16 manual scenario gates is `docs/PARENT-PHASE7-ANDROID-ACCEPTANCE.md`.
+- Actual Android devices, TalkBack, unreliable public tunnel, real multi-school credentials, push cold-start, backup/restore, payment concurrency and independent Step 20 operator sign-off **have not been executed or verified by automation**. Parent Phase 7 device status is **NOT_RUN**, and production status remains **NO-GO**, regardless of passing CI. No migrations.
