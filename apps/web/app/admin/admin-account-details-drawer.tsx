@@ -15,6 +15,26 @@ import {
 } from "./account-details-data";
 
 type UserAction = "reset-password" | "suspend" | "reactivate";
+type AccountAuditEntry = {
+  id: string;
+  action: string;
+  actorUserId: string | null;
+  reason: string | null;
+  createdAt: string;
+};
+
+function accountAuditAction(action: string): string {
+  switch (action) {
+    case "user.created": return "Account created";
+    case "parent.created": return "Parent account created";
+    case "student.account_created": return "Student login created";
+    case "user.suspended": return "Account suspended";
+    case "user.reactivated": return "Account reactivated";
+    case "user.password_reset": return "Password reset";
+    case "user.temporary_password_changed": return "Temporary password changed";
+    default: return "Account updated";
+  }
+}
 
 type Props = {
   user: User;
@@ -24,6 +44,7 @@ type Props = {
   locale: AdminLocale;
   t: (value: string) => string;
   busy: boolean;
+  directoryUsers: User[];
   onAction: (user: User, action: UserAction) => void;
   onClose: () => void;
 };
@@ -51,8 +72,11 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
 }
 
 export function AdminAccountDetailsDrawer({
-  user, currentAdminId, accessToken, families, locale, t, busy, onAction, onClose
+  user, currentAdminId, accessToken, families, locale, t, busy, directoryUsers, onAction, onClose
 }: Props) {
+  const [audit, setAudit] = useState<AccountAuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditError, setAuditError] = useState("");
   const [academic, setAcademic] = useState<AccountAcademicOverview | null>(null);
   const [academicError, setAcademicError] = useState("");
   const [academicLoading, setAcademicLoading] = useState(user.role === "TEACHER");
@@ -118,6 +142,24 @@ export function AdminAccountDetailsDrawer({
     });
     return () => { cancelled = true; };
   }, [accessToken, user.id, user.role, locale]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditError("");
+    setAudit([]);
+    void adminApi<{ logs: AccountAuditEntry[] }>(
+      `/v1/admin/users/${user.id}/audit?limit=25`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).then((response) => {
+      if (!cancelled) setAudit(response.logs);
+    }).catch((error) => {
+      if (!cancelled) setAuditError(friendlyAdminError(error, "Could not load account history.", locale));
+    }).finally(() => {
+      if (!cancelled) setAuditLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [accessToken, user.id, locale]);
 
   const badge = (value: string) => <span className="account-detail-badge">{t(value)}</span>;
 
@@ -264,6 +306,35 @@ export function AdminAccountDetailsDrawer({
               ) : null}
             </section>
           ) : null}
+
+          <section className="account-detail-section account-detail-audit-section">
+            <h3>{t("Account history")}</h3>
+            {auditLoading ? <p role="status" className="admin-copy">{t("Loading…")}</p> : null}
+            {auditError ? <p role="alert" className="admin-error">{auditError}</p> : null}
+            {!auditLoading && !auditError && audit.length === 0 ? (
+              <p className="admin-copy">{t("No account events recorded yet.")}</p>
+            ) : null}
+            {!auditLoading && !auditError && audit.length > 0 ? (
+              <ol className="account-detail-audit-list">
+                {audit.map((event) => {
+                  const actor = directoryUsers.find((entry) => entry.id === event.actorUserId);
+                  return (
+                    <li key={event.id}>
+                      <strong>{t(accountAuditAction(event.action))}</strong>
+                      <span>{formatAccountDate(locale, event.createdAt)}</span>
+                      <span>{t("Performed by")}: {event.actorUserId
+                        ? (actor?.profile?.fullName || actor?.username || t("Unknown administrator"))
+                        : t("System")}</span>
+                      {event.reason ? (
+                        <p><strong>{t("Reason")}:</strong> {event.reason}</p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : null}
+            <p className="admin-field-hint">{t("Shows the 25 most recent account events.")}</p>
+          </section>
 
           <section className="account-detail-section account-detail-actions-section">
             <h3>{t("Account actions")}</h3>
