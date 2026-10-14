@@ -42,7 +42,7 @@ for (const existingEndpoint of [
   "/v1/admin/pilot/import-template/"
 ]) assert.ok(src.includes(existingEndpoint), "Lost existing endpoint " + existingEndpoint);
 assert.ok(!src.includes("/v1/platform/"), "Platform provisioning controls must not enter school-admin web");
-assert.ok(src.includes('subscription.status === "PAST_DUE"') && src.includes('subscription.status === "GRACE"'),
+assert.ok((src.includes('subscription.status === "PAST_DUE"') || src.includes('currentSubscription.status === "PAST_DUE"')) && (src.includes('subscription.status === "GRACE"') || src.includes('currentSubscription.status === "GRACE"')),
   "Billing attention statuses must be distinct from service availability");
 assert.ok(src.includes('t("Not verified")') && src.includes("No approval or support ticket is created from this page."),
   "Manual verification must not masquerade as launch approval");
