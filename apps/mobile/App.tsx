@@ -1657,6 +1657,12 @@ function AppContent() {
       setParentInboxFocusedNotificationId(notification.id);
       return;
     }
+    if (target.section === "RESULTS" &&
+        typeof notification.metadata.academicYearId === "string" && !childId) {
+      setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS");
+      setParentInboxFocusedNotificationId(notification.id);
+      return;
+    }
     if (childId && selectedChildIdRef.current !== childId) selectParentChild(childId);
 
     resetParentNotificationFocus();
