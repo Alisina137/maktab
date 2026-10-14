@@ -353,7 +353,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         conditions.push(or(eq(users.status, "INVITED"),
           and(eq(users.status, "ACTIVE"), eq(users.mustChangePassword, true)))!);
       }
-      const escaped = input.query.trim().replace(/[\\%_]/g, "\\    async getAdminProfile(schoolId, userId) {");
+      const escaped = input.query.trim().replace(/[\\%_]/g, (character) => "\\" + character);
       if (escaped) {
         const pattern = `%${escaped}%`;
         conditions.push(or(
