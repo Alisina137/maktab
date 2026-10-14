@@ -19,6 +19,7 @@ type AccountAuditEntry = {
   id: string;
   action: string;
   actorUserId: string | null;
+  actorUsername?: string | null;
   reason: string | null;
   createdAt: string;
 };
@@ -329,7 +330,7 @@ export function AdminAccountDetailsDrawer({
                       <strong>{t(accountAuditAction(event.action))}</strong>
                       <span>{formatAccountDate(locale, event.createdAt)}</span>
                       <span>{t("Performed by")}: {event.actorUserId
-                        ? (actor?.profile?.fullName || actor?.username || t("Unknown administrator"))
+                        ? (actor?.profile?.fullName || actor?.username || event.actorUsername || t("Unknown administrator"))
                         : t("System")}</span>
                       {event.reason ? (
                         <p><strong>{t("Reason")}:</strong> {event.reason}</p>
