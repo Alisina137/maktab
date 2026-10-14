@@ -31,9 +31,19 @@ Scope: the existing administrator route `/admin/communication`. The real reposit
 
 **Not included in Phase 2:** persistent draft announcements, content editing after publication, guaranteed delivery/read analytics, and backend cursor pagination. These require separately scoped lifecycle and storage changes.
 
-## Phase 3 — Fee invoices
+## Phase 3 — Fee invoices (implemented)
 
-Server-side search/pagination and filters, detail drawer, safe editable draft state, human-readable invoice numbers, confirmed issue/cancel flows and school-year scoping. Preserve original issued-invoice immutability.
+- Invoice directory under Fees supports server-side, school-admin-only search across student name, student code, description and numeric invoice number; status, academic year, class and student filters; and 20-record server-side pages (sorted by creation timestamp and identifier), with local loading, retry and empty states. Results never expose invoices from another school, and the API enforces filter parameter validation.
+- Database migration `0022_fee_invoice_numbers.sql` safely **backfills existing school invoices** with deterministic per-school numbers, creates unique school/number protection and initializes an atomic per-school invoice counter. New invoices receive a permanent number inside the creation transaction; cancelled invoices never release their assigned numbers. The UI displays `INV-000001`-style references. There is no claim of global numbering, fiscal-year sequences, or legal tax invoice compliance.
+- The invoice detail is expandable, includes student, status, reference, due date, amount, paid/outstanding, and existing ledger/payment-history actions. Draft invoices offer a dedicated editor for student, amount, due date and description, backed by `PATCH /v1/admin/fees/invoices/:invoiceId`; this uses a row-locked state check, active/tenant-owned student validation, a required `updatedAt` optimistic concurrency token, and an atomic before/after audit event.
+- Issued/paid/cancelled invoices **cannot be silently edited**. Issue and cancel now require explicit user confirmation; the backend continues to validate lifecycle transitions and financial ledger invariants.
+- Mobile/tablet List/Form switching, RTL, keyboard tab navigation and localized status labels are preserved. The parent/student read-only endpoints remain unchanged except including the assigned immutable invoice number.
+- Real API/DB integration tests cover 21 invoices split across pages, school-specific numbering, unauthorized edits and listings, optimistic edit conflicts, published-only parent visibility, and audit writes. The exact checks are available in `pnpm verify:admin-communication:phase3`, full `pnpm verify`, and Linux/Windows CI.
+- **Migration required:** execute `pnpm db:migrate` once on the authorized database and then deploy the updated API. Do not deploy the updated API against an unmigrated database. Back up production before migration.
+- **Known limitation:** the existing `GET /v1/admin/communication` overview still reads all authorized school invoices to calculate KPIs and their ledger. The new invoice directory itself is database-paginated; further separation and report-specific aggregate queries belong to Phase 4/6 performance work. The dedicated detail is a disclosure inside the list, not a separate route or fully fledged drawer.
+
+**Pending manual verification:** deployed PostgreSQL migration/backfill/rollback planning, 320px to desktop including Dari/Pashto RTL, stale-session/slow response tests, and manual accounting review. Production remains **NO-GO** until Step 20 external evidence and operator sign-off.
+
 
 ## Phase 4 — Payments and student balances
 
