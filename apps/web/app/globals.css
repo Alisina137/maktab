@@ -5844,8 +5844,6 @@ html[dir="rtl"] body {
 }
 
 .account-detail-drawer[dir="rtl"] {
-  margin-inline-start: 0;
-  margin-inline-end: auto;
   box-shadow: 14px 0 50px rgba(19, 36, 68, .17);
   animation-name: account-detail-enter-rtl;
 }
