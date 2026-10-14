@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:parent:phase7 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -38,7 +38,8 @@
     "verify:parent:phase3": "node scripts/verify-parent-experience-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-attendance-model.test.ts",
     "verify:parent:phase4": "node scripts/verify-parent-experience-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-academics-model.test.ts",
     "verify:parent:phase5": "node scripts/verify-parent-experience-phase5.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-inbox-model.test.ts",
-    "verify:parent:phase6": "node scripts/verify-parent-experience-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-more-model.test.ts"
+    "verify:parent:phase6": "node scripts/verify-parent-experience-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-more-model.test.ts",
+    "verify:parent:phase7": "node scripts/verify-parent-experience-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-session-guard.test.ts ../../scripts/test-parent-phase7-acceptance.test.ts && node scripts/parent-phase7-acceptance.mjs > /dev/null"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
