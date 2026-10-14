@@ -90,7 +90,7 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 
 **Stability, access and verification**
 - Retains parent global child picker and the existing three Academics subtabs. On selection of another child/account, component keys reset filters and expanded details. Data is rendered only if `parentDataChildId === selectedChildId`; late responses are blocked by the existing request-generation/token checks.
-- Homework/results use the learning resource and timetable uses the independent timetable resource; explicit loading, error and targeted retry are shown rather than misleading empty states.
+- Homework/results use the learning resource and timetable uses the independent timetable resource; explicit loading, error, targeted retry, and a refresh action on each Academics subtab are shown rather than misleading empty states.
 - Existing `GET /v1/parent/children/:studentId/learning` and timetable routes remain unchanged; no new API, writes, migration, or subscription behavior.
 - All new controls, filter labels and empty/error copy localized in English, Dari and Pashto. Phase 4 model regression + source guard: `pnpm verify:parent:phase4` and full `pnpm verify`.
 
