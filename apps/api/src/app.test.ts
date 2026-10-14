@@ -4563,6 +4563,31 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     app, schoolId, "PARENT", "classbparent", parentB.temporaryPassword, "ClassBParent2026!"
   );
 
+  // Admin Communication Phase 2: recipient preview shares the exact audience
+  // resolver used by publication but must not create messages/notifications.
+  const preview = (payload: Record<string,unknown>, headers=admin) =>
+    app.inject({ method:"POST",url:"/v1/admin/announcements/recipients/preview",
+      headers,payload });
+  const ownClassPreview=await preview({audienceScope:"CLASS",classId:classA});
+  assert.equal(ownClassPreview.statusCode,200,ownClassPreview.body);
+  assert.equal(ownClassPreview.json<{recipientCount:number}>().recipientCount,2);
+  assert.ok(ownClassPreview.json<{schoolTimezone:string}>().schoolTimezone);
+  assert.equal((await preview({audienceScope:"CLASS",classId:classA,
+    audienceRole:"PARENT"})).json<{recipientCount:number}>().recipientCount,1);
+  assert.equal((await preview({audienceScope:"CLASS",classId:classB,
+    audienceRole:"STUDENT"})).json<{recipientCount:number}>().recipientCount,1);
+  assert.equal((await preview({audienceScope:"ROLE",
+    audienceRole:"PARENT"})).json<{recipientCount:number}>().recipientCount,2);
+  assert.equal((await preview({audienceScope:"SCHOOL",audienceRole:"PARENT"})).statusCode,400);
+  assert.equal((await preview({audienceScope:"CLASS"})).statusCode,400);
+  assert.equal((await preview({audienceScope:"CLASS",
+    classId:"12345678-1234-1234-1234-123456789999"})).statusCode,404);
+  assert.equal((await preview({audienceScope:"CLASS",classId:classA},
+    {authorization:`Bearer ${parentAToken}`})).statusCode,403);
+  const beforePreviewMessages=await app.inject({method:"GET",
+    url:"/v1/admin/communication",headers:admin});
+  assert.equal(beforePreviewMessages.json<{announcements:unknown[]}>().announcements.length,0);
+
   const announcement = await app.inject({
     method: "POST",
     url: "/v1/admin/announcements",
