@@ -3,6 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { announcementDashboard, feeDashboard } from "./communication-overview-model";
+import { invoiceReference, invoiceQuery, INVOICE_STATUSES, type AdminInvoiceStatus } from "./communication-invoices-model";
 import { ANNOUNCEMENT_PAGE_SIZE, announcementStatus, findAnnouncements,
   pageAnnouncements, schoolLocalTimeToIso,
   type AnnouncementAudienceFilter, type AnnouncementStatusFilter
@@ -50,6 +51,10 @@ type InvoiceView = {
   invoice: {
     id: string;
     studentId: string;
+    invoiceNumber: number;
+    updatedAt: string;
+    createdAt: string;
+    issuedAt: string | null;
     amount: number;
     currency: string;
     description: string | null;
@@ -76,7 +81,8 @@ type FamilyOverview = {
 };
 
 type AcademicOverview = {
-  classes: Array<{ id: string; code: string; name: string }>;
+  academicYears: Array<{ id: string; name: string }>;
+  classes: Array<{ id: string; code: string; name: string; academicYearId: string }>;
 };
 
 function request<T>(accessToken: string, path: string, init?: RequestInit) {
@@ -96,6 +102,25 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
   const [feesPane, setFeesPane] = useState<Pane>("LIST");
+  const [feeSearch, setFeeSearch] = useState("");
+  const [feeStatus, setFeeStatus] = useState<AdminInvoiceStatus>("ALL");
+  const [feeClassId, setFeeClassId] = useState("");
+  const [feeAcademicYearId, setFeeAcademicYearId] = useState("");
+  const [feeStudentId, setFeeStudentId] = useState("");
+  const [feePage, setFeePage] = useState(1);
+  const [feeReloadKey, setFeeReloadKey] = useState(0);
+  const [feeListing, setFeeListing] = useState<{
+    invoices: InvoiceView[]; total: number; page: number; pageSize: number
+  } | null>(null);
+  const [feeListingStatus, setFeeListingStatus] = useState<ResourceStatus>("idle");
+  const [feeListingError, setFeeListingError] = useState("");
+  const feeGeneration = useRef(0);
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceView | null>(null);
+  const [editFeeStudentId, setEditFeeStudentId] = useState("");
+  const [editFeeAmount, setEditFeeAmount] = useState("");
+  const [editFeeDueDate, setEditFeeDueDate] = useState("");
+  const [editFeeDescription, setEditFeeDescription] = useState("");
   const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>({
     communication: "idle", families: "idle", academics: "idle"
   });
@@ -142,6 +167,13 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setSection("OVERVIEW");
     setCommunicationPane("LIST");
     setFeesPane("LIST");
+    setFeeSearch(""); setFeeStatus("ALL"); setFeeClassId("");
+    setFeeAcademicYearId(""); setFeeStudentId(""); setFeePage(1);
+    setFeeListing(null); setFeeListingStatus("idle"); setFeeListingError("");
+    setFeeReloadKey(0); feeGeneration.current += 1;
+    setOpenInvoiceId(null); setEditingInvoice(null);
+    setEditFeeStudentId(""); setEditFeeAmount(""); setEditFeeDueDate("");
+    setEditFeeDescription("");
     setEditingNotice(null);
     setEditTitle("");
     setEditMessage("");
@@ -251,6 +283,82 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       const message = adminErrorText(locale, cause, "Could not load communication and fees.");
       setResourceError(current => ({ ...current, [key]: message }));
       setResourceStatus(current => ({ ...current, [key]: "error" }));
+    }
+  }
+
+  useEffect(() => {
+    setFeePage(1);
+    setOpenInvoiceId(null);
+    setEditingInvoice(null);
+  }, [feeSearch, feeStatus, feeClassId, feeAcademicYearId, feeStudentId]);
+
+  useEffect(() => {
+    if (section !== "FEES") return;
+    const generation = ++feeGeneration.current;
+    const token = accessToken;
+    const params = invoiceQuery({
+      q: feeSearch, status: feeStatus, classId: feeClassId,
+      academicYearId: feeAcademicYearId, studentId: feeStudentId, page: feePage
+    });
+    setFeeListingStatus("loading");
+    setFeeListingError("");
+    const timer = window.setTimeout(() => {
+      void request<{ invoices: InvoiceView[]; total: number; page: number; pageSize: number }>(
+        token, "/v1/admin/fees/invoices?" + params
+      ).then(result => {
+        if (accessRef.current !== token || generation !== feeGeneration.current) return;
+        setFeeListing(result);
+        setFeeListingStatus("ready");
+      }).catch(cause => {
+        if (accessRef.current !== token || generation !== feeGeneration.current) return;
+        setFeeListingStatus("error");
+        setFeeListingError(adminErrorText(locale,cause,"Could not load fee invoices."));
+      });
+    }, feeSearch.trim() ? 280 : 0);
+    return () => {
+      clearTimeout(timer);
+      feeGeneration.current++;
+    };
+  }, [section,accessToken,feeSearch,feeStatus,feeClassId,feeAcademicYearId,
+      feeStudentId,feePage,feeReloadKey]);
+
+  function refreshInvoiceViews() {
+    void loadResource("communication");
+    setFeeReloadKey(value => value + 1);
+  }
+
+  function openDraftEditor(item: InvoiceView) {
+    setEditingInvoice(item);
+    setOpenInvoiceId(item.invoice.id);
+    setEditFeeStudentId(item.invoice.studentId);
+    setEditFeeAmount(String(item.invoice.amount));
+    setEditFeeDueDate(item.invoice.dueDate);
+    setEditFeeDescription(item.invoice.description ?? "");
+  }
+
+  async function updateDraftInvoice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingInvoice || editingInvoice.invoice.status !== "DRAFT") return;
+    const item = editingInvoice;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await request(accessToken,`/v1/admin/fees/invoices/${item.invoice.id}`,{
+        method:"PATCH",
+        body: JSON.stringify({
+          studentId:editFeeStudentId,amount:Number(editFeeAmount),
+          dueDate:editFeeDueDate,description:editFeeDescription.trim(),
+          expectedUpdatedAt:new Date(item.invoice.updatedAt).toISOString()
+        })
+      });
+      if(accessRef.current!==accessToken)return;
+      setEditingInvoice(null);
+      setNotice(t("Draft invoice updated successfully."));
+      refreshInvoiceViews();
+    } catch(cause) {
+      if(accessRef.current!==accessToken)return;
+      setError(adminErrorText(locale,cause,"Could not edit draft invoice."));
+    } finally {
+      if(accessRef.current===accessToken)setBusy(false);
     }
   }
 
@@ -378,7 +486,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       if (accessRef.current !== accessToken) return;
       setNotice(t("Fee invoice created in DRAFT state."));
       formElement.reset();
-      await loadResource("communication");
+      refreshInvoiceViews();
     } catch (cause) {
       if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not create fee invoice."));
@@ -395,7 +503,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       await request(accessToken, `/v1/admin/fees/invoices/${id}/${action}`, { method: "POST" });
       if (accessRef.current !== accessToken) return;
       setNotice(t(action === "issue" ? "Invoice issued to the family." : "Invoice cancelled."));
-      await loadResource("communication");
+      refreshInvoiceViews();
     } catch (cause) {
       if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Fee invoice action failed."));
@@ -427,7 +535,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       delete paymentAttempts.current[invoiceId];
       setPaymentDraft((current) => ({ ...current, [invoiceId]: { amount: "", method: "CASH", reference: "" } }));
       setNotice(t("Payment recorded as an immutable transaction."));
-      await loadResource("communication");
+      refreshInvoiceViews();
     } catch (cause) {
       if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not record payment."));
@@ -453,7 +561,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       if (accessRef.current !== accessToken) return;
       setReversalReason((current) => ({ ...current, [paymentId]: "" }));
       setNotice(t("Payment reversed with a separate immutable reversal transaction."));
-      await loadResource("communication");
+      refreshInvoiceViews();
     } catch (cause) {
       if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not reverse payment."));
