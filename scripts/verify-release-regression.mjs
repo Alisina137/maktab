@@ -21,6 +21,9 @@ const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const accountPage = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
 const accountRules = read("apps/web/app/admin/account-create-rules.ts");
 const credentialPanel = read("apps/web/app/admin/account-temporary-credential.tsx");
+const detailsDrawer = read("apps/web/app/admin/admin-account-details-drawer.tsx");
+const detailsData = read("apps/web/app/admin/account-details-data.ts");
+const detailsTests = read("apps/api/src/account-details-data.test.ts");
 const creationTests = read("apps/api/src/account-create-rules.test.ts");
 const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
 const ci = read(".github/workflows/ci.yml");
@@ -151,6 +154,40 @@ for (const key of ['"Step 1 · Account role":', '"Copy username":',
                    '"Parent and student usernames may contain English letters and numbers only.":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase2 is missing a Dari or Pashto translation: ${key}`);
+}
+/* Admin Accounts Phase 3: role-linked account details and safe navigation. */
+assert.ok(accountPage.includes('selectedAccountId') &&
+  accountPage.includes('<AdminAccountDetailsDrawer') &&
+  accountPage.includes('familyOverview') &&
+  accountPage.includes('className="admin-account-view-details"'),
+  "Accounts must expose a selection-preserving account details experience");
+assert.ok(detailsDrawer.includes('role="dialog"') &&
+  detailsDrawer.includes('aria-modal="true"') &&
+  detailsDrawer.includes('event.key === "Escape"') &&
+  detailsDrawer.includes('previousFocus?.focus()') &&
+  detailsDrawer.includes('document.body.style.overflow = previousOverflow'),
+  "Account details drawer must handle screen reader modal semantics, Escape, focus restore and scrolling");
+assert.ok(detailsDrawer.includes('/v1/admin/academics') &&
+  detailsDrawer.includes('href="/admin/families"') &&
+  detailsDrawer.includes('href="/admin/academics/teachers"') &&
+  detailsDrawer.includes('href="/admin/profile"'),
+  "Account detail teacher/family data and canonical edit navigation missing");
+assert.ok(detailsData.includes('row.student.parentUserId === userId') &&
+  detailsData.includes('row.student.userId === userId') &&
+  detailsData.includes('row.teacherUserId === userId') &&
+  !detailsDrawer.includes('passwordHash'),
+  "Account detail joins must be per user and must not expose password hashes");
+assert.ok(detailsTests.includes('teacher assignments and Negaran remain scoped to selected teacher') &&
+  detailsTests.includes('parent lists only explicitly linked children'),
+  "Account relationship regression tests are missing");
+assert.ok(css.includes('.account-detail-drawer[dir="rtl"]') &&
+  css.includes('.account-detail-close:focus-visible') &&
+  css.includes('.account-detail-facts'),
+  "Account detail RTL, focus and responsive styles missing");
+for (const key of ['"Account details":', '"View details":',
+  '"Linked children":', '"Teacher profile and assignments":', '"Manage families":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Account Phase3 missing a Dari or Pashto translation: ${key}`);
 }
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
