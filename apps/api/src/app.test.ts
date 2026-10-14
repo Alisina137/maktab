@@ -6487,6 +6487,40 @@ test("Phase 6 Accounts: role denial, temporary-password restriction, and school-
     const denied = await app.inject({ method: "GET", url, headers: { authorization: `Bearer ${teacherToken}` } });
     assert.equal(denied.statusCode, 403, `Teacher role must not administer accounts: ${url}`);
   }
+  // A staff account is not a school administrator even after completing its first login.
+  const staffResponse = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: adminAuth,
+    payload: { role: "SCHOOL_STAFF", username: "staffphase6" }
+  });
+  assert.equal(staffResponse.statusCode, 201);
+  const staffCredential = staffResponse.json<{ temporaryPassword: string }>();
+  const staffLogin = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId: schoolA, expectedRole: "SCHOOL_STAFF",
+      username: "staffphase6", password: staffCredential.temporaryPassword }
+  });
+  assert.equal(staffLogin.statusCode, 200);
+  const staffInitialToken = staffLogin.json<{ accessToken: string }>().accessToken;
+  const staffChanged = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${staffInitialToken}` },
+    payload: { newPassword: "StaffPhase6Secure2026!" }
+  });
+  assert.equal(staffChanged.statusCode, 200);
+  const staffToken = staffChanged.json<{ accessToken: string }>().accessToken;
+  for (const url of readEndpoints) {
+    const denied = await app.inject({
+      method: "GET", url, headers: { authorization: `Bearer ${staffToken}` }
+    });
+    assert.equal(denied.statusCode, 403, `Staff may not manage accounts: ${url}`);
+  }
+  const staffDeniedBulk = await app.inject({
+    method: "POST", url: "/v1/admin/users/bulk-status",
+    headers: { authorization: `Bearer ${staffToken}` },
+    payload: { action: "suspend", userIds: [user.id] }
+  });
+  assert.equal(staffDeniedBulk.statusCode, 403);
+
   const deniedBulk = await app.inject({
     method: "POST", url: "/v1/admin/users/bulk-status",
     headers: { authorization: `Bearer ${teacherToken}` },
