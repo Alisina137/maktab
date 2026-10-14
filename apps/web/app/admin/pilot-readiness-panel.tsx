@@ -258,7 +258,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
-    const wantsCoverage = section === "overview" || section === "readiness";
+    const wantsCoverage = section === "overview" || section === "readiness" || section === "onboarding";
     setAdvancedBusy(wantsCoverage);
     if (wantsCoverage) {
       setAdvancedError("");
