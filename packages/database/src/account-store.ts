@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { categorizeAuditAction, safeAuditMetadata, type AuditCategory } from "./audit-safe.js";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
@@ -217,6 +218,14 @@ export interface AccountStore {
   revokeSession(sessionId: string): Promise<void>;
   revokeAllUserSessions(schoolId: string, userId: string): Promise<void>;
   writeAudit(input: AuditInput): Promise<void>;
+  listPilotAuditEvents(schoolId: string, input: {
+    limit: number; offset: number; category?: AuditCategory;
+    dateFrom?: Date; dateTo?: Date; actorUserId?: string; search?: string;
+  }): Promise<{ logs: Array<{
+    id: string; actorUsername: string | null; action: string;
+    category: string; entityType: string; targetLabel: string | null;
+    metadata: Record<string, string | number | boolean>; createdAt: Date;
+  }>; limit: number; offset: number; hasMore: boolean }>;
   listAuditLogs(
     schoolId: string,
     input?: { limit?: number; offset?: number }
@@ -957,6 +966,76 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
       });
     },
 
+    async listPilotAuditEvents(schoolId, input) {
+      const auditActor = alias(users, "pilot_audit_actor");
+      const affectedUser = alias(users, "pilot_audit_target_user");
+      const filters: SQL[] = [eq(auditLogs.schoolId, schoolId)];
+      if (input.actorUserId) filters.push(eq(auditLogs.actorUserId, input.actorUserId));
+      if (input.dateFrom) filters.push(sql`${auditLogs.createdAt} >= ${input.dateFrom}`);
+      if (input.dateTo) filters.push(sql`${auditLogs.createdAt} < ${input.dateTo}`);
+      if (input.search) {
+        // Search only indexed/safe categorical fields, never secret-containing metadata.
+        const escaped = input.search.replace(/[\\%_]/g, (c) => "\\" + c);
+        filters.push(or(
+          ilike(auditLogs.action, `%${escaped}%`),
+          ilike(auditLogs.entityType, `%${escaped}%`),
+          ilike(auditActor.username, `%${escaped}%`),
+          ilike(affectedUser.username, `%${escaped}%`)
+        )!);
+      }
+      // Filtering is done in SQL before paging; category comes from a strictly
+      // delimited set of action prefixes and is not based on user metadata.
+      if (input.category && input.category !== "all") {
+        const categoryPatterns: Record<string, string[]> = {
+          accounts: ["user.", "admin.", "auth.", "parent.", "student.", "teacher."],
+          academics: ["academic.", "class.", "subject.", "timetable.", "assignment.", "negaran."],
+          attendance: ["attendance."],
+          learning: ["homework.", "exam.", "grade.", "result.", "learning."],
+          communication: ["announcement.", "notification.", "communication."],
+          fees: ["fee.", "payment.", "invoice."],
+          operations: ["school.", "subscription.", "pilot.", "export.", "import."]
+        };
+        if (input.category !== "operations") {
+          filters.push(or(...(categoryPatterns[input.category] ?? []).map((p) =>
+            ilike(auditLogs.action, p + "%")
+          ))!);
+        } else {
+          const nonOperations = Object.entries(categoryPatterns)
+            .filter(([name]) => name !== "operations")
+            .flatMap(([, prefixes]) => prefixes);
+          filters.push(sql`NOT (${sql.join(nonOperations.map(p =>
+            sql`lower(${auditLogs.action}) LIKE ${p.toLowerCase() + "%"}`), sql` OR `)})`);
+        }
+      }
+      const bounded = Math.min(Math.max(input.limit, 1), 501);
+      const offset = Math.max(input.offset, 0);
+      const rows = await db.select({
+        id: auditLogs.id, action: auditLogs.action,
+        actorUsername: auditActor.username, entityType: auditLogs.entityType,
+        targetUsername: affectedUser.username, metadata: auditLogs.metadata,
+        createdAt: auditLogs.createdAt
+      }).from(auditLogs)
+        .leftJoin(auditActor, and(eq(auditActor.id, auditLogs.actorUserId),
+          eq(auditActor.schoolId, schoolId)))
+        .leftJoin(affectedUser, and(eq(affectedUser.id, auditLogs.entityId),
+          eq(affectedUser.schoolId, schoolId)))
+        .where(and(...filters))
+        .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+        .limit(bounded + 1).offset(offset);
+      return {
+        logs: rows.slice(0, bounded).map(row => ({
+          id: row.id, action: row.action,
+          category: categorizeAuditAction(row.action),
+          actorUsername: row.actorUsername,
+          entityType: row.entityType,
+          targetLabel: row.targetUsername,
+          metadata: safeAuditMetadata(row.metadata),
+          createdAt: row.createdAt
+        })),
+        limit: bounded, offset, hasMore: rows.length > bounded
+      };
+    },
+
     async listAuditLogs(schoolId, input = {}) {
       const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
       const offset = Math.max(input.offset ?? 0, 0);
@@ -968,7 +1047,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         .limit(limit + 1)
         .offset(offset);
       return {
-        logs: rows.slice(0, limit),
+        logs: rows.slice(0, limit).map(row => ({ ...row, metadata: safeAuditMetadata(row.metadata) })),
         limit,
         offset,
         hasMore: rows.length > limit

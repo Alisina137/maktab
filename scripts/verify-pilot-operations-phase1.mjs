@@ -37,7 +37,7 @@ assert.ok(src.includes("pendingChecks.slice(0, 4)") && src.includes("CHECK_DESTI
 for (const existingEndpoint of [
   "/v1/admin/subscription",
   "/v1/admin/pilot/readiness",
-  "/v1/admin/audit",
+  "/v1/admin/pilot/audit?",
   "/v1/admin/pilot/export",
   "/v1/admin/pilot/import-template/"
 ]) assert.ok(src.includes(existingEndpoint), "Lost existing endpoint " + existingEndpoint);

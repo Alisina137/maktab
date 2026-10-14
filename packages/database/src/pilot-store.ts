@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { safeAuditMetadata } from "./audit-safe.js";
 import {
   getAdvancedPilotReadiness, listPilotReadinessIssues,
   type AdvancedPilotReadiness, type PilotCoverageIssues, type PilotCoverageKey
@@ -30,6 +31,27 @@ import {
   timetablePeriods,
   users
 } from "./schema.js";
+
+
+const EXPORT_ROW_CAP = 1500;
+const EXPORT_BYTE_CAP = 5 * 1024 * 1024;
+const EXPORT_PRIVATE_FIELDS = new Set([
+  "passwordHash", "refreshToken", "accessToken", "tokenHash",
+  "verificationCode", "verificationToken", "phone", "email",
+  "twoFactorPhone", "twoFactorEmail", "whatsapp",
+  "transactionReference", "reversalReason", "supportNotes",
+  "idempotencyKey", "fingerprint"
+]);
+
+export class PilotExportLimitError extends Error {}
+
+function redactPilotExport(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactPilotExport);
+  if (value instanceof Date || value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).filter(([key]) =>
+    !EXPORT_PRIVATE_FIELDS.has(key)
+  ).map(([key, entry]) => [key, redactPilotExport(entry)]));
+}
 
 export interface PilotReadiness {
   ready: boolean;
@@ -186,30 +208,39 @@ export function createPilotStore(db: FoundationDatabase): PilotStore {
           mustChangePassword: users.mustChangePassword,
           lastLoginAt: users.lastLoginAt,
           createdAt: users.createdAt
-        }).from(users).where(eq(users.schoolId, schoolId)),
-        db.select().from(parentProfiles).where(eq(parentProfiles.schoolId, schoolId)),
-        db.select().from(students).where(eq(students.schoolId, schoolId)),
-        db.select().from(teacherProfiles).where(eq(teacherProfiles.schoolId, schoolId)),
-        db.select().from(academicYears).where(eq(academicYears.schoolId, schoolId)),
-        db.select().from(gradeLevels).where(eq(gradeLevels.schoolId, schoolId)),
-        db.select().from(classSections).where(eq(classSections.schoolId, schoolId)),
-        db.select().from(subjects).where(eq(subjects.schoolId, schoolId)),
-        db.select().from(teacherAssignments).where(eq(teacherAssignments.schoolId, schoolId)),
-        db.select().from(negaranAssignments).where(eq(negaranAssignments.schoolId, schoolId)),
-        db.select().from(timetablePeriods).where(eq(timetablePeriods.schoolId, schoolId)),
-        db.select().from(dailyAttendances).where(eq(dailyAttendances.schoolId, schoolId)),
-        db.select().from(studentAttendances).where(eq(studentAttendances.schoolId, schoolId)),
-        db.select().from(homeworks).where(eq(homeworks.schoolId, schoolId)),
-        db.select().from(exams).where(eq(exams.schoolId, schoolId)),
-        db.select().from(examSubjects).where(eq(examSubjects.schoolId, schoolId)),
-        db.select().from(gradeRecords).where(eq(gradeRecords.schoolId, schoolId)),
-        db.select().from(announcements).where(eq(announcements.schoolId, schoolId)),
-        db.select().from(feeInvoices).where(eq(feeInvoices.schoolId, schoolId)),
-        db.select().from(feePayments).where(eq(feePayments.schoolId, schoolId)),
-        db.select().from(auditLogs).where(eq(auditLogs.schoolId, schoolId))
+        }).from(users).where(eq(users.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(parentProfiles).where(eq(parentProfiles.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(students).where(eq(students.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(teacherProfiles).where(eq(teacherProfiles.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(academicYears).where(eq(academicYears.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(gradeLevels).where(eq(gradeLevels.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(classSections).where(eq(classSections.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(subjects).where(eq(subjects.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(teacherAssignments).where(eq(teacherAssignments.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(negaranAssignments).where(eq(negaranAssignments.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(timetablePeriods).where(eq(timetablePeriods.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(dailyAttendances).where(eq(dailyAttendances.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(studentAttendances).where(eq(studentAttendances.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(homeworks).where(eq(homeworks.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(exams).where(eq(exams.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(examSubjects).where(eq(examSubjects.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(gradeRecords).where(eq(gradeRecords.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(announcements).where(eq(announcements.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(feeInvoices).where(eq(feeInvoices.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(feePayments).where(eq(feePayments.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
+        db.select().from(auditLogs).where(eq(auditLogs.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1)
       ]);
 
-      return {
+      const collections = [
+        userRows, parentRows, studentRows, teacherRows, yearRows, gradeRows,
+        classRows, subjectRows, assignmentRows, negaranRows, timetableRows,
+        dailyRows, studentAttendanceRows, homeworkRows, examRows, examSubjectRows,
+        gradeRecordRows, announcementRows, invoiceRows, paymentRows, auditRows
+      ];
+      if (collections.some(rows => rows.length > EXPORT_ROW_CAP)) {
+        throw new PilotExportLimitError("School export exceeds the safe row limit. Contact platform support for a managed export.");
+      }
+      const exportData = {
         exportedAt: new Date().toISOString(),
         school: schoolContext.school,
         settings: schoolContext.settings,
@@ -234,8 +265,16 @@ export function createPilotStore(db: FoundationDatabase): PilotStore {
         announcements: announcementRows,
         feeInvoices: invoiceRows,
         feePayments: paymentRows,
-        auditLogs: auditRows
+        auditLogs: auditRows.map(row => ({ ...row, metadata: safeAuditMetadata(row.metadata) }))
       };
+      // Exports are portable school reports, not database backups. Remove fields
+      // that are unnecessary for school-admin reporting, including raw contact
+      // details and integration/payment references.
+      const safeData = redactPilotExport(exportData) as Record<string, unknown>;
+      if (Buffer.byteLength(JSON.stringify(safeData), "utf8") > EXPORT_BYTE_CAP) {
+        throw new PilotExportLimitError("School export exceeds the safe file size. Contact platform support for a managed export.");
+      }
+      return safeData;
     }
   };
 }
