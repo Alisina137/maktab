@@ -404,6 +404,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [validation, setValidation] = useState<Validation | null>(null);
   const [importFileName, setImportFileName] = useState("");
+  const [importIdempotencyKey, setImportIdempotencyKey] = useState<string | null>(null);
 
   const parentMap = useMemo(
     () => new Map(overview?.parents.map((item) => [item.user.id, item]) ?? []),
@@ -1003,6 +1004,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setMapping({});
     setValidation(null);
     setImportFileName("");
+    setImportIdempotencyKey(null);
   }
 
   async function selectImportFile(file: File | undefined) {
@@ -1012,6 +1014,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     setCredentials([]);
     setValidation(null);
+    setImportIdempotencyKey(null);
     try {
       const contentBase64 = await toBase64(file);
       const result = await request<Preview>(accessToken, "/v1/admin/families/import/preview", {
@@ -1045,12 +1048,14 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     setError("");
     setNotice("");
     setCredentials([]);
+    setImportIdempotencyKey(null);
     try {
       const result = await request<Validation>(accessToken, "/v1/admin/families/import/validate", {
         method: "POST",
         body: JSON.stringify({ entityType: importEntity, rows: preview.rows, mapping })
       });
       setValidation(result);
+      if (result.valid) setImportIdempotencyKey(crypto.randomUUID());
       if (result.valid) {
         setNotice(adminFormat(locale, "{count} rows validated. Review and confirm the import.", { count: result.validRowCount }));
       } else {
@@ -1067,18 +1072,21 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     if (!validation?.valid) return;
     const normalizedRows = validation.normalizedRows;
     const committedEntity = importEntity;
+    // Stable across retries after a lost response. It is reset only after success/new validation.
+    const key = importIdempotencyKey ?? crypto.randomUUID();
+    if (!importIdempotencyKey) setImportIdempotencyKey(key);
 
     setBusy(true);
     setError("");
     setNotice("");
     setCredentials([]);
     try {
-      const result = await request<{ importedCount: number; credentials: Credential[] }>(
+      const result = await request<{ importedCount: number; credentials: Credential[]; alreadyCommitted?: boolean; requiresCredentialReset?: boolean }>(
         accessToken,
         "/v1/admin/families/import/commit",
         {
           method: "POST",
-          body: JSON.stringify({ entityType: committedEntity, rows: normalizedRows })
+          body: JSON.stringify({ entityType: committedEntity, rows: normalizedRows, idempotencyKey: key })
         }
       );
 
@@ -1118,7 +1126,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         setAccountPreviewBatchTotal(0);
       }
 
-      setNotice(adminFormat(locale, "{count} {entity} row(s) imported successfully.", {
+      if (result.alreadyCommitted) {
+        setNotice(t("This import was already completed. No accounts were created again. For missing temporary passwords, reset individual account passwords securely."));
+      } else setNotice(adminFormat(locale, "{count} {entity} row(s) imported successfully.", {
         count: result.importedCount,
         entity: committedEntity === "PARENT"
           ? t("Parents")
@@ -1130,6 +1140,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       setValidation(null);
       setMapping({});
       setImportFileName("");
+      setImportIdempotencyKey(null);
       void load({ silentFeedback: true });
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Import failed."));
@@ -1714,6 +1725,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <div>
             <h2>{t("Bulk import")}</h2>
             <p>{t("CSV/XLSX · upload → map → validate → preview errors → confirm → import → credentials.")}</p>
+            <p className="admin-form-help">{t("Each validated import uses a stable retry key. Temporary passwords appear only after the first successful commit; keep the exported credentials securely.")}</p>
           </div>
           <button className="admin-secondary" type="button" onClick={() => resetImport()} disabled={busy}>{t("Reset")}</button>
         </div>
@@ -1763,6 +1775,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                     onChange={(event) => {
                       setMapping((current) => ({ ...current, [field.key]: event.target.value }));
                       setValidation(null);
+                      setImportIdempotencyKey(null);
                     }}
                   >
                     <option value="">{t("Do not map")}</option>
