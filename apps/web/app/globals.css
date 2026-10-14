@@ -6670,3 +6670,201 @@ html[dir="rtl"] body {
 @media(max-width:900px) { .pilot-phase7-gates { grid-template-columns:1fr; } }
 @media(max-width:620px) { .pilot-phase7-row { align-items:start; } }
 @media(prefers-reduced-motion:reduce) { .pilot-phase7 * { scroll-behavior:auto; transition:none; } }
+
+/* Admin Communication & Fees Phase 1 workspace */
+.communication-section {
+  min-width: 0;
+}
+.communication-main-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 16px;
+  background: var(--ml-color-surface-muted, #f5f8fc);
+  scrollbar-width: thin;
+}
+.communication-main-tab {
+  flex: 1 0 138px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--ml-color-text-muted);
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.communication-main-tab.is-active {
+  color: var(--ml-color-brand-strong);
+  background: var(--ml-color-surface);
+  border-color: var(--ml-color-border);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--ml-color-brand) 9%, transparent);
+}
+.communication-tab-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.communication-dashboard-group {
+  display: grid;
+  gap: 12px;
+}
+.communication-dashboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.communication-dashboard-heading h3,
+.communication-recent-card h3 {
+  margin: 0;
+  font-size: clamp(17px, 1.7vw, 21px);
+}
+.communication-dashboard-heading p {
+  margin: 5px 0 0;
+  color: var(--ml-color-text-muted);
+}
+.communication-overview-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+.communication-overview-grid .academic-summary {
+  min-width: 0;
+  padding: 18px;
+  gap: 8px;
+  background: var(--ml-color-surface);
+}
+.communication-overview-grid .academic-summary strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(19px, 2vw, 26px);
+  font-variant-numeric: tabular-nums;
+}
+.communication-overview-recent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.communication-recent-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+.communication-recent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 12px;
+  background: var(--ml-color-surface);
+  text-align: start;
+  color: var(--ml-color-text);
+  cursor: pointer;
+}
+.communication-recent-row span {
+  font-size: 12px;
+  color: var(--ml-color-text-muted);
+}
+.communication-workflow-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 600px));
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+.communication-workflow-form,
+.communication-workflow-list {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  max-width: 600px;
+}
+.communication-workflow-form > .admin-panel,
+.communication-workflow-list > .admin-panel {
+  width: 100%;
+  max-width: 600px;
+  min-width: 0;
+}
+.communication-workflow-list .communication-invoice-list,
+.communication-workflow-list .academic-rows {
+  max-height: min(78vh, 960px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.communication-workflow-list .communication-payment-row {
+  overflow-wrap: anywhere;
+}
+.communication-resource-state {
+  min-height: 148px;
+  display: grid;
+  gap: 12px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+.communication-mobile-toggle {
+  display: none;
+}
+@media (max-width: 1050px) {
+  .communication-workflow-layout,
+  .communication-overview-recent {
+    grid-template-columns: minmax(0, 600px);
+    justify-content: start;
+  }
+  .communication-mobile-toggle {
+    display: flex;
+    width: min(100%, 600px);
+    padding: 6px;
+    gap: 6px;
+    border: 1px solid var(--ml-color-border);
+    border-radius: 13px;
+    background: var(--ml-color-surface-muted, #f4f7fc);
+  }
+  .communication-mobile-toggle button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ml-color-text-muted);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .communication-mobile-toggle button.is-active {
+    background: var(--ml-color-surface);
+    border-color: var(--ml-color-border);
+    color: var(--ml-color-brand-strong);
+  }
+  .communication-workflow-layout[data-pane="LIST"] > .communication-workflow-form,
+  .communication-workflow-layout[data-pane="FORM"] > .communication-workflow-list {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  .communication-main-tab { flex-basis: 132px; }
+  .communication-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .communication-overview-grid .academic-summary { padding: 12px; }
+  .communication-overview-grid .academic-summary strong { font-size: 17px; }
+  .communication-workflow-form .admin-panel,
+  .communication-workflow-list .admin-panel { padding: 15px; }
+}
+@media (max-width: 390px) {
+  .communication-overview-grid { grid-template-columns: 1fr; }
+}
