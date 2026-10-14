@@ -16,15 +16,16 @@ type ResourceStatus = "idle" | "loading" | "ready" | "error";
 type ChipOption = { key: string; label: TranslationKey };
 
 function SearchAndFilters({
-  query, onQuery, label, filter, onFilter, choices, locale
+  query, onQuery, label, filter, onFilter, choices, locale, showSearch = true
 }: {
   query: string; onQuery: (value: string) => void; label: TranslationKey;
   filter: string; onFilter: (value: string) => void; choices: ChipOption[]; locale: SupportedLocale;
+  showSearch?: boolean;
 }) {
   const rtl = getDirection(locale) === "rtl";
   return (
     <View style={styles.filters}>
-      <View style={[styles.search, rtl && styles.rtlRow]}>
+      {showSearch ? <View style={[styles.search, rtl && styles.rtlRow]}>
         <Ionicons name="search-outline" size={19} color={tokens.color.textMuted} />
         <TextInput value={query} onChangeText={onQuery} autoCorrect={false}
           placeholder={translate(locale, "parent.inboxSearch")} placeholderTextColor={tokens.color.textMuted}
@@ -34,7 +35,7 @@ function SearchAndFilters({
           onPress={() => onQuery("")} hitSlop={10}>
           <Ionicons name="close-circle" size={19} color={tokens.color.textMuted} />
         </Pressable> : null}
-      </View>
+      </View> : null}
       <Text style={[styles.filterLabel, rtl && styles.rtlText]}>{translate(locale, label)}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.chips, rtl && styles.rtlRow]}>
@@ -201,7 +202,7 @@ export function ParentNotificationsContent({
   notifications: ParentNotification[];
   locale: SupportedLocale;
   onOpen: (item: ParentNotification) => void;
-  onMarkAllRead: () => void;
+  onMarkAllRead: () => Promise<void>;
   status?: ResourceStatus; onRetry?: () => void; focusedId?: string | null;
 }) {
   const rtl = getDirection(locale) === "rtl";
@@ -220,12 +221,14 @@ export function ParentNotificationsContent({
   const rows = promoteFocused(matches, focusedId, item => item.id);
   const page = inboxPage(rows, visibleCount, item => item.id);
   const unreadCount = notifications.filter((item) => !item.readAt).length;
-  const markReadAll = () => {
+  const markReadAll = async () => {
     if (markingAll) return;
     setMarkingAll(true);
-    onMarkAllRead();
-    // Requests in App are independently guarded and the server remains authoritative.
-    setTimeout(() => setMarkingAll(false), 1200);
+    try {
+      await onMarkAllRead();
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
   return (
@@ -247,7 +250,7 @@ export function ParentNotificationsContent({
         </Pressable>
       </View>
       {unreadCount > 0 && status === "ready" ? (
-        <Pressable onPress={markReadAll} disabled={markingAll} accessibilityRole="button"
+        <Pressable onPress={() => void markReadAll()} disabled={markingAll} accessibilityRole="button"
           accessibilityState={{ disabled: markingAll }} style={[styles.action, markingAll && styles.disabled]}>
           <Text style={styles.actionText}>{translate(locale, "teacher.markAllRead")}</Text>
         </Pressable>
@@ -258,7 +261,7 @@ export function ParentNotificationsContent({
         choices={readChoices} locale={locale} />
       <SearchAndFilters query="" onQuery={() => {}} label="parent.inboxTopic" filter={topic}
         onFilter={value => { setTopic(value as NotificationTopic); setVisibleCount(INBOX_PAGE_SIZE); }}
-        choices={topicChoices} locale={locale} />
+        choices={topicChoices} locale={locale} showSearch={false} />
       {status !== "ready" ? <ResourceState status={status} locale={locale} onRetry={onRetry} /> : (
         <>
           {page.visible.map((item) => (
