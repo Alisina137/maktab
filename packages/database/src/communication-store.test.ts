@@ -28,7 +28,8 @@ async function createPhase7Database() {
     "0008_phase8_pilot_readiness.sql",
     "0009_school_image.sql",
     "0014_student_phone.sql",
-    "0019_fee_payment_idempotency.sql"
+    "0019_fee_payment_idempotency.sql",
+    "0022_fee_invoice_numbers.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
