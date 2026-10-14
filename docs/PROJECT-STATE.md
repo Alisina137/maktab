@@ -1533,3 +1533,14 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Account details drawer now shows the user's account-specific activity history, actor label and reason, with explicit loading, failure and empty states.
 - PGlite and API regressions cover token invalidation, login after reactivation, audit reason and school isolation; release evidence source assertions and translations added.
 - No database migration is required; browser/device/manual acceptance is not established by passing CI. Full checklist in `docs/ADMIN-ACCOUNTS-PHASES.md`.
+
+
+### Admin Accounts — Phase 5: Paged directory, sorting and safe bulk management (2026-10-14)
+
+- Added a new admin-only `/v1/admin/users/directory` for school-scoped server-side filtering, escaped case-insensitive search, role/status/pending filtering, deterministic sorting, bounded 10/20/50 pagination and all-school summary counters. The legacy `/v1/admin/users` response is retained for other modules.
+- Refined the Accounts screen with debounced/cancelable queries, sort controls, pagination, retry/refresh, accurate total counts and visible-page-only selection, with Dari/Pashto/English support and responsive RTL styles.
+- Added a school-only case-insensitive username availability route to preserve new-user validation after moving off the full-school directory fetch. Family records are loaded only when a selected account or Student creation requires them.
+- Added atomic admin-only `/v1/admin/users/bulk-status` for suspend/reactivate of up to 20 non-admin, non-self, non-archived, eligible accounts. Cross-school IDs, invalid/mixed states and duplicate IDs abort the entire batch; auth tokens are revoked and per-user audits written within the database transaction.
+- Added explicit multi-account confirmation with optional audited suspension reason, selection caps, and clearer account-audit actor usernames when the actor is on another directory page.
+- Added PGlite and API integration regressions for tenant isolation, filters/paging/sort, wildcard search, username checking, lifecycle/audit and all-or-nothing batch behavior, plus release source guards.
+- No migrations; browser/device/manual school-scale acceptance is still required. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
