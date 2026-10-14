@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { config } from "dotenv";
-import { and, asc, desc, eq, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, ne, or, sql } from "drizzle-orm";
 import { createDatabaseClient } from "./client.js";
 import {
   academicYears,
@@ -12,6 +12,7 @@ import {
   examSubjects,
   exams,
   feeInvoices,
+  feeInvoiceCounters,
   feePayments,
   gradeRecords,
   homeworks,
@@ -473,12 +474,19 @@ async function main() {
     .limit(1);
 
   if (!invoice) {
-    [invoice] = await db
-      .insert(feeInvoices)
-      .values({
+    invoice = await db.transaction(async tx => {
+      const [counter] = await tx.insert(feeInvoiceCounters)
+        .values({schoolId: target.schoolId, lastNumber: 1})
+        .onConflictDoUpdate({
+          target: feeInvoiceCounters.schoolId,
+          set: {lastNumber: sql`${feeInvoiceCounters.lastNumber} + 1`}
+        }).returning();
+      if(!counter)throw new Error("Demo invoice numbering failed.");
+      const [created] = await tx.insert(feeInvoices).values({
         id: randomUUID(),
         schoolId: target.schoolId,
         studentId: target.studentId,
+        invoiceNumber: counter.lastNumber,
         amount: feeOutstanding,
         currency: "AFN",
         description: feeDescription,
@@ -488,6 +496,9 @@ async function main() {
         createdBy: admin.id
       })
       .returning({ id: feeInvoices.id });
+      if(!created)throw new Error("Demo invoice creation failed.");
+      return created;
+    });
   } else {
     const payments = await db
       .select({ kind: feePayments.kind, amount: feePayments.amount })
