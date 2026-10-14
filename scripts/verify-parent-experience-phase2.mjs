@@ -24,12 +24,14 @@ for(const marker of ["onNavigate={openParentDashboardDestination}",
 ]) assert.ok(app.includes(marker),"Missing Phase 2 action/error/identity invariant "+marker);
 for(const marker of [
   'accessibilityRole="button"', "styles.alertSection",
-  "parent.alertAbsent","parent.alertFeeOverdue","parent.actionRequired",
+  "parent.actionRequired",
   "parent.unavailable","parent.tryAgain","parent.viewDetails",
   'formatLocalizedDate(todayDate,locale)','formatLocalizedTimeRange(',
   'formatAfn(','formatLocalizedNumber(',
   '"ACADEMICS_RESULTS"','"INBOX_NOTIFICATIONS"'
 ]) assert.ok(dashboard.includes(marker),"Missing interactive dashboard detail "+marker);
+assert.ok(model.includes("parent.alertAbsent") && model.includes("parent.alertFeeOverdue"),
+  "Actual-data alert labels must originate in derived view model");
 assert.ok(!dashboard.includes("parent.examScheduleUnavailable"),
   "Do not present unverified upcoming exam data as an actionable card");
 for(const marker of [
