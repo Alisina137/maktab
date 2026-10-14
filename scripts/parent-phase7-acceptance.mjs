@@ -58,7 +58,7 @@ export function evaluateParentAcceptance(manifest, currentSha, now = new Date())
     const observedAt=typeof raw?.observedAt==="string"?raw.observedAt:"";
     const observed=Date.parse(observedAt);
     const fresh=isoUtc.test(observedAt) && Number.isFinite(observed) &&
-      observed <= now.getTime()+300000 && now.getTime()-observ <= 31*86400000;
+      observed <= now.getTime()+300000 && now.getTime()-observed <= 31*86400000;
     const safeRef=reference.length>=8 && reference.length<=500 &&
       !forbidden.test(reference) && !/[\r\n]/.test(reference);
     if(result!=="PASS")blockers.push(id+" has not passed on the actual target.");
