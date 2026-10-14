@@ -49,7 +49,7 @@ for(const key of [
   "parent.viewAllNotifications"
 ]) assert.equal(locale.split(JSON.stringify(key)+":").length,4,
   "Missing exactly three Parent translations for "+key);
-assert.ok(prev.includes('selectedChildIdRef.current !== studentId'),
+assert.ok(prev.includes('selectedChildIdRef.current === studentId'),
   "Preserve Phase 1 data isolation guard definition");
 assert.ok(docs.includes("## Phase 2") && docs.includes("NO-GO"),
   "Document Phase 2 acceptance and ongoing release risks");
