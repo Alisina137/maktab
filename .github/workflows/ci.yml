@@ -81,6 +81,9 @@ jobs:
       - name: Parent Experience Phase 6 parent More, fees and secure preferences regression
         run: pnpm verify:parent:phase6
 
+      - name: Parent Experience Phase 7 cross-account, session epoch and Android evidence gates
+        run: pnpm verify:parent:phase7
+
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
 
@@ -103,6 +106,19 @@ jobs:
         with:
           name: step20-release-evidence-no-go
           path: ${{ runner.temp }}/maktablink-step20-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Record Parent Phase 7 device acceptance as NO-GO
+        if: always()
+        run: node scripts/parent-phase7-acceptance.mjs --output "$RUNNER_TEMP/maktablink-parent-phase7-no-go.json"
+
+      - name: Preserve parent Android acceptance NO-GO evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-phase7-android-no-go
+          path: ${{ runner.temp }}/maktablink-parent-phase7-no-go.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -141,5 +157,6 @@ jobs:
           pnpm verify:parent:phase4
           pnpm verify:parent:phase5
           pnpm verify:parent:phase6
+          pnpm verify:parent:phase7
       - name: Test API (Windows / Node 22)
         run: pnpm --filter @maktablink/api test
