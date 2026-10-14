@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createSchoolUserSchema } from "@maktablink/contracts";
 import {
+  AccountBatchConflictError,
   AccountConflictError,
   type AccountStore
 } from "@maktablink/database";
@@ -25,6 +26,28 @@ const adminProfileImageSchema = z
 
 const suspendAccountSchema = z.object({
   reason: z.string().trim().min(3).max(500).optional()
+}).strict();
+
+const directoryQuerySchema = z.object({
+  query: z.string().trim().max(120).default(""),
+  group: z.enum(["ALL", "PARENT", "TEACHER", "STUDENT", "STAFF"]).default("ALL"),
+  status: z.enum(["ALL", "INVITED", "ACTIVE", "SUSPENDED", "ARCHIVED"]).default("ALL"),
+  highlight: z.enum(["ALL", "ACTIVE", "PENDING", "SUSPENDED"]).default("ALL"),
+  sortBy: z.enum(["name", "username", "role", "status", "createdAt", "lastLoginAt"]).default("username"),
+  order: z.enum(["asc", "desc"]).default("asc"),
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  pageSize: z.coerce.number().int().refine((value) => [10, 20, 50].includes(value)).default(20)
+}).strict();
+
+const accountBatchSchema = z.object({
+  action: z.enum(["suspend", "reactivate"]),
+  userIds: z.array(z.string().uuid()).min(1).max(20)
+    .refine((values) => new Set(values).size === values.length, "Duplicate accounts are not allowed."),
+  reason: z.string().trim().min(3).max(500).optional()
+}).strict().refine((input) => input.action === "suspend" || input.reason === undefined, "Reason is only allowed for suspension.");
+
+const usernameCheckQuerySchema = z.object({
+  username: z.string().trim().min(3).max(64)
 }).strict();
 
 const accountAuditQuerySchema = z.object({
@@ -86,6 +109,64 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
         profile: entry.profile
       }))
     };
+  });
+
+  app.get("/v1/admin/users/directory", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, store);
+    if (!context) return;
+    try {
+      const input = directoryQuerySchema.parse(request.query);
+      const results = await store.searchUserDirectory(context.user.schoolId, input);
+      return {
+        users: results.entries.map((entry) => ({
+          ...safeUser(entry.user), profile: entry.profile
+        })),
+        total: results.total,
+        page: results.page,
+        pageSize: results.pageSize,
+        pages: results.pages,
+        counts: results.counts
+      };
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
+  });
+
+  app.get("/v1/admin/users/username-check", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, store);
+    if (!context) return;
+    try {
+      const { username } = usernameCheckQuerySchema.parse(request.query);
+      const found = await store.findUserForLogin(context.user.schoolId, username);
+      return { available: !found };
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
+  });
+
+  app.post("/v1/admin/users/bulk-status", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, store, {
+      allowSecurityWriteWhenSubscriptionBlocked: true
+    });
+    if (!context) return;
+    try {
+      const input = accountBatchSchema.parse(request.body);
+      if (input.userIds.includes(context.user.id)) {
+        return reply.code(409).send({ error: "self_suspend_blocked", message: "You cannot change your own account in bulk." });
+      }
+      const updated = await store.bulkSetUserStatusAsAdmin(
+        context.user.schoolId, input.userIds, input.action, context.user.id, input.reason
+      );
+      return { users: updated.map((user) => safeUser(user)), updated: updated.length };
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      if (error instanceof AccountBatchConflictError) {
+        return reply.code(409).send({ error: "batch_conflict", message: error.message });
+      }
+      throw error;
+    }
   });
 
   app.get<{ Params: { userId: string }; Querystring: { limit?: string } }>(
