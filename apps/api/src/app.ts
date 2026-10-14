@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
+import type { AcademicStore, AccountStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PilotLaunchStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
