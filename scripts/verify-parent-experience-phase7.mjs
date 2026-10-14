@@ -18,7 +18,7 @@ for (const item of [
   'parentTab === "ATTENDANCE"', 'parentTab === "INBOX"', 'parentTab === "MORE"',
   'parentAcademicsTab === "HOMEWORK"', 'parentAcademicsTab === "RESULTS"',
   'key: "TIMETABLE"', 'parentInboxTab === "ANNOUNCEMENTS"',
-  'parentInboxTab === "NOTIFICATIONS"', 'parentMoreTab === "FEES"',
+  'key: "NOTIFICATIONS"', 'parentMoreTab === "FEES"',
   'parentMoreTab === "PROFILE"', 'parentMoreTab === "SCHOOL"',
   '<ParentFeesPanel', '<ParentPreferencesPanel',
   'parentDataChildId === selectedChildId', 'resetParentNotificationFocus()',
