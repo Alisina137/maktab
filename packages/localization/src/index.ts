@@ -274,6 +274,7 @@ export type TranslationKey =
   | "parent.attendanceDayDetail"
   | "parent.attendanceNoNote"
   | "parent.attendanceUnrecorded"
+  | "parent.attendanceHistory"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -755,6 +756,7 @@ const en: Record<TranslationKey, string> = {
     "parent.attendanceDayDetail": "Day details",
     "parent.attendanceNoNote": "No note from the school.",
     "parent.attendanceUnrecorded": "No attendance recorded for this date.",
+    "parent.attendanceHistory": "Monthly history",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1252,6 +1254,7 @@ const dari: Record<TranslationKey, string> = {
     "parent.attendanceDayDetail": "جزئیات روز",
     "parent.attendanceNoNote": "مکتب یادداشتی ثبت نکرده است.",
     "parent.attendanceUnrecorded": "برای این تاریخ حاضری ثبت نشده است.",
+    "parent.attendanceHistory": "تاریخچه حاضری ماهانه",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1749,6 +1752,7 @@ const pashto: Record<TranslationKey, string> = {
     "parent.attendanceDayDetail": "د ورځې جزییات",
     "parent.attendanceNoNote": "ښوونځي هېڅ یادښت نه دی ثبت کړی.",
     "parent.attendanceUnrecorded": "د دې نېټې حاضري نه ده ثبت شوې.",
+    "parent.attendanceHistory": "د میاشتې د حاضرۍ تاریخچه",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
