@@ -27,7 +27,7 @@ for(const marker of [
   'setEditingNotice(null)', 'setPaymentDraft({})',
   'paymentAttempts.current = {}', 'setReversalReason({})',
   'resourceStatus.communication === "ready"',
-  'resourceStatus.families === "ready"', 'resourceStatus.academics === "ready"',
+  'resourceStatus.families === "ready"', 'resourceStatus.academics !== "ready"',
   'adminApi<T>(', 'feeDashboard(', 'announcementDashboard(',
   'formatMoney(money.billed)', 'formatMoney(money.paid)',
   'formatMoney(money.outstanding)', 'formatMoney(money.overdue)',
