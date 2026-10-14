@@ -43,6 +43,9 @@ jobs:
       - name: Admin Communication and Fees Phase 2 announcements, recipient previews and school timezone
         run: pnpm verify:admin-communication:phase2
 
+      - name: Admin Communication and Fees Phase 3 invoice numbering, pagination, draft safety and RTL
+        run: pnpm verify:admin-communication:phase3
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -149,6 +152,7 @@ jobs:
           pnpm verify:accounts
           pnpm verify:admin-communication:phase1
           pnpm verify:admin-communication:phase2
+          pnpm verify:admin-communication:phase3
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
