@@ -59,9 +59,9 @@ test("Unread/read and subject-category filters search all authorized notificatio
   assert.equal(first.hasMore,true);
   assert.equal(inboxPage(unread, 40, item => item.id).visible.length,23);
   assert.equal(inboxPage(unread, 40, item => item.id).hasMore,false);
-  const focused = inboxPage(rows,20,item => item.id,rows[8]!.id);
+  const focused = inboxPage(rows,20,item => item.id,rows[38]!.id);
   assert.equal(focused.visible.length,40);
-  assert.equal(focused.visible.filter(item=>item.id===rows[8]!.id).length,1);
+  assert.equal(focused.visible.filter(item=>item.id===rows[38]!.id).length,1);
 });
 
 test("Announcements respect selected child's class and parent role, hide archived/wrong-class", () => {
