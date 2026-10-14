@@ -1662,3 +1662,14 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Added pure model tests, static verification and English/Dari/Pashto labels in `pnpm verify:admin-communication:phase1`, plus Linux/Windows CI.
 - Remaining seven-phase roadmap is `docs/ADMIN-COMMUNICATION-FEES-PHASES.md`; next Phase 2 is Announcement list, recipient preview, scheduling, status filters and search.
 - Real browser, RTL, slow-session/manual school-ledger comparison and Step 20 pilot/production acceptance evidence are still pending. **Production NO-GO**. No migration required.
+
+
+## Admin Communication & Fees — Phase 2 (2026-10-14)
+
+- Announcement list under Communication now has title/body search, All/Published/Scheduled/Archived and school/class/role filters, a real class-name display, expandable complete records, status badges, 20-at-a-time client display paging, a proper zero-match state, and archive confirmation.
+- Added `POST /v1/admin/announcements/recipients/preview` accessible only to the authorized School Admin. It runs the **same store recipient resolver** as actual publication and returns only a school-tenant-scoped aggregate count and the school's stored timezone; role-class intersections, suspended/withdrawn status and deduplication remain server-authoritative. No notification or announcement is created by preview.
+- Explicit immediate vs scheduled publication; scheduled civil time is converted in the school's IANA timezone, rejecting invalid/nonexistent times instead of relying on the web browser's timezone. Existing immutable published lifecycle and audited scheduled editing remain.
+- Existing overview endpoint still retrieves full authorized announcement records; UI paging is display-only (not server network pagination). Persistent DRAFT workflow, delivery/read analytics and full backend pagination remain out of scope and are not presented as implemented.
+- English/Dari/Pashto RTL, preview states, timezone labels, confirmation, localized counts and source/integration/unit regressions included in `pnpm verify:admin-communication:phase2` and CI.
+- Real browser/device testing, manual preview/recipient comparison, DST/school-zone edge cases and independent Step 20 review remain **NOT RUN / NO-GO**. No schema migration.
+- Phase 3 next: invoices, status filters, draft editing, safe numbering and invoice detail workflows.
