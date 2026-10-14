@@ -66,7 +66,7 @@ export function formatAdminHijriDate(locale: AdminLocale, value: string) {
   return formatSelected(locale, value, false);
 }
 
-export function formatAdminHijriDateTime(locale: AdminLocale, value: string) {
+export function formatAdminHijriDateTime(locale: AdminLocale, value: string, timeZone?: string) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -76,7 +76,8 @@ export function formatAdminHijriDateTime(locale: AdminLocale, value: string) {
     month: "long",
     day: "numeric",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    ...(timeZone ? {timeZone} : {})
   }).format(date);
 }
 
