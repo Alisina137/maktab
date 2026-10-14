@@ -6766,3 +6766,86 @@ test("Pilot Phase 3 school import history, replay protection and rejected valida
   const after = await app.inject({ method: "GET", url: historyUrl, headers: secondAuth });
   assert.equal(after.json<{ rows: unknown[] }>().rows.length, 1);
 });
+
+test("Pilot Phase 4 filters, exports and safe metadata stay school scoped", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolA = await provisionSchool(app, "AUDIT-PH4-A");
+  const schoolB = await provisionSchool(app, "AUDIT-PH4-B");
+  const a = { authorization: "Bearer " + await bootstrapAdmin(app, schoolA) };
+  const b = { authorization: "Bearer " + await bootstrapAdmin(app, schoolB) };
+
+  const actorA = (await client.query<{ id: string }>(
+    "SELECT id FROM users WHERE school_id = $1 AND role = 'SCHOOL_ADMIN' LIMIT 1", [schoolA]
+  )).rows[0]!.id;
+  const actorB = (await client.query<{ id: string }>(
+    "SELECT id FROM users WHERE school_id = $1 AND role = 'SCHOOL_ADMIN' LIMIT 1", [schoolB]
+  )).rows[0]!.id;
+  const secret = "DO-NOT-LEAK-AUDIT-SECRET";
+  await client.query(
+    `INSERT INTO audit_logs(id,school_id,actor_user_id,action,entity_type,entity_id,metadata,created_at)
+     VALUES ('4f11fbea-9970-4461-bd9b-c9ed17493631',$1,$2,'user.suspended','user',$2,$3::jsonb,'2026-10-14T12:00:00Z'),
+            ('4f11fbea-9970-4461-bd9b-c9ed17493632',$4,$5,'user.reactivated','user',$5,$6::jsonb,'2026-10-14T12:00:00Z')`,
+    [schoolA, actorA,
+      JSON.stringify({ reason:"=SUM(1+1)", authToken:secret, phone:"0700000000", nested:{ secret } }),
+      schoolB, actorB, JSON.stringify({ authToken: secret })]
+  );
+
+  assert.equal((await app.inject({ method:"GET", url:"/v1/admin/pilot/audit" })).statusCode,401);
+  const query = "/v1/admin/pilot/audit?category=accounts&search=suspended&dateFrom=2026-10-14&dateTo=2026-10-14&limit=20";
+  const response = await app.inject({ method:"GET", url:query, headers:a });
+  assert.equal(response.statusCode,200,response.body);
+  const body=response.json<{logs:Array<{
+    action:string;category:string;metadata:Record<string,unknown>;
+    actorUsername:string|null;targetLabel:string|null
+  }> }>();
+  assert.equal(body.logs.length,1,response.body);
+  assert.equal(body.logs[0]?.action,"user.suspended");
+  assert.equal(body.logs[0]?.category,"accounts");
+  assert.equal(body.logs[0]?.metadata.reason,"=SUM(1+1)");
+  assert.ok(body.logs[0]?.actorUsername);
+  assert.ok(body.logs[0]?.targetLabel);
+  assert.equal(response.body.includes(secret),false);
+  assert.equal(response.body.includes("0700000000"),false);
+
+  for(const invalid of [
+    "category=secret", "offset=-1", "limit=101", "actorUserId=invalid",
+    "dateFrom=2026-02-30", "dateFrom=2026-10-16&dateTo=2026-10-14",
+    "search=x", "search=ok&unexpected=1"
+  ]) {
+    const failed=await app.inject({method:"GET",url:"/v1/admin/pilot/audit?"+invalid,headers:a});
+    assert.equal(failed.statusCode,400,failed.body);
+  }
+  const filteredB=await app.inject({method:"GET",url:query,headers:b});
+  assert.equal(filteredB.statusCode,200);
+  assert.equal(filteredB.json<{logs:unknown[]}>().logs.length,0);
+
+  const csv=await app.inject({method:"GET",url:"/v1/admin/pilot/audit/export?search=suspended",headers:a});
+  assert.equal(csv.statusCode,200,csv.body);
+  assert.match(csv.headers["content-type"] as string,/text\/csv/);
+  assert.match(csv.body,/user\.suspended/);
+  assert.match(csv.body,/'=SUM\(1\+1\)/,"CSV formulas must be inert");
+  assert.equal(csv.body.includes(secret),false);
+
+  const exported=await app.inject({method:"GET",url:"/v1/admin/pilot/export",headers:a});
+  assert.equal(exported.statusCode,200,exported.body);
+  assert.equal(exported.headers["cache-control"],"no-store");
+  assert.equal(exported.body.includes(secret),false);
+  assert.equal(exported.body.includes("0700000000"),false);
+  assert.equal(exported.body.includes("passwordHash"),false);
+
+  const legacy=await app.inject({method:"GET",url:"/v1/admin/audit?limit=100",headers:a});
+  assert.equal(legacy.statusCode,200);
+  assert.equal(legacy.body.includes(secret),false);
+  const audited=await client.query<{action:string;actor_user_id:string|null}>(
+    "SELECT action, actor_user_id FROM audit_logs WHERE school_id=$1 AND action IN ('pilot.exported','pilot.audit_exported') ORDER BY created_at",
+    [schoolA]
+  );
+  assert.deepEqual(audited.rows.map(x=>x.action).sort(),["pilot.audit_exported","pilot.exported"]);
+  assert.ok(audited.rows.every(x=>x.actor_user_id===actorA));
+  const other=await app.inject({method:"GET",url:"/v1/admin/pilot/export",headers:b});
+  assert.equal(other.statusCode,200);
+  assert.equal(other.body.includes("user.suspended"),false);
+  assert.equal(other.body.includes(schoolA),false);
+});
