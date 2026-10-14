@@ -295,6 +295,25 @@ export type TranslationKey =
   | "parent.academicPeriods"
   | "parent.academicNoPeriods"
   | "parent.academicRefresh"
+  | "parent.inboxSearch"
+  | "parent.inboxAll"
+  | "parent.inboxUnread"
+  | "parent.inboxRead"
+  | "parent.inboxSchool"
+  | "parent.inboxAcademics"
+  | "parent.inboxFees"
+  | "parent.inboxClass"
+  | "parent.inboxParents"
+  | "parent.inboxAudience"
+  | "parent.inboxReadFilter"
+  | "parent.inboxTopic"
+  | "parent.inboxChildAudience"
+  | "parent.inboxAccountWide"
+  | "parent.inboxLoadMore"
+  | "parent.inboxShowing"
+  | "parent.inboxNoMatches"
+  | "parent.inboxTargetUnavailable"
+  | "parent.inboxMarkReadError"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -797,6 +816,25 @@ const en: Record<TranslationKey, string> = {
   "parent.academicPeriods": "Periods",
   "parent.academicNoPeriods": "No periods match the selected day or subject.",
   "parent.academicRefresh": "Refresh",
+  "parent.inboxSearch": "Search messages or updates",
+  "parent.inboxAll": "All",
+  "parent.inboxUnread": "Unread",
+  "parent.inboxRead": "Read",
+  "parent.inboxSchool": "School",
+  "parent.inboxAcademics": "Academics",
+  "parent.inboxFees": "Fees",
+  "parent.inboxClass": "Class",
+  "parent.inboxParents": "Parents",
+  "parent.inboxAudience": "Audience",
+  "parent.inboxReadFilter": "Read status",
+  "parent.inboxTopic": "Category",
+  "parent.inboxChildAudience": "Announcements for the selected child",
+  "parent.inboxAccountWide": "Notifications for your parent account and linked children",
+  "parent.inboxLoadMore": "Load more",
+  "parent.inboxShowing": "Showing",
+  "parent.inboxNoMatches": "No messages match these filters.",
+  "parent.inboxTargetUnavailable": "This update is no longer available for the selected child.",
+  "parent.inboxMarkReadError": "Could not mark notifications as read. Please try again.",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1315,6 +1353,25 @@ const dari: Record<TranslationKey, string> = {
   "parent.academicPeriods": "ساعات درسی",
   "parent.academicNoPeriods": "برای این روز یا مضمون ساعت درسی پیدا نشد.",
   "parent.academicRefresh": "تازه‌سازی",
+  "parent.inboxSearch": "جستجوی پیام‌ها و اطلاعیه‌ها",
+  "parent.inboxAll": "همه",
+  "parent.inboxUnread": "خوانده‌نشده",
+  "parent.inboxRead": "خوانده‌شده",
+  "parent.inboxSchool": "مکتب",
+  "parent.inboxAcademics": "آموزش",
+  "parent.inboxFees": "فیس",
+  "parent.inboxClass": "صنف",
+  "parent.inboxParents": "والدین",
+  "parent.inboxAudience": "مخاطبان",
+  "parent.inboxReadFilter": "وضعیت خواندن",
+  "parent.inboxTopic": "دسته‌بندی",
+  "parent.inboxChildAudience": "اطلاعیه‌های مربوط به فرزند انتخاب‌شده",
+  "parent.inboxAccountWide": "خبرتیاهای حساب والدین و فرزندان مرتبط با شما",
+  "parent.inboxLoadMore": "نمایش بیشتر",
+  "parent.inboxShowing": "نمایش",
+  "parent.inboxNoMatches": "پیامی مطابق فیلترها پیدا نشد.",
+  "parent.inboxTargetUnavailable": "این اطلاعیه برای فرزند انتخاب‌شده دیگر قابل مشاهده نیست.",
+  "parent.inboxMarkReadError": "علامت‌گذاری خبرتیاها به‌عنوان خوانده‌شده انجام نشد. دوباره تلاش کنید.",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1833,6 +1890,25 @@ const pashto: Record<TranslationKey, string> = {
   "parent.academicPeriods": "درسي ساعتونه",
   "parent.academicNoPeriods": "د دې ورځې یا مضمون لپاره درسي ساعتونه نشته.",
   "parent.academicRefresh": "بیا تازه کول",
+  "parent.inboxSearch": "د پیغامونو او خبرتیاوو لټون",
+  "parent.inboxAll": "ټول",
+  "parent.inboxUnread": "نالوستل شوي",
+  "parent.inboxRead": "لوستل شوي",
+  "parent.inboxSchool": "ښوونځی",
+  "parent.inboxAcademics": "زده‌کړې",
+  "parent.inboxFees": "فیس",
+  "parent.inboxClass": "ټولګی",
+  "parent.inboxParents": "والدین",
+  "parent.inboxAudience": "اورېدونکي",
+  "parent.inboxReadFilter": "د لوستلو حالت",
+  "parent.inboxTopic": "ډله",
+  "parent.inboxChildAudience": "د ټاکل شوي ماشوم خبرتیاوې",
+  "parent.inboxAccountWide": "ستاسو د والدینو حساب او تړلو ماشومانو خبرتیاوې",
+  "parent.inboxLoadMore": "نور ښکاره کړئ",
+  "parent.inboxShowing": "ښودل کېږي",
+  "parent.inboxNoMatches": "د فلټر سره سم پیغامونه ونه موندل شول.",
+  "parent.inboxTargetUnavailable": "دا خبرتیا د ټاکل شوي ماشوم لپاره نوره نه شته.",
+  "parent.inboxMarkReadError": "د خبرتیاوو د لوستل کېدو نښه ونه لګېده. بیا هڅه وکړئ.",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
