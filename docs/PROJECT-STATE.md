@@ -1592,3 +1592,15 @@ Reorganized Parent bottom tabs Home/Academics/Attendance/Inbox/More with context
 ## Parent Experience Phase 2 — actionable Home dashboard and data-isolated retry (2026-10-14)
 
 Implemented interactive Parent Home destination cards (Attendance, Academics Homework/Results/Timetable, Inbox and More fees), genuine prioritized attendance/homework/fee/unread alerts, Kabul civil-day due calculations, no dummy examination schedule card, compact Home identity and 3-item inbox preview. Independent per-resource pending/success/error status + retry and refresh, latest-generation request guard for parallel same-child refresh, stale-token/child invalidation and error-state-based unknown values. Added 3-language strings, typed model unit tests, static guards and CI. No new migration. Real Android/TalkBack/Step 20 proof still pending; production NO-GO.
+
+
+## Parent Experience — Phase 3: Attendance calendar and recorded-only statistics (2026-10-14)
+
+- The Parent Attendance tab displays a Saturday-first calendar, with Gregorian months for English and Solar Hijri months for Dari/Pashto.
+- Dates show actual parent-authorized records only; future dates are disabled and days without school records are explicitly *not recorded*.
+- Month navigation fetches the requested month using the existing school-scoped / parent-child-authorized attendance API (`from` / `to`); Home keeps its 30-day default read. Child/account switching and component cleanup prevent stale responses.
+- Month summary counts Present, Absent, Late, Excused, and recorded days. Attendance percentage = (Present + Late) / (Present + Late + Absent); excused, unrecorded, and future dates are excluded, and a zero denominator displays an unavailable rate.
+- Day details reveal date, actual mark, class, and school note. Parents cannot edit marks.
+- API and schema unchanged apart from optional range arguments in the mobile API client; **no database migration**.
+- Automated verification: `pnpm verify:parent:phase3`, integrated into `pnpm verify`. Device/TalkBack/offline/multi-child acceptance must still be run; production Step 20 remains NO-GO until evidenced.
+- Phase 4 next: deeper Academics homework/result/timetable organization, filtering and details. Other remaining parent phases: Inbox (5), Account/Finance (6), and device/regression acceptance (7).
