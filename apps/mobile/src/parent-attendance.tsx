@@ -85,6 +85,11 @@ export function ParentAttendanceContent({
     today >= month.from && today <= month.to ? today : month.to
   );
   const selectedMark = byDay.get(selected);
+  const history = useMemo(() =>
+    [...byDay.values()].filter((row) => row.date <= today)
+      .sort((a, b) => b.date.localeCompare(a.date)),
+    [byDay, today]
+  );
   const dayIsFuture = selected > today;
 
   const go = (direction: -1 | 1) => {
@@ -249,6 +254,39 @@ export function ParentAttendanceContent({
               </Text>
             )}
           </View>
+
+          <View style={styles.card}>
+            <Text style={[styles.title, rtl && styles.rtlText]}>
+              {translate(locale, "parent.attendanceHistory")}
+            </Text>
+            {history.length ? history.map((row) => (
+              <Pressable key={row.date} accessibilityRole="button"
+                accessibilityLabel={formatLocalizedDate(row.date, locale) + ", " +
+                  translate(locale, statusKeys[row.status])}
+                accessibilityState={{ selected: row.date === selected }}
+                onPress={() => setSelectedDay(row.date)}
+                style={[styles.historyRow, row.date === selected && styles.selectedDay]}>
+                <View style={[styles.historyHeading, rtl && styles.rtlRow]}>
+                  <View style={[styles.legendDot, { backgroundColor: statusColors[row.status] }]} />
+                  <Text style={[styles.historyDate, rtl && styles.rtlText]}>
+                    {formatLocalizedDate(row.date, locale)}
+                  </Text>
+                  <Text style={[styles.historyStatus, rtl && styles.rtlText]}>
+                    {translate(locale, statusKeys[row.status])}
+                  </Text>
+                </View>
+                {row.note ? (
+                  <Text numberOfLines={2} style={[styles.caption, rtl && styles.rtlText]}>
+                    {row.note}
+                  </Text>
+                ) : null}
+              </Pressable>
+            )) : (
+              <Text style={[styles.emptyText, rtl && styles.rtlText]}>
+                {translate(locale, "parent.attendanceMonthEmpty")}
+              </Text>
+            )}
+          </View>
         </>
       ) : null}
     </View>
@@ -306,5 +344,10 @@ const styles = StyleSheet.create({
   detailStatus: { flexDirection: "row", alignItems: "center", gap: 7 },
   detailValue: { color: tokens.color.text, fontWeight: "800", fontSize: 15 },
   note: { fontSize: 13, lineHeight: 20, color: tokens.color.text, backgroundColor: "#f6f8fb",
-    padding: 12, borderRadius: 12 }
+    padding: 12, borderRadius: 12 },
+  historyRow: { paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12,
+    borderWidth: 1, borderColor: tokens.color.border, gap: 6, minHeight: 48 },
+  historyHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  historyDate: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: "700", color: tokens.color.text },
+  historyStatus: { fontSize: 12, fontWeight: "700", color: tokens.color.textMuted }
 });
