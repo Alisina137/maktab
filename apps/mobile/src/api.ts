@@ -769,10 +769,13 @@ export const api = {
     });
   },
 
-  parentAttendance(accessToken: string, studentId: string) {
-    return request<{ today: string; days: ParentAttendanceDay[] }>(`/v1/parent/children/${studentId}/attendance`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+  parentAttendance(accessToken: string, studentId: string, from?: string, to?: string) {
+    const range = from && to ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : "";
+    return request<{ today: string; days: ParentAttendanceDay[] }>(
+      `/v1/parent/children/${encodeURIComponent(studentId)}/attendance${range}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    );
   },
 
   parentTimetable(accessToken: string, studentId: string) {
