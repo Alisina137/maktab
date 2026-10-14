@@ -9,6 +9,7 @@ import {
 } from "@maktablink/localization";
 import type { LearnerAcademicPayload, ParentTimetablePeriod } from "./api";
 import { shareLearningFile } from "./learning-files";
+import { kabulCivilDay } from "./parent-home-model";
 import {
   academicSubjects, defaultTimetableDay, filterParentHomework, filterParentResults,
   filterParentTimetable, groupParentResults, homeworkCategory, parentHomeworkItems,
@@ -119,13 +120,14 @@ export function ParentAcademicHomework({
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const referenceToday = schoolToday || kabulCivilDay(new Date().toISOString()) || "";
   const items = useMemo(() => parentHomeworkItems(learning), [learning]);
   const subjects = useMemo(() => academicSubjects(items.map(item => ({
     id: item.homework.subjectId, name: item.subjectName
   }))), [items]);
   const filtered = useMemo(() => filterParentHomework(items, {
-    category, subjectId, query, today: schoolToday
-  }), [items, category, subjectId, query, schoolToday]);
+    category, subjectId, query, today: referenceToday
+  }), [items, category, subjectId, query, referenceToday]);
 
   if (status !== "ready") return <ErrorOrLoading status={status} locale={locale} onRetry={onRetry} />;
   return (
@@ -169,7 +171,7 @@ export function ParentAcademicHomework({
         !filtered.length ? <Empty locale={locale} text={translate(locale, "parent.academicNoMatches")} /> : null}
       {filtered.map(item => {
         const expanded = expandedId === item.homework.id;
-        const tag = homeworkCategory(item, schoolToday);
+        const tag = homeworkCategory(item, referenceToday);
         return (
           <View key={item.homework.id} style={styles.card}>
             <Pressable accessibilityRole="button" accessibilityState={{ expanded }}
@@ -318,7 +320,8 @@ export function ParentAcademicTimetable({
   locale: SupportedLocale; onRetry: () => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
-  const initialDay = useMemo(() => defaultTimetableDay(periods, schoolToday), [periods, schoolToday]);
+  const referenceToday = schoolToday || kabulCivilDay(new Date().toISOString()) || "";
+  const initialDay = useMemo(() => defaultTimetableDay(periods, referenceToday), [periods, referenceToday]);
   const [selectedDay, setSelectedDay] = useState<Weekday | "ALL" | null>(null);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const weekday = selectedDay ?? initialDay;
