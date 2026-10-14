@@ -28,6 +28,7 @@ const accountStoreSource = read("packages/database/src/account-store.ts");
 const detailsData = read("apps/web/app/admin/account-details-data.ts");
 const detailsTests = read("apps/api/src/account-details-data.test.ts");
 const directoryUi = read("apps/web/app/admin/admin-account-directory.tsx");
+const directorySafety = read("apps/web/app/admin/account-directory-safety.ts");
 const bulkConfirm = read("apps/web/app/admin/admin-account-bulk-confirm.tsx");
 const creationTests = read("apps/api/src/account-create-rules.test.ts");
 const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
@@ -240,7 +241,7 @@ assert.ok(accountPage.includes('/v1/admin/users/username-check?') &&
   accountPage.includes('/v1/admin/users/bulk-status'),
   "Phase5 must check school usernames and require explicit bulk confirmation");
 assert.ok(directoryUi.includes('onSelectPage(eligiblePage.map') &&
-  directoryUi.includes('user.role !== "SCHOOL_ADMIN"') &&
+  directorySafety.includes('user.role !== "SCHOOL_ADMIN"') &&
   directoryUi.includes('pageSize') &&
   directoryUi.includes('sortBy') &&
   directoryUi.includes('role="region" aria-label={t("Bulk account actions")}'),
