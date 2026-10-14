@@ -228,7 +228,7 @@ export function createPilotStore(db: FoundationDatabase): PilotStore {
         db.select().from(announcements).where(eq(announcements.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
         db.select().from(feeInvoices).where(eq(feeInvoices.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
         db.select().from(feePayments).where(eq(feePayments.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1),
-        db.select().from(auditLogs).where(eq(auditLogs.schoolId, schoolId))
+        db.select().from(auditLogs).where(eq(auditLogs.schoolId, schoolId)).limit(EXPORT_ROW_CAP + 1)
       ]);
 
       const collections = [
