@@ -1617,3 +1617,15 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - New copy in English, Dari, Pashto. New tests `scripts/test-parent-academics-model.test.ts` and guard `pnpm verify:parent:phase4` (CI Linux + Windows, monorepo `pnpm verify`).
 - Android multi-child, accessibility, offline/retry, date boundary, and published-versus-draft visibility must be accepted by a human before production Step 20 can be GO.
 - Next Parent work: Phase 5 Inbox search/filter/pagination/deep links, Phase 6 Account/Finance and Phase 7 device/full regression acceptance.
+
+
+## Parent Experience — Phase 5: Account-scoped Inbox and exact destinations (2026-10-14)
+
+- Parent Inbox now has independently recoverable Announcements and Notifications subtabs with search, audience/topic/read-state filters, and 20-at-a-time client-side display pagination. Back-end endpoints still provide authorized complete lists; network payload size is not yet paginated.
+- Announcements are restricted in the UI to the currently selected linked child's class, school-wide or parent-role audience; published/archived filtering is still enforced server-side. Notifications are account-wide and can refer to a different linked child.
+- Read/unread totals are derived from the authenticated server's readAt markers. Opening alerts uses existing mark-read APIs; Mark All Read is serialized with visible failure feedback and no assumed success on failure.
+- Known deep links focus an existing announcement, published homework, published exam, attendance date, or authorized linked child's fees. The app validates UUIDs and dates, and never treats notification IDs/metadata as permission grants or opens arbitrary external URLs.
+- Parent Home's session guard handles push links delivered before child-list readiness. Explicit navigation, child switching, account changes, and logout clear queued/focused content; no cross-child details can be displayed by a stale response.
+- Existing communication routes, database schema and cross-role notification APIs remain unchanged. Added `scripts/test-parent-inbox-model.test.ts` and `pnpm verify:parent:phase5` to CI.
+- Human acceptance still required: multi-child school/class audience isolation, old/archived target behavior, >40-item paging, untrusted URLs, Android deep-link cold start, offline read failure, RTL and TalkBack. Step 20 remains **NO-GO**.
+- Next Parent phases: Phase 6 Parent account/profile/finance preferences; Phase 7 device/full regression and production release evidence.
