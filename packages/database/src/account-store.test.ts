@@ -75,7 +75,7 @@ test("the same username can exist in different schools but not twice in one scho
   );
 });
 
-test("suspending a user preserves the session for restricted contact access", async (t) => {
+test("status transitions revoke sessions including across reactivation", async (t) => {
   const { client, db } = await createTestDatabase();
   t.after(async () => client.close());
 
@@ -107,7 +107,61 @@ test("suspending a user preserves the session for restricted contact access", as
 
   assert.ok(await accounts.findByAccessTokenHash("a".repeat(64)));
   await accounts.setUserStatus(school.school.id, user.id, "SUSPENDED");
-  const suspendedContext = await accounts.findByAccessTokenHash("a".repeat(64));
-  assert.ok(suspendedContext);
-  assert.equal(suspendedContext.user.status, "SUSPENDED");
+  assert.equal(await accounts.findByAccessTokenHash("a".repeat(64)), null);
+  assert.equal(await accounts.findByRefreshTokenHash("b".repeat(64)), null);
+  await accounts.createSession({
+    schoolId: school.school.id,
+    userId: user.id,
+    accessTokenHash: "c".repeat(64),
+    refreshTokenHash: "d".repeat(64),
+    accessExpiresAt: new Date(Date.now() + 60_000),
+    refreshExpiresAt: new Date(Date.now() + 120_000)
+  });
+  await accounts.setUserStatus(school.school.id, user.id, "ACTIVE");
+  assert.equal(await accounts.findByAccessTokenHash("c".repeat(64)), null);
+  assert.equal(await accounts.findByRefreshTokenHash("d".repeat(64)), null);
+});
+
+test("admin status transition stores suspension reason and tenant-filtered account audit", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const schoolA = await schools.createSchool({
+    code: "AUD-A", name: "Audit School A", slug: "audit-school-a", province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+  });
+  const schoolB = await schools.createSchool({
+    code: "AUD-B", name: "Audit School B", slug: "audit-school-b", province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+  });
+  const userA = await accounts.createUser({
+    schoolId: schoolA.school.id, username: "student-a", passwordHash: "hash-a", role: "STUDENT"
+  });
+  const userB = await accounts.createUser({
+    schoolId: schoolB.school.id, username: "student-b", passwordHash: "hash-b", role: "STUDENT"
+  });
+  await accounts.writeAudit({
+    schoolId: schoolA.school.id, actorUserId: userA.id, action: "user.created", entityType: "user", entityId: userA.id
+  });
+  await accounts.writeAudit({
+    schoolId: schoolB.school.id, actorUserId: userB.id, action: "user.created", entityType: "user", entityId: userB.id
+  });
+  await accounts.createSession({
+    schoolId: schoolA.school.id, userId: userA.id, accessTokenHash: "e".repeat(64), refreshTokenHash: "f".repeat(64),
+    accessExpiresAt: new Date(Date.now() + 60_000), refreshExpiresAt: new Date(Date.now() + 120_000)
+  });
+  await accounts.setUserStatusAsAdmin(schoolA.school.id, userA.id, "SUSPENDED", userA.id, "user.suspended", "Needs review");
+  assert.equal(await accounts.findByAccessTokenHash("e".repeat(64)), null);
+  const logs = await accounts.listAccountAuditLogs(schoolA.school.id, userA.id);
+  assert.ok(logs.some((row) => row.action === "user.suspended" && row.reason === "Needs review"));
+  assert.ok(logs.some((row) => row.action === "user.created"));
+  assert.ok(logs.every((row) => row.action !== "password_hash" && row.reason !== "hash-a"));
+  assert.deepEqual(await accounts.listAccountAuditLogs(schoolB.school.id, userA.id), []);
+  assert.deepEqual(await accounts.listAccountAuditLogs(schoolA.school.id, userB.id), []);
+  await accounts.createSession({
+    schoolId: schoolA.school.id, userId: userA.id, accessTokenHash: "1".repeat(64), refreshTokenHash: "2".repeat(64),
+    accessExpiresAt: new Date(Date.now() + 60_000), refreshExpiresAt: new Date(Date.now() + 120_000)
+  });
+  await accounts.setUserStatusAsAdmin(schoolA.school.id, userA.id, "ACTIVE", userA.id, "user.reactivated");
+  assert.equal(await accounts.findByAccessTokenHash("1".repeat(64)), null);
+  assert.equal(await accounts.findByRefreshTokenHash("2".repeat(64)), null);
 });
