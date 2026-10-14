@@ -675,45 +675,94 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         <article className="admin-panel communication-form-card">
           <div><h2>{t("Create announcement")}</h2><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
-            <label>{t("Title")}<input name="title" maxLength={160} required /></label>
-            <label>{t("Message")}<textarea name="content" rows={5} maxLength={10000} required /></label>
-            <label>
-              {t("Audience")}
-              <select value={scope} onChange={(event) => setScope(event.target.value as AnnouncementScope)}>
+            <label>{t("Title")}
+              <input name="title" minLength={2} maxLength={160} required
+                value={newTitle} onChange={event => setNewTitle(event.target.value)} />
+            </label>
+            <label>{t("Message")}
+              <textarea name="content" rows={5} maxLength={10000} required
+                value={newContent} onChange={event => setNewContent(event.target.value)} />
+            </label>
+            <label>{t("Audience")}
+              <select value={scope} onChange={event => {
+                const next = event.target.value as AnnouncementScope;
+                setScope(next);
+                setTargetClassId("");
+                setTargetRole(next === "ROLE" ? "PARENT" : "");
+              }}>
                 <option value="SCHOOL">{t("Whole school")}</option>
                 <option value="CLASS">{t("One class")}</option>
                 <option value="ROLE">{t("One role")}</option>
               </select>
             </label>
-            {scope === "CLASS" ? (
-              <label>{t("Class")}<select name="classId" required defaultValue="">
+            {scope === "CLASS" ? <>
+              <label>{t("Class")}
+                <select value={targetClassId} required
+                  onChange={event => setTargetClassId(event.target.value)}>
                   <option value="">{t("Select class")}</option>
-                  {(visibleAcademics?.classes ?? []).map((item) => (
-                    <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
+                  {(visibleAcademics?.classes ?? []).map(row => (
+                    <option key={row.id} value={row.id}>{row.name} · {row.code}</option>
                   ))}
                 </select>
               </label>
-            ) : null}
-            {scope === "CLASS" ? (
               <label>{t("Optional role within class")}
-                <select name="audienceRole" defaultValue="">
+                <select value={targetRole}
+                  onChange={event => setTargetRole(event.target.value as AudienceRole | "")}>
                   <option value="">{t("All roles in class")}</option>
                   <option value="PARENT">{t("Parents")}</option>
                   <option value="STUDENT">{t("Students")}</option>
                   <option value="TEACHER">{t("Teachers")}</option>
                 </select>
               </label>
-            ) : null}
+            </> : null}
             {scope === "ROLE" ? (
-              <label>{t("Role")}<select name="audienceRole" required defaultValue="PARENT">
+              <label>{t("Role")}
+                <select value={targetRole} required
+                  onChange={event => setTargetRole(event.target.value as AudienceRole)}>
                   <option value="PARENT">{t("Parents")}</option>
                   <option value="STUDENT">{t("Students")}</option>
                   <option value="TEACHER">{t("Teachers")}</option>
                 </select>
               </label>
             ) : null}
-            <label>{t("Publish at (optional)")}<AdminHijriDatePicker locale={locale} name="publishAt" includeTime /></label>
-            <button className="admin-primary" disabled={busy}>{t("Save announcement")}</button>
+            <div className="communication-preview" role="status" aria-live="polite">
+              <strong>{t("Recipient preview")}</strong>
+              {scope === "CLASS" && !targetClassId ? (
+                <p>{t("Select a class to estimate recipients.")}</p>
+              ) : recipientStatus === "loading" ? (
+                <p>{t("Calculating recipients…")}</p>
+              ) : recipientStatus === "error" ? (
+                <p role="alert">{recipientError}</p>
+              ) : recipientStatus === "ready" ? (
+                <p>{new Intl.NumberFormat(locale).format(recipientCount ?? 0)} {t("eligible recipient accounts currently match.")}</p>
+              ) : null}
+              <small>{t("Current eligible accounts only. Scheduled recipients may change; preview does not prove push delivery.")}</small>
+              {schoolTimezone ? <small>{t("School timezone")}: {schoolTimezone}</small> : null}
+            </div>
+            <fieldset className="communication-publish-choices">
+              <legend>{t("Publication")}</legend>
+              <label><input type="radio" name="publicationMode" value="NOW"
+                checked={publishMode === "NOW"}
+                onChange={() => setPublishMode("NOW")} />
+                {t("Publish now")}</label>
+              <label><input type="radio" name="publicationMode" value="SCHEDULE"
+                checked={publishMode === "SCHEDULE"}
+                onChange={() => setPublishMode("SCHEDULE")} />
+                {t("Schedule publication")}</label>
+            </fieldset>
+            {publishMode === "SCHEDULE" ? (
+              <label>{t("Publication date and school-local time")}
+                <AdminHijriDatePicker locale={locale} includeTime required
+                  value={scheduledLocal} onChange={setScheduledLocal} />
+              </label>
+            ) : null}
+            <button className="admin-primary" disabled={busy ||
+              (scope === "CLASS" && !targetClassId) ||
+              (scope === "ROLE" && !targetRole) ||
+              (publishMode === "SCHEDULE" && (!scheduledLocal ||
+                !schoolTimezone || recipientStatus !== "ready"))}>
+              {t(publishMode === "SCHEDULE" ? "Schedule announcement" : "Publish announcement")}
+            </button>
           </form>
         </article>
 
