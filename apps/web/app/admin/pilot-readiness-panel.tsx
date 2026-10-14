@@ -4,6 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
@@ -615,6 +616,11 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             {t(writeBlocked ? "Operational writes disabled" : billingAttention ? "Billing attention needed" : "Operational access enabled")}
           </span>
         </article>
+      ) : null}
+
+      {subscription && (section === "overview" || section === "subscription") ? (
+        <PilotSubscriptionHealthPanel key={accessToken} accessToken={accessToken}
+          locale={locale} compact={section === "overview"} />
       ) : null}
 
       {readiness && (section === "overview" || section === "readiness") ? (
