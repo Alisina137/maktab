@@ -294,6 +294,7 @@ export type TranslationKey =
   | "parent.academicWholeWeek"
   | "parent.academicPeriods"
   | "parent.academicNoPeriods"
+  | "parent.academicRefresh"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -795,6 +796,7 @@ const en: Record<TranslationKey, string> = {
   "parent.academicWholeWeek": "Whole week",
   "parent.academicPeriods": "Periods",
   "parent.academicNoPeriods": "No periods match the selected day or subject.",
+  "parent.academicRefresh": "Refresh",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1312,6 +1314,7 @@ const dari: Record<TranslationKey, string> = {
   "parent.academicWholeWeek": "تمام هفته",
   "parent.academicPeriods": "ساعات درسی",
   "parent.academicNoPeriods": "برای این روز یا مضمون ساعت درسی پیدا نشد.",
+  "parent.academicRefresh": "تازه‌سازی",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1829,6 +1832,7 @@ const pashto: Record<TranslationKey, string> = {
   "parent.academicWholeWeek": "ټوله اونۍ",
   "parent.academicPeriods": "درسي ساعتونه",
   "parent.academicNoPeriods": "د دې ورځې یا مضمون لپاره درسي ساعتونه نشته.",
+  "parent.academicRefresh": "بیا تازه کول",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
