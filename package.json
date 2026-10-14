@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -26,7 +26,8 @@
     "demo:parent-dashboard": "pnpm --filter @maktablink/database demo:parent-dashboard",
     "db:check": "pnpm --filter @maktablink/database db:check",
     "verify:release": "node scripts/verify-release-regression.mjs",
-    "verify:pilot": "node scripts/verify-pilot-operations-phase1.mjs"
+    "verify:pilot": "node scripts/verify-pilot-operations-phase1.mjs",
+    "verify:pilot:phase2": "node scripts/verify-pilot-operations-phase2.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
