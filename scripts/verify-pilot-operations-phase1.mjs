@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const src = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const root = read("apps/web/app/admin/(workspace)/pilot/page.tsx");
+const launchUi = read("apps/web/app/admin/pilot-launch-support-panel.tsx");
+const launchRoutes = read("apps/api/src/pilot/launch-routes.ts");
 const nested = read("apps/web/app/admin/(workspace)/pilot/[section]/page.tsx");
 const workspace = read("apps/web/app/admin/admin-workspace.tsx");
 const css = read("apps/web/app/globals.css");
@@ -44,8 +46,11 @@ for (const existingEndpoint of [
 assert.ok(!src.includes("/v1/platform/"), "Platform provisioning controls must not enter school-admin web");
 assert.ok((src.includes('subscription.status === "PAST_DUE"') || src.includes('currentSubscription.status === "PAST_DUE"')) && (src.includes('subscription.status === "GRACE"') || src.includes('currentSubscription.status === "GRACE"')),
   "Billing attention statuses must be distinct from service availability");
-assert.ok(src.includes('t("Not verified")') && src.includes("No approval or support ticket is created from this page."),
-  "Manual verification must not masquerade as launch approval");
+assert.ok(src.includes("PilotLaunchSupportPanel") &&
+  launchUi.includes('decision?.status === "APPROVED"') &&
+  launchUi.includes("Evidence submissions are requests for operator review") &&
+  launchRoutes.includes('"/v1/platform/pilot/schools/:schoolId/launch/decision"'),
+  "Phase 6 must present actual operator decisions and never treat submissions as approval");
 assert.ok(css.includes(".pilot-section-nav") && css.includes(".pilot-section-link[aria-current=\"page\"]") &&
   css.includes(".pilot-section-link:focus-visible") &&
   css.includes("@media (max-width: 620px)") &&

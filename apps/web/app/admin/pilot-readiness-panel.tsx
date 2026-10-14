@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
+import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
@@ -298,7 +299,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
-    const wantsCoverage = section === "overview" || section === "readiness" || section === "onboarding";
+    const wantsCoverage = section === "overview" || section === "readiness" || section === "onboarding" || section === "launch";
     setAdvancedBusy(wantsCoverage);
     if (wantsCoverage) {
       setAdvancedError("");
@@ -848,24 +849,8 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {section === "launch" && readiness ? (
-        <article className="admin-panel pilot-launch-note">
-          <span className="eyebrow">{t("Pilot launch review")}</span>
-          <h3>{t("Launch approval")}</h3>
-          <span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span>
-          <p>{t("Core setup checks are not a production launch approval. Complete the live release acceptance steps before launch.")}</p>
-          <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View readiness")}</Link>
-          <h3>{t("Manual verification still required")}</h3>
-          <div className="pilot-manual-list">
-            {[
-              "Real administrator, teacher, parent, and student journeys",
-              "Live database connectivity and migration verification",
-              "Encrypted backup and restore rehearsal",
-              "Push delivery, scheduled jobs, and monitoring",
-              "Device accessibility and Dari/Pashto RTL review"
-            ].map((item) => <div key={item}><span>{t(item)}</span><span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span></div>)}
-          </div>
-          <p className="pilot-security-note">{t("No approval or support ticket is created from this page.")}</p>
-        </article>
+        <PilotLaunchSupportPanel key={accessToken} accessToken={accessToken} locale={locale}
+          setupReady={Boolean(advanced?.ready)} />
       ) : null}
 
       {(section === "audit" || section === "onboarding") && !coreMissing && !auditMissing ? (

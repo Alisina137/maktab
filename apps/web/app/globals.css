@@ -6620,3 +6620,35 @@ html[dir="rtl"] body {
 @media(max-width:900px){ .pilot-billing-metrics { grid-template-columns:1fr; } }
 @media(max-width:620px){ .pilot-billing-summary-action { justify-items:start; } }
 @media(prefers-reduced-motion:reduce){ .pilot-billing-details * { animation-duration:0.01ms; } }
+
+/* Pilot Phase 6 — evidence and support workflows */
+.pilot-workflow { display:grid; gap:16px; min-width:0; }
+.pilot-workflow-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.pilot-launch-status,.pilot-workflow-evidence,.pilot-workflow-submit,.pilot-workflow-support { min-width:0; }
+.pilot-launch-status h3 { margin:8px 0; overflow-wrap:anywhere; }
+.pilot-launch-status progress { width:100%; min-height:8px; accent-color:#23775a; }
+.pilot-launch-status p,.pilot-workflow-submit p,.pilot-workflow-support p { line-height:1.6; overflow-wrap:anywhere; }
+.pilot-workflow-checks { display:grid; gap:12px; margin-block-start:12px; }
+.pilot-workflow-check { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-block-end:1px solid #e6ebef; padding-block:9px; }
+.pilot-workflow-check strong { overflow-wrap:anywhere; }
+.pilot-workflow-check p { margin:3px 0; font-size:12px; }
+.pilot-workflow-submit form,.pilot-support-form,.pilot-support-thread form { display:grid; gap:12px; margin-block-start:15px; }
+.pilot-workflow-submit label,.pilot-support-form label,.pilot-support-thread label { display:grid; gap:6px; font-weight:650; min-width:0; }
+.pilot-workflow-submit input,.pilot-workflow-submit textarea,.pilot-workflow-submit select,.pilot-support-form input,.pilot-support-form select,.pilot-support-form textarea,.pilot-support-thread textarea { width:100%; min-width:0; border:1px solid #bdc9d5; border-radius:9px; padding:10px 12px; color:inherit; background:var(--ml-color-surface,#fff); font:inherit; }
+.pilot-workflow-submit textarea,.pilot-support-form textarea,.pilot-support-thread textarea { resize:vertical; }
+.pilot-workflow-submit button,.pilot-support-form button,.pilot-support-thread button { justify-self:start; }
+.pilot-workflow-submission { padding:10px 14px; background:#f4f8fc; border-radius:10px; }
+.pilot-workflow-submission p { overflow-wrap:anywhere; }
+.pilot-workflow-history summary { cursor:pointer; font-weight:700; }
+.pilot-workflow-history > div { margin-block-start:12px; padding-block-start:10px; border-block-start:1px solid #e6ebef; }
+.pilot-support-form { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.pilot-support-description,.pilot-support-form button { grid-column:1/-1; }
+.pilot-support-list { display:grid; margin-block-start:16px; }
+.pilot-support-row { text-align:start; background:transparent; border:0; border-block-end:1px solid #e6ebef; padding:12px 4px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; cursor:pointer; color:inherit; }
+.pilot-support-row:hover,.pilot-support-row:focus-visible { background:#f1f7fc; outline-offset:2px; }
+.pilot-support-row small { display:block; margin-block-start:4px; color:#617084; }
+.pilot-support-thread { padding:15px; margin-block-start:14px; background:#f8fafc; border-radius:12px; }
+.pilot-support-message { border-inline-start:3px solid #8ba2b8; padding:9px 13px; margin-block:10px; background:#fff; border-radius:5px; }
+.pilot-support-message > span { margin-inline-start:10px; }
+@media(max-width:840px){.pilot-workflow-grid {grid-template-columns:1fr;} }
+@media(max-width:600px){.pilot-support-form {grid-template-columns:1fr;} .pilot-support-description,.pilot-support-form button {grid-column:auto;} }

@@ -52,6 +52,9 @@ jobs:
       - name: Pilot Operations Phase 5 subscription health and reminder guard
         run: pnpm verify:pilot:phase5
 
+      - name: Pilot Operations Phase 6 launch and support workflow guard
+        run: pnpm verify:pilot:phase6
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -93,6 +96,7 @@ jobs:
           pnpm verify:pilot:phase3
           pnpm verify:pilot:phase4
           pnpm verify:pilot:phase5
+          pnpm verify:pilot:phase6
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience

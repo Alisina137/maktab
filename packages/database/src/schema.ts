@@ -935,7 +935,78 @@ export const familyImportBatches = pgTable(
   ]
 );
 
+export const pilotLaunchEvidence = pgTable(
+  "pilot_launch_evidence",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    category: varchar("category", { length: 40 }).notNull(),
+    reference: varchar("reference", { length: 500 }).notNull(),
+    note: varchar("note", { length: 2000 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("SUBMITTED"),
+    submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedBy: varchar("reviewed_by", { length: 80 }),
+    reviewNote: varchar("review_note", { length: 1000 }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("pilot_launch_evidence_school_category_unique").on(table.schoolId, table.category)
+  ]
+);
+
+export const pilotSupportTickets = pgTable(
+  "pilot_support_tickets",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    subject: varchar("subject", { length: 160 }).notNull(),
+    description: varchar("description", { length: 3000 }).notNull(),
+    category: varchar("category", { length: 32 }).notNull(),
+    priority: varchar("priority", { length: 16 }).notNull().default("NORMAL"),
+    status: varchar("status", { length: 24 }).notNull().default("OPEN"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [index("pilot_support_tickets_school_time_idx").on(table.schoolId, table.createdAt)]
+);
+
+export const pilotSupportUpdates = pgTable("pilot_support_updates", {
+  id: uuid("id").primaryKey(),
+  ticketId: uuid("ticket_id").notNull().references(() => pilotSupportTickets.id, { onDelete: "cascade" }),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  authorKind: varchar("author_kind", { length: 16 }).notNull(),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  note: varchar("note", { length: 2000 }).notNull(),
+  statusAfter: varchar("status_after", { length: 24 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [index("pilot_support_updates_ticket_time_idx").on(table.ticketId, table.createdAt)]);
+
+export const pilotLaunchDecisions = pgTable("pilot_launch_decisions", {
+  schoolId: uuid("school_id").primaryKey().references(() => schools.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 24 }).notNull().default("NOT_APPROVED"),
+  operatorLabel: varchar("operator_label", { length: 80 }),
+  note: varchar("note", { length: 1000 }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const pilotLaunchDecisionHistory = pgTable("pilot_launch_decision_history", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 24 }).notNull(),
+  operatorLabel: varchar("operator_label", { length: 80 }).notNull(),
+  note: varchar("note", { length: 1000 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [index("pilot_launch_decision_history_school_idx").on(table.schoolId, table.createdAt)]);
+
 export const databaseSchema = {
+  pilotLaunchEvidence,
+  pilotSupportTickets,
+  pilotSupportUpdates,
+  pilotLaunchDecisions,
+  pilotLaunchDecisionHistory,
   familyImportBatches,
   schools,
   subscriptions,
@@ -1023,3 +1094,8 @@ export type NotificationPushDelivery = typeof notificationPushDeliveries.$inferS
 export type CommunicationSettings = typeof communicationSettings.$inferSelect;
 
 export type FamilyImportBatch = typeof familyImportBatches.$inferSelect;
+
+export type PilotLaunchEvidence = typeof pilotLaunchEvidence.$inferSelect;
+export type PilotSupportTicket = typeof pilotSupportTickets.$inferSelect;
+export type PilotSupportUpdate = typeof pilotSupportUpdates.$inferSelect;
+export type PilotLaunchDecision = typeof pilotLaunchDecisions.$inferSelect;

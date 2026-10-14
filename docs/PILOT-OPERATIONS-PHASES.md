@@ -101,8 +101,27 @@
 6. Confirm manual Step 20 operator, live Neon, backups and release gates remain NO-GO.
 
 
-## Phase 6 — Launch and support workflows
-Real evidence collection, support tickets and platform-only launch approval.
+## Phase 6 — Durable launch and support workflows (implemented)
+
+- Migration `0021_pilot_launch_support.sql` adds five school-scoped PostgreSQL tables: latest evidence record per category, support tickets, ticket conversation history, current platform launch decision, and append-only decision history. Back up first and run `pnpm db:migrate` before starting this API.
+- Five *human-submitted* evidence categories: cross-role journeys, real database/migration validation, encrypted backup/restore rehearsal, push/scheduler/monitoring verification, and device accessibility/RTL testing. School admins can attach a **reference identifier and short summary**, not a file or sensitive content. Only platform operators can mark `VERIFIED`/`REJECTED` with review feedback.
+- `GET /v1/admin/pilot/launch`, `PUT /v1/admin/pilot/launch/evidence`: authenticated school-scoped overview and idempotent one-row-per-category submission. Resubmission resets status to SUBMITTED and invalidates any prior approval.
+- School support endpoints `GET/POST /v1/admin/pilot/support`, `GET /v1/admin/pilot/support/:ticketId`, `POST /v1/admin/pilot/support/:ticketId/replies` provide paginated school-only tickets, priority/category, conversations, and safe retry validation. Support requests/replies are permitted during a suspended/cancelled subscription; other operational writes are still blocked.
+- Platform-only (existing `x-platform-provisioning-key`) endpoints `GET /v1/platform/pilot/schools/:schoolId/launch`, `PATCH /v1/platform/pilot/schools/:schoolId/evidence/:category`, `GET /v1/platform/pilot/schools/:schoolId/support`, `GET /v1/platform/pilot/schools/:schoolId/support/:ticketId`, `PATCH /v1/platform/pilot/schools/:schoolId/support/:ticketId`, and `POST /v1/platform/pilot/schools/:schoolId/launch/decision` allow operator review, reply/status updates, and explicit approval/revocation. The operator label is caller-supplied under a shared key and **is not independently authenticated operator identity**; do not distribute this key to schools.
+- School and platform launch reads also return a **derived effectiveApproved** indicator; if configuration becomes incomplete or evidence/critical support requirements no longer pass, the UI shows a revalidation warning rather than treating an old APPROVED record as current launch readiness. The historical operator decision stays in the audit trail.
+- Launch approval is **NEVER automatic**. Explicit platform approval requires current advanced/core configuration readiness, all five evidence categories platform-verified, and zero unresolved CRITICAL tickets. Writes serialize on the school row, are audited inside the transaction, and invalidate previous approval if evidence is changed or a new critical ticket opens. Decision history survives changes.
+- The school Launch & Support tab now displays actual database-backed status, evidence checklist, progress, evidence form, operator feedback and history, support ticket creation and conversations. English/Dari/Pashto, responsive RTL styles, abortable stale-request handling and no privileged platform forms.
+- **Limitations:** submitting a URL/reference does not prove a test occurred or verify it automatically. Platform operators must independently inspect the evidence in a controlled vault (no file upload feature). The platform API is operator tooling, **not a full platform dashboard UI**. All true production launch gates under Step 20 remain separately NO-GO pending live/operator proof; recording APPROVED here alone is not proof of deployment safety.
+
+### Phase 6 operator acceptance
+
+1. Apply migration `0021` after a verified database backup on staging. Verify school-A/B tenant isolation, school-admin and parent/teacher denial, and invalid/oversized payload limits.
+2. School admin submit each evidence type and check it remains SUBMITTED until platform review. Verify operator REJECTED feedback then resubmit resets review status and no sensitive evidence files are stored.
+3. Review submitted evidence outside MaktabLink. Use the platform-only endpoints with the private platform provisioning credential to verify each category. Verify approvals are refused if core/advanced readiness fails, evidence is missing, or an unresolved CRITICAL ticket exists.
+4. Approve only after independent operator verification; check decision history, then resubmit one evidence record or open a CRITICAL ticket to confirm recorded approval is revoked atomically.
+5. Create support tickets, reply, move OPEN → IN_PROGRESS → RESOLVED/CLOSED from platform API, verify school sees updates and cannot edit status; verify support still works while suspended.
+6. Check real browser/Android, RTL Dari/Pashto, keyboard, 200% zoom, API downtime, refresh and account switching. Run `pnpm verify:pilot:phase6`, `pnpm verify`, Linux/Windows CI, and follow all independent Step 20 production NO-GO controls.
+
 
 ## Phase 7 — Cross-role regression and release acceptance
 Android/desktop/RTL/a11y plus production-environment proof, security and operator approval. Existing Step 20 NO-GO blockers remain in effect.
