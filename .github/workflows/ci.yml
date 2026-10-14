@@ -40,6 +40,9 @@ jobs:
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
+      - name: Pilot Operations Phase 2 coverage regression guards
+        run: pnpm verify:pilot:phase2
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -77,6 +80,7 @@ jobs:
         run: |
           pnpm verify:accounts
           pnpm verify:pilot
+          pnpm verify:pilot:phase2
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience

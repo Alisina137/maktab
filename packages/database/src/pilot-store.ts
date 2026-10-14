@@ -1,4 +1,8 @@
 import { and, eq } from "drizzle-orm";
+import {
+  getAdvancedPilotReadiness, listPilotReadinessIssues,
+  type AdvancedPilotReadiness, type PilotCoverageIssues, type PilotCoverageKey
+} from "./pilot-readiness-advanced.js";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
@@ -44,6 +48,8 @@ export interface PilotReadiness {
 
 export interface PilotStore {
   getReadiness(schoolId: string): Promise<PilotReadiness>;
+  getAdvancedReadiness(schoolId: string): Promise<AdvancedPilotReadiness>;
+  listReadinessIssues(schoolId: string, metric: PilotCoverageKey, options: { limit: number; offset: number }): Promise<PilotCoverageIssues>;
   exportCoreSchoolData(schoolId: string): Promise<Record<string, unknown> | null>;
 }
 
@@ -128,6 +134,15 @@ export function createPilotStore(db: FoundationDatabase): PilotStore {
         },
         checks
       };
+    },
+
+    async getAdvancedReadiness(schoolId) {
+      const core = await this.getReadiness(schoolId);
+      return getAdvancedPilotReadiness(db, schoolId, core.ready);
+    },
+
+    async listReadinessIssues(schoolId, metric, options) {
+      return listPilotReadinessIssues(db, schoolId, metric, options);
     },
 
     async exportCoreSchoolData(schoolId) {

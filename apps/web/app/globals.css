@@ -6529,3 +6529,28 @@ html[dir="rtl"] body {
 @media (prefers-reduced-motion: reduce) {
   .pilot-quick-link { transition: none; }
 }
+
+/* Pilot Phase 2: coverage cards and bounded drilldown. */
+.pilot-coverage-section { display:grid; gap:16px; min-width:0; }
+.pilot-coverage-mini { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.pilot-coverage-category { min-width:0; }
+.pilot-coverage-category > h3 { margin:0 0 18px; }
+.pilot-coverage-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.pilot-coverage-card { display:grid; align-content:start; gap:12px; min-width:0;
+  padding:17px; border:1px solid #dfe8f6; border-radius:14px; background:#fbfcff; }
+.pilot-coverage-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.pilot-coverage-top > strong { overflow-wrap:anywhere; line-height:1.6; }
+.pilot-coverage-top .pilot-badge { flex-shrink:0; }
+.pilot-coverage-card p { margin:0; font-size:13px; color:var(--ml-color-text-muted); }
+.pilot-coverage-card progress { width:100%; height:10px; accent-color:#3c83df; }
+.pilot-coverage-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.pilot-coverage-issues { border-top:1px solid #dae5f4; padding-top:10px; min-width:0; }
+.pilot-coverage-issues ul { margin:0 0 12px; padding-inline-start:22px; max-height:280px; overflow:auto; }
+.pilot-coverage-issues li { padding:6px 0; font-size:13px; overflow-wrap:anywhere; }
+.pilot-coverage-paging { display:flex; gap:8px; }
+@media (max-width:880px) { .pilot-coverage-grid { grid-template-columns:1fr; } }
+@media (max-width:620px) {
+  .pilot-coverage-category { padding:17px; }
+  .pilot-coverage-card { padding:14px; }
+  .pilot-coverage-top { flex-wrap:wrap; }
+}
