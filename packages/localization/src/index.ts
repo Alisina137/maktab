@@ -260,6 +260,20 @@ export type TranslationKey =
   | "attendance.excused"
   | "attendance.notRecorded"
   | "attendance.noHistory"
+  | "parent.attendanceCalendar"
+  | "parent.attendanceCalendarHelp"
+  | "parent.attendancePrevious"
+  | "parent.attendanceNext"
+  | "parent.attendanceFuture"
+  | "parent.attendanceLoadError"
+  | "parent.attendanceSummary"
+  | "parent.attendanceRate"
+  | "parent.attendanceRateHelp"
+  | "parent.attendanceRecorded"
+  | "parent.attendanceMonthEmpty"
+  | "parent.attendanceDayDetail"
+  | "parent.attendanceNoNote"
+  | "parent.attendanceUnrecorded"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -727,6 +741,20 @@ const en: Record<TranslationKey, string> = {
   "attendance.excused": "Excused",
   "attendance.notRecorded": "Not recorded",
   "attendance.noHistory": "No attendance has been recorded yet.",
+    "parent.attendanceCalendar": "Attendance calendar",
+    "parent.attendanceCalendarHelp": "Select a day to see the school's recorded attendance.",
+    "parent.attendancePrevious": "Previous month",
+    "parent.attendanceNext": "Next month",
+    "parent.attendanceFuture": "Not yet recorded",
+    "parent.attendanceLoadError": "Attendance could not be loaded. Check your connection and retry.",
+    "parent.attendanceSummary": "Monthly summary",
+    "parent.attendanceRate": "Attendance rate",
+    "parent.attendanceRateHelp": "Present and late ÷ recorded non-excused days. Excused and unrecorded days are excluded.",
+    "parent.attendanceRecorded": "Recorded days",
+    "parent.attendanceMonthEmpty": "No attendance has been recorded for this month.",
+    "parent.attendanceDayDetail": "Day details",
+    "parent.attendanceNoNote": "No note from the school.",
+    "parent.attendanceUnrecorded": "No attendance recorded for this date.",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1210,6 +1238,20 @@ const dari: Record<TranslationKey, string> = {
   "attendance.excused": "معذور",
   "attendance.notRecorded": "ثبت نشده",
   "attendance.noHistory": "هنوز حاضری ثبت نشده است.",
+    "parent.attendanceCalendar": "تقویم حاضری",
+    "parent.attendanceCalendarHelp": "برای دیدن حاضری ثبت‌شده توسط مکتب، یک روز را انتخاب کنید.",
+    "parent.attendancePrevious": "ماه قبل",
+    "parent.attendanceNext": "ماه بعد",
+    "parent.attendanceFuture": "هنوز ثبت نشده",
+    "parent.attendanceLoadError": "حاضری بار نشد. اتصال خود را بررسی و دوباره تلاش کنید.",
+    "parent.attendanceSummary": "خلاصه ماهانه",
+    "parent.attendanceRate": "فیصدی حاضری",
+    "parent.attendanceRateHelp": "روزهای حاضر و ناوقت تقسیم بر روزهای ثبت‌شده بدون معذوری؛ روزهای معذور و ثبت‌نشده حساب نمی‌شوند.",
+    "parent.attendanceRecorded": "روزهای ثبت‌شده",
+    "parent.attendanceMonthEmpty": "برای این ماه هنوز حاضری ثبت نشده است.",
+    "parent.attendanceDayDetail": "جزئیات روز",
+    "parent.attendanceNoNote": "مکتب یادداشتی ثبت نکرده است.",
+    "parent.attendanceUnrecorded": "برای این تاریخ حاضری ثبت نشده است.",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1693,6 +1735,20 @@ const pashto: Record<TranslationKey, string> = {
   "attendance.excused": "معذور",
   "attendance.notRecorded": "نه ده ثبت شوې",
   "attendance.noHistory": "تر اوسه حاضري نه ده ثبت شوې.",
+    "parent.attendanceCalendar": "د حاضرۍ کلیزه",
+    "parent.attendanceCalendarHelp": "د ښوونځي ثبت شوې حاضري د لیدلو لپاره ورځ وټاکئ.",
+    "parent.attendancePrevious": "تېره میاشت",
+    "parent.attendanceNext": "راتلونکې میاشت",
+    "parent.attendanceFuture": "لا نه ده ثبت شوې",
+    "parent.attendanceLoadError": "حاضري پورته نه شوه. خپله اړیکه وګورئ او بیا هڅه وکړئ.",
+    "parent.attendanceSummary": "میاشتنۍ لنډیز",
+    "parent.attendanceRate": "د حاضرۍ سلنه",
+    "parent.attendanceRateHelp": "حاضر او ناوخته ورځې پر ثبت شویو غیرمعذورو ورځو وېشل کېږي؛ معذورې او ناثبت شوې ورځې نه شمېرل کېږي.",
+    "parent.attendanceRecorded": "ثبت شوې ورځې",
+    "parent.attendanceMonthEmpty": "په دې میاشت کې تر اوسه حاضري نه ده ثبت شوې.",
+    "parent.attendanceDayDetail": "د ورځې جزییات",
+    "parent.attendanceNoNote": "ښوونځي هېڅ یادښت نه دی ثبت کړی.",
+    "parent.attendanceUnrecorded": "د دې نېټې حاضري نه ده ثبت شوې.",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
