@@ -2,7 +2,7 @@ import type { ParentNotification } from "./api";
 
 export type NotificationDestination =
   | "PARENT_ANNOUNCEMENTS" | "PARENT_HOMEWORK" | "PARENT_RESULTS"
-  | "PARENT_HOME" | "STUDENT_ANNOUNCEMENTS" | "STUDENT_HOMEWORK"
+  | "PARENT_HOME" | "PARENT_FEES" | "STUDENT_ANNOUNCEMENTS" | "STUDENT_HOMEWORK"
   | "STUDENT_RESULTS" | "STUDENT_HOME" | "TEACHER_ANNOUNCEMENTS"
   | "TEACHER_HOMEWORK" | "TEACHER_GRADES" | "TEACHER_TODAY";
 
@@ -31,7 +31,7 @@ export function notificationDestination(
   }
   if (role === "PARENT" && (type === "FEE_DUE" || type === "FEE_OVERDUE") &&
       /^\/parent\/children\/[0-9a-f-]{36}\/fees$/i.test(deepLink ?? "")) {
-    return "PARENT_RESULTS"; // Parent More hosts fees as well as results.
+    return "PARENT_FEES"; // Fees live under Parent More, not academic results.
   }
   return null;
 }

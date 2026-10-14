@@ -17,7 +17,7 @@ import type {
   LearnerAcademicPayload
 } from "./api";
 
-export type ParentTab = "HOME" | "HOMEWORK" | "ANNOUNCEMENTS" | "MORE";
+export type ParentTab = "HOME" | "ACADEMICS" | "ATTENDANCE" | "INBOX" | "MORE";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -50,13 +50,14 @@ export function ParentBottomNavigation({
   const rtl = getDirection(locale) === "rtl";
   const tabs: Array<{
     key: ParentTab;
-    label: "parent.navHome" | "parent.navHomework" | "parent.navAnnouncements" | "parent.navMore";
+    label: "parent.navHome" | "parent.navAcademics" | "parent.navAttendance" | "parent.navInbox" | "parent.navMore";
     icon: keyof typeof Ionicons.glyphMap;
     activeIcon: keyof typeof Ionicons.glyphMap;
   }> = [
     { key: "HOME", label: "parent.navHome", icon: "home-outline", activeIcon: "home" },
-    { key: "HOMEWORK", label: "parent.navHomework", icon: "document-text-outline", activeIcon: "document-text" },
-    { key: "ANNOUNCEMENTS", label: "parent.navAnnouncements", icon: "megaphone-outline", activeIcon: "megaphone" },
+    { key: "ACADEMICS", label: "parent.navAcademics", icon: "book-outline", activeIcon: "book" },
+    { key: "ATTENDANCE", label: "parent.navAttendance", icon: "calendar-outline", activeIcon: "calendar" },
+    { key: "INBOX", label: "parent.navInbox", icon: "notifications-outline", activeIcon: "notifications" },
     { key: "MORE", label: "parent.navMore", icon: "grid-outline", activeIcon: "grid" }
   ];
 
@@ -84,7 +85,8 @@ export function ParentBottomNavigation({
                 color={active ? tokens.color.brandStrong : tokens.color.textMuted}
               />
             </View>
-            <Text style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>
+            <Text numberOfLines={1} adjustsFontSizeToFit
+              style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>
               {translate(locale, tab.label)}
             </Text>
           </Pressable>
@@ -217,13 +219,15 @@ export function ParentMoreAcademicContent({
   fees,
   communicationReady,
   locale,
-  textDirection
+  textDirection,
+  section = "BOTH"
 }: {
   learning: LearnerAcademicPayload | null;
   fees: FeeInvoiceViewPayload[];
   communicationReady: boolean;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
+  section?: "BOTH" | "RESULTS" | "FEES";
 }) {
   const rtl = getDirection(locale) === "rtl";
   const outstanding = fees.reduce((sum, item) => sum + item.outstanding, 0);
@@ -245,7 +249,7 @@ export function ParentMoreAcademicContent({
 
   return (
     <View style={styles.stack}>
-      <View style={styles.card}>
+      {section !== "FEES" ? <View style={styles.card}>
         <View style={[styles.headingRow, rtl && styles.rowRtl]}>
           <View style={styles.iconShell}>
             <Ionicons name="ribbon-outline" size={20} color={tokens.color.brandStrong} />
@@ -293,9 +297,9 @@ export function ParentMoreAcademicContent({
             {translate(locale, "learning.noPublishedResults")}
           </Text>
         ) : null}
-      </View>
+      </View> : null}
 
-      <View style={styles.card}>
+      {section !== "RESULTS" ? <View style={styles.card}>
         <View style={[styles.headingRow, rtl && styles.rowRtl]}>
           <View style={styles.iconShell}>
             <Ionicons name="wallet-outline" size={20} color={tokens.color.brandStrong} />
@@ -357,7 +361,7 @@ export function ParentMoreAcademicContent({
         {communicationReady && fees.length === 0 ? (
           <Text style={[styles.muted, textDirection]}>{translate(locale, "fees.none")}</Text>
         ) : null}
-      </View>
+      </View> : null}
     </View>
   );
 }

@@ -88,6 +88,11 @@ export type TranslationKey =
   | "parent.latestAnnouncement"
   | "parent.noAnnouncements"
   | "parent.moreItems"
+  | "parent.navAcademics"
+  | "parent.navAttendance"
+  | "parent.navInbox"
+  | "parent.navTimetable"
+  | "parent.noTimetable"
   | "parent.navHome"
   | "parent.navHomework"
   | "parent.navAnnouncements"
@@ -538,6 +543,11 @@ const en: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "Latest announcement",
   "parent.noAnnouncements": "No announcement for this child",
   "parent.moreItems": "more",
+  "parent.navAcademics": "Academics",
+  "parent.navAttendance": "Attendance",
+  "parent.navInbox": "Inbox",
+  "parent.navTimetable": "Timetable",
+  "parent.noTimetable": "No timetable has been published.",
   "parent.navHome": "Home",
   "parent.navHomework": "Homework",
   "parent.navAnnouncements": "Announcements",
@@ -1000,6 +1010,11 @@ const dari: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "آخرین اعلان",
   "parent.noAnnouncements": "برای این شاگرد اعلانی وجود ندارد",
   "parent.moreItems": "مورد دیگر",
+  "parent.navAcademics": "آموزش",
+  "parent.navAttendance": "حاضری",
+  "parent.navInbox": "صندوق پیام‌ها",
+  "parent.navTimetable": "تقسیم اوقات",
+  "parent.noTimetable": "تقسیم اوقات نشر نشده است.",
   "parent.navHome": "خانه",
   "parent.navHomework": "کارخانگی",
   "parent.navAnnouncements": "اعلانات",
@@ -1462,6 +1477,11 @@ const pashto: Record<TranslationKey, string> = {
   "parent.latestAnnouncement": "وروستی اعلان",
   "parent.noAnnouncements": "د دې زده‌کوونکي لپاره اعلان نشته",
   "parent.moreItems": "نور",
+  "parent.navAcademics": "زده کړې",
+  "parent.navAttendance": "حاضري",
+  "parent.navInbox": "پیغامونه",
+  "parent.navTimetable": "مهالوېش",
+  "parent.noTimetable": "مهالوېش لا نه دی خپور شوی.",
   "parent.navHome": "کور",
   "parent.navHomework": "کورنی کار",
   "parent.navAnnouncements": "اعلانونه",
