@@ -61,7 +61,7 @@ import { initialParentResources, loadingParentChildResources,
   type ParentHomeResource, type ParentHomeResourceMap, type ParentHomeResourceStatus
 } from "./src/parent-home-model";
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
-import { ParentTimetableContent } from "./src/parent-timetable";
+import { ParentAcademicHomework, ParentAcademicResults, ParentAcademicTimetable } from "./src/parent-academics";
 import { ParentAttendanceContent } from "./src/parent-attendance";
 import { ParentNotificationsContent } from "./src/parent-inbox";
 import { StudentDashboard } from "./src/student-dashboard";
@@ -73,7 +73,6 @@ import { StudentBottomNavigation, type StudentTab } from "./src/student-navigati
 import {
   ParentAnnouncementsContent,
   ParentBottomNavigation,
-  ParentHomeworkContent,
   ParentMoreAcademicContent,
   type ParentTab
 } from "./src/parent-navigation";
@@ -2495,16 +2494,31 @@ function AppContent() {
                 />
                 {selectedChild ? (
                   parentAcademicsTab === "HOMEWORK" ? (
-                    <ParentHomeworkContent key={selectedChild.student.id} accessToken={session.accessToken}
-                      learning={parentLearning} locale={locale} textDirection={textDirection} />
+                    <ParentAcademicHomework
+                      key={session.user.id + ":" + selectedChild.student.id + ":homework"}
+                      accessToken={session.accessToken} locale={locale} schoolToday={parentToday}
+                      learning={parentDataChildId === selectedChildId ? parentLearning : null}
+                      status={parentDataChildId === selectedChildId
+                        ? parentResourceStatus.learning : "loading"}
+                      onRetry={() => retryParentResource("learning")}
+                    />
                   ) : parentAcademicsTab === "RESULTS" ? (
-                    <ParentMoreAcademicContent key={selectedChild.student.id} section="RESULTS"
-                      learning={parentLearning} fees={parentFees}
-                      communicationReady={parentCommunicationReady}
-                      locale={locale} textDirection={textDirection} />
+                    <ParentAcademicResults
+                      key={session.user.id + ":" + selectedChild.student.id + ":results"}
+                      learning={parentDataChildId === selectedChildId ? parentLearning : null}
+                      status={parentDataChildId === selectedChildId
+                        ? parentResourceStatus.learning : "loading"}
+                      locale={locale} onRetry={() => retryParentResource("learning")}
+                    />
                   ) : (
-                    <ParentTimetableContent key={selectedChild.student.id}
-                      periods={parentTimetable} ready={parentTimetableReady} locale={locale} />
+                    <ParentAcademicTimetable
+                      key={session.user.id + ":" + selectedChild.student.id + ":timetable"}
+                      periods={parentDataChildId === selectedChildId ? parentTimetable : []}
+                      status={parentDataChildId === selectedChildId
+                        ? parentResourceStatus.timetable : "loading"}
+                      schoolToday={parentToday} locale={locale}
+                      onRetry={() => retryParentResource("timetable")}
+                    />
                   )
                 ) : (
                   <View style={styles.emptyCard}>
