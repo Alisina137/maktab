@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type User } from "../../admin-client";
 import { adminFormat } from "../../admin-i18n";
 import { validateAccountCreation } from "../../account-create-rules";
@@ -12,6 +12,7 @@ import { AdminAccountDirectory, emptyDirectory,
   type AccountGroup, type AccountHighlight, type AccountSort, type AccountOrder,
   type AccountDirectoryResult } from "../../admin-account-directory";
 import type { AccountFamilyOverview } from "../../account-details-data";
+import { shouldAcceptAccountDirectoryResult, updateAccountSelection } from "../../account-directory-safety";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
@@ -32,7 +33,13 @@ type FamilyStudent = AccountFamilyOverview["students"][number];
 export default function AccountsPage() {
   const { stored, locale, t, showToast } = useAdminWorkspace();
   const [directory, setDirectory] = useState<AccountDirectoryResult>(emptyDirectory);
-  const users = directory.users;
+  const [directoryToken, setDirectoryToken] = useState<string | null>(null);
+  const sessionToken = stored.session.accessToken;
+  const tokenRef = useRef(sessionToken);
+  tokenRef.current = sessionToken;
+  const [familyToken, setFamilyToken] = useState<string | null>(null);
+  const visibleDirectory = directoryToken === sessionToken ? directory : emptyDirectory;
+  const users = visibleDirectory.users;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<AccountSort>("username");
@@ -50,8 +57,9 @@ export default function AccountsPage() {
   const [newRole, setNewRole] = useState<User["role"]>("TEACHER");
   const [parentFullName, setParentFullName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
-  const [familyStudents, setFamilyStudents] = useState<FamilyStudent[]>([]);
   const [familyOverview, setFamilyOverview] = useState<AccountFamilyOverview | null>(null);
+  const familyData = familyToken === sessionToken ? familyOverview : null;
+  const familyStudents: FamilyStudent[] = familyData?.students ?? [];
   const [familyLoading, setFamilyLoading] = useState(false);
   const [familyError, setFamilyError] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -65,6 +73,8 @@ export default function AccountsPage() {
   const [highlight, setHighlight] = useState<AccountHighlight>("ALL");
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
   const [query, setQuery] = useState("");
+  const queryIntentRef = useRef("");
+  const isQueryPending = query.trim() !== debouncedQuery;
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<AccountPendingAction | null>(null);
   const cancelPendingAction = useCallback(() => setPendingAction(null), []);
@@ -77,6 +87,11 @@ export default function AccountsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestedToken = sessionToken;
+    const requestedQuery = debouncedQuery;
+    const accepts = () => shouldAcceptAccountDirectoryResult(
+      requestedToken, requestedQuery, tokenRef.current, queryIntentRef.current, controller.signal.aborted
+    );
     setDirectoryLoading(true);
     setDirectoryError("");
     const params = new URLSearchParams({
@@ -84,51 +99,66 @@ export default function AccountsPage() {
       page: String(page), pageSize: String(pageSize)
     });
     void adminApi<AccountDirectoryResult>(`/v1/admin/users/directory?${params}`, {
-      headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+      headers: { Authorization: `Bearer ${sessionToken}` },
       signal: controller.signal
     }).then((result) => {
-      if (controller.signal.aborted) return;
+      if (!accepts()) return;
       setDirectory(result);
+      setDirectoryToken(requestedToken);
       if (page > result.pages) setPage(result.pages);
     }).catch((error) => {
-      if (controller.signal.aborted) return;
+      if (!accepts()) return;
+      setDirectoryToken(requestedToken);
       setDirectoryError(friendlyAdminError(error, "Could not load school accounts.", locale));
       setDirectory((previous) => ({ ...previous, users: [] }));
     }).finally(() => {
-      if (!controller.signal.aborted) {
+      if (accepts()) {
         setDirectoryLoading(false);
         setInitialLoading(false);
       }
     });
     return () => controller.abort();
-  }, [stored.session.accessToken, debouncedQuery, group, status, highlight, sortBy, order, page, pageSize, refreshNonce]);
+  }, [sessionToken, debouncedQuery, group, status, highlight, sortBy, order, page, pageSize, refreshNonce]);
+
+  // Reset sensitive screen state whenever the authenticated school/session changes.
+  useEffect(() => {
+    setSelectedAccountId(null);
+    setPendingAction(null);
+    setBulkPending(null);
+    setCredential(null);
+    setSelectedIds(new Set());
+    setFamilyOverview(null);
+    setFamilyToken(null);
+    setPage(1);
+  }, [sessionToken]);
 
   const selectedRole = users.find((user) => user.id === selectedAccountId)?.role;
   const needsFamily = (view === "CREATE" && newRole === "STUDENT") ||
     (selectedAccountId !== null && (selectedRole === "PARENT" || selectedRole === "STUDENT"));
   useEffect(() => {
-    if (!needsFamily || familyOverview) return;
+    if (!needsFamily || familyData) return;
     let cancelled = false;
+    const requestedToken = sessionToken;
     setFamilyLoading(true);
     setFamilyError("");
     void adminApi<AccountFamilyOverview>("/v1/admin/families", {
-      headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+      headers: { Authorization: `Bearer ${requestedToken}` }
     }).then((result) => {
-      if (cancelled) return;
+      if (cancelled || tokenRef.current !== requestedToken) return;
       setFamilyOverview(result);
-      setFamilyStudents(result.students);
+      setFamilyToken(requestedToken);
       setStudentRecordId((current) =>
         result.students.some((row) =>
           row.student.id === current && !row.student.userId && row.student.status === "ACTIVE"
         ) ? current : ""
       );
     }).catch((error) => {
-      if (!cancelled) setFamilyError(friendlyAdminError(error, "Could not load school accounts.", locale));
+      if (!cancelled && tokenRef.current === requestedToken) setFamilyError(friendlyAdminError(error, "Could not load school accounts.", locale));
     }).finally(() => {
-      if (!cancelled) setFamilyLoading(false);
+      if (!cancelled && tokenRef.current === requestedToken) setFamilyLoading(false);
     });
     return () => { cancelled = true; };
-  }, [needsFamily, familyOverview, stored.session.accessToken]);
+  }, [needsFamily, familyData, sessionToken]);
 
   useEffect(() => {
     const value = newUsername.trim();
@@ -155,21 +185,17 @@ export default function AccountsPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [newUsername, newRole, stored.session.accessToken]);
 
-  function refreshDirectory() { setRefreshNonce((current) => current + 1); }
+  function refreshDirectory() { resetSelection(); setRefreshNonce((current) => current + 1); }
   function resetSelection() { setSelectedIds(new Set()); }
   function updateGroup(next: AccountGroup) { setGroup(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateStatus(next: "ALL" | User["status"]) { setStatus(next); setHighlight("ALL"); setPage(1); resetSelection(); setSelectedAccountId(null); }
-  function updateQuery(next: string) { setQuery(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateQuery(next: string) { queryIntentRef.current = next.trim(); setQuery(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateSort(next: AccountSort) { setSortBy(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateOrder(next: AccountOrder) { setOrder(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updatePage(next: number) { setPage(next); resetSelection(); setSelectedAccountId(null); }
   function updatePageSize(next: number) { setPageSize(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function setSelection(ids: string[], selected: boolean) {
-    setSelectedIds((old) => {
-      const next = new Set(old);
-      ids.forEach((id) => selected ? next.add(id) : next.delete(id));
-      return next;
-    });
+    setSelectedIds((old) => updateAccountSelection(old, ids, selected, users, stored.session.user.id));
   }
   function requestBulk(action: "suspend" | "reactivate") {
     if (busy || credential || directoryLoading) return;
@@ -269,7 +295,7 @@ export default function AccountsPage() {
       setParentPhone("");
       setStudentSearch("");
       setFamilyOverview(null);
-      setFamilyStudents([]);
+      setFamilyToken(null);
       setCreationAttempted(false);
       setCredential({ username: result.user.username, password: result.temporaryPassword });
       setView("DIRECTORY");
@@ -368,7 +394,7 @@ export default function AccountsPage() {
   const showPhoneIssue = creationAttempted || parentPhone.length > 0;
 
   const selectedAccount = selectedAccountId ? users.find((user) => user.id === selectedAccountId) ?? null : null;
-  const summaryCounts = directory.counts;
+  const summaryCounts = visibleDirectory.counts;
   const summaries = [
     { id: "ALL", label: "Total accounts", value: summaryCounts.total, symbol: "▦" },
     { id: "ACTIVE", label: "Active accounts", value: summaryCounts.active, symbol: "✓" },
@@ -379,6 +405,7 @@ export default function AccountsPage() {
     setHighlight(next);
     setGroup("ALL");
     setStatus("ALL");
+    queryIntentRef.current = "";
     setQuery("");
     setPage(1);
     resetSelection();
@@ -386,11 +413,12 @@ export default function AccountsPage() {
     setSelectedAccountId(null);
   }
   function clearFilters() {
+    queryIntentRef.current = "";
     setQuery(""); setGroup("ALL"); setStatus("ALL"); setHighlight("ALL");
     setPage(1); resetSelection(); setSelectedAccountId(null);
   }
 
-  if (initialLoading) {
+  if (initialLoading || directoryToken !== sessionToken) {
     return (
       <section className="admin-panel admin-loading-card">
         <AdminLoader label={t("Loading…")} />
@@ -432,7 +460,7 @@ export default function AccountsPage() {
           user={selectedAccount}
           currentAdminId={stored.session.user.id}
           accessToken={stored.session.accessToken}
-          families={familyOverview}
+          families={familyData}
           locale={locale}
           t={t}
           busy={busy}
@@ -655,7 +683,7 @@ export default function AccountsPage() {
         ) : null}
 
         <AdminAccountDirectory
-          result={directory}
+          result={visibleDirectory}
           group={group}
           status={status}
           highlight={highlight}
@@ -665,8 +693,8 @@ export default function AccountsPage() {
           page={page}
           pageSize={pageSize}
           selectedIds={selectedIds}
-          loading={directoryLoading}
-          error={directoryError}
+          loading={directoryLoading || isQueryPending}
+          error={isQueryPending ? "" : directoryError}
           busy={busy}
           credentialOpen={Boolean(credential)}
           currentAdminId={stored.session.user.id}
