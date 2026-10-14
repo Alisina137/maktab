@@ -23,7 +23,7 @@ for(const marker of [
   'changeParentAccountPassword(', 'api.changeParentPassword(',
   'sessionRef.current = changed;', 'setSession(changed);',
   'saveStoredSession({ auth: changed, school: activeSchool })',
-  'sessionRef.current?.user.id !== active.user.id'
+  'sameSessionEpoch(sessionRef.current, active, schoolRef.current, activeSchool)'
 ]) assert.ok(app.includes(marker),"Phase 6 app wiring missing: "+marker);
 
 for(const marker of [
