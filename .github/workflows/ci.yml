@@ -37,6 +37,9 @@ jobs:
       - name: Admin Accounts Phase 6 locale, a11y and network safeguards
         run: pnpm verify:accounts
 
+      - name: Pilot Operations Phase 1 regression guard
+        run: pnpm verify:pilot
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -73,6 +76,7 @@ jobs:
       - name: Release evidence and parent locale/resilience (Windows)
         run: |
           pnpm verify:accounts
+          pnpm verify:pilot
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience

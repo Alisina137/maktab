@@ -5,5 +5,5 @@ import { useAdminWorkspace } from "../../admin-workspace";
 
 export default function PilotPage() {
   const { stored } = useAdminWorkspace();
-  return <PilotReadinessPanel accessToken={stored.session.accessToken} />;
+  return <PilotReadinessPanel accessToken={stored.session.accessToken} section="overview" />;
 }
