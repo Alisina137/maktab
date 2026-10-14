@@ -45,7 +45,7 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 5. Verify small-screen layout, Dari/Pashto RTL, TalkBack, large fonts, Solar Hijri dates and Kabul timezone midnight boundaries.
 6. Run `pnpm verify:parent:phase1`, `pnpm verify:parent:phase2`, `pnpm verify` plus Android physical smoke tests. Production Step 20 remains **NO-GO** until independent external acceptance evidence is recorded.
 
-**Remaining work:** Phase 4 academic filters/details; Phase 5 inbox filtering/deep links; Phase 6 account and finance; Phase 7 full device/accessibility/security acceptance. This phase does not assert that live Android tests have occurred.
+**Remaining work:** Phase 5 inbox filtering/deep links; Phase 6 account and finance; Phase 7 full device/accessibility/security acceptance. This phase does not assert that live Android tests have occurred.
 
 ## Phase 3 — Attendance Calendar, Monthly Statistics & Daily Details (implemented)
 
@@ -72,11 +72,43 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 
 **Deferred, not silently invented:** A parent-submitted attendance correction request workflow is not backed by an existing approved request/triage API. Phase 3 shows official school notes and attendance records only; a future correction workflow would need its own authenticated school-scoped record, school review, notifications and audit history. Step 20 release remains **NO-GO** pending device/operator evidence.
 
+## Phase 4 — Parent Academics: Homework, Published Results and Timetable (implemented)
+
+**Homework**
+- The Parent Academics → Homework view now uses a compact expandable list. Each published/closed task shows title, subject, date, school-provided status; expanding reveals the full instructions, class, and existing authenticated file or HTTPS attachment actions.
+- Parent can search the school-provided task title, subject, or instructions, filter by All / Upcoming / Past due date / Closed, and narrow to one of the student's actual subjects. `Past due date` never implies that an individual child failed to submit. Kabul civil date (UTC+04:30) determines local due-date group; closed tasks stay in a separate category. Draft and archived homework remain invisible.
+- Results are sorted with an explicit date order and retain filter-specific, localized no-results states.
+
+**Results**
+- Grouped by actual released or archived exams, newest release first when dates are available. Parent can filter by exam and subject, expand an exam for the full subject-by-subject mark breakdown, exam date and individual teacher remarks.
+- The header total is labeled **Total of shown marks**: it is the sum of published marks only, against the corresponding sum of maximum marks; changing the subject filter recalculates both. Not a fabricated final grade, class rank or GPA.
+- UI independently filters out draft marks and non-released exams as defense in depth; backend parent-child scoping and published-only queries remain authoritative.
+
+**Timetable**
+- A new day selector covers Saturday–Friday plus Whole Week. The first view prefers the school-local current weekday if lessons exist, otherwise the first actual scheduled weekday (no fake sessions); subject chips filter existing periods.
+- Displays periods in school-week/day/time order with subject, teacher and localized times. All screens use compact, accessible cards with RTL/LTR handling, empty-match messaging, and only real school data.
+
+**Stability, access and verification**
+- Retains parent global child picker and the existing three Academics subtabs. On selection of another child/account, component keys reset filters and expanded details. Data is rendered only if `parentDataChildId === selectedChildId`; late responses are blocked by the existing request-generation/token checks.
+- Homework/results use the learning resource and timetable uses the independent timetable resource; explicit loading, error and targeted retry are shown rather than misleading empty states.
+- Existing `GET /v1/parent/children/:studentId/learning` and timetable routes remain unchanged; no new API, writes, migration, or subscription behavior.
+- All new controls, filter labels and empty/error copy localized in English, Dari and Pashto. Phase 4 model regression + source guard: `pnpm verify:parent:phase4` and full `pnpm verify`.
+
+**Android acceptance still required**
+1. Parent with two children: select subject/exam/homework and expand details, switch child, then sign in with another parent account. No old student's results, search choices or attachment actions can leak.
+2. School has draft and published homework/exams. Draft/archive visibility must match policy, and marks must not be visible before actual exam publication.
+3. Check completed vs past-due categorization, especially around Afghanistan midnight; confirm labels never claim a missed submission without a submission record.
+4. Check subject filtering and exam totals against independently confirmed published grade rows; changes to marks after publication must update after refresh.
+5. Verify scheduled/non-scheduled weekdays, overlapping periods, subject filters, time ordering and fallback when today has no classes.
+6. With slow/offline API, verify separate learning/timetable loading, retry behavior and cached-read safety. Manually inspect Dari/Pashto RTL, small Android screens, large fonts, screen reader and attachment opening.
+
+**Not in scope:** submission or mark disputes, teacher-to-parent message threads, unissued exam schedules, student completion tracking without a real API, or overall rankings. These features require separate backend requirements and authorization. Production Step 20 remains **NO-GO** until real-world release evidence is reviewed.
+
 ## Next phases
 
 - Phase 2 — implemented: interactive prioritized Home and independent resource retry.
 - Phase 3 — implemented: Attendance calendar, recorded-only monthly statistics, and dated detail.
-- Phase 4 — full Academics homework/result/timetable filters and details.
+- Phase 4 — implemented: published-only Homework filters/details, released Result groups, and weekly Timetable day/subject views.
 - Phase 5 — Inbox paging/filtering and precise notification-to-item navigation.
 - Phase 6 — Parent account/profile/security, fees, school info and preferences.
 - Phase 7 — full Android/RTL/offline/multi-child regression and release evidence.
