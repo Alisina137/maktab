@@ -6658,3 +6658,111 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
     assert.equal(invalid.statusCode, 400, params + ": " + invalid.body);
   }
 });
+
+test("Pilot Phase 3 school import history, replay protection and rejected validation stay tenant-scoped", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const first = await provisionSchool(app, "IMPORT-HISTORY-A");
+  const second = await provisionSchool(app, "IMPORT-HISTORY-B");
+  const firstAuth = { authorization: "Bearer " + await bootstrapAdmin(app, first) };
+  const secondAuth = { authorization: "Bearer " + await bootstrapAdmin(app, second) };
+  const key = "3b3561d2-1f5c-4cda-949b-6459f3145b30";
+  const payload = {
+    idempotencyKey: key,
+    entityType: "PARENT",
+    rows: [{ username: "pilotparent2026", fullName: "Pilot Parent", phone: "0700111222" }]
+  };
+  const route = "/v1/admin/families/import/commit";
+  const initial = await app.inject({ method: "POST", url: route, headers: firstAuth, payload });
+  assert.equal(initial.statusCode, 201, initial.body);
+  const firstBody = initial.json<{
+    importedCount: number; alreadyCommitted: boolean;
+    credentials: Array<{ username: string; temporaryPassword: string }>
+  }>();
+  assert.equal(firstBody.importedCount, 1);
+  assert.equal(firstBody.alreadyCommitted, false);
+  assert.equal(firstBody.credentials.length, 1);
+  assert.ok(firstBody.credentials[0]?.temporaryPassword);
+
+  const replay = await app.inject({ method: "POST", url: route, headers: firstAuth, payload });
+  assert.equal(replay.statusCode, 200, replay.body);
+  const replayBody = replay.json<{
+    importedCount: number; credentials: unknown[]; alreadyCommitted: boolean;
+    requiresCredentialReset: boolean
+  }>();
+  assert.equal(replayBody.importedCount, 1);
+  assert.equal(replayBody.alreadyCommitted, true);
+  assert.equal(replayBody.requiresCredentialReset, true);
+  assert.deepEqual(replayBody.credentials, []);
+  assert.equal(replay.body.includes(firstBody.credentials[0]!.temporaryPassword), false);
+
+  const conflicting = await app.inject({
+    method: "POST", url: route, headers: firstAuth,
+    payload: { ...payload, rows: [{ ...payload.rows[0], fullName: "Changed Parent" }] }
+  });
+  assert.equal(conflicting.statusCode, 409);
+  assert.equal(conflicting.json<{ error: string }>().error, "import_key_conflict");
+
+  const validation = await app.inject({
+    method: "POST", url: "/v1/admin/families/import/validate", headers: firstAuth,
+    payload: {
+      entityType: "PARENT",
+      rows: [{ username: "pilotparent2026", fullName: "Pilot Parent" }],
+      mapping: { username: "username", fullName: "fullName" }
+    }
+  });
+  assert.equal(validation.statusCode, 200, validation.body);
+  assert.equal(validation.json<{ valid: boolean }>().valid, false);
+
+  const historyUrl = "/v1/admin/families/import/history?limit=20&offset=0";
+  const history = await app.inject({ method: "GET", url: historyUrl, headers: firstAuth });
+  assert.equal(history.statusCode, 200, history.body);
+  const historyBody = history.json<{
+    rows: Array<{ status: string; entityType: string; importedCount: number; rejectedCount: number }>;
+    hasMore: boolean
+  }>();
+  assert.equal(historyBody.rows.filter(row => row.status === "COMPLETED").length, 1);
+  assert.equal(historyBody.rows.filter(row => row.status === "REJECTED").length, 1);
+  assert.equal(historyBody.rows.find(row => row.status === "COMPLETED")?.importedCount, 1);
+  assert.equal(historyBody.rows.find(row => row.status === "REJECTED")?.rejectedCount, 1);
+  assert.equal(history.body.includes("temporaryPassword"), false);
+  assert.equal(history.body.includes("fingerprint"), false);
+  assert.equal(history.body.includes("passwordHash"), false);
+  assert.equal(history.body.includes("0700111222"), false);
+
+  const historyPage1 = await app.inject({
+    method: "GET", url: "/v1/admin/families/import/history?limit=1&offset=0", headers: firstAuth
+  });
+  assert.equal(historyPage1.statusCode, 200);
+  assert.equal(historyPage1.json<{ rows: unknown[]; hasMore: boolean }>().rows.length, 1);
+  assert.equal(historyPage1.json<{ hasMore: boolean }>().hasMore, true);
+  const historyPage2 = await app.inject({
+    method: "GET", url: "/v1/admin/families/import/history?limit=1&offset=1", headers: firstAuth
+  });
+  assert.equal(historyPage2.statusCode, 200);
+  assert.equal(historyPage2.json<{ rows: unknown[]; hasMore: boolean }>().rows.length, 1);
+  assert.equal(historyPage2.json<{ hasMore: boolean }>().hasMore, false);
+  const filtered = await app.inject({
+    method: "GET", url: "/v1/admin/families/import/history?entityType=TEACHER", headers: firstAuth
+  });
+  assert.deepEqual(filtered.json<{ rows: unknown[] }>().rows, []);
+
+  const otherSchool = await app.inject({ method: "GET", url: historyUrl, headers: secondAuth });
+  assert.equal(otherSchool.statusCode, 200);
+  assert.deepEqual(otherSchool.json<{ rows: unknown[] }>().rows, []);
+  const noAuth = await app.inject({ method: "GET", url: historyUrl });
+  assert.equal(noAuth.statusCode, 401);
+  for (const invalid of ["limit=0", "limit=51", "offset=-1", "entityType=OTHER", "unexpected=true"]) {
+    const response = await app.inject({
+      method: "GET", url: "/v1/admin/families/import/history?" + invalid, headers: firstAuth
+    });
+    assert.equal(response.statusCode, 400, invalid);
+  }
+
+  // Same key in a different school is independent; history/credentials never cross tenants.
+  const inOtherSchool = await app.inject({ method: "POST", url: route, headers: secondAuth, payload });
+  assert.equal(inOtherSchool.statusCode, 201, inOtherSchool.body);
+  const after = await app.inject({ method: "GET", url: historyUrl, headers: secondAuth });
+  assert.equal(after.json<{ rows: unknown[] }>().rows.length, 1);
+});
