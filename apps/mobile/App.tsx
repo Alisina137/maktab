@@ -275,6 +275,7 @@ function AppContent() {
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
   const parentHomeRef = useRef<ParentHomePayload | null>(null);
+  const parentNotificationsRef = useRef<ParentNotification[]>([]);
   const pendingParentNotificationRef = useRef<{ token: string; item: ParentNotification } | null>(null);
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
@@ -323,6 +324,7 @@ function AppContent() {
   }, [selectedChildId]);
 
   useEffect(() => { parentHomeRef.current = parentHome; }, [parentHome]);
+  useEffect(() => { parentNotificationsRef.current = parentNotifications; }, [parentNotifications]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -1606,9 +1608,12 @@ function AppContent() {
       const result = await api.markNotificationRead(session.accessToken, notificationId);
       if (sessionRef.current?.accessToken !== session.accessToken ||
           sessionRef.current?.user.id !== session.user.id) return;
-      // Discard an in-flight pre-mutation snapshot that could restore stale unread flags.
-      parentNotificationsRequestId.current += 1;
-      updateParentResource("notifications", "ready");
+      // A push may be opened before the initial Inbox GET settles. Do not
+      // cancel that initial fetch or report a ready-but-empty Inbox.
+      if (parentNotificationsRef.current.some((item) => item.id === notificationId)) {
+        parentNotificationsRequestId.current += 1;
+        updateParentResource("notifications", "ready");
+      }
       setParentNotifications((current) =>
         current.map((item) => (item.id === notificationId ? result.notification : item))
       );
