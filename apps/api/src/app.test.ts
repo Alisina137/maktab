@@ -4581,7 +4581,7 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal((await preview({audienceScope:"SCHOOL",audienceRole:"PARENT"})).statusCode,400);
   assert.equal((await preview({audienceScope:"CLASS"})).statusCode,400);
   assert.equal((await preview({audienceScope:"CLASS",
-    classId:"12345678-1234-1234-1234-123456789999"})).statusCode,404);
+    classId:"12345678-1234-4234-8234-123456789999"})).statusCode,404);
   assert.equal((await preview({audienceScope:"CLASS",classId:classA},
     {authorization:`Bearer ${parentAToken}`})).statusCode,403);
   const beforePreviewMessages=await app.inject({method:"GET",
