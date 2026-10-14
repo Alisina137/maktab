@@ -73,6 +73,8 @@ export interface CommunicationStore {
   hasActiveStudentEnrollment(schoolId: string, userId: string): Promise<boolean>;
   getAnnouncementsForUser(schoolId: string, userId: string, role: UserRole): Promise<Announcement[]>;
   getAdminOverview(schoolId: string): Promise<CommunicationOverview>;
+  previewAnnouncementAudience(schoolId: string, input: Pick<CreateAnnouncementInput,
+    "audienceScope" | "classId" | "audienceRole">): Promise<{ recipientCount: number; schoolTimezone: string }>;
   createFeeInvoice(schoolId: string, actorUserId: string, input: CreateFeeInvoiceInput): Promise<FeeInvoice>;
   issueFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
   cancelFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
@@ -379,6 +381,28 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
   }
 
   return {
+    async previewAnnouncementAudience(schoolId, input) {
+      if (input.classId) {
+        const [targetClass] = await db.select({ id: classSections.id })
+          .from(classSections).where(and(eq(classSections.schoolId, schoolId),
+            eq(classSections.id, input.classId))).limit(1);
+        if (!targetClass) throw new CommunicationNotFoundError("Class not found.");
+      }
+      const [settings] = await db.select({ timezone: schoolSettings.timezone })
+        .from(schoolSettings).where(eq(schoolSettings.schoolId, schoolId)).limit(1);
+      const schoolTimezone = settings?.timezone ?? "Asia/Kabul";
+      const now = new Date();
+      // Use the exact same recipient resolver as announcement publication.
+      // This preview is a current snapshot, not a reservation or delivery guarantee.
+      const announcement = {
+        id: randomUUID(), schoolId, createdBy: "", title: "", content: "",
+        audienceScope: input.audienceScope, classId: input.classId ?? null,
+        audienceRole: input.audienceRole ?? null, publishAt: now,
+        archivedAt: null, createdAt: now, updatedAt: now
+      } satisfies Announcement;
+      const ids = await announcementRecipients(announcement, now);
+      return { recipientCount: new Set(ids).size, schoolTimezone };
+    },
     async createAnnouncement(schoolId, actorUserId, input) {
       await getUser(schoolId, actorUserId);
       if (input.classId) {
