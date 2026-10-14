@@ -89,6 +89,17 @@ function Empty({ locale, text }: { locale: SupportedLocale; text: string }) {
   );
 }
 
+function RefreshAcademic({
+  locale, onPress
+}: { locale: SupportedLocale; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={translate(locale, "parent.academicRefresh")}
+      onPress={onPress} style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}>
+      <Ionicons name="refresh-outline" color={tokens.color.brandStrong} size={20} />
+    </Pressable>
+  );
+}
+
 function academicWeekday(day: Weekday, locale: SupportedLocale) {
   const index = schoolWeekdays.indexOf(day);
   const date = new Date(Date.UTC(2026, 9, 17 + index, 12));
@@ -131,6 +142,7 @@ export function ParentAcademicHomework({
             </Text>
           </View>
           <Text style={styles.total}>{formatLocalizedNumber(filtered.length, locale)}</Text>
+          <RefreshAcademic locale={locale} onPress={onRetry} />
         </View>
         <View style={[styles.searchBox, rtl && styles.rtlRow]}>
           <Ionicons name="search-outline" size={18} color={tokens.color.textMuted} />
@@ -235,6 +247,7 @@ export function ParentAcademicResults({
             </Text>
           </View>
           <Text style={styles.total}>{formatLocalizedNumber(filtered.length, locale)}</Text>
+          <RefreshAcademic locale={locale} onPress={onRetry} />
         </View>
         {groups.length > 1 ? <Chips locale={locale} label={translate(locale, "parent.academicExamFilter")}
           options={[{ key: "ALL", label: translate(locale, "parent.academicAllExams") },
@@ -328,6 +341,7 @@ export function ParentAcademicTimetable({
               {translate(locale, "parent.academicTimetableHint")}
             </Text>
           </View>
+          <RefreshAcademic locale={locale} onPress={onRetry} />
         </View>
         <Chips locale={locale} label={translate(locale, "parent.academicDayFilter")}
           options={[{ key: "ALL", label: translate(locale, "parent.academicWholeWeek") },
@@ -383,6 +397,8 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 19 },
   total: { fontSize: 16, fontWeight: "900", color: tokens.color.brandStrong,
     backgroundColor: tokens.color.surfaceMuted, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 10 },
+  refreshButton: { minWidth: 44, minHeight: 44, borderRadius: 12,
+    alignItems: "center", justifyContent: "center", backgroundColor: "#edf3ff" },
   searchBox: { flexDirection: "row", alignItems: "center", gap: 9,
     borderWidth: 1, borderColor: tokens.color.border, backgroundColor: "#f7f9fd",
     borderRadius: 13, paddingHorizontal: 12, minHeight: 48 },
