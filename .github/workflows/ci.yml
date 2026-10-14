@@ -37,6 +37,9 @@ jobs:
       - name: Admin Accounts Phase 6 locale, a11y and network safeguards
         run: pnpm verify:accounts
 
+      - name: Admin Communication and Fees Phase 1 accounting, independent loading and responsive navigation
+        run: pnpm verify:admin-communication:phase1
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -141,6 +144,7 @@ jobs:
       - name: Release evidence and parent locale/resilience (Windows)
         run: |
           pnpm verify:accounts
+          pnpm verify:admin-communication:phase1
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
