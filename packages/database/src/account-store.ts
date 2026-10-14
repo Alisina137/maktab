@@ -138,6 +138,7 @@ export interface AccountStore {
   listUsers(schoolId: string): Promise<User[]>;
   listUserDirectory(schoolId: string): Promise<UserDirectoryEntry[]>;
   searchUserDirectory(schoolId: string, input: UserDirectoryQuery): Promise<UserDirectoryPage>;
+  usernameExists(schoolId: string, username: string): Promise<boolean>;
   bulkSetUserStatusAsAdmin(
     schoolId: string,
     ids: string[],
@@ -433,6 +434,14 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           staff: Number(tally?.staff ?? 0)
         }
       };
+    },
+
+    async usernameExists(schoolId, username) {
+      const row = await db.select({ id: users.id }).from(users).where(and(
+        eq(users.schoolId, schoolId),
+        sql`lower(${users.username}) = lower(${username})`
+      )).limit(1);
+      return row.length > 0;
     },
 
     async bulkSetUserStatusAsAdmin(schoolId, ids, action, actorUserId, reason) {
