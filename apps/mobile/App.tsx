@@ -274,6 +274,7 @@ function AppContent() {
   const studentHomeLoadRequestId = useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
+  const parentHomeRef = useRef<ParentHomePayload | null>(null);
   const pendingParentNotificationRef = useRef<{ token: string; item: ParentNotification } | null>(null);
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
@@ -320,6 +321,8 @@ function AppContent() {
   useEffect(() => {
     selectedChildIdRef.current = selectedChildId;
   }, [selectedChildId]);
+
+  useEffect(() => { parentHomeRef.current = parentHome; }, [parentHome]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -897,6 +900,7 @@ function AppContent() {
     parentNotificationsRequestId.current += 1;
     parentChildLoadRequestId.current += 1;
     selectedChildIdRef.current = "";
+    parentHomeRef.current = null;
     setParentHome(null);
     setSelectedChildId("");
     setParentAttendance([]);
@@ -1600,7 +1604,8 @@ function AppContent() {
     if (!session) return;
     try {
       const result = await api.markNotificationRead(session.accessToken, notificationId);
-      if (sessionRef.current?.user.id !== session.user.id) return;
+      if (sessionRef.current?.accessToken !== session.accessToken ||
+          sessionRef.current?.user.id !== session.user.id) return;
       setParentNotifications((current) =>
         current.map((item) => (item.id === notificationId ? result.notification : item))
       );
@@ -1617,12 +1622,14 @@ function AppContent() {
     try {
       await api.markAllNotificationsRead(session.accessToken);
       const now = new Date().toISOString();
-      if (sessionRef.current?.user.id !== session.user.id) return;
+      if (sessionRef.current?.accessToken !== session.accessToken ||
+          sessionRef.current?.user.id !== session.user.id) return;
       setParentNotifications(items => items.map(item =>
         item.readAt ? item : { ...item, readAt: now }));
       setStudentNotifications(items => items.map(item =>
         item.readAt ? item : { ...item, readAt: now }));
     } catch {
+      Alert.alert(translate(locale, "common.errorTitle"), translate(locale, "parent.inboxMarkReadError"));
       // Preserve unread state until the request succeeds on retry.
     }
   }
@@ -1679,8 +1686,8 @@ function AppContent() {
     if (role !== "PARENT" && role !== "STUDENT" && role !== "TEACHER") return;
     if (role === "PARENT") {
       void readNotification(notification.id);
-      if (parentHome) {
-        routeParentNotification(notification, parentHome.children);
+      if (parentHomeRef.current) {
+        routeParentNotification(notification, parentHomeRef.current.children);
       } else {
         pendingParentNotificationRef.current = { token: session.accessToken, item: notification };
         setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS");
