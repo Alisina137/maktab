@@ -401,6 +401,19 @@ export default function AccountsPage() {
 
   return (
     <section className="admin-dashboard-section admin-page-enter">
+      {bulkPending ? (
+        <AdminAccountBulkConfirm
+          key={bulkPending.ids.join(",") + bulkPending.action}
+          action={bulkPending.action}
+          names={bulkPending.names}
+          locale={locale}
+          t={t}
+          busy={busy}
+          onCancel={closeBulkPending}
+          onConfirm={(reason) => void executeBulk(reason)}
+        />
+      ) : null}
+
       {pendingAction ? (
         <AdminAccountActionConfirm
           key={pendingAction.user.id + pendingAction.action}
@@ -426,6 +439,8 @@ export default function AccountsPage() {
           onClose={closeAccountDetails}
           onAction={requestAction}
           directoryUsers={users}
+          familiesLoading={familyLoading}
+          familiesError={familyError}
         />
       ) : null}
 
@@ -573,7 +588,7 @@ export default function AccountsPage() {
                     required
                     aria-invalid={creationAttempted && Boolean(creationIssues.studentRecordId)}
                     aria-describedby={creationAttempted && creationIssues.studentRecordId ? "account-create-student-error" : undefined}
-                    disabled={busy || availableStudentRecords.length === 0}
+                    disabled={busy || familyLoading || availableStudentRecords.length === 0}
                   >
                     <option value="">{t(availableStudentRecords.length === 0 ? "No students without login" : "Select an eligible student")}</option>
                     {matchingStudentRecords.map((item) => (
@@ -582,7 +597,11 @@ export default function AccountsPage() {
                       </option>
                     ))}
                   </select>
-                  {availableStudentRecords.length === 0 ? (
+                  {familyLoading ? (
+                    <span className="admin-field-hint">{t("Loading student records…")}</span>
+                  ) : familyError ? (
+                    <span className="account-create-field-error" role="alert">{familyError}</span>
+                  ) : availableStudentRecords.length === 0 ? (
                     <span className="admin-field-hint">
                       {t("Create the student record in Families first, then return here to generate the login.")}
                     </span>
@@ -618,11 +637,15 @@ export default function AccountsPage() {
               ) : (
                 <span id="account-create-username-help" className="admin-field-hint">{t(newRole === "PARENT" || newRole === "STUDENT" ? "Use English letters and numbers only." : "Use English letters, numbers, dots, underscores, @, + or hyphens.")}</span>
               )}
+              {usernameChecking ? <span className="admin-field-hint" role="status">{t("Checking username…")}</span> : null}
+              {usernameAvailability?.username === newUsername.trim() && !usernameAvailability.available ? (
+                <span className="account-create-field-error" role="alert">{t("That username already exists in this school.")}</span>
+              ) : null}
             </label>
             <div className="account-create-notice">{t("A temporary password will be generated. The account holder must change it on first login.")}</div>
             <button
               className="admin-primary"
-              disabled={busy || (newRole === "STUDENT" && availableStudentRecords.length === 0)}
+              disabled={busy || (newRole === "STUDENT" && (familyLoading || availableStudentRecords.length === 0))}
               type="submit"
             >
               {t(busy ? "Working…" : "Generate account")}
@@ -631,119 +654,48 @@ export default function AccountsPage() {
         </article>
         ) : null}
 
-        <article className="admin-panel admin-users-panel admin-users-panel-premium" id="account-directory-panel">
-          <div className="admin-section-header">
-            <div>
-              <h3>{t("Account directory")}</h3>
-              <p>{adminFormat(locale, "Showing {visible} of {total} accounts", { visible: filtered.length, total: users.length })}</p>
-            </div>
-            <button type="button" className="admin-secondary" onClick={() => void loadUsers()} disabled={busy}>{t("Refresh accounts")}</button>
-          </div>
-
-          <div className="admin-account-tabs" role="group" aria-label={t("Account role")}>
-            {([
-              ["ALL", "All"],
-              ["PARENT", "Parents"],
-              ["TEACHER", "Teachers"],
-              ["STUDENT", "Students"],
-              ["STAFF", "Admin & staff"]
-            ] as Array<[AccountGroup, string]>).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={group === value ? "admin-account-tab admin-account-tab-active" : "admin-account-tab"}
-                onClick={() => setGroup(value)}
-                aria-pressed={group === value}
-              >
-                <span>{t(label)}</span><strong>{counts[value]}</strong>
-              </button>
-            ))}
-          </div>
-
-          <div className="admin-account-filters">
-            <input aria-label={t("Search accounts")} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search name, username, phone, code, role, or status")} />
-            <select aria-label={t("Filter by status")} value={status} onChange={(e) => { setStatus(e.target.value as "ALL" | User["status"]); setHighlight("ALL"); }}>
-              <option value="ALL">{t("All statuses")}</option>
-              <option value="ACTIVE">{t("Active")}</option>
-              <option value="INVITED">{t("Invited")}</option>
-              <option value="SUSPENDED">{t("Suspended")}</option>
-              <option value="ARCHIVED">{t("Archived")}</option>
-            </select>
-            {(query || group !== "ALL" || status !== "ALL" || highlight !== "ALL") ? (
-              <button type="button" className="admin-secondary" onClick={clearFilters}>
-                {t("Clear filters")}
-              </button>
-            ) : null}
-          </div>
-
-          <div className="admin-user-list admin-user-list-premium">
-            {filtered.map((user) => {
-              const isCurrentAdmin = user.id === stored.session.user.id;
-              return (
-              <div className="admin-user-row admin-user-row-premium" key={user.id}>
-                <div className="admin-user-identity">
-                  <span className={`admin-user-avatar admin-user-avatar-${user.role.toLowerCase()}`} aria-hidden="true">{displayName(user).slice(0, 1).toUpperCase()}</span>
-                  <div>
-                    <strong>{displayName(user)}</strong>
-                    <span><bdi dir="ltr">@{user.username}</bdi> · {roleLabel(user, t)}</span>
-                    {(user.profile?.code || user.profile?.phone) ? <span>{[user.profile?.code, user.profile?.phone].filter(Boolean).join(" · ")}</span> : null}
-                  </div>
-                </div>
-                <div className="admin-user-meta">
-                  <span className={`admin-status-badge admin-status-${user.status.toLowerCase()}`}>{statusLabel(user.status, t)}</span>
-                  {user.mustChangePassword ? <span className="admin-password-badge">{t("Password change required")}</span> : null}
-                  {isCurrentAdmin ? <span className="admin-current-account-badge">{t("Current administrator")}</span> : null}
-                </div>
-                <div className="admin-actions">
-                  <button
-                    type="button"
-                    className="admin-account-view-details"
-                    onClick={() => {
-                      if (credential) {
-                        showToast({
-                          kind: "error",
-                          title: t("Account details"),
-                          message: t("Close the temporary credential panel before continuing.")
-                        });
-                        return;
-                      }
-                      setSelectedAccountId(user.id);
-                    }}
-                  >
-                    {t("View details")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => requestAction(user, "reset-password")}
-                    disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
-                    title={isCurrentAdmin ? t("Use Profile to change your own password.") : undefined}
-                  >
-                    {t("Reset password")}
-                  </button>
-                  {user.status === "SUSPENDED"
-                    ? <button type="button" onClick={() => requestAction(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
-                    : (
-                      <button
-                        type="button"
-                        onClick={() => requestAction(user, "suspend")}
-                        disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
-                        title={isCurrentAdmin ? t("You cannot suspend the administrator account you are currently using.") : undefined}
-                      >
-                        {t("Suspend")}
-                      </button>
-                    )}
-                </div>
-              </div>
-              );
-            })}
-            {filtered.length === 0 ? (
-              <div className="admin-empty-state" role="status">
-                <strong>{t("No matching accounts")}</strong>
-                <span>{t("Try another account group, status, name, username, phone number, or code.")}</span>
-              </div>
-            ) : null}
-          </div>
-        </article>
+        <AdminAccountDirectory
+          result={directory}
+          group={group}
+          status={status}
+          highlight={highlight}
+          query={query}
+          sortBy={sortBy}
+          order={order}
+          page={page}
+          pageSize={pageSize}
+          selectedIds={selectedIds}
+          loading={directoryLoading}
+          error={directoryError}
+          busy={busy}
+          credentialOpen={Boolean(credential)}
+          currentAdminId={stored.session.user.id}
+          locale={locale}
+          t={t}
+          onGroup={updateGroup}
+          onStatus={updateStatus}
+          onQuery={updateQuery}
+          onSortBy={updateSort}
+          onOrder={updateOrder}
+          onPage={updatePage}
+          onPageSize={updatePageSize}
+          onSelect={(id, selected) => setSelection([id], selected)}
+          onSelectPage={setSelection}
+          onClear={clearFilters}
+          onRefresh={refreshDirectory}
+          onDetails={(user) => {
+            if (credential) {
+              showToast({
+                kind: "error", title: t("Account details"),
+                message: t("Close the temporary credential panel before continuing.")
+              });
+              return;
+            }
+            setSelectedAccountId(user.id);
+          }}
+          onAction={requestAction}
+          onBulk={requestBulk}
+        />
       </div>
     </section>
   );
