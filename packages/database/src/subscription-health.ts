@@ -48,7 +48,7 @@ export function evaluateSubscriptionHealth(
     subscription.status === "SUSPENDED" || subscription.status === "CANCELLED";
   const nextReminderDays = daysUntilExpiry === null || daysUntilExpiry < 0 ||
     operationalWritesBlocked ? null :
-      [...reminderDays].reverse().find((day) => day <= daysUntilExpiry) ?? null;
+      reminderDays.find((day) => day <= daysUntilExpiry) ?? null;
 
   let code: SubscriptionHealthCode = "ON_TRACK";
   let level: SubscriptionHealthLevel = "healthy";
