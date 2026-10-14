@@ -6596,3 +6596,27 @@ html[dir="rtl"] body {
  .pilot-audit-drawer .pilot-detail-grid { grid-template-columns:1fr; }
 }
 @media(prefers-reduced-motion:reduce){ .pilot-audit-drawer { scroll-behavior:auto; } }
+
+/* Pilot Operations Phase 5 — school billing visibility (no school-level billing writes). */
+.pilot-billing-details { display:grid; gap:16px; min-width:0; }
+.pilot-billing-banner,.pilot-billing-summary { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:center; }
+.pilot-billing-banner > div, .pilot-billing-summary > div { flex:1 1 230px; min-width:0; }
+.pilot-billing-banner h3,.pilot-billing-summary h3 { font-size:clamp(18px,2.5vw,24px); margin:8px 0; overflow-wrap:anywhere; }
+.pilot-billing-banner p,.pilot-billing-summary p,.pilot-billing-reminders p,.pilot-billing-support p { line-height:1.65; color:var(--ml-color-text-muted); }
+.pilot-billing-summary-action { display:grid; justify-items:end; align-content:center; gap:10px; flex:0 0 auto !important; }
+.pilot-billing-warning { border-inline-start:5px solid #cf8d27; background:linear-gradient(130deg,#fff,#fff8ec); }
+.pilot-billing-critical { border-inline-start:5px solid #b94646; background:linear-gradient(130deg,#fff,#fff1f1); }
+.pilot-billing-info { border-inline-start:5px solid #5289c8; background:linear-gradient(130deg,#fff,#eff7ff); }
+.pilot-billing-healthy { border-inline-start:5px solid #359779; background:linear-gradient(130deg,#fff,#f1fcf8); }
+.pilot-billing-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.pilot-billing-metrics > div { display:grid; gap:9px; align-content:start; min-width:0; }
+.pilot-billing-metrics span { font-size:13px; color:var(--ml-color-text-muted); }
+.pilot-billing-metrics strong { font-size:clamp(16px,2vw,22px); overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.pilot-billing-metrics p { color:var(--ml-color-text-muted); margin:0; font-size:13px; line-height:1.6; }
+.pilot-billing-reminder-tag { display:inline-flex; padding:9px 12px; border-radius:10px; background:#eff6ff; }
+.pilot-billing-review { margin-top:12px; padding:12px; border-radius:10px; background:#fff1e6; font-weight:650; }
+.pilot-billing-error { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap:12px; }
+.pilot-billing-support .admin-secondary { margin-block:12px; }
+@media(max-width:900px){ .pilot-billing-metrics { grid-template-columns:1fr; } }
+@media(max-width:620px){ .pilot-billing-summary-action { justify-items:start; } }
+@media(prefers-reduced-motion:reduce){ .pilot-billing-details * { animation-duration:0.01ms; } }

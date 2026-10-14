@@ -6849,3 +6849,65 @@ test("Pilot Phase 4 filters, exports and safe metadata stay school scoped", asyn
   assert.equal(other.body.includes("user.suspended"),false);
   assert.equal(other.body.includes(schoolA),false);
 });
+
+test("Pilot Phase 5 subscription health is read-only, school-scoped and matches platform subscription status", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const a = await provisionSchool(app, "PILOT-SUB-5-A");
+  const b = await provisionSchool(app, "PILOT-SUB-5-B");
+  const tokenA = await bootstrapAdmin(app, a);
+  const tokenB = await bootstrapAdmin(app, b);
+  const headersA = { authorization: `Bearer ${tokenA}` };
+  const headersB = { authorization: `Bearer ${tokenB}` };
+  const url = "/v1/admin/pilot/subscription/health";
+  assert.equal((await app.inject({ method: "GET", url })).statusCode, 401);
+
+  const before = await app.inject({ method: "GET", url, headers: headersA });
+  assert.equal(before.statusCode, 200, before.body);
+  assert.equal(before.headers["cache-control"], "no-store");
+  assert.ok(before.json<{ health: { evaluatedOn: string } }>().health.evaluatedOn);
+  assert.equal(before.body.includes("supportNotes"), false);
+  assert.equal(before.body.includes("priceAfn"), false);
+  assert.equal(before.body.includes("schoolId"), false);
+
+  const dateInTwoDays = new Date(Date.parse(
+    before.json<{ health: { evaluatedOn: string } }>().health.evaluatedOn + "T00:00:00Z") + 2 * 86_400_000
+  ).toISOString().slice(0, 10);
+  const update = await app.inject({
+    method: "PATCH", url: `/v1/platform/schools/${a}/subscription`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "ACTIVE", expiresOn: dateInTwoDays }
+  });
+  assert.equal(update.statusCode, 200, update.body);
+  const healthA = await app.inject({ method: "GET", url, headers: headersA });
+  assert.equal(healthA.statusCode, 200, healthA.body);
+  const snapshot = healthA.json<{ health: { code: string; daysUntilExpiry: number;
+    operationalWritesBlocked: boolean; nextReminderDays: number | null } }>().health;
+  assert.equal(snapshot.code, "EXPIRES_SOON");
+  assert.equal(snapshot.daysUntilExpiry, 2);
+  assert.equal(snapshot.operationalWritesBlocked, false);
+  assert.equal(snapshot.nextReminderDays, 1);
+
+  const healthB = await app.inject({ method: "GET", url, headers: headersB });
+  assert.equal(healthB.statusCode, 200);
+  assert.notEqual(healthB.json<{ health: { daysUntilExpiry: number } }>().health.daysUntilExpiry, 2);
+
+  const suspend = await app.inject({
+    method: "PATCH", url: `/v1/platform/schools/${a}/subscription`,
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "SUSPENDED" }
+  });
+  assert.equal(suspend.statusCode, 200, suspend.body);
+  const blocked = await app.inject({ method: "GET", url, headers: headersA });
+  assert.equal(blocked.statusCode, 200);
+  assert.equal(blocked.json<{ health: { operationalWritesBlocked: boolean } }>().health.operationalWritesBlocked, true);
+
+  const unchanged = await app.inject({ method: "GET", url: "/v1/admin/subscription", headers: headersA });
+  assert.equal(unchanged.statusCode, 200);
+  assert.equal(unchanged.json<{ subscription: { status: string } }>().subscription.status, "SUSPENDED");
+  // Health endpoint must never modify the stored subscription.
+  assert.equal((await client.query<{ status: string }>(
+    "SELECT status FROM subscriptions WHERE school_id=$1", [a]
+  )).rows[0]?.status, "SUSPENDED");
+});
