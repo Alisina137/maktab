@@ -165,3 +165,95 @@ test("admin status transition stores suspension reason and tenant-filtered accou
   assert.equal(await accounts.findByAccessTokenHash("1".repeat(64)), null);
   assert.equal(await accounts.findByRefreshTokenHash("2".repeat(64)), null);
 });
+
+
+test("Phase 5 directory paging, school counts, server filters and sorting are isolated", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const a = await schools.createSchool({
+    code: "PAGED-A", name: "Paged School A", slug: "paged-a", province: "Kabul", city: "Kabul", defaultLanguage: "en"
+  });
+  const b = await schools.createSchool({
+    code: "PAGED-B", name: "Paged School B", slug: "paged-b", province: "Kabul", city: "Kabul", defaultLanguage: "en"
+  });
+  const school = a.school.id, foreign = b.school.id;
+  const add = (username: string, role: "TEACHER" | "PARENT" | "SCHOOL_STAFF" | "STUDENT", schoolId = school) =>
+    accounts.createUser({ schoolId, username, role, passwordHash: "hash" });
+  const teacher = await add("teacher001", "TEACHER");
+  await add("parent001", "PARENT");
+  await add("staff001", "SCHOOL_STAFF");
+  await add("student001", "STUDENT");
+  await add("teacher001", "TEACHER", foreign);
+  await accounts.setUserStatus(school, teacher.id, "ACTIVE");
+  const query = {
+    query: "", group: "ALL" as const, status: "ALL" as const, highlight: "ALL" as const,
+    sortBy: "username" as const, order: "asc" as const, page: 1, pageSize: 2
+  };
+  const first = await accounts.searchUserDirectory(school, query);
+  assert.equal(first.total, 4);
+  assert.equal(first.pages, 2);
+  assert.equal(first.entries.length, 2);
+  assert.deepEqual(first.entries.map(x => x.user.username), ["parent001", "staff001"]);
+  assert.deepEqual(first.counts, {
+    total: 4, active: 1, pending: 4, suspended: 0,
+    parent: 1, teacher: 1, student: 1, staff: 1
+  });
+  assert.equal((await accounts.searchUserDirectory(school, { ...query, page: 2 })).entries.length, 2);
+  assert.deepEqual((await accounts.searchUserDirectory(school, { ...query, order: "desc" })).entries.map(x => x.user.username),
+    ["teacher001", "student001"]);
+  assert.deepEqual((await accounts.searchUserDirectory(school, { ...query, group: "TEACHER" })).entries.map(x => x.user.id),
+    [teacher.id]);
+  assert.equal((await accounts.searchUserDirectory(school, { ...query, group: "STAFF" })).total, 1);
+  assert.equal((await accounts.searchUserDirectory(school, { ...query, highlight: "PENDING" })).total, 4);
+  assert.equal((await accounts.searchUserDirectory(school, { ...query, query: "student001" })).total, 1);
+  assert.equal((await accounts.searchUserDirectory(school, { ...query, query: "%" })).total, 0);
+  assert.equal((await accounts.searchUserDirectory(foreign, query)).total, 1);
+  assert.equal(await accounts.usernameExists(school, "TEACHER001"), true);
+  assert.equal(await accounts.usernameExists(foreign, "parent001"), false);
+});
+
+test("Phase 5 batch actions are atomic, bounded, audited and protect other schools and admins", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const a = await schools.createSchool({
+    code: "BATCH-A", name: "Batch School A", slug: "batch-a", province: "Kabul", city: "Kabul", defaultLanguage: "en"
+  });
+  const b = await schools.createSchool({
+    code: "BATCH-B", name: "Batch School B", slug: "batch-b", province: "Kabul", city: "Kabul", defaultLanguage: "en"
+  });
+  const school = a.school.id, foreign = b.school.id;
+  const add = (username: string, role: "TEACHER" | "PARENT" | "SCHOOL_ADMIN", schoolId = school) =>
+    accounts.createUser({ schoolId, username, role, passwordHash: "hash" });
+  const admin = await add("admin-batch", "SCHOOL_ADMIN");
+  const one = await add("teacher-batch", "TEACHER");
+  const two = await add("parent-batch", "PARENT");
+  const foreignUser = await add("foreign-batch", "TEACHER", foreign);
+  await accounts.createSession({
+    schoolId: school, userId: one.id, accessTokenHash: "a".repeat(64), refreshTokenHash: "b".repeat(64),
+    accessExpiresAt: new Date(Date.now()+60000), refreshExpiresAt: new Date(Date.now()+120000)
+  });
+  await assert.rejects(
+    accounts.bulkSetUserStatusAsAdmin(school, [one.id, foreignUser.id], "suspend", admin.id),
+    /eligible/i
+  );
+  assert.equal((await accounts.findUserById(school, one.id))?.status, "INVITED");
+  await assert.rejects(accounts.bulkSetUserStatusAsAdmin(school, [admin.id], "suspend", admin.id), /eligible/i);
+  await assert.rejects(accounts.bulkSetUserStatusAsAdmin(school, [one.id, one.id], "suspend", admin.id), /distinct/i);
+  const updated = await accounts.bulkSetUserStatusAsAdmin(
+    school, [one.id, two.id], "suspend", admin.id, "Approved administrative account review"
+  );
+  assert.equal(updated.length, 2);
+  assert.ok(updated.every(u=>u.status==="SUSPENDED"));
+  assert.equal(await accounts.findByAccessTokenHash("a".repeat(64)), null);
+  const logs = await accounts.listAccountAuditLogs(school, one.id);
+  assert.ok(logs.some(l=>l.action==="user.suspended" && l.reason==="Approved administrative account review"));
+  await assert.rejects(accounts.bulkSetUserStatusAsAdmin(school, [one.id, two.id], "suspend", admin.id), /eligible/i);
+  const returned = await accounts.bulkSetUserStatusAsAdmin(school, [one.id,two.id], "reactivate", admin.id);
+  assert.equal(returned.length,2);
+  assert.ok(returned.every(u=>u.status==="INVITED"));
+  assert.equal((await accounts.findUserById(foreign, foreignUser.id))?.status,"INVITED");
+});
