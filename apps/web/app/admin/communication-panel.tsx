@@ -126,6 +126,16 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setSection("OVERVIEW");
     setCommunicationPane("LIST");
     setFeesPane("LIST");
+    setEditingNotice(null);
+    setEditTitle("");
+    setEditMessage("");
+    setEditPublishAt("");
+    setScope("SCHOOL");
+    setPaymentDraft({});
+    paymentAttempts.current = {};
+    setReversalReason({});
+    setNotice("");
+    setError("");
     setOverview(null);
     setFamilies(null);
     setAcademics(null);
