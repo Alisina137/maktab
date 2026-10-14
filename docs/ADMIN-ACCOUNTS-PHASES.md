@@ -85,8 +85,29 @@ Source of truth for currently implemented behavior: the main-branch application 
 5. Test invalid reasons, repeated actions, current-admin restrictions, archived states, failed requests and cancellation without unintended data changes.
 6. Exercise English/Dari/Pashto desktop and mobile UI, 200% zoom, keyboard, screen reader, RTL and current network error handling. Run `pnpm verify` and check Linux/Windows CI at the exact final SHA.
 
-## Future phases (not implemented in Phases 1–4)
-- **Phase 5 — Scale:** server-side search/pagination/sorting, optional safely scoped bulk account operations.
+## Phase 5 — Scalable directory and controlled bulk actions (implemented)
+
+- **Server-paged directory:** `GET /v1/admin/users/directory` accepts validated school-scoped `query` (max 120 characters), role-group and status filters, activation-summary filters, sorting by name/username/role/status/created date/last login, sort direction, page and page size (10/20/50). Search escapes SQL LIKE wildcard characters and matches username, role, status, and canonical parent/teacher/student profile data. Only the selected page's users are returned, never password hashes.
+- **Exact school totals:** Summary counts for total, active, pending setup, suspended and role group counts come from a separate school-scoped aggregate, not the current page. Pending includes invited accounts plus active accounts that still require a password change. The filtered count and number of pages are provided separately; sorting is deterministic via user ID tie-breaker.
+- **Directory UI:** Debounced input, canceled stale network requests, accessible sorting and page controls, refresh/retry, mobile/RTL filter layout and contextual reset/suspend/activate actions. Changing filters, sorting or page clears page selection. New account creation and actions refresh the directory without discarding the applied search/sort.
+- **Creation compatibility:** The previous all-school user download is no longer required for the directory. A narrow same-school `GET /v1/admin/users/username-check` provides case-insensitive username availability guidance for the create form; the server remains authoritative in account creation race conditions. Family/student records now load only when they are needed by Student creation or a selected Parent/Student detail. Loading and errors are explicit.
+- **Safe bulk operations:** `POST /v1/admin/users/bulk-status` supports suspension and reactivation only (no bulk reset/password distribution). Selection is limited to the visible page. Up to 20 distinct UUIDs may be submitted; the UI disables bulk actions above this limit and disallows mixed incompatible statuses. The server independently rejects self-actions, school administrators, archived or wrong-status accounts, cross-school IDs and duplicates.
+- **Atomic write and audit:** The store validates the full batch, checks eligible states again at update time, invalidates existing sessions, and writes one audit entry per account in the same transaction. Any missing, concurrent changed or prohibited member rolls back the entire batch. An optional validated 3–500 character suspension reason is recorded in each affected account's history. Bulk reactivation returns accounts to INVITED or ACTIVE according to password-change requirement and requires a new login.
+- **Actor identity:** Account event history can display the school-scoped actor username even when that administrator is not included in the current directory page, without exposing full audit metadata.
+- **Backwards compatibility:** `GET /v1/admin/users` remains available for existing other modules; Phase 5 uses the new paginated endpoint in the Accounts screen. No database migrations.
+- **Verification:** API/PGlite cases cover bounded queries, literal wildcard search, school scope, cross-school username checks, totals, sorting, pages, bulk rollback, archived/admin restrictions, audit and session invalidation. Release source gates cover these capabilities. Device/browser review remains separate.
+
+### Manual acceptance for Phase 5
+
+1. Create 60+ school users across all roles. In Accounts, confirm summaries/role counts match the whole school while 10, 20, and 50 row pagination returns only that many records. Sorting, previous/next, status and role filters should preserve the correct server total.
+2. Search a username and full name, phone, teacher/student code, role, or status; ensure wildcards such as `%` and `_` search literally rather than showing every user. Rapidly changing searches should not reveal stale results.
+3. Create a user whose username is already on another page; verify duplicate detection before submitting and final backend validation. The same username in another school should not block creation.
+4. Open details and inspect linked family and teacher records, history and the actor name when the actor is on another directory page. Confirm a failed family fetch is not misreported as no children.
+5. Select accounts on the same page (never other pages). Confirm eligible Parent/Teacher/Student/Staff, 20-account cap, mixed-status rejection and self/admin/archived exclusion. Try a batch with a cross-school ID directly via API; verify rollback and no partial changes.
+6. Cancel the bulk confirmation, then suspend a test batch with a reason. Check each audit entry, current sessions being invalidated, individual summaries and reactivation to the correct account status.
+7. Test keyboard and screen reader interaction, small screens/200% zoom, English/Dari/Pashto/RTL, offline/retry and legitimate last-page shrink after lifecycle updates. Confirm GitHub Ubuntu/Windows CI green at the exact final commit.
+
+## Future phases (not implemented in Phases 1–5)
 - **Phase 6 — Regression:** expanded end-to-end role, tenant, network, locale, accessibility and responsive verification.
 
 No new database migrations or provisioning API changes were introduced in Phases 1–3.
