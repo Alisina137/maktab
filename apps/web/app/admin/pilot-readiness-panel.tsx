@@ -209,7 +209,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     setError("");
     const wantsCoverage = section === "overview" || section === "readiness";
     setAdvancedBusy(wantsCoverage);
-    if (wantsCoverage) setAdvancedError("");
+    if (wantsCoverage) {
+      setAdvancedError("");
+      setAdvanced(null);
+    }
     try {
       // Audit failure cannot hide subscription/readiness and vice versa.
       if (section === "audit") {
@@ -247,7 +250,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         }
       }
     } catch (cause) {
-      if (version === requestVersion.current) setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
+      if (version === requestVersion.current) {
+        setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
+        setAdvancedBusy(false);
+      }
     } finally {
       if (version === requestVersion.current) {
         setBusy(false);
@@ -522,8 +528,8 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                 <h3 id="pilot-onboarding-title">{t("Onboarding checklist")}</h3>
                 <p>{t(readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch.")}</p>
               </div>
-              <span className={readiness.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
-                {t(readiness.ready ? "Core setup ready" : "Needs setup")}
+              <span className={effectiveSetupReady ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
+                {t(advancedBusy ? "Checking configuration coverage…" : effectiveSetupReady ? "Automated setup ready" : "Needs setup")}
               </span>
             </div>
             <div className="pilot-onboarding-progress">
