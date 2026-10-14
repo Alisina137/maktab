@@ -117,6 +117,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [recipientStatus, setRecipientStatus] = useState<ResourceStatus>("idle");
   const [recipientError, setRecipientError] = useState("");
+  const [recipientRetryKey, setRecipientRetryKey] = useState(0);
   const recipientGeneration = useRef(0);
   const [announcementSearch, setAnnouncementSearch] = useState("");
   const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<AnnouncementStatusFilter>("ALL");
@@ -204,7 +205,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       });
     }, 300);
     return () => { window.clearTimeout(timer); recipientGeneration.current += 1; };
-  }, [accessToken, scope, targetClassId, targetRole, locale]);
+  }, [accessToken, scope, targetClassId, targetRole, locale, recipientRetryKey]);
 
   useEffect(() => {
     setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE);
@@ -736,7 +737,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               ) : recipientStatus === "loading" ? (
                 <p>{t("Calculating recipients…")}</p>
               ) : recipientStatus === "error" ? (
-                <p role="alert">{recipientError}</p>
+                <>
+                  <p role="alert">{recipientError}</p>
+                  <button type="button" className="admin-secondary"
+                    onClick={() => setRecipientRetryKey(key=>key+1)}>{t("Retry recipient preview")}</button>
+                </>
               ) : recipientStatus === "ready" ? (
                 <p>{new Intl.NumberFormat(locale).format(recipientCount ?? 0)} {t("eligible recipient accounts currently match.")}</p>
               ) : null}
