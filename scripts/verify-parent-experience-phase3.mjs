@@ -20,7 +20,7 @@ for (const required of [
   "accessToken, studentId, month.from, month.to",
   "return () => { active = false; }", "onSensitiveErrorRef.current",
   "accessibilityLabel", "adjacentAttendanceMonth", "attendanceMonth", "summarizeAttendance",
-  "setRetry", "selectedMark.note", "formatLocalizedDate", "getDirection",
+  "setRetry", "selectedMark.note", "parent.attendanceHistory", "formatLocalizedDate", "getDirection",
   "accessibilityState", "isFuture"
 ]) assert.ok(screen.includes(required), "Attendance component missing: " + required);
 
@@ -42,7 +42,7 @@ for (const key of [
   "parent.attendanceNext", "parent.attendanceFuture", "parent.attendanceLoadError",
   "parent.attendanceSummary", "parent.attendanceRate", "parent.attendanceRateHelp",
   "parent.attendanceRecorded", "parent.attendanceMonthEmpty", "parent.attendanceDayDetail",
-  "parent.attendanceNoNote", "parent.attendanceUnrecorded"
+  "parent.attendanceNoNote", "parent.attendanceUnrecorded", "parent.attendanceHistory"
 ]) assert.equal(locale.split(JSON.stringify(key) + ":").length, 4,
   "Missing one or more English/Dari/Pashto translations for " + key);
 assert.ok(doc.includes("## Phase 3") && doc.includes("denominator"));
