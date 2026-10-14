@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type {
   CreateAnnouncementInput,
   UpdateScheduledAnnouncementInput,
   CreateFeeInvoiceInput,
+  UpdateDraftFeeInvoiceInput,
+  AdminFeeInvoiceQuery,
   DevicePlatform,
   FeeInvoiceStatus,
   RecordFeePaymentInput,
@@ -18,6 +20,7 @@ import {
   communicationSettings,
   devices,
   feeInvoices,
+  feeInvoiceCounters,
   feePayments,
   negaranAssignments,
   notificationPushDeliveries,
@@ -75,6 +78,11 @@ export interface CommunicationStore {
   getAdminOverview(schoolId: string): Promise<CommunicationOverview>;
   previewAnnouncementAudience(schoolId: string, input: Pick<CreateAnnouncementInput,
     "audienceScope" | "classId" | "audienceRole">): Promise<{ recipientCount: number; schoolTimezone: string }>;
+  listAdminFeeInvoices(schoolId: string, query: AdminFeeInvoiceQuery): Promise<{
+    invoices: FeeInvoiceView[]; total: number; page: number; pageSize: number;
+  }>;
+  updateDraftFeeInvoice(schoolId: string, actorUserId: string, invoiceId: string,
+    input: UpdateDraftFeeInvoiceInput): Promise<FeeInvoice>;
   createFeeInvoice(schoolId: string, actorUserId: string, input: CreateFeeInvoiceInput): Promise<FeeInvoice>;
   issueFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
   cancelFeeInvoice(schoolId: string, invoiceId: string, actorUserId?: string): Promise<FeeInvoice>;
@@ -570,19 +578,108 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       };
     },
 
+    async listAdminFeeInvoices(schoolId, query) {
+      const pageSize = 20;
+      const schoolToday = await schoolDateAt(schoolId);
+      const overdue = and(
+        inArray(feeInvoices.status, ["ISSUED", "PARTIALLY_PAID", "OVERDUE"]),
+        sql`${feeInvoices.dueDate} < ${schoolToday}`
+      );
+      const statusFilter = query.status === "ALL" ? undefined
+        : query.status === "OVERDUE" ? overdue
+        : query.status === "ISSUED" || query.status === "PARTIALLY_PAID"
+          ? and(eq(feeInvoices.status, query.status), sql`${feeInvoices.dueDate} >= ${schoolToday}`)
+          : eq(feeInvoices.status, query.status);
+      const search = query.q.trim();
+      const where = and(
+        eq(feeInvoices.schoolId, schoolId),
+        eq(students.schoolId, schoolId),
+        eq(feeInvoices.studentId, students.id),
+        query.studentId ? eq(feeInvoices.studentId, query.studentId) : undefined,
+        query.classId ? eq(students.classId, query.classId) : undefined,
+        query.academicYearId ? eq(students.academicYearId, query.academicYearId) : undefined,
+        statusFilter,
+        search ? or(
+          ilike(students.fullName, `%${search}%`),
+          ilike(students.studentCode, `%${search}%`),
+          ilike(feeInvoices.description, `%${search}%`),
+          sql`${feeInvoices.invoiceNumber}::text LIKE ${`%${search}%`}`
+        ) : undefined
+      );
+      const [countRows, invoiceRows] = await Promise.all([
+        db.select({ value: sql<number>`count(*)::integer` }).from(feeInvoices)
+          .innerJoin(students, and(eq(feeInvoices.studentId, students.id), eq(feeInvoices.schoolId, students.schoolId)))
+          .where(where),
+        db.select({ invoice: feeInvoices }).from(feeInvoices)
+          .innerJoin(students, and(eq(feeInvoices.studentId, students.id), eq(feeInvoices.schoolId, students.schoolId)))
+          .where(where)
+          .orderBy(desc(feeInvoices.createdAt), desc(feeInvoices.id))
+          .limit(pageSize).offset((query.page-1)*pageSize)
+      ]);
+      return {
+        invoices: await Promise.all(invoiceRows.map(row => invoiceView(row.invoice))),
+        total: countRows[0]?.value ?? 0, page: query.page, pageSize
+      };
+    },
+
+    async updateDraftFeeInvoice(schoolId, actorUserId, invoiceId, input) {
+      return db.transaction(async tx => {
+        const [original] = await tx.select().from(feeInvoices).where(and(
+          eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, invoiceId)
+        )).limit(1).for("update");
+        if (!original) throw new CommunicationNotFoundError("Fee invoice not found.");
+        if (original.status !== "DRAFT")
+          throw new CommunicationConflictError("Only draft invoices may be edited.");
+        if (original.updatedAt.getTime() !== Date.parse(input.expectedUpdatedAt))
+          throw new CommunicationConflictError("This draft changed. Refresh before editing it again.");
+        const [targetStudent] = await tx.select({ status: students.status }).from(students)
+          .where(and(eq(students.schoolId, schoolId),eq(students.id,input.studentId))).limit(1);
+        if (!targetStudent) throw new CommunicationNotFoundError("Student not found.");
+        if (targetStudent.status !== "ACTIVE")
+          throw new CommunicationConflictError("A withdrawn student cannot receive an invoice.");
+        const [payment] = await tx.select({ id: feePayments.id }).from(feePayments)
+          .where(and(eq(feePayments.schoolId,schoolId),eq(feePayments.invoiceId,invoiceId))).limit(1);
+        if(payment) throw new CommunicationConflictError("A draft with ledger transactions cannot be edited.");
+        const [updated] = await tx.update(feeInvoices).set({
+          studentId: input.studentId, amount: input.amount, dueDate: input.dueDate,
+          description: input.description ?? null, updatedAt: new Date()
+        }).where(and(eq(feeInvoices.schoolId,schoolId),eq(feeInvoices.id,invoiceId),
+          eq(feeInvoices.status,"DRAFT"))).returning();
+        if(!updated)throw new CommunicationConflictError("Draft changed during editing.");
+        await tx.insert(auditLogs).values({
+          id: randomUUID(),schoolId,actorUserId,
+          action:"fee_invoice.draft_updated",entityType:"fee_invoice",entityId:invoiceId,
+          metadata:{before:{studentId:original.studentId,amount:original.amount,
+            dueDate:original.dueDate,description:original.description},
+            after:{studentId:updated.studentId,amount:updated.amount,
+              dueDate:updated.dueDate,description:updated.description}}
+        });
+        return updated;
+      });
+    },
+
     async createFeeInvoice(schoolId, actorUserId, input) {
       const student = await getStudent(schoolId, input.studentId);
       if (student.status !== "ACTIVE") throw new CommunicationValidationError("Cannot bill a withdrawn student.");
       return db.transaction(async tx => {
+        // The UPSERT serializes numbering independently within each school.
+        const [counter] = await tx.insert(feeInvoiceCounters)
+          .values({ schoolId, lastNumber: 1 })
+          .onConflictDoUpdate({
+            target: feeInvoiceCounters.schoolId,
+            set: { lastNumber: sql`${feeInvoiceCounters.lastNumber} + 1` }
+          }).returning();
+        if (!counter || counter.lastNumber > 2147483647)
+          throw new CommunicationConflictError("Invoice number range exhausted.");
         const [invoice] = await tx.insert(feeInvoices).values({
-          id: randomUUID(), schoolId, studentId: input.studentId, amount: input.amount,
+          id: randomUUID(), schoolId, studentId: input.studentId, invoiceNumber: counter.lastNumber, amount: input.amount,
           dueDate: input.dueDate, description: input.description ?? null, createdBy: actorUserId
         }).returning();
         if (!invoice) throw new Error("Fee invoice insert did not return a row.");
         await tx.insert(auditLogs).values({
           id: randomUUID(), schoolId, actorUserId, action: "fee_invoice.created",
           entityType: "fee_invoice", entityId: invoice.id,
-          metadata: { studentId: invoice.studentId, amount: invoice.amount, dueDate: invoice.dueDate }
+          metadata: { invoiceNumber: invoice.invoiceNumber, studentId: invoice.studentId, amount: invoice.amount, dueDate: invoice.dueDate }
         });
         return invoice;
       });
