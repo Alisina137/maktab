@@ -1629,3 +1629,16 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Existing communication routes, database schema and cross-role notification APIs remain unchanged. Added `scripts/test-parent-inbox-model.test.ts` and `pnpm verify:parent:phase5` to CI.
 - Human acceptance still required: multi-child school/class audience isolation, old/archived target behavior, >40-item paging, untrusted URLs, Android deep-link cold start, offline read failure, RTL and TalkBack. Step 20 remains **NO-GO**.
 - Next Parent phases: Phase 6 Parent account/profile/finance preferences; Phase 7 device/full regression and production release evidence.
+
+
+## Parent Experience — Phase 6: More account, fees and preferences (2026-10-14)
+
+- Parent More now exposes four subtabs: Fees (default), Profile, School and Preferences, with explicit notification/dashboard routing back to Fees.
+- Fees are child-scoped using the existing school/parent-authorized endpoint. Added an issued/paid/outstanding summary excluding cancelled/draft rows, invoice state filters, expandable payment/reversal ledger, independent loading/failed/retry and refresh. This is **read-only school ledger information**, not a payment gateway.
+- Profile shows official parent full name/username/phone and linked children/class/year; school-manages verified identity, profile edits and family links.
+- School shows authenticated school details and existing administrator contact actions.
+- Preferences reuses saved English/Dari/Pashto device language choice and adds current/new password change via the existing audited authenticated `POST /v1/auth/change-password`. Client validates strength/confirmation, server verifies password, and the successful returned session replaces the current parent's session and secure storage. Admin-only password 2FA remains unchanged.
+- All new text localized to English/Dari/Pashto with RTL support, positive error/empty/validation status and logout confirmation.
+- Phase 6 tests: `scripts/test-parent-more-model.test.ts` and `pnpm verify:parent:phase6` in Linux/Windows CI and monorepo verify.
+- No database migrations. Real Android finance, cross-child isolation, password rotation, offline/retry, RTL and accessibility verification remains pending. Production Step 20 is **NO-GO**.
+- Next: Parent Phase 7 full end-to-end and device/regression acceptance, while keeping pilot release and exact-build evidence constraints.
