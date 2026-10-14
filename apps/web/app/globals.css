@@ -7015,3 +7015,35 @@ html[dir="rtl"] body {
   .communication-announcement-filters { grid-template-columns: minmax(0,1fr); }
   .communication-announcement-row-head { flex-wrap: wrap; }
 }
+
+/* Admin Communication & Fees — Phase 3 invoice directory and draft detail */
+.communication-invoice-filters {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.communication-invoice-filters label { display: grid; gap: 6px; min-width: 0; font-weight: 700; }
+.communication-invoice-filters input,
+.communication-invoice-filters select,
+.communication-draft-edit :is(input,select) {
+  width: 100%; min-width: 0; min-height: 44px;
+  padding: 9px 11px; border-radius: 10px;
+  border: 1px solid var(--ml-color-border);
+  color: var(--ml-color-text); background: var(--ml-color-surface); font: inherit;
+}
+.communication-invoice-topline { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.communication-invoice-topline strong { font-size: 14px; color: var(--ml-color-brand-strong); direction:ltr; unicode-bidi:isolate; }
+.communication-invoice-expanded { display: grid; gap: 14px; padding-top: 12px; border-top: 1px solid var(--ml-color-border); }
+.communication-invoice-detail-fields { display: grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap: 12px; margin: 0; }
+.communication-invoice-detail-fields div { display: grid; min-width: 0; gap: 5px; }
+.communication-invoice-detail-fields dt { font-size: 12px; color: var(--ml-color-text-muted); font-weight: 700; }
+.communication-invoice-detail-fields dd { margin: 0; overflow-wrap: anywhere; font-size: 13px; }
+.communication-draft-edit { padding: 14px; border: 1px solid var(--ml-color-border); border-radius: 12px; background: var(--ml-color-surface-muted,#f6f8fc); }
+.communication-draft-edit h3 { margin: 0; font-size: 17px; }
+.communication-invoice-pager { display:flex; align-items:center; justify-content:center; gap: 12px; flex-wrap:wrap; padding-block:12px; }
+.communication-invoice-pager span { font-weight: 700; color:var(--ml-color-text-muted); }
+@media (max-width:620px) {
+  .communication-invoice-filters,.communication-invoice-detail-fields { grid-template-columns:1fr; }
+  .communication-invoice-pager { gap:8px; }
+}
