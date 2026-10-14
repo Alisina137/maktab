@@ -100,6 +100,13 @@ test("Notification routes use only whitelisted patterns and linked children, not
 
   const result = { ...notice(0,"RESULTS_PUBLISHED"),deepLink:"/results/"+ids.exam,metadata:{examId:ids.exam} };
   assert.deepEqual(parentInboxTarget(result),{section:"RESULTS",examId:ids.exam});
+  const differentYear = linked.map(row => ({ ...row, student: {
+    ...row.student, academicYearId: row.student.id === ids.second ? "year-2" : "year-1"
+  } }));
+  assert.equal(authorizedNotificationChild(parentInboxTarget(result)!, differentYear, ids.first,
+    { examId: ids.exam, academicYearId:"year-2" }), ids.second);
+  assert.equal(authorizedNotificationChild(parentInboxTarget(result)!, differentYear, ids.first,
+    { examId: ids.exam, academicYearId:"unknown" }), null);
   const fee = { ...notice(0,"FEE_DUE"),deepLink:`/parent/children/${ids.second}/fees`,
     metadata: { studentId:ids.second } };
   const targetFee = parentInboxTarget(fee)!;
@@ -115,4 +122,7 @@ test("Notification routes use only whitelisted patterns and linked children, not
   assert.deepEqual(targetAttendance,{section:"ATTENDANCE",date:"2026-10-13"});
   assert.equal(authorizedNotificationChild(targetAttendance,linked,ids.first,attendance.metadata),ids.second);
   assert.equal(authorizedNotificationChild(targetAttendance,[child(ids.first,"class-a")],ids.first,attendance.metadata),null);
+  assert.deepEqual(parentInboxTarget({ ...attendance, metadata: {
+    studentId: ids.second, date: "2026-02-30"
+  }}), { section:"ATTENDANCE",date:null });
 });
