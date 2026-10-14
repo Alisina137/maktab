@@ -107,7 +107,24 @@ Source of truth for currently implemented behavior: the main-branch application 
 6. Cancel the bulk confirmation, then suspend a test batch with a reason. Check each audit entry, current sessions being invalidated, individual summaries and reactivation to the correct account status.
 7. Test keyboard and screen reader interaction, small screens/200% zoom, English/Dari/Pashto/RTL, offline/retry and legitimate last-page shrink after lifecycle updates. Confirm GitHub Ubuntu/Windows CI green at the exact final commit.
 
-## Future phases (not implemented in Phases 1–5)
-- **Phase 6 — Regression:** expanded end-to-end role, tenant, network, locale, accessibility and responsive verification.
+## Phase 6 — Regression and acceptance hardening (automated implementation complete)
 
-No new database migrations or provisioning API changes were introduced in Phases 1–3.
+- **Tenant and network safety:** The Accounts page now tags directory responses to the active session token and intended query; aborts and rejected stale responses cannot overwrite newer searches. The previous school's directory, sensitive account details, pending confirmations and credentials are not shown while a new session loads. Linked family data is similarly bound to the current session and only loaded when needed.
+- **Selection safety:** Current-page-only eligibility is defined in one tested helper and enforced by the UI. The maximum 20-account batch is enforced during checkbox selection as well as by server validation. A page with more than 20 eligible accounts no longer offers a misleading select-all action; operators select up to 20 individual accounts instead.
+- **Cross-role and school integration:** Expanded PGlite/Fastify tests cover admin/teacher privilege boundaries, temporary-password restrictions, foreign-school visibility/write attempts, malformed paging/filter/sort inputs, invalid batch payloads, atomic rollback and literal wildcard search.
+- **Localization and UI source quality:** Added `pnpm verify:accounts`: checks 120+ account UI labels and message templates against **both** Dari and Pashto dictionaries and requires placeholder parity. It also checks keyboard/ARIA semantics, RTL/mobile breakpoints, reduced-motion CSS and the network/selection contracts. CI now runs these gates on Ubuntu and Windows.
+- **Manual acceptance is separate:** See `docs/TEST-ADMIN-ACCOUNTS-PHASE6.md` for a 16-area acceptance matrix, real-browser/Android/200%-zoom/keyboard/screen-reader procedures and operational sign-off. No real device or live Neon test has been performed by this implementation task; unresolved Step 20 release blockers still govern production readiness.
+- **Compatibility:** Existing school-scoped provisioning APIs and account roles remain unchanged. No database schema migration is required.
+
+### Phase 6 acceptance gate
+
+1. Pass final-commit GitHub Actions `verify` (Ubuntu) and `windows-api-regression`; retain the exact commit/CI run as evidence.
+2. Run `pnpm verify:accounts` and `pnpm verify` locally after pulling.
+3. Follow every manual scenario in `docs/TEST-ADMIN-ACCOUNTS-PHASE6.md`, record browser/device and cross-school findings, and do not claim release sign-off without those observations.
+4. Resolve the existing Step 20 Neon, backup/restore, real-device and operational release blockers before unrestricted deployment.
+
+## Future phases
+
+Phase 1–6 work is implemented in the repository. Follow-on product scope or production sign-off should be tracked as separate work rather than treated as implicitly completed.
+
+No database schema migrations were introduced in Accounts Phases 1–6. Accounts provisioning APIs are preserved; later phases added read-only directory/audit and bounded account lifecycle endpoints.
