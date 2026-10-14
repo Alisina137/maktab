@@ -674,10 +674,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           </div>
           <div className="communication-workflow-layout" data-pane={communicationPane}>
             <div className="communication-workflow-form">
-              {visibleAcademics && resourceStatus.academics === "ready"
-                ? (
-                  <>
-        <article className="admin-panel communication-form-card">
+              <article className="admin-panel communication-form-card">
           <div><h2>{t("Create announcement")}</h2><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
             <label>{t("Title")}
@@ -701,8 +698,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               </select>
             </label>
             {scope === "CLASS" ? <>
+              {resourceStatus.academics === "error" ? resourceNotice("academics") : null}
               <label>{t("Class")}
                 <select value={targetClassId} required
+                  disabled={resourceStatus.academics !== "ready"}
                   onChange={event => setTargetClassId(event.target.value)}>
                   <option value="">{t("Select class")}</option>
                   {(visibleAcademics?.classes ?? []).map(row => (
@@ -802,8 +801,6 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         ) : null}
 
 
-                  </>
-                ) : resourceNotice("academics")}
             </div>
             <div className="communication-workflow-list">
               {ready && visibleOverview ? (
