@@ -75,6 +75,9 @@ jobs:
       - name: Parent Experience Phase 4 academics filtering and privacy regression
         run: pnpm verify:parent:phase4
 
+      - name: Parent Experience Phase 5 Inbox filtering and exact-link regression
+        run: pnpm verify:parent:phase5
+
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
 
@@ -133,5 +136,6 @@ jobs:
           pnpm verify:parent:phase2
           pnpm verify:parent:phase3
           pnpm verify:parent:phase4
+          pnpm verify:parent:phase5
       - name: Test API (Windows / Node 22)
         run: pnpm --filter @maktablink/api test
