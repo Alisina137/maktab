@@ -15,6 +15,8 @@ for(const marker of [
   'type Section = "OVERVIEW" | "COMMUNICATION" | "FEES"',
   'useState<Section>("OVERVIEW")', 'role="tablist"', 'role="tab"',
   'aria-selected={section === key}', 'aria-controls=', 'scrollIntoView(',
+  'event.key === "Home"', 'event.key === "End"',
+  'locale === "en" ? "ArrowRight" : "ArrowLeft"',
   'section === "COMMUNICATION"', 'section === "FEES"', 'section === "OVERVIEW"',
   'role="tabpanel"', 'data-pane={communicationPane}', 'data-pane={feesPane}',
   'setCommunicationPane("LIST")', 'setFeesPane("LIST")',
