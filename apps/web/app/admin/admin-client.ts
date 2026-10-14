@@ -17,6 +17,9 @@ export type User = {
   role: "SCHOOL_ADMIN" | "SCHOOL_STAFF" | "TEACHER" | "PARENT" | "STUDENT";
   status: "INVITED" | "ACTIVE" | "SUSPENDED" | "ARCHIVED";
   mustChangePassword: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  lastLoginAt?: string | null;
   profile?: {
     fullName: string | null;
     phone: string | null;
