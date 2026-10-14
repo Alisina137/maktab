@@ -104,12 +104,41 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 
 **Not in scope:** submission or mark disputes, teacher-to-parent message threads, unissued exam schedules, student completion tracking without a real API, or overall rankings. These features require separate backend requirements and authorization. Production Step 20 remains **NO-GO** until real-world release evidence is reviewed.
 
+## Phase 5 — Parent Inbox: Search, Filters, Paging, and Precise Item Navigation (implemented)
+
+**Announcements**
+- Inbox → Announcements now supports text search across authorized title/body, audience filters (All / School / Class / Parents), expandable full announcement details, a visible result counter, and **Load more** in groups of 20 (not a hard 20-item truncation).
+- The selected child's class is authoritative for class announcements: another linked child's class announcements are hidden in the current view. School-wide and Parent-role updates can appear for all linked children. Archived announcements are excluded. The backend `GET /v1/announcements` still authorizes recipients and publication; UI audience filtering is additional defense, not authorization.
+- Opening an announcement notification validates its official metadata identifier, selects an authorized linked child when the class ID is available, resets filters, and promotes/expands the matching announcement at the top of the visible list. Archived, deleted, or no-longer-authorized targets show *This update is no longer available*; an arbitrary item is never fabricated.
+
+**Notifications**
+- Inbox → Notifications supports search, All / Unread / Read selection, topic filters (School / Academics / Attendance / Fees), chronological ordering, accurate unread counts, and **Load more** in groups of 20. Filter changes reset page size, but search and read filters apply across all currently authorized records, not just the first 20 visible entries.
+- Unread and read states are based on server `readAt`; opening an item marks it read through existing `POST /v1/notifications/:id/read`. **Mark all read** uses the existing authenticated `/v1/notifications/read-all` mutation; a failure does not falsely report success. Mobile session-token identity is checked before writing the returned data.
+- Announcements are scoped to the selected child; notifications explicitly cover the **whole parent account** and may refer to another linked child. The selected child is switched only after checking against `parentHome.children`, which was authorized by the backend.
+
+**Safe precise navigation**
+- Known, verified in-app links open the matching existing announcement, published Homework task, published Exam, recorded Attendance date, or the specifically linked student's Fees. Homework and exams open their real published-only detail panels; attendance alerts use a validated ISO date and child ID. Unknown URL destinations remain in the inbox and are never passed directly to a browser.
+- Push-open notifications arriving before Parent Home has loaded are queued only in the current session, and resolved against linked children once parent identity loads. Child switching, explicit navigation, account changes, logout and data clear reset all focused IDs; in-flight requests retain Phase 1/2 session/child generation protection.
+- Inbox announcements and notifications have **independent loading, error, and targeted retry**, rather than showing a false empty list when a request failed. Refresh is available in each subtab.
+
+**Pagination boundary:** Phase 5 currently uses 20-at-a-time **client-side display paging** of the already-authorized records returned by existing APIs. It does not claim that the backend performs cursor pagination or reduces network payload size. Server pagination/search requires separate API/back-end enhancement; this phase avoids changing cross-role contracts.
+
+**Acceptance on real Android (not yet claimed):**
+1. Test linked children in different classes, parent-role and school-wide announcements. Cross-class or archived content must not leak into the selected child's announcement list.
+2. Create >40 announcements/notifications, verify correct search/filter counts, 20-at-a-time paging, and no omissions or duplicates after Mark All Read/refresh.
+3. Open a push for each link type (announcement, homework, exam result, attendance, fees), including while Home is still loading. Verify the target is exact and children change only with authorized membership.
+4. Test an archived announcement, withdrawn student, invalid URL, malicious student ID and missing result/homework ID. No unauthorized details should appear and unknown destinations must not open.
+5. Disconnect only the announcement endpoint, only the notification endpoint, and individual mark-read POST requests. Verify clear errors, independent retry and no false read state.
+6. Verify Dari/Pashto RTL and English, small screens, large text, TalkBack, and repeated filter changes or rapid child switches.
+
+**No database migration.** Added pure-model tests and source guards via `pnpm verify:parent:phase5`, wired to Linux/Windows CI and `pnpm verify`. Step 20 production release remains **NO-GO** until external device/operator acceptance evidence exists.
+
 ## Next phases
 
 - Phase 2 — implemented: interactive prioritized Home and independent resource retry.
 - Phase 3 — implemented: Attendance calendar, recorded-only monthly statistics, and dated detail.
 - Phase 4 — implemented: published-only Homework filters/details, released Result groups, and weekly Timetable day/subject views.
-- Phase 5 — Inbox paging/filtering and precise notification-to-item navigation.
+- Phase 5 — implemented: Parent Inbox search/read/audience/topic filters, 20-at-a-time display paging and validated item deep links.
 - Phase 6 — Parent account/profile/security, fees, school info and preferences.
 - Phase 7 — full Android/RTL/offline/multi-child regression and release evidence.
 
