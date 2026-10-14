@@ -1,5 +1,6 @@
 import type { AnnouncementPayload, ParentNotification, ParentChild } from "./api";
 import { notificationDestination } from "./notification-destination";
+import { validIsoDay } from "./parent-attendance-model";
 
 export const INBOX_PAGE_SIZE = 20;
 export type NotificationReadFilter = "ALL" | "UNREAD" | "READ";
@@ -84,7 +85,7 @@ export function parentInboxTarget(notification: ParentNotification): ParentInbox
   if (destination === "PARENT_ATTENDANCE") {
     const date = notification.metadata.date;
     return { section: "ATTENDANCE",
-      date: typeof date === "string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) ? date : null };
+      date: typeof date === "string" && validIsoDay(date) ? date : null };
   }
   if (destination === "PARENT_HOME") return { section: "HOME" };
   return null;
