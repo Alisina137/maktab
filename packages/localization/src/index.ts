@@ -314,6 +314,51 @@ export type TranslationKey =
   | "parent.inboxNoMatches"
   | "parent.inboxTargetUnavailable"
   | "parent.inboxMarkReadError"
+  | "parent.moreFees"
+  | "parent.moreProfile"
+  | "parent.moreSchool"
+  | "parent.morePreferences"
+  | "parent.moreFeesDescription"
+  | "parent.moreBilled"
+  | "parent.moreLedgerHint"
+  | "parent.moreInvoices"
+  | "parent.moreUnpaid"
+  | "parent.moreAllInvoices"
+  | "parent.morePaid"
+  | "parent.moreNoFilteredFees"
+  | "parent.moreIssuedOn"
+  | "parent.morePaymentHistory"
+  | "parent.moreNoPayments"
+  | "parent.moreReference"
+  | "parent.moreReversalReason"
+  | "parent.morePaymentHelp"
+  | "parent.moreProfileHint"
+  | "parent.moreParentAccount"
+  | "parent.moreUsername"
+  | "parent.moreNotProvided"
+  | "parent.moreManagedBySchool"
+  | "parent.moreLinkedChildren"
+  | "parent.moreSchoolHint"
+  | "parent.moreSchoolCode"
+  | "parent.moreProvince"
+  | "parent.moreCity"
+  | "parent.moreSchoolContactHelp"
+  | "parent.moreLanguage"
+  | "parent.moreLanguageHint"
+  | "parent.moreSecurity"
+  | "parent.moreSecurityHint"
+  | "parent.moreCurrentPassword"
+  | "parent.moreNewPassword"
+  | "parent.moreConfirmPassword"
+  | "parent.morePasswordRules"
+  | "parent.moreCurrentRequired"
+  | "parent.moreSamePassword"
+  | "parent.morePasswordLength"
+  | "parent.moreChangePassword"
+  | "parent.morePasswordFailed"
+  | "parent.morePasswordChanged"
+  | "parent.moreLogoutTitle"
+  | "parent.moreLogoutConfirm"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -835,6 +880,51 @@ const en: Record<TranslationKey, string> = {
   "parent.inboxNoMatches": "No messages match these filters.",
   "parent.inboxTargetUnavailable": "This update is no longer available for the selected child.",
   "parent.inboxMarkReadError": "Could not mark notifications as read. Please try again.",
+  "parent.moreFees": "Fees",
+  "parent.moreProfile": "Profile",
+  "parent.moreSchool": "School",
+  "parent.morePreferences": "Preferences",
+  "parent.moreFeesDescription": "Issued invoices and verified payment history for the selected child.",
+  "parent.moreBilled": "Billed",
+  "parent.moreLedgerHint": "Balances come from the school's ledger. This app cannot collect or confirm payments.",
+  "parent.moreInvoices": "Invoices",
+  "parent.moreUnpaid": "Outstanding",
+  "parent.moreAllInvoices": "All invoices",
+  "parent.morePaid": "Paid",
+  "parent.moreNoFilteredFees": "No invoices match this filter.",
+  "parent.moreIssuedOn": "Issued on",
+  "parent.morePaymentHistory": "Payment history",
+  "parent.moreNoPayments": "No payment transactions recorded.",
+  "parent.moreReference": "Reference",
+  "parent.moreReversalReason": "Reversal reason",
+  "parent.morePaymentHelp": "To pay, dispute a balance, or request a receipt, contact the school. Payments here are read-only.",
+  "parent.moreProfileHint": "Your school-verified parent account information.",
+  "parent.moreParentAccount": "Parent account",
+  "parent.moreUsername": "Username",
+  "parent.moreNotProvided": "Not provided",
+  "parent.moreManagedBySchool": "Name, phone and family links are managed by the school. Contact the administrator to request corrections.",
+  "parent.moreLinkedChildren": "Linked children",
+  "parent.moreSchoolHint": "School details and authorized administrative contact.",
+  "parent.moreSchoolCode": "School code",
+  "parent.moreProvince": "Province",
+  "parent.moreCity": "City",
+  "parent.moreSchoolContactHelp": "Contact this school administrator for account, enrollment, attendance or fee corrections.",
+  "parent.moreLanguage": "App language",
+  "parent.moreLanguageHint": "Change the language of MaktabLink on this device.",
+  "parent.moreSecurity": "Account security",
+  "parent.moreSecurityHint": "Change your password using your current password. Never share it with the school.",
+  "parent.moreCurrentPassword": "Current password",
+  "parent.moreNewPassword": "New password",
+  "parent.moreConfirmPassword": "Confirm new password",
+  "parent.morePasswordRules": "Use at least 8 characters with a letter, number, and special symbol.",
+  "parent.moreCurrentRequired": "Enter your current password.",
+  "parent.moreSamePassword": "Choose a new password that differs from your current one.",
+  "parent.morePasswordLength": "Your new password must be between 8 and 128 characters.",
+  "parent.moreChangePassword": "Change password",
+  "parent.morePasswordFailed": "Password not changed. Verify your current password or connection and retry.",
+  "parent.morePasswordChanged": "Password changed successfully. Your account session has been refreshed.",
+  "parent.moreLogoutTitle": "Log out?",
+  "parent.moreLogoutConfirm": "You will need to sign in again to access your school account.",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1372,6 +1462,51 @@ const dari: Record<TranslationKey, string> = {
   "parent.inboxNoMatches": "پیامی مطابق فیلترها پیدا نشد.",
   "parent.inboxTargetUnavailable": "این اطلاعیه برای فرزند انتخاب‌شده دیگر قابل مشاهده نیست.",
   "parent.inboxMarkReadError": "علامت‌گذاری خبرتیاها به‌عنوان خوانده‌شده انجام نشد. دوباره تلاش کنید.",
+  "parent.moreFees": "فیس‌ها",
+  "parent.moreProfile": "پروفایل",
+  "parent.moreSchool": "مکتب",
+  "parent.morePreferences": "تنظیمات",
+  "parent.moreFeesDescription": "فاکتورهای صادرشده و تاریخچه پرداخت‌های ثبت‌شده برای فرزند انتخاب‌شده.",
+  "parent.moreBilled": "مبلغ صادرشده",
+  "parent.moreLedgerHint": "مبالغ از دفتر حساب مکتب گرفته می‌شوند. پرداخت و تأیید آن در این برنامه ممکن نیست.",
+  "parent.moreInvoices": "فاکتورها",
+  "parent.moreUnpaid": "باقی‌مانده",
+  "parent.moreAllInvoices": "همه فاکتورها",
+  "parent.morePaid": "پرداخت‌شده",
+  "parent.moreNoFilteredFees": "فاکتوری مطابق فیلتر پیدا نشد.",
+  "parent.moreIssuedOn": "تاریخ صدور",
+  "parent.morePaymentHistory": "تاریخچه پرداخت",
+  "parent.moreNoPayments": "هیچ پرداختی ثبت نشده است.",
+  "parent.moreReference": "شماره مرجع",
+  "parent.moreReversalReason": "دلیل برگشت",
+  "parent.morePaymentHelp": "برای پرداخت، اعتراض به حساب یا درخواست رسید با اداره مکتب تماس بگیرید. این معلومات تنها قابل مشاهده است.",
+  "parent.moreProfileHint": "معلومات تأییدشده حساب والدین توسط مکتب.",
+  "parent.moreParentAccount": "حساب والدین",
+  "parent.moreUsername": "نام کاربری",
+  "parent.moreNotProvided": "ثبت نشده",
+  "parent.moreManagedBySchool": "نام، شماره تماس و پیوند فرزندان توسط مکتب مدیریت می‌شوند. برای اصلاح با اداره تماس بگیرید.",
+  "parent.moreLinkedChildren": "فرزندان مرتبط",
+  "parent.moreSchoolHint": "مشخصات مکتب و راه تماس با اداره مسئول.",
+  "parent.moreSchoolCode": "کد مکتب",
+  "parent.moreProvince": "ولایت",
+  "parent.moreCity": "شهر",
+  "parent.moreSchoolContactHelp": "برای اصلاح حساب، ثبت‌نام، حاضری یا فیس با مسئول اداره مکتب تماس بگیرید.",
+  "parent.moreLanguage": "زبان برنامه",
+  "parent.moreLanguageHint": "زبان مکتب‌لینک را در این دستگاه تغییر دهید.",
+  "parent.moreSecurity": "امنیت حساب",
+  "parent.moreSecurityHint": "با رمز فعلی خود، رمز حساب را تغییر دهید. آن را در اختیار دیگران قرار ندهید.",
+  "parent.moreCurrentPassword": "رمز فعلی",
+  "parent.moreNewPassword": "رمز جدید",
+  "parent.moreConfirmPassword": "تکرار رمز جدید",
+  "parent.morePasswordRules": "حداقل ۸ حرف با حرف انگلیسی، عدد و یک علامت ویژه انتخاب کنید.",
+  "parent.moreCurrentRequired": "رمز فعلی را وارد کنید.",
+  "parent.moreSamePassword": "رمز جدید باید متفاوت از رمز فعلی باشد.",
+  "parent.morePasswordLength": "رمز جدید باید بین ۸ تا ۱۲۸ نویسه باشد.",
+  "parent.moreChangePassword": "تغییر رمز",
+  "parent.morePasswordFailed": "رمز تغییر نکرد. رمز فعلی یا اتصال را بررسی کرده دوباره تلاش کنید.",
+  "parent.morePasswordChanged": "رمز با موفقیت تغییر کرد و نشست حساب تازه شد.",
+  "parent.moreLogoutTitle": "خروج از حساب؟",
+  "parent.moreLogoutConfirm": "برای دسترسی دوباره به حساب مکتب باید وارد شوید.",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1909,6 +2044,51 @@ const pashto: Record<TranslationKey, string> = {
   "parent.inboxNoMatches": "د فلټر سره سم پیغامونه ونه موندل شول.",
   "parent.inboxTargetUnavailable": "دا خبرتیا د ټاکل شوي ماشوم لپاره نوره نه شته.",
   "parent.inboxMarkReadError": "د خبرتیاوو د لوستل کېدو نښه ونه لګېده. بیا هڅه وکړئ.",
+  "parent.moreFees": "فیسونه",
+  "parent.moreProfile": "پروفایل",
+  "parent.moreSchool": "ښوونځی",
+  "parent.morePreferences": "تنظیمات",
+  "parent.moreFeesDescription": "د ټاکل شوي ماشوم صادر شوي بلونه او ثبت شوې ورکړې.",
+  "parent.moreBilled": "ټول بل شوی",
+  "parent.moreLedgerHint": "پیسې د ښوونځي له حسابه اخیستل کېږي. په دې اپ کې د پیسو ورکول یا تاییدول نشته.",
+  "parent.moreInvoices": "بلونه",
+  "parent.moreUnpaid": "پاتې پیسې",
+  "parent.moreAllInvoices": "ټول بلونه",
+  "parent.morePaid": "ورکړل شوي",
+  "parent.moreNoFilteredFees": "د دې فلټر لپاره بل ونه موندل شو.",
+  "parent.moreIssuedOn": "د صدور نېټه",
+  "parent.morePaymentHistory": "د ورکړو تاریخچه",
+  "parent.moreNoPayments": "هیڅ ورکړه نه ده ثبت شوې.",
+  "parent.moreReference": "د حوالې شمېره",
+  "parent.moreReversalReason": "د بېرته ګرځولو لامل",
+  "parent.morePaymentHelp": "د ورکړې، د حساب د اعتراض یا رسید لپاره د ښوونځي له ادارې سره اړیکه ونیسئ. معلومات یوازې د لوستلو دي.",
+  "parent.moreProfileHint": "ستاسو د ښوونځي له خوا تایید شوي د والدینو حساب معلومات.",
+  "parent.moreParentAccount": "د والدینو حساب",
+  "parent.moreUsername": "کارن نوم",
+  "parent.moreNotProvided": "نه دی ورکړل شوی",
+  "parent.moreManagedBySchool": "نوم، ټیلیفون او د ماشومانو تړاو د ښوونځي له خوا اداره کېږي. د سمون لپاره له ادارې سره اړیکه ونیسئ.",
+  "parent.moreLinkedChildren": "تړلي ماشومان",
+  "parent.moreSchoolHint": "د ښوونځي مالومات او د مسؤول ادارې د اړیکې لاره.",
+  "parent.moreSchoolCode": "د ښوونځي کوډ",
+  "parent.moreProvince": "ولایت",
+  "parent.moreCity": "ښار",
+  "parent.moreSchoolContactHelp": "د حساب، نوم لیکنې، حاضرۍ یا فیس د سمون لپاره له ادارې سره اړیکه ونیسئ.",
+  "parent.moreLanguage": "د اپ ژبه",
+  "parent.moreLanguageHint": "په دې وسیله د مکتب‌لینک ژبه بدله کړئ.",
+  "parent.moreSecurity": "د حساب امنیت",
+  "parent.moreSecurityHint": "د اوسني پټنوم په کارولو نوی پټنوم جوړ کړئ. له نورو سره یې مه شریکوئ.",
+  "parent.moreCurrentPassword": "اوسنی پټنوم",
+  "parent.moreNewPassword": "نوی پټنوم",
+  "parent.moreConfirmPassword": "نوی پټنوم بیا ولیکئ",
+  "parent.morePasswordRules": "لږ تر لږه ۸ توري، یو انګلیسي توری، شمېره او ځانګړې نښه پکار دي.",
+  "parent.moreCurrentRequired": "اوسنی پټنوم ولیکئ.",
+  "parent.moreSamePassword": "نوی پټنوم باید له اوسني سره توپیر ولري.",
+  "parent.morePasswordLength": "نوی پټنوم باید د ۸ او ۱۲۸ تورو ترمنځ وي.",
+  "parent.moreChangePassword": "پټنوم بدلول",
+  "parent.morePasswordFailed": "پټنوم بدل نه شو. خپل اوسنی پټنوم یا اړیکه وګورئ او بیا هڅه وکړئ.",
+  "parent.morePasswordChanged": "پټنوم بدل شو او د حساب ناسته تازه شوه.",
+  "parent.moreLogoutTitle": "له حسابه ووځئ؟",
+  "parent.moreLogoutConfirm": "د ښوونځي حساب ته د بیا ننوتلو لپاره باید لاګین وکړئ.",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
