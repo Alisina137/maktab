@@ -1512,3 +1512,13 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Extended English/Dari/Pashto translations; added executable client-rule regressions in the API's cross-platform test suite and release source gates.
 - Retained school-scoped provisioning endpoints and existing reset/suspend/reactivate security rules; no migrations. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
 - Actual browser, clipboard, and screen-reader visual acceptance remain user/operator checks; confirm exact-commit CI separately.
+
+
+### Admin Accounts — Phase 3: Account details and related records (2026-10-14)
+
+- Added `View details` on each Accounts directory entry, opening a modal side drawer with keyboard focus containment, Escape/backdrop dismissal, focus restoration, and RTL-aware desktop/mobile layout while retaining directory search, filters and selection.
+- Read-only account metadata now includes username, role, status, creation date, last login and password-setup state, with a clear missing-value presentation.
+- Parent and student details join only the specifically linked family records returned by the existing school-scoped Families overview. Teacher details lazily fetch the existing admin Academic overview and filter teaching and Negaran assignments to that teacher.
+- Offered contextual reset/suspend/reactivate controls subject to existing current-admin and archived restrictions, and links into canonical Families / Teacher Profiles / Teacher Assignments / own Admin Profile pages. No new cross-role edit endpoint or duplicated family/teacher editing logic.
+- Added pure association tests in `apps/api/src/account-details-data.test.ts`, localized UI copy in English/Dari/Pashto, and release source-gate assertions for details, focus and safe relationships.
+- No migrations. Manual cross-role/browser RTL and accessibility acceptance remains outstanding. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
