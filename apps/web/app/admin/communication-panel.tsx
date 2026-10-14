@@ -136,6 +136,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setReversalReason({});
     setNotice("");
     setError("");
+    setBusy(false);
     setOverview(null);
     setFamilies(null);
     setAcademics(null);
@@ -213,14 +214,16 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           publishAt: datetimeLocalToIso(String(form.get("publishAt") ?? ""))
         })
       });
+      if (accessRef.current !== accessToken) return;
       setNotice(t("Announcement saved. Its audience is enforced by the API."));
       formElement.reset();
       setScope("SCHOOL");
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not create announcement."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -238,13 +241,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           ...(editPublishAt ? { publishAt: datetimeLocalToIso(editPublishAt) } : {})
         })
       });
+      if (accessRef.current !== accessToken) return;
       setEditingNotice(null);
       setNotice(t("Scheduled announcement updated."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not update scheduled announcement."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -254,12 +259,14 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     try {
       await request(accessToken, `/v1/admin/announcements/${id}/archive`, { method: "POST" });
+      if (accessRef.current !== accessToken) return;
       setNotice(t("Announcement archived."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not archive announcement."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -280,13 +287,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           description: String(form.get("description") ?? "").trim() || undefined
         })
       });
+      if (accessRef.current !== accessToken) return;
       setNotice(t("Fee invoice created in DRAFT state."));
       formElement.reset();
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not create fee invoice."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -296,12 +305,14 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setNotice("");
     try {
       await request(accessToken, `/v1/admin/fees/invoices/${id}/${action}`, { method: "POST" });
+      if (accessRef.current !== accessToken) return;
       setNotice(t(action === "issue" ? "Invoice issued to the family." : "Invoice cancelled."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Fee invoice action failed."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -324,14 +335,16 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           idempotencyKey
         })
       });
+      if (accessRef.current !== accessToken) return;
       delete paymentAttempts.current[invoiceId];
       setPaymentDraft((current) => ({ ...current, [invoiceId]: { amount: "", method: "CASH", reference: "" } }));
       setNotice(t("Payment recorded as an immutable transaction."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not record payment."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -349,13 +362,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         method: "POST",
         body: JSON.stringify({ reason })
       });
+      if (accessRef.current !== accessToken) return;
       setReversalReason((current) => ({ ...current, [paymentId]: "" }));
       setNotice(t("Payment reversed with a separate immutable reversal transaction."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not reverse payment."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
@@ -377,13 +392,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         method: "PATCH",
         body: JSON.stringify({ daysBeforeDue: days })
       });
+      if (accessRef.current !== accessToken) return;
       setReminderText(result.daysBeforeDue.join(", "));
       setNotice(t("Fee reminder days updated."));
       await loadResource("communication");
     } catch (cause) {
+      if (accessRef.current !== accessToken) return;
       setError(adminErrorText(locale, cause, "Could not update fee reminder settings."));
     } finally {
-      setBusy(false);
+      if (accessRef.current === accessToken) setBusy(false);
     }
   }
 
