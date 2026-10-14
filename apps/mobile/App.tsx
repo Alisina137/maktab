@@ -57,6 +57,9 @@ import { TeacherBottomNavigation, TeacherExperience, type TeacherTab } from "./s
 import { NegaranHistoryPanel } from "./src/negaran-history";
 import { countAttendance, fillUnmarkedPresent } from "./src/negaran-attendance-utils";
 import { ParentDashboardPanel } from "./src/parent-dashboard";
+import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
+import { ParentTimetableContent } from "./src/parent-timetable";
+import { ParentNotificationsContent } from "./src/parent-inbox";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
 import { StudentHomeworkContent } from "./src/student-homework";
@@ -196,6 +199,8 @@ function AppContent() {
   const [parentHome, setParentHome] = useState<ParentHomePayload | null>(null);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [parentTab, setParentTab] = useState<ParentTab>("HOME");
+  const [parentAcademicsTab, setParentAcademicsTab] = useState<ParentAcademicsTab>("HOMEWORK");
+  const [parentInboxTab, setParentInboxTab] = useState<ParentInboxTab>("ANNOUNCEMENTS");
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
   const [parentToday, setParentToday] = useState("");
   const [parentTimetable, setParentTimetable] = useState<ParentTimetablePeriod[]>([]);
@@ -247,6 +252,8 @@ function AppContent() {
   const networkHealthyChecksRef = useRef(0);
   const schoolSearchRequestId = useRef(0);
   const parentChildLoadRequestId = useRef(0);
+  const parentHomeRequestId = useRef(0);
+  const parentNotificationsRequestId = useRef(0);
   const studentHomeLoadRequestId = useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
@@ -305,7 +312,11 @@ function AppContent() {
   }, [school]);
 
   useEffect(() => {
-    if (session?.user.role === "PARENT") setParentTab("HOME");
+    if (session?.user.role === "PARENT") {
+      setParentTab("HOME");
+      setParentAcademicsTab("HOMEWORK");
+      setParentInboxTab("ANNOUNCEMENTS");
+    }
     if (session?.user.role === "TEACHER") setTeacherTab("TODAY");
   }, [session?.user.id]);
 
@@ -841,6 +852,11 @@ function AppContent() {
   }
 
   function clearOperationalHomeData() {
+    // Stop in-flight reads before clearing child/account data.
+    parentHomeRequestId.current += 1;
+    parentNotificationsRequestId.current += 1;
+    parentChildLoadRequestId.current += 1;
+    selectedChildIdRef.current = "";
     setParentHome(null);
     setSelectedChildId("");
     setParentAttendance([]);
@@ -1188,39 +1204,46 @@ function AppContent() {
   }
 
   async function loadParentHome(accessToken: string) {
+    const requestId = ++parentHomeRequestId.current;
+    const identity = sessionRef.current?.user.id;
+    if (!identity || sessionRef.current?.user.role !== "PARENT" ||
+        sessionRef.current.accessToken !== accessToken) return;
+    const valid = () => requestId === parentHomeRequestId.current &&
+      sessionRef.current?.accessToken === accessToken &&
+      sessionRef.current?.user.id === identity &&
+      sessionRef.current?.user.role === "PARENT";
     setBusy(true);
     setAppError(null);
     try {
       const result = await api.parentHome(accessToken);
-
+      if (!valid()) return;
       let rememberedChildId: string | null = null;
-      if (school && session?.user.role === "PARENT") {
+      if (schoolRef.current) {
         try {
-          rememberedChildId = await loadPreferredParentChild(school.id, session.user.id);
+          rememberedChildId = await loadPreferredParentChild(schoolRef.current.id, identity);
         } catch {
-          // Child preference is convenience state; Parent Home must still work if device storage is unavailable.
+          // Parent Home remains usable when device preference storage is unavailable.
         }
       }
+      if (!valid()) return;
       const currentChildId = selectedChildIdRef.current;
       const nextChildId = result.children.some((item) => item.student.id === currentChildId)
         ? currentChildId
         : rememberedChildId && result.children.some((item) => item.student.id === rememberedChildId)
           ? rememberedChildId
           : result.children[0]?.student.id ?? "";
-
       selectedChildIdRef.current = nextChildId;
       setParentHome(result);
       setSelectedChildId(nextChildId);
-
-      if (nextChildId && school && session?.user.role === "PARENT") {
-        void savePreferredParentChild(school.id, session.user.id, nextChildId).catch(() => {
-          // The current selection still works even if preference persistence fails.
+      if (nextChildId && schoolRef.current) {
+        void savePreferredParentChild(schoolRef.current.id, identity, nextChildId).catch(() => {
+          // Selection is not blocked by unavailable secure storage.
         });
       }
     } catch (cause) {
-      showCause(cause);
+      if (valid()) showCause(cause);
     } finally {
-      setBusy(false);
+      if (valid()) setBusy(false);
     }
   }
 
@@ -1244,11 +1267,11 @@ function AppContent() {
   ) {
     try {
       const result = await api.parentAttendance(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current) return;
+      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
       setParentToday(result.today);
       setParentAttendance(result.days);
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
     }
   }
 
@@ -1259,11 +1282,11 @@ function AppContent() {
   ) {
     try {
       const result = await api.parentTimetable(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current) return;
+      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
       setParentTimetable(result.periods);
       setParentTimetableReady(true);
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
     }
   }
 
@@ -1274,10 +1297,10 @@ function AppContent() {
   ) {
     try {
       const result = await api.parentLearning(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current) return;
+      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
       setParentLearning(result);
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
     }
   }
 
@@ -1286,26 +1309,34 @@ function AppContent() {
     studentId: string,
     requestId: number
   ) {
-    try {
-      const [announcementResult, feeResult] = await Promise.all([
-        api.announcements(accessToken),
-        api.parentFees(accessToken, studentId)
-      ]);
-      if (requestId !== parentChildLoadRequestId.current) return;
-      setParentAnnouncements(announcementResult.announcements);
-      setParentFees(feeResult.invoices);
-      setParentCommunicationReady(true);
-    } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current) showCause(cause);
+    const [announcementsResult, feesResult] = await Promise.allSettled([
+      api.announcements(accessToken),
+      api.parentFees(accessToken, studentId)
+    ] as const);
+    if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+    if (announcementsResult.status === "fulfilled") {
+      setParentAnnouncements(announcementsResult.value.announcements);
     }
+    if (feesResult.status === "fulfilled") setParentFees(feesResult.value.invoices);
+    setParentCommunicationReady(true);
+    const failure = [announcementsResult, feesResult].find((item) => item.status === "rejected");
+    if (failure?.status === "rejected") showCause(failure.reason);
   }
 
   async function loadParentNotifications(accessToken: string) {
+    const requestId = ++parentNotificationsRequestId.current;
+    const identity = sessionRef.current?.user.id;
+    if (!identity || sessionRef.current?.user.role !== "PARENT" ||
+        sessionRef.current.accessToken !== accessToken) return;
+    const valid = () => parentNotificationsRequestId.current === requestId &&
+      sessionRef.current?.accessToken === accessToken &&
+      sessionRef.current?.user.id === identity &&
+      sessionRef.current?.user.role === "PARENT";
     try {
       const result = await api.parentNotifications(accessToken);
-      setParentNotifications(result.notifications);
+      if (valid()) setParentNotifications(result.notifications);
     } catch (cause) {
-      showCause(cause);
+      if (valid()) showCause(cause);
     }
   }
 
@@ -1482,9 +1513,13 @@ function AppContent() {
     const destination = notificationDestination(role, notification);
     void readNotification(notification.id);
     if (!destination) return;
-    if (destination === "PARENT_ANNOUNCEMENTS") setParentTab("ANNOUNCEMENTS");
-    else if (destination === "PARENT_HOMEWORK") setParentTab("HOMEWORK");
-    else if (destination === "PARENT_RESULTS") setParentTab("MORE");
+    if (destination === "PARENT_ANNOUNCEMENTS") {
+      setParentTab("INBOX"); setParentInboxTab("ANNOUNCEMENTS");
+    } else if (destination === "PARENT_HOMEWORK") {
+      setParentTab("ACADEMICS"); setParentAcademicsTab("HOMEWORK");
+    } else if (destination === "PARENT_RESULTS") {
+      setParentTab("ACADEMICS"); setParentAcademicsTab("RESULTS");
+    } else if (destination === "PARENT_FEES") setParentTab("MORE");
     else if (destination === "PARENT_HOME") setParentTab("HOME");
     else if (destination === "STUDENT_ANNOUNCEMENTS") {
       setStudentDetailReturnScreen("home");
@@ -1582,6 +1617,13 @@ function AppContent() {
       sessionRefreshPromiseRef.current = null;
       setSessionRefreshHandler(null);
       setSession(null);
+      parentHomeRequestId.current += 1;
+      parentNotificationsRequestId.current += 1;
+      parentChildLoadRequestId.current += 1;
+      selectedChildIdRef.current = "";
+      setParentTab("HOME");
+      setParentAcademicsTab("HOMEWORK");
+      setParentInboxTab("ANNOUNCEMENTS");
       setParentHome(null);
       setSelectedChildId("");
       setParentAttendance([]);
@@ -2076,6 +2118,13 @@ function AppContent() {
 
         {screen === "home" && session?.user.role === "PARENT" && session.user.status !== "SUSPENDED" && (
           <View style={styles.section}>
+            <ParentChildSwitcher
+              key={session.user.id}
+              childrenList={parentHome?.children ?? null}
+              selectedChildId={selectedChildId}
+              onSelect={selectParentChild}
+              locale={locale}
+            />
             {parentTab === "HOME" ? (
               <>
                 <View style={[styles.parentHeroCard, direction === "rtl" && styles.rowRtl]}>
@@ -2102,45 +2151,6 @@ function AppContent() {
                   <>
                     {parentHome.children.length > 0 ? (
                       <>
-                        {parentHome.children.length > 1 ? (
-                          <>
-                            <View style={[styles.parentSectionHeading, direction === "rtl" && styles.rowRtl]}>
-                              <View style={styles.parentSectionIcon}>
-                                <Ionicons name="swap-horizontal-outline" size={17} color={tokens.color.brandStrong} />
-                              </View>
-                              <Text style={[styles.sectionLabel, styles.flexCopy, textDirection]}>
-                                {translate(locale, "parent.switchChild")}
-                              </Text>
-                            </View>
-                            <View style={[styles.childSelector, direction === "rtl" && styles.childSelectorRtl]}>
-                              {parentHome.children.map((item) => {
-                                const active = item.student.id === selectedChild?.student.id;
-                                return (
-                                  <Pressable
-                                    key={item.student.id}
-                                    onPress={() => selectParentChild(item.student.id)}
-                                    accessibilityRole="button"
-                                    accessibilityState={{ selected: active }}
-                                    style={[styles.childChip, active && styles.childChipActive]}
-                                  >
-                                    <View style={[styles.childChipDot, active && styles.childChipDotActive]}>
-                                      <Text style={[styles.childChipDotText, active && styles.childChipDotTextActive]}>
-                                        {item.student.fullName.slice(0, 1)}
-                                      </Text>
-                                    </View>
-                                    <Text style={active ? styles.childChipTextActive : styles.childChipText}>
-                                      {item.student.fullName}
-                                    </Text>
-                                    {active ? (
-                                      <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                                    ) : null}
-                                  </Pressable>
-                                );
-                              })}
-                            </View>
-                          </>
-                        ) : null}
-
                         {selectedChild ? (
                           <Animated.View
                             style={[
@@ -2309,30 +2319,39 @@ function AppContent() {
               </>
             ) : null}
 
-            {parentTab === "HOMEWORK" ? (
+            {parentTab === "ACADEMICS" ? (
               <>
                 <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
                   <View style={styles.parentPageHeadingIcon}>
-                    <Ionicons name="document-text-outline" size={22} color={tokens.color.brandStrong} />
+                    <Ionicons name="book-outline" size={22} color={tokens.color.brandStrong} />
                   </View>
-                  <View style={styles.flexCopy}>
-                    <Text style={[styles.parentPageTitle, textDirection]}>{translate(locale, "parent.navHomework")}</Text>
-                    {selectedChild ? (
-                      <Text style={[styles.parentPageContext, textDirection]}>
-                        {selectedChild.student.fullName} · {selectedChild.classSection.name}
-                      </Text>
-                    ) : null}
-                  </View>
+                  <Text style={[styles.parentPageTitle, styles.flexCopy, textDirection]}>
+                    {translate(locale, "parent.navAcademics")}
+                  </Text>
                 </View>
+                <ParentSectionTabs
+                  locale={locale}
+                  selected={parentAcademicsTab}
+                  onSelect={(value) => setParentAcademicsTab(value as ParentAcademicsTab)}
+                  tabs={[
+                    { key: "HOMEWORK", label: "parent.navHomework" },
+                    { key: "RESULTS", label: "learning.publishedResults" },
+                    { key: "TIMETABLE", label: "parent.navTimetable" }
+                  ]}
+                />
                 {selectedChild ? (
-                  <>
-                    <ParentHomeworkContent
-                      accessToken={session.accessToken}
-                      learning={parentLearning}
-                      locale={locale}
-                      textDirection={textDirection}
-                    />
-                  </>
+                  parentAcademicsTab === "HOMEWORK" ? (
+                    <ParentHomeworkContent key={selectedChild.student.id} accessToken={session.accessToken}
+                      learning={parentLearning} locale={locale} textDirection={textDirection} />
+                  ) : parentAcademicsTab === "RESULTS" ? (
+                    <ParentMoreAcademicContent key={selectedChild.student.id} section="RESULTS"
+                      learning={parentLearning} fees={parentFees}
+                      communicationReady={parentCommunicationReady}
+                      locale={locale} textDirection={textDirection} />
+                  ) : (
+                    <ParentTimetableContent key={selectedChild.student.id}
+                      periods={parentTimetable} ready={parentTimetableReady} locale={locale} />
+                  )
                 ) : (
                   <View style={styles.emptyCard}>
                     <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
@@ -2341,35 +2360,77 @@ function AppContent() {
               </>
             ) : null}
 
-            {parentTab === "ANNOUNCEMENTS" ? (
+            {parentTab === "ATTENDANCE" ? (
               <>
                 <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
                   <View style={styles.parentPageHeadingIcon}>
-                    <Ionicons name="megaphone-outline" size={22} color={tokens.color.brandStrong} />
+                    <Ionicons name="calendar-outline" size={22} color={tokens.color.brandStrong} />
                   </View>
-                  <View style={styles.flexCopy}>
-                    <Text style={[styles.parentPageTitle, textDirection]}>{translate(locale, "parent.navAnnouncements")}</Text>
-                    {selectedChild ? (
-                      <Text style={[styles.parentPageContext, textDirection]}>
-                        {selectedChild.student.fullName} · {selectedChild.classSection.name}
+                  <Text style={[styles.parentPageTitle, styles.flexCopy, textDirection]}>
+                    {translate(locale, "parent.navAttendance")}
+                  </Text>
+                </View>
+                {selectedChild ? (
+                  <View style={styles.parentSectionCard}>
+                    <Text style={[styles.sectionLabel, textDirection]}>
+                      {translate(locale, "attendance.recent")}
+                    </Text>
+                    {parentAttendance.map((day) => (
+                      <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
+                        <Text style={[styles.historyDate, textDirection]}>
+                          {formatLocalizedDate(day.date, locale)}
+                        </Text>
+                        <AttendanceBadge locale={locale} status={day.status} />
+                      </View>
+                    ))}
+                    {parentAttendance.length === 0 ? (
+                      <Text style={[styles.muted, textDirection]}>
+                        {translate(locale, parentToday ? "attendance.noHistory" : "common.loading")}
                       </Text>
                     ) : null}
                   </View>
-                </View>
-                {selectedChild ? (
-                  <>
-                    <ParentAnnouncementsContent
-                      announcements={parentAnnouncements}
-                      classId={selectedChild.student.classId}
-                      ready={parentCommunicationReady}
-                      locale={locale}
-                      textDirection={textDirection}
-                    />
-                  </>
                 ) : (
                   <View style={styles.emptyCard}>
                     <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
                   </View>
+                )}
+              </>
+            ) : null}
+
+            {parentTab === "INBOX" ? (
+              <>
+                <View style={[styles.parentPageHeading, direction === "rtl" && styles.rowRtl]}>
+                  <View style={styles.parentPageHeadingIcon}>
+                    <Ionicons name="notifications-outline" size={22} color={tokens.color.brandStrong} />
+                  </View>
+                  <Text style={[styles.parentPageTitle, styles.flexCopy, textDirection]}>
+                    {translate(locale, "parent.navInbox")}
+                  </Text>
+                </View>
+                <ParentSectionTabs
+                  locale={locale}
+                  selected={parentInboxTab}
+                  onSelect={(value) => setParentInboxTab(value as ParentInboxTab)}
+                  tabs={[
+                    { key: "ANNOUNCEMENTS", label: "parent.navAnnouncements" },
+                    { key: "NOTIFICATIONS", label: "notifications.title" }
+                  ]}
+                />
+                {parentInboxTab === "ANNOUNCEMENTS" ? (
+                  selectedChild ? (
+                    <ParentAnnouncementsContent key={selectedChild.student.id}
+                      announcements={parentAnnouncements}
+                      classId={selectedChild.student.classId} ready={parentCommunicationReady}
+                      locale={locale} textDirection={textDirection} />
+                  ) : (
+                    <View style={styles.emptyCard}>
+                      <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
+                    </View>
+                  )
+                ) : (
+                  <ParentNotificationsContent notifications={parentNotifications}
+                    locale={locale} onOpen={openNotification}
+                    onMarkAllRead={() => void markAllNotificationsRead()} />
                 )}
               </>
             ) : null}
@@ -2392,6 +2453,7 @@ function AppContent() {
                 {selectedChild ? (
                   <>
                     <ParentMoreAcademicContent
+                      section="FEES"
                       learning={parentLearning}
                       fees={parentFees}
                       communicationReady={parentCommunicationReady}
