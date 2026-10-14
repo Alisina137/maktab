@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -32,7 +32,8 @@
     "verify:pilot:phase4": "node scripts/verify-pilot-operations-phase4.mjs",
     "verify:pilot:phase5": "node scripts/verify-pilot-operations-phase5.mjs",
     "verify:pilot:phase6": "node scripts/verify-pilot-operations-phase6.mjs",
-    "verify:pilot:phase7": "node scripts/verify-pilot-operations-phase7.mjs && node --test scripts/test-phase7-release-report.mjs && node scripts/phase7-release-report.mjs"
+    "verify:pilot:phase7": "node scripts/verify-pilot-operations-phase7.mjs && node --test scripts/test-phase7-release-report.mjs && node scripts/phase7-release-report.mjs",
+    "verify:parent:phase1": "node scripts/verify-parent-experience-phase1.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
