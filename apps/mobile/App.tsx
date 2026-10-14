@@ -67,6 +67,7 @@ import {
   ParentFeesPanel, ParentProfilePanel, ParentSchoolPanel, ParentPreferencesPanel
 } from "./src/parent-more";
 import { parentPasswordValidation, type ParentMoreTab } from "./src/parent-more-model";
+import { sameSessionEpoch } from "./src/parent-session-guard";
 import { ParentAnnouncementsInbox, ParentNotificationsContent } from "./src/parent-inbox";
 import { authorizedNotificationChild, parentInboxTarget } from "./src/parent-inbox-model";
 import { StudentDashboard } from "./src/student-dashboard";
@@ -365,10 +366,7 @@ function AppContent() {
         const refreshed = await api.refresh(activeSession.refreshToken);
 
         // Ignore a refresh result if the user logged out or changed accounts while it was in flight.
-        if (
-          sessionRef.current?.user.id !== activeSession.user.id ||
-          schoolRef.current?.id !== activeSchool.id
-        ) {
+        if (!sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool)) {
           return null;
         }
 
@@ -384,6 +382,11 @@ function AppContent() {
 
         return refreshed;
       } catch (cause) {
+        // A refresh from before a password change or logout cannot revoke
+        // or replace the newer authorized session of the very same parent.
+        if (!sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool)) {
+          return null;
+        }
         if (isNetworkApiError(cause)) {
           setPreferCachedReads(true);
           return null;
@@ -1881,9 +1884,10 @@ function AppContent() {
         active.accessToken, currentPassword, newPassword
       );
       // Refuse to install another account's session when logout/switch happened during POST.
-      if (sessionRef.current?.user.id !== active.user.id ||
-          sessionRef.current?.user.schoolId !== active.user.schoolId ||
-          sessionRef.current?.user.role !== "PARENT") return false;
+      if (!sameSessionEpoch(sessionRef.current, active, schoolRef.current, activeSchool) ||
+          changed.user.id !== active.user.id ||
+          changed.user.schoolId !== active.user.schoolId ||
+          changed.user.role !== "PARENT") return false;
       sessionRef.current = changed;
       setSession(changed);
       await saveStoredSession({ auth: changed, school: activeSchool }).catch(() => {
