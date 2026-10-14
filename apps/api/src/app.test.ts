@@ -6295,3 +6295,145 @@ test("Phase 4 account lifecycle confirms reasons, rejects invalid transitions, a
   });
   assert.equal(denied.statusCode, 400);
 });
+
+
+test("Phase 5 directory endpoint pages and sorts school records with validated filters and summaries", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PAGE-ADMIN-A");
+  const schoolB = await provisionSchool(app, "PAGE-ADMIN-B");
+  const adminA = await bootstrapAdmin(app, schoolA);
+  const adminB = await bootstrapAdmin(app, schoolB);
+  const authA = { authorization: `Bearer ${adminA}` };
+  const authB = { authorization: `Bearer ${adminB}` };
+
+  const createdIds: string[] = [];
+  for (const [username, role] of [
+    ["zzteacher", "TEACHER"], ["aaparent", "SCHOOL_STAFF"], ["bbteacher", "TEACHER"]
+  ] as const) {
+    const response = await app.inject({
+      method: "POST", url: "/v1/admin/users", headers: authA,
+      payload: { username, role }
+    });
+    assert.equal(response.statusCode, 201);
+    createdIds.push(response.json<{ user: { id: string } }>().user.id);
+  }
+  const foreignCreated = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: authB,
+    payload: { username: "foreignteacher", role: "TEACHER" }
+  });
+  assert.equal(foreignCreated.statusCode, 201);
+
+  const response = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?page=1&pageSize=10&group=TEACHER&sortBy=username&order=desc",
+    headers: authA
+  });
+  assert.equal(response.statusCode, 200);
+  const directory = response.json<{
+    users: Array<{ id: string; username: string; passwordHash?: string }>;
+    total: number; page: number; pages: number;
+    counts: { total: number; teacher: number; active: number; pending: number };
+  }>();
+  assert.equal(directory.total, 2);
+  assert.deepEqual(directory.users.map(x => x.username), ["zzteacher", "bbteacher"]);
+  assert.equal(directory.counts.total, 4);
+  assert.equal(directory.counts.teacher, 2);
+  assert.ok(directory.counts.pending >= 2);
+  assert.ok(directory.users.every(x => !("passwordHash" in x)));
+
+  const search = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?query=teacher&pageSize=10&sortBy=createdAt",
+    headers: authA
+  });
+  assert.equal(search.statusCode, 200);
+  assert.equal(search.json<{ total: number }>().total, 2);
+  const sortPaginated = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?page=2&pageSize=10",
+    headers: authA
+  });
+  assert.equal(sortPaginated.statusCode, 200);
+  assert.equal(sortPaginated.json<{ total: number; users: unknown[] }>().total, 4);
+  assert.deepEqual(sortPaginated.json<{ users: unknown[] }>().users, []);
+
+  const validUsername = await app.inject({
+    method: "GET", url: "/v1/admin/users/username-check?username=ZZTEACHER", headers: authA
+  });
+  assert.equal(validUsername.statusCode, 200);
+  assert.equal(validUsername.json<{ available: boolean }>().available, false);
+  const otherSchoolCheck = await app.inject({
+    method: "GET", url: "/v1/admin/users/username-check?username=zzteacher", headers: authB
+  });
+  assert.equal(otherSchoolCheck.statusCode, 200);
+  assert.equal(otherSchoolCheck.json<{ available: boolean }>().available, true);
+  for (const invalid of [
+    "/v1/admin/users/directory?sortBy=passwordHash",
+    "/v1/admin/users/directory?pageSize=500",
+    "/v1/admin/users/directory?group=OWNER",
+    "/v1/admin/users/directory?page=-1",
+    "/v1/admin/users/username-check?username=x"
+  ]) {
+    const denied = await app.inject({ method: "GET", url: invalid, headers: authA });
+    assert.equal(denied.statusCode, 400, invalid);
+  }
+  const secondSchool = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?pageSize=10", headers: authB
+  });
+  assert.equal(secondSchool.statusCode, 200);
+  assert.equal(secondSchool.json<{ total: number }>().total, 2);
+});
+
+test("Phase 5 bulk API enforces school scope, eligibility, size, atomicity and audited transitions", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "BULK-API-A");
+  const schoolB = await provisionSchool(app, "BULK-API-B");
+  const adminA = await bootstrapAdmin(app, schoolA);
+  const adminB = await bootstrapAdmin(app, schoolB);
+  const authA = { authorization: `Bearer ${adminA}` };
+  const authB = { authorization: `Bearer ${adminB}` };
+
+  const create = async (username: string, role: "TEACHER" | "SCHOOL_ADMIN", auth: typeof authA) => {
+    const response = await app.inject({
+      method: "POST", url: "/v1/admin/users", headers: auth,
+      payload: { username, role }
+    });
+    assert.equal(response.statusCode, 201);
+    return response.json<{ user: { id: string } }>().user.id;
+  };
+  const first = await create("bulkone", "TEACHER", authA);
+  const second = await create("bulktwo", "TEACHER", authA);
+  const protectedAdmin = await create("protectedadmin", "SCHOOL_ADMIN", authA);
+  const foreign = await create("foreignbulk", "TEACHER", authB);
+  const url = "/v1/admin/users/bulk-status";
+  const make = (ids: string[], action: "suspend" | "reactivate", auth = authA, reason?: string) =>
+    app.inject({ method: "POST", url, headers: auth,
+      payload: { action, userIds: ids, ...(reason ? { reason } : {}) } });
+
+  assert.equal((await make([first, first], "suspend")).statusCode, 400);
+  assert.equal((await make([first], "suspend", authA, "x")).statusCode, 400);
+  assert.equal((await make([first, foreign], "suspend")).statusCode, 409);
+  assert.equal((await make([first, protectedAdmin], "suspend")).statusCode, 409);
+  assert.equal((await make([first, second], "suspend", authB)).statusCode, 409);
+
+  const listBefore = await app.inject({ method: "GET", url: "/v1/admin/users/directory?status=INVITED&pageSize=10", headers: authA });
+  assert.equal(listBefore.statusCode, 200);
+  assert.ok(listBefore.json<{ users: Array<{ id: string }> }>().users.some(x=>x.id===first));
+
+  const confirmed = await make([first, second], "suspend", authA, "Administrative review requested");
+  assert.equal(confirmed.statusCode, 200);
+  assert.equal(confirmed.json<{ updated: number }>().updated, 2);
+  const allSuspended = await app.inject({ method: "GET", url: "/v1/admin/users/directory?status=SUSPENDED&pageSize=10", headers: authA });
+  assert.deepEqual(allSuspended.json<{ users: Array<{ id: string }> }>().users.map(x=>x.id).sort(), [first,second].sort());
+  const audit = await app.inject({ method: "GET", url: `/v1/admin/users/${first}/audit`, headers: authA });
+  assert.equal(audit.statusCode, 200);
+  assert.ok(audit.json<{ logs: Array<{ action: string; reason: string | null }> }>().logs
+    .some(x=>x.action==="user.suspended" && x.reason==="Administrative review requested"));
+
+  assert.equal((await make([first, second], "suspend")).statusCode, 409);
+  const reactivated = await make([first, second], "reactivate");
+  assert.equal(reactivated.statusCode, 200);
+  assert.ok(reactivated.json<{ users: Array<{ status: string }> }>().users.every(x=>x.status==="INVITED"));
+  assert.equal((await make([first, second], "reactivate")).statusCode, 409);
+  const foreignList = await app.inject({ method: "GET", url: "/v1/admin/users/directory?pageSize=10", headers: authB });
+  assert.equal(foreignList.json<{ counts: { total: number } }>().counts.total, 2);
+});
