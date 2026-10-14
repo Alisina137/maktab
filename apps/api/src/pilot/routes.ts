@@ -15,6 +15,15 @@ const auditQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0)
 });
 
+const readinessIssueQuerySchema = z.object({
+  metric: z.enum([
+    "teaching", "timetable", "negaran", "class_students",
+    "family_links", "student_logins", "teacher_logins"
+  ]),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  offset: z.coerce.number().int().min(0).max(1_000_000).default(0)
+}).strict();
+
 const templates: Record<BulkImportEntity, string> = {
   PARENT: "username,fullName,phone\nparent.001,Parent Full Name,0700000000\n",
   STUDENT: "studentCode,fullName,parentUsername,academicYear,classCode\nS-001,Student Full Name,parent.001,1405,7A\n",
@@ -36,6 +45,26 @@ export function registerPilotRoutes(
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
     return pilot.getReadiness(context.user.schoolId);
+  });
+
+  app.get("/v1/admin/pilot/readiness/advanced", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    return pilot.getAdvancedReadiness(context.user.schoolId);
+  });
+
+  app.get("/v1/admin/pilot/readiness/issues", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const { metric, limit, offset } = readinessIssueQuerySchema.parse(request.query);
+      return pilot.listReadinessIssues(context.user.schoolId, metric, { limit, offset });
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({
+        error: "validation_error", message: "Invalid readiness issue filter.", issues: error.issues
+      });
+      throw error;
+    }
   });
 
   app.get("/v1/admin/pilot/export", async (request, reply) => {
