@@ -35,10 +35,13 @@ assert.ok(shell.includes("selectedChildId") &&
 for(const marker of [
   'parentTab === "ACADEMICS"', 'parentTab === "ATTENDANCE"',
   'parentTab === "INBOX"', 'parentTab === "MORE"',
-  'section="RESULTS"', 'section="FEES"', 'parentAcademicsTab === "HOMEWORK"',
-  'parentInboxTab === "ANNOUNCEMENTS"',
-  "ParentTimetableContent", "ParentNotificationsContent"
+  'section="FEES"', 'parentAcademicsTab === "HOMEWORK"',
+  'parentInboxTab === "ANNOUNCEMENTS"', "ParentNotificationsContent"
 ]) assert.ok(app.includes(marker),"Missing parent section: "+marker);
+assert.ok(app.includes('section="RESULTS"') || app.includes("<ParentAcademicResults"),
+  "Parent published results must remain in Academics");
+assert.ok(app.includes("ParentTimetableContent") || app.includes("<ParentAcademicTimetable"),
+  "Parent authenticated timetable must remain in Academics");
 assert.ok(!app.includes('parentTab === "HOMEWORK"') && !app.includes('parentTab === "ANNOUNCEMENTS"'),
   "Obsolete bottom-tab conditions must be removed");
 assert.ok(app.includes("parentHomeRequestId") &&
