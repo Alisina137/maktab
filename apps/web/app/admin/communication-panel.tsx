@@ -266,27 +266,41 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
-      const classId = String(form.get("classId") ?? "");
-      const audienceRole = String(form.get("audienceRole") ?? "");
+      if (scope === "CLASS" && !targetClassId) throw new Error(t("Select a class before publishing."));
+      if (scope === "ROLE" && !targetRole) throw new Error(t("Choose a recipient role."));
+      if (publishMode === "SCHEDULE" && (!schoolTimezone || recipientStatus !== "ready")) {
+        throw new Error(t("School timezone unavailable. Retry recipient preview before scheduling."));
+      }
+      const publishAt = publishMode === "SCHEDULE"
+        ? schoolLocalTimeToIso(scheduledLocal, schoolTimezone!)
+        : undefined;
+      if (publishAt && Date.parse(publishAt) <= Date.now()) {
+        throw new Error(t("Scheduled publication must be in the future."));
+      }
       await request(accessToken, "/v1/admin/announcements", {
         method: "POST",
         body: JSON.stringify({
           title: String(form.get("title") ?? "").trim(),
           content: String(form.get("content") ?? "").trim(),
           audienceScope: scope,
-          classId: scope === "CLASS" ? classId : undefined,
-          audienceRole: scope === "ROLE" || scope === "CLASS" ? audienceRole || undefined : undefined,
-          publishAt: datetimeLocalToIso(String(form.get("publishAt") ?? ""))
+          classId: scope === "CLASS" ? targetClassId : undefined,
+          audienceRole: scope === "ROLE" || scope === "CLASS" ? targetRole || undefined : undefined,
+          publishAt
         })
       });
       if (accessRef.current !== accessToken) return;
       setNotice(t("Announcement saved. Its audience is enforced by the API."));
       formElement.reset();
-      setScope("SCHOOL");
+      setNewTitle(""); setNewContent("");
+      setScope("SCHOOL"); setTargetClassId(""); setTargetRole("");
+      setPublishMode("NOW"); setScheduledLocal("");
+      setCommunicationPane("LIST");
       await loadResource("communication");
     } catch (cause) {
       if (accessRef.current !== accessToken) return;
-      setError(adminErrorText(locale, cause, "Could not create announcement."));
+      setError(cause instanceof Error && !(cause instanceof DOMException) &&
+        !(cause as Error & {status?:number}).status ? cause.message
+        : adminErrorText(locale, cause, "Could not create announcement."));
     } finally {
       if (accessRef.current === accessToken) setBusy(false);
     }
@@ -319,6 +333,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   }
 
   async function archiveAnnouncement(id: string) {
+    if (!window.confirm(t("Archive this announcement? It will disappear from current recipient views, but already-sent push messages cannot be recalled."))) return;
     setBusy(true);
     setError("");
     setNotice("");
