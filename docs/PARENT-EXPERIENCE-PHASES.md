@@ -53,7 +53,7 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 - Replaced the old plain Attendance-tab history with an interactive seven-column calendar. The grid starts on **Saturday**, matching the Afghan school week; the selected date is highlighted and each recorded status has a distinct color/dot with an accessible text label and legend. Future dates cannot be selected.
 - English calendar navigation uses Gregorian months. Dari and Pashto navigation uses **Solar Hijri months and day numbers**, rather than merely formatting Gregorian month headers into Hijri dates. Day details remain formatted by the existing Afghan-localized date formatter.
 - Prev/next month controls query the existing **school- and parent-authorized** `GET /v1/parent/children/:studentId/attendance?from=...&to=...` endpoint with the precise start/end of the displayed month. The API client now accepts optional date bounds, while the existing Home read continues to use its default rolling history. Future-month navigation is disabled.
-- A selected date opens its **recorded status, class and teacher/school note**. A day without a submitted attendance mark explicitly says *Not recorded*, never *Absent*. No manual edits by parents are implied or exposed.
+- The **monthly chronological history** lists each recorded date and status, with a note preview and a tap-to-select action. A selected calendar date opens its **recorded status, class and teacher/school note**. A day without a submitted attendance mark explicitly says *Not recorded*, never *Absent*. No manual edits by parents are implied or exposed.
 
 **Statistics and resilience**
 - Monthly counts: Present, Absent, Late and Excused, plus recorded-day total.
