@@ -41,6 +41,7 @@ for(const invariant of [
   'shareLearningFile(accessToken', 'item.homework.attachmentUrl?.startsWith("https://")',
   'formatLocalizedDate(', 'formatLocalizedTimeRange(', 'formatLocalizedNumber(',
   'getDirection(locale)', 'onPress={onRetry}', 'academicWeekday(', 'onPress={() => setExpandedId(',
+  'accessibilityLabel={translate(locale, "parent.academicRefresh")}',
   'subjectId={',  // avoid unused metadata? explicitly verified in model instead
 ]) {
   if(invariant==='subjectId={') continue;
@@ -55,7 +56,7 @@ for(const key of [
   "academicHomeworkHint","academicSearchHomework","academicStatusFilter","academicSubjectFilter",
   "academicAllSubjects","academicNoMatches","academicResultHint","academicExamFilter",
   "academicAllExams","academicReportedTotal","academicTimetableHint","academicDayFilter",
-  "academicWholeWeek","academicPeriods","academicNoPeriods"
+  "academicWholeWeek","academicPeriods","academicNoPeriods","academicRefresh"
 ]) assert.equal(locale.split(JSON.stringify("parent." + key) + ":").length, 4,
   "Missing English/Dari/Pashto parent academic translation: " + key);
 assert.ok(docs.includes("## Phase 4") && docs.includes("NO-GO"),
