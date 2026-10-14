@@ -7290,3 +7290,104 @@ test("Parent Phase 7 authenticated child isolation and password rotation", async
     payload:{schoolId,expectedRole:"PARENT",username:"parent7a",password:"NextSecure2026!"}});
   assert.equal(newLogin.statusCode,200,newLogin.body);
 });
+
+
+test("Admin fee invoice Phase 3 school numbers, list filters, draft edits and immutable issue", async t => {
+  const {app,client}=await createTestApp();
+  t.after(async()=>{await app.close();await client.close();});
+  const schoolId=await provisionSchool(app,"FEE-PHASE3");
+  const otherSchool=await provisionSchool(app,"FEE-PHASE3-OTHER");
+  const adminToken=await bootstrapAdmin(app,schoolId);
+  const otherToken=await bootstrapAdmin(app,otherSchool);
+  const admin={authorization:`Bearer ${adminToken}`};
+  const otherAdmin={authorization:`Bearer ${otherToken}`};
+  const year=await app.inject({method:"POST",url:"/v1/admin/academics/years",
+    headers:admin,payload:{name:"1405",startDate:"2026-03-21",endDate:"2027-03-20"}});
+  assert.equal(year.statusCode,201,year.body);
+  const yearId=year.json<{academicYear:{id:string}}>().academicYear.id;
+  const grade=await app.inject({method:"POST",url:"/v1/admin/academics/grades",
+    headers:admin,payload:{name:"Grade 8",code:"FEEG8",sortOrder:8}});
+  assert.equal(grade.statusCode,201,grade.body);
+  const cl=await app.inject({method:"POST",url:"/v1/admin/academics/classes",
+    headers:admin,payload:{name:"Fee Class",code:"FEECL",gradeLevelId:grade.json<{grade:{id:string}}>().grade.id,
+      academicYearId:yearId}});
+  assert.equal(cl.statusCode,201,cl.body);
+  const classId=cl.json<{class:{id:string}}>().class.id;
+  const parent=await app.inject({method:"POST",url:"/v1/admin/families/parents",
+    headers:admin,payload:{username:"feephaseparent",fullName:"Fee Phase Parent"}});
+  assert.equal(parent.statusCode,201,parent.body);
+  const student=await app.inject({method:"POST",url:"/v1/admin/families/students",
+    headers:admin,payload:{studentCode:"FEE-STUD-1",fullName:"Fee Test Student",
+      parentUserId:parent.json<{user:{id:string}}>().user.id,academicYearId:yearId,classId}});
+  assert.equal(student.statusCode,201,student.body);
+  const studentId=student.json<{student:{id:string}}>().student.id;
+  const created=[] as Array<{id:string;invoiceNumber:number;updatedAt:string}>;
+  for(let i=0;i<21;i++){
+    const res=await app.inject({method:"POST",url:"/v1/admin/fees/invoices",
+      headers:admin,payload:{studentId,amount:100+i,dueDate:"2099-12-31",
+        description:"Fee phase invoice "+i}});
+    assert.equal(res.statusCode,201,res.body);
+    created.push(res.json<{invoice:{id:string;invoiceNumber:number;updatedAt:string}}>().invoice);
+  }
+  assert.deepEqual(created.map(row=>row.invoiceNumber),Array.from({length:21},(_,i)=>i+1));
+
+  const page1=await app.inject({method:"GET",url:"/v1/admin/fees/invoices?page=1",headers:admin});
+  const page2=await app.inject({method:"GET",url:"/v1/admin/fees/invoices?page=2",headers:admin});
+  assert.equal(page1.statusCode,200,page1.body);
+  assert.equal(page2.statusCode,200,page2.body);
+  assert.equal(page1.json<{total:number;invoices:unknown[]}>().total,21);
+  assert.equal(page1.json<{invoices:unknown[]}>().invoices.length,20);
+  assert.equal(page2.json<{invoices:unknown[]}>().invoices.length,1);
+  const filtered=await app.inject({method:"GET",url:
+    `/v1/admin/fees/invoices?q=invoice%2017&status=DRAFT&academicYearId=${yearId}&classId=${classId}`,
+    headers:admin});
+  assert.equal(filtered.statusCode,200,filtered.body);
+  assert.equal(filtered.json<{total:number}>().total,1);
+  const byNumber=await app.inject({method:"GET",url:"/v1/admin/fees/invoices?q=19",headers:admin});
+  assert.equal(byNumber.statusCode,200,byNumber.body);
+  assert.ok(byNumber.json<{invoices:Array<{invoice:{invoiceNumber:number}}>} >().invoices
+    .some(x=>x.invoice.invoiceNumber===19));
+
+  const draft=created[0]!;
+  const payload={studentId,amount:870,dueDate:"2099-12-28",description:"Updated fee",
+    expectedUpdatedAt:draft.updatedAt};
+  assert.equal((await app.inject({method:"PATCH",url:`/v1/admin/fees/invoices/${draft.id}`,
+    headers:otherAdmin,payload})).statusCode,404);
+  const changed=await app.inject({method:"PATCH",url:`/v1/admin/fees/invoices/${draft.id}`,
+    headers:admin,payload});
+  assert.equal(changed.statusCode,200,changed.body);
+  const newDraft=changed.json<{invoice:{invoiceNumber:number;amount:number;updatedAt:string}}>().invoice;
+  assert.equal(newDraft.invoiceNumber,1);
+  assert.equal(newDraft.amount,870);
+  assert.equal((await app.inject({method:"PATCH",url:`/v1/admin/fees/invoices/${draft.id}`,
+    headers:admin,payload})).statusCode,409);
+  const issue=await app.inject({method:"POST",url:`/v1/admin/fees/invoices/${draft.id}/issue`,
+    headers:admin});
+  assert.equal(issue.statusCode,200,issue.body);
+  assert.equal((await app.inject({method:"PATCH",url:`/v1/admin/fees/invoices/${draft.id}`,
+    headers:admin,payload:{...payload,expectedUpdatedAt:newDraft.updatedAt}})).statusCode,409);
+  const issued=await app.inject({method:"GET",url:"/v1/admin/fees/invoices?status=ISSUED",
+    headers:admin});
+  assert.equal(issued.json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:"/v1/admin/fees/invoices",
+    headers:otherAdmin})).json<{total:number}>().total,0);
+  const nextSchoolInvoice=await app.inject({method:"POST",url:"/v1/admin/fees/invoices",
+    headers:otherAdmin,payload:{studentId,amount:100,dueDate:"2099-12-31"}});
+  assert.equal(nextSchoolInvoice.statusCode,404,nextSchoolInvoice.body);
+  const otherRole=await activateRoleLogin(app,schoolId,"PARENT","feephaseparent",
+    parent.json<{temporaryPassword:string}>().temporaryPassword,"FeePhase2026!");
+  const parentAuth={authorization:`Bearer ${otherRole}`};
+  assert.equal((await app.inject({method:"GET",url:"/v1/admin/fees/invoices",
+    headers:parentAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"PATCH",url:`/v1/admin/fees/invoices/${draft.id}`,
+    headers:parentAuth,payload})).statusCode,403);
+  const family=await app.inject({method:"GET",url:`/v1/parent/children/${studentId}/fees`,
+    headers:parentAuth});
+  assert.equal(family.statusCode,200,family.body);
+  assert.equal(family.json<{invoices:Array<{invoice:{invoiceNumber:number;amount:number}}>} >()
+    .invoices[0]?.invoice.invoiceNumber,1);
+  const audits=await client.query<{action:string}>(
+    "SELECT action FROM audit_logs WHERE school_id=$1 AND entity_id=$2 ORDER BY created_at",
+    [schoolId,draft.id]);
+  assert.equal(audits.rows.filter(x=>x.action==="fee_invoice.draft_updated").length,1);
+});
