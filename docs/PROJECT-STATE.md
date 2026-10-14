@@ -1522,3 +1522,14 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Offered contextual reset/suspend/reactivate controls subject to existing current-admin and archived restrictions, and links into canonical Families / Teacher Profiles / Teacher Assignments / own Admin Profile pages. No new cross-role edit endpoint or duplicated family/teacher editing logic.
 - Added pure association tests in `apps/api/src/account-details-data.test.ts`, localized UI copy in English/Dari/Pashto, and release source-gate assertions for details, focus and safe relationships.
 - No migrations. Manual cross-role/browser RTL and accessibility acceptance remains outstanding. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
+
+
+### Admin Accounts — Phase 4: Account lifecycle security and audit trail (2026-10-14)
+
+- Added accessible reset/suspend/reactivate confirmation dialogs to the directory and account-details actions, including optional validated suspension reason (3–500 characters if supplied), Dari/Pashto strings and responsive styling.
+- For school-admin suspension and reactivation, access and refresh tokens are revoked atomically along with account status transitions in the database. Generic status setter also invalidates sessions for account lifecycle changes; old sessions do not become valid again after reactivation. Suspended users may sign in to a *restricted* session for admin-contact access, but must reauthenticate after reactivation.
+- Added `GET /v1/admin/users/:userId/audit` with authenticated school-admin authorization, same-school target validation, bounded result set and safe selected fields (no raw metadata/password data). Audit includes user and linked family/student account events, action, actor, timestamp and optional suspension reason.
+- Added lifecycle conflict responses for duplicate suspensions, non-suspended reactivation, archival limits, with existing self-action restrictions preserved.
+- Account details drawer now shows the user's account-specific activity history, actor label and reason, with explicit loading, failure and empty states.
+- PGlite and API regressions cover token invalidation, login after reactivation, audit reason and school isolation; release evidence source assertions and translations added.
+- No database migration is required; browser/device/manual acceptance is not established by passing CI. Full checklist in `docs/ADMIN-ACCOUNTS-PHASES.md`.
