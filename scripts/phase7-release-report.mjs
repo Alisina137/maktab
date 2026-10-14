@@ -64,7 +64,10 @@ export function evaluateReleaseManifest(manifest, sha, clean = true, now = new D
       const value = manifest.checks?.[key];
       const status = value?.result === "PASS" || value?.result === "FAIL" ||
         value?.result === "NOT_RUN" ? value.result : "NOT_RUN";
-      const reference = typeof value?.reference === "string" ? value.reference.trim() : "";
+      const unsafeReference = typeof value?.reference === "string" &&
+        /(password|token|secret|api[_-]?key|authorization|session)[=:]/i.test(value.reference);
+      const reference = typeof value?.reference === "string" && !unsafeReference
+        ? value.reference.trim() : "";
       const observedAt = typeof value?.observedAt === "string" ? value.observedAt : "";
       const observedTime = Date.parse(observedAt);
       const dated = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(observedAt) &&
@@ -72,6 +75,7 @@ export function evaluateReleaseManifest(manifest, sha, clean = true, now = new D
         observedTime <= now.getTime() + 5 * 60_000 &&
         now.getTime() - observedTime < 31 * 86_400_000;
       if (status !== "PASS") failures.push(`${key} not marked PASS.`);
+      if (unsafeReference) failures.push(`${key} evidence reference appears to contain credentials; redact it before recording.`);
       if (reference.length < 8 || reference.length > 500 || /[\r\n]/.test(reference)) {
         failures.push(`${key} lacks a usable non-sensitive evidence reference.`);
       }

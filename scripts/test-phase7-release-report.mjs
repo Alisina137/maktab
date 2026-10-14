@@ -50,3 +50,12 @@ test("A dated artifact beyond the 30-day validity window is not treated as recen
   stale.checks.exact_commit_ci.observedAt = "2026-09-01T00:00:00Z";
   assert.equal(evaluateReleaseManifest(stale, sha, true, now).evidenceState, "INCOMPLETE");
 });
+
+test("Sensitive credential-shaped evidence references are rejected and redacted in reports", () => {
+  const unsafe = complete();
+  unsafe.checks.exact_commit_ci.reference = "https://operator.example.org/report?token=SECRET";
+  const report = evaluateReleaseManifest(unsafe, sha, true, now);
+  assert.equal(report.evidenceState, "INCOMPLETE");
+  assert.equal(report.checks.find((row) => row.id === "exact_commit_ci")?.evidenceReference, null);
+  assert.ok(!JSON.stringify(report).includes("SECRET"));
+});
