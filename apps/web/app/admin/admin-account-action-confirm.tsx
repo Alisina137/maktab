@@ -30,6 +30,8 @@ export function AdminAccountActionConfirm({
       ? "Access will be blocked and all existing sessions revoked. The user must sign in again when the account is reactivated."
       : "This account can sign in again after reactivation. Existing sessions will remain invalid.";
   const previousFocus = useRef<HTMLElement | null>(null);
+  const busyRef = useRef(busy);
+  useEffect(() => { busyRef.current = busy; }, [busy]);
 
   useEffect(() => {
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -39,7 +41,7 @@ export function AdminAccountActionConfirm({
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (!busy) onCancel();
+        if (!busyRef.current) onCancel();
       }
       if (event.key !== "Tab" || !dialogRef.current) return;
       const elements = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
@@ -56,7 +58,7 @@ export function AdminAccountActionConfirm({
       document.body.style.overflow = previousOverflow;
       previousFocus.current?.focus();
     };
-  }, [onCancel, busy]);
+  }, [onCancel]);
 
   const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 3;
 
