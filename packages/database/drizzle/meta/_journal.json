@@ -155,6 +155,13 @@
       "when": 1790766800000,
       "tag": "0021_pilot_launch_support",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790775200000,
+      "tag": "0022_fee_invoice_numbers",
+      "breakpoints": true
     }
   ]
 }
