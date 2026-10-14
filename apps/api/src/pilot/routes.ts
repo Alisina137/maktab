@@ -4,20 +4,13 @@ import {
   bulkImportEntitySchema,
   type BulkImportEntity
 } from "@maktablink/contracts";
-import type {
-  AccountStore,
-  PilotStore,
-  PilotExportLimitError
-} from "@maktablink/database";
+import { PilotExportLimitError, type AccountStore, type PilotStore } from "@maktablink/database";
 import { requireSchoolAdmin } from "../users/routes.js";
 
-const auditDateSchema = z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) =>
-  Number.isFinite(Date.parse(value + "T00:00:00+04:30")) &&
-  new Date(Date.parse(value + "T00:00:00+04:30"))
-    .toLocaleDateString("en-CA", { timeZone: "Asia/Kabul", year: "numeric", month: "2-digit", day: "2-digit" })
-    .replaceAll("/", "-") === value,
-  "Invalid calendar date."
-);
+const auditDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const date = new Date(value + "T00:00:00Z");
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, "Invalid calendar date.");
 
 const auditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -41,12 +34,10 @@ function auditOptions(query: z.infer<typeof auditQuerySchema>) {
 }
 
 function csvSafeCell(value: string): string {
-  // Spreadsheet software interprets leading formula tokens as active formulas.
-  const escaped = /^[\\s]*[=+@\\-\\t\\r]/.test(value) ? "'" + value : value;
-  return '"' + escaped.replaceAll('"', '""').replace(/[\\r\\n]+/g, " ") + '"';
+  // CSV cells must remain inert if opened in a spreadsheet application.
+  const escaped = /^\s*[=+@\-\t\r]/.test(value) ? "'" + value : value;
+  return '"' + escaped.replaceAll('"', '""').replace(/[\r\n]+/g, " ") + '"';
 }
-
-
 
 const readinessIssueQuerySchema = z.object({
   metric: z.enum([
@@ -172,7 +163,7 @@ export function registerPilotRoutes(
       reply.header("x-content-type-options", "nosniff");
       reply.header("content-type", "text/csv; charset=utf-8");
       reply.header("content-disposition", 'attachment; filename="maktablink-audit-history.csv"');
-      return "\\uFEFF" + lines.join("\\r\\n") + "\\r\\n";
+      return "\uFEFF" + lines.join("\r\n") + "\r\n";
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({
         error: "validation_error", message: "Invalid audit filter.", issues: error.issues
