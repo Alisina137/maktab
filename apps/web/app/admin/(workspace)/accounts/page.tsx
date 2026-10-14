@@ -6,6 +6,7 @@ import { adminFormat } from "../../admin-i18n";
 import { validateAccountCreation } from "../../account-create-rules";
 import { AccountTemporaryCredentialPanel } from "../../account-temporary-credential";
 import { AdminAccountDetailsDrawer } from "../../admin-account-details-drawer";
+import { AdminAccountActionConfirm, type AccountPendingAction, type AccountSecurityAction } from "../../admin-account-action-confirm";
 import type { AccountFamilyOverview } from "../../account-details-data";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
@@ -51,6 +52,8 @@ export default function AccountsPage() {
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<AccountPendingAction | null>(null);
+  const cancelPendingAction = useCallback(() => setPendingAction(null), []);
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -162,7 +165,8 @@ export default function AccountsPage() {
     }
   }
 
-  async function action(user: User, action: "reset-password" | "suspend" | "reactivate") {
+  function requestAction(user: User, action: AccountSecurityAction) {
+    if (busy || user.status === "ARCHIVED") return;
     if (user.id === stored.session.user.id && (action === "reset-password" || action === "suspend")) return;
     if (credential) {
       showToast({
@@ -172,18 +176,27 @@ export default function AccountsPage() {
       });
       return;
     }
+    setSelectedAccountId(null);
+    setPendingAction({ user, action });
+  }
+
+  async function executeAction(reason?: string) {
+    if (!pendingAction || busy) return;
+    const { user, action } = pendingAction;
     setBusy(true);
     try {
       const result = await adminApi<{ user: User; temporaryPassword?: string }>(
         `/v1/admin/users/${user.id}/${action}`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${stored.session.accessToken}` }
+          headers: { Authorization: `Bearer ${stored.session.accessToken}` },
+          ...(action === "suspend" ? { body: JSON.stringify(reason ? { reason } : {}) } : {})
         }
       );
       setUsers((current) =>
         current.map((item) => item.id === result.user.id ? { ...item, ...result.user, profile: item.profile } : item)
       );
+      setPendingAction(null);
       if (result.temporaryPassword) {
         setSelectedAccountId(null);
         setCredential({ username: result.user.username, password: result.temporaryPassword });
@@ -286,7 +299,19 @@ export default function AccountsPage() {
 
   return (
     <section className="admin-dashboard-section admin-page-enter">
-      {selectedAccount && !credential ? (
+      {pendingAction ? (
+        <AdminAccountActionConfirm
+          key={pendingAction.user.id + pendingAction.action}
+          pending={pendingAction}
+          busy={busy}
+          locale={locale}
+          t={t}
+          onCancel={cancelPendingAction}
+          onConfirm={(reason) => void executeAction(reason)}
+        />
+      ) : null}
+
+      {selectedAccount && !credential && !pendingAction ? (
         <AdminAccountDetailsDrawer
           key={selectedAccount.id}
           user={selectedAccount}
@@ -297,7 +322,8 @@ export default function AccountsPage() {
           t={t}
           busy={busy}
           onClose={closeAccountDetails}
-          onAction={(user, next) => void action(user, next)}
+          onAction={requestAction}
+          directoryUsers={users}
         />
       ) : null}
 
@@ -586,18 +612,18 @@ export default function AccountsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void action(user, "reset-password")}
+                    onClick={() => requestAction(user, "reset-password")}
                     disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
                     title={isCurrentAdmin ? t("Use Profile to change your own password.") : undefined}
                   >
                     {t("Reset password")}
                   </button>
                   {user.status === "SUSPENDED"
-                    ? <button type="button" onClick={() => void action(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
+                    ? <button type="button" onClick={() => requestAction(user, "reactivate")} disabled={busy}>{t("Reactivate")}</button>
                     : (
                       <button
                         type="button"
-                        onClick={() => void action(user, "suspend")}
+                        onClick={() => requestAction(user, "suspend")}
                         disabled={busy || user.status === "ARCHIVED" || isCurrentAdmin}
                         title={isCurrentAdmin ? t("You cannot suspend the administrator account you are currently using.") : undefined}
                       >
