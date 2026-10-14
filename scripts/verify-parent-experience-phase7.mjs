@@ -26,7 +26,8 @@ for (const item of [
   'sameSessionEpoch(sessionRef.current, activeSession',
   'retryParentResource("fees")','retryParentResource("notifications")',
   'saveStoredSession({ auth: changed, school: activeSchool })',
-  'if (sessionRef.current?.accessToken === accessToken) {\n        setAdminContact(result.contact);'
+  'if (sessionRef.current?.accessToken === accessToken)',
+  'setAdminContact(result.contact)'
 ]) assert.ok(app.includes(item),"Parent Phase 7 journey/identity guard missing: "+item);
 
 for (const item of [
