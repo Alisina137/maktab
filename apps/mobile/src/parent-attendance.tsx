@@ -31,17 +31,26 @@ function weekdays(locale: SupportedLocale) {
 }
 
 export function ParentAttendanceContent({
-  accessToken, studentId, today, locale, onSensitiveError
+  accessToken, studentId, today, locale, onSensitiveError, focusedDate = null
 }: {
   accessToken: string;
   studentId: string;
   today: string;
+  focusedDate?: string | null;
   locale: SupportedLocale;
   onSensitiveError: (cause: unknown) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
-  const [anchor, setAnchor] = useState(today);
-  const [selectedDay, setSelectedDay] = useState(today);
+  const validFocus = focusedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(focusedDate) &&
+    focusedDate <= today ? focusedDate : null;
+  const [anchor, setAnchor] = useState(validFocus ?? today);
+  const [selectedDay, setSelectedDay] = useState(validFocus ?? today);
+  useEffect(() => {
+    if (validFocus) {
+      setAnchor(validFocus);
+      setSelectedDay(validFocus);
+    }
+  }, [validFocus]);
   const [load, setLoad] = useState<{
     key: string; status: LoadState; days: ParentAttendanceDay[];
   }>({ key: "", status: "loading", days: [] });
