@@ -1,0 +1,64 @@
+{
+  "releaseSha": "REPLACE_WITH_EXACT_40_CHARACTER_GIT_SHA",
+  "environment": "production",
+  "schoolId": "REPLACE_WITH_VALID_SCHOOL_UUID",
+  "deploymentIdentifier": "REPLACE_WITH_DEPLOYMENT_BUILD_ID",
+  "operator": "REPLACE_WITH_OPERATOR_FULL_NAME",
+  "checks": {
+    "exact_commit_ci": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "real_postgres_migrations": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "encrypted_backup_restore": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "web_android_role_journeys": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "cross_school_security": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "rtl_accessibility": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "offline_reconnection": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "live_push_scheduler": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "concurrent_payments": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "rollback_incident_runbook": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    },
+    "operator_signoff": {
+      "result": "NOT_RUN",
+      "reference": "",
+      "observedAt": ""
+    }
+  }
+}

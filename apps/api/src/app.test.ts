@@ -7100,3 +7100,67 @@ test("Pilot Phase 6 verified evidence enables explicit platform decision and lat
   assert.equal(invalidated.json<{decision:{status:string};openCriticalTickets:number}>().decision.status,"NOT_APPROVED");
   assert.equal(invalidated.json<{decision:{status:string};openCriticalTickets:number}>().openCriticalTickets,1);
 });
+
+test("Pilot Phase 7 release acceptance is authenticated, school-scoped and never silently marks external checks passed", async (t) => {
+  const { app, client, pilotLaunchStore } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PILOT-PHASE7-A");
+  const schoolB = await provisionSchool(app, "PILOT-PHASE7-B");
+  const adminA = { authorization: `Bearer ${await bootstrapAdmin(app, schoolA)}` };
+  const adminB = { authorization: `Bearer ${await bootstrapAdmin(app, schoolB)}` };
+  const platform = { "x-platform-provisioning-key": provisioningKey };
+  const url = "/v1/admin/pilot/release-readiness";
+
+  assert.equal((await app.inject({ method:"GET", url })).statusCode, 401);
+  assert.equal((await app.inject({ method:"GET", url, headers:platform })).statusCode, 401);
+  const initial = await app.inject({ method:"GET", url, headers:adminA });
+  assert.equal(initial.statusCode,200,initial.body);
+  assert.equal(initial.headers["cache-control"],"no-store");
+  const initialBody = initial.json<{
+    productionDecision:string;effectivePilotApproval:boolean;
+    missingExternalGates:string[];checks:Array<{id:string;status:string}>;
+  }>();
+  assert.equal(initialBody.productionDecision,"NO_GO");
+  assert.equal(initialBody.effectivePilotApproval,false);
+  assert.equal(initialBody.checks.length,20);
+  assert.equal(initialBody.checks[19]?.status,"NO_GO");
+  assert.ok(initialBody.checks.slice(0,19).every((check)=>check.status==="UNVERIFIED"));
+  assert.equal(initialBody.missingExternalGates.length,11);
+  assert.equal(initial.body.includes("passwordHash"),false);
+  assert.equal(initial.body.includes("schoolId"),false);
+
+  const submitted = await app.inject({
+    method:"PUT",url:"/v1/admin/pilot/launch/evidence",headers:adminA,
+    payload:{category:"CROSS_ROLE",reference:"vault-role-test-suite",
+      note:"Recorded role test references for independent operator review"}
+  });
+  assert.equal(submitted.statusCode,200,submitted.body);
+  const after = await app.inject({ method:"GET", url, headers:adminA });
+  assert.equal(after.statusCode,200);
+  assert.equal(after.json<{productionDecision:string}>().productionDecision,"NO_GO");
+  const foreign = await app.inject({ method:"GET", url, headers:adminB });
+  assert.equal(foreign.statusCode,200);
+  assert.equal(foreign.json<{productionDecision:string;effectivePilotApproval:boolean}>().effectivePilotApproval,false);
+  assert.equal(foreign.json<{productionDecision:string}>().productionDecision,"NO_GO");
+
+  const state = await app.inject({
+    method:"PATCH",url:`/v1/platform/schools/${schoolA}/subscription`,headers:platform,
+    payload:{status:"SUSPENDED"}
+  });
+  assert.equal(state.statusCode,200);
+  const suspended = await app.inject({ method:"GET", url, headers:adminA });
+  assert.equal(suspended.statusCode,200,suspended.body);
+  assert.equal(suspended.json<{productionDecision:string}>().productionDecision,"NO_GO");
+  assert.equal(suspended.json<{effectivePilotApproval:boolean}>().effectivePilotApproval,false);
+
+  // Historical approval from Phase 6 is not a production release decision.
+  // A simulated store-only approval exercises the invariant without pretending
+  // that externally verified readiness exists in this disposable test school.
+  await assert.rejects(
+    () => pilotLaunchStore.decideLaunch(schoolA, "APPROVED", "Pilot operator",
+      "Cannot approve with missing pilot evidence", true),
+    /five launch evidence/
+  );
+  const unchanged = await app.inject({ method:"GET", url, headers:adminA });
+  assert.equal(unchanged.json<{productionDecision:string}>().productionDecision,"NO_GO");
+});

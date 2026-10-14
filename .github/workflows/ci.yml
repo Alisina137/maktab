@@ -55,6 +55,9 @@ jobs:
       - name: Pilot Operations Phase 6 launch and support workflow guard
         run: pnpm verify:pilot:phase6
 
+      - name: Phase 7 release and cross-role acceptance guard
+        run: pnpm verify:pilot:phase7
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -71,6 +74,19 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Record production NO-GO until independent release evidence is reviewed
+        if: always()
+        run: node scripts/phase7-release-report.mjs --output "$RUNNER_TEMP/maktablink-step20-no-go.json"
+
+      - name: Preserve exact-build Step 20 acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step20-release-evidence-no-go
+          path: ${{ runner.temp }}/maktablink-step20-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
 
   windows-api-regression:
     runs-on: windows-latest
@@ -97,6 +113,7 @@ jobs:
           pnpm verify:pilot:phase4
           pnpm verify:pilot:phase5
           pnpm verify:pilot:phase6
+          pnpm verify:pilot:phase7
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience
