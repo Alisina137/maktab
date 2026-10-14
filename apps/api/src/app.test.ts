@@ -6216,3 +6216,82 @@ test("bulk import creates login credentials consistently for parents, teachers, 
   assert.equal(duplicateBody.valid, false);
   assert.ok(duplicateBody.errors.some((item) => item.field === "username"));
 });
+
+
+test("Phase 4 account lifecycle confirms reasons, rejects invalid transitions, and isolates audit by school", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const a = await provisionSchool(app, "AUDIT-LIFECYCLE-A");
+  const b = await provisionSchool(app, "AUDIT-LIFECYCLE-B");
+  const adminA = await bootstrapAdmin(app, a);
+  const adminB = await bootstrapAdmin(app, b);
+  const authA = { authorization: `Bearer ${adminA}` };
+  const authB = { authorization: `Bearer ${adminB}` };
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: authA,
+    payload: { username: "teacherlifecycle", role: "TEACHER" }
+  });
+  assert.equal(created.statusCode, 201);
+  const target = created.json<{ user: { id: string } }>().user.id;
+  const invalidReason = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/suspend`, headers: authA, payload: { reason: "x" }
+  });
+  assert.equal(invalidReason.statusCode, 400);
+  assert.equal(invalidReason.json<{ error: string }>().error, "validation_error");
+
+  const firstAudit = await app.inject({
+    method: "GET", url: `/v1/admin/users/${target}/audit`, headers: authA
+  });
+  assert.equal(firstAudit.statusCode, 200);
+  assert.ok(firstAudit.json<{ logs: Array<{ action: string }> }>().logs.some((event) => event.action === "user.created"));
+
+  const crossSchool = await app.inject({
+    method: "GET", url: `/v1/admin/users/${target}/audit`, headers: authB
+  });
+  assert.equal(crossSchool.statusCode, 404);
+  const nonExisting = await app.inject({
+    method: "GET", url: "/v1/admin/users/not-a-uuid/audit", headers: authA
+  });
+  assert.equal(nonExisting.statusCode, 400);
+
+  const suspended = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/suspend`, headers: authA,
+    payload: { reason: "  Staff member requested account review.  " }
+  });
+  assert.equal(suspended.statusCode, 200);
+  assert.equal(suspended.json<{ user: { status: string } }>().user.status, "SUSPENDED");
+  const audit = await app.inject({
+    method: "GET", url: `/v1/admin/users/${target}/audit?limit=25`, headers: authA
+  });
+  assert.equal(audit.statusCode, 200);
+  const rows = audit.json<{ logs: Array<{ action: string; reason: string | null; actorUserId: string | null; metadata?: unknown }> }>().logs;
+  assert.ok(rows.some((entry) => entry.action === "user.suspended" && entry.reason === "Staff member requested account review."));
+  assert.ok(rows.every((entry) => !("metadata" in entry)));
+  const repeatedSuspend = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/suspend`, headers: authA
+  });
+  assert.equal(repeatedSuspend.statusCode, 409);
+  const reactivated = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/reactivate`, headers: authA
+  });
+  assert.equal(reactivated.statusCode, 200);
+  assert.equal(reactivated.json<{ user: { status: string } }>().user.status, "INVITED");
+  const repeatedReactivate = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/reactivate`, headers: authA
+  });
+  assert.equal(repeatedReactivate.statusCode, 409);
+  const lifecycleAudit = await app.inject({
+    method: "GET", url: `/v1/admin/users/${target}/audit`, headers: authA
+  });
+  assert.ok(lifecycleAudit.json<{ logs: Array<{ action: string }> }>().logs.some(x => x.action === "user.reactivated"));
+
+  // Foreign-school administrators may not suspend or inspect another school's accounts.
+  const foreignSuspend = await app.inject({
+    method: "POST", url: `/v1/admin/users/${target}/suspend`, headers: authB
+  });
+  assert.equal(foreignSuspend.statusCode, 404);
+  const denied = await app.inject({
+    method: "GET", url: `/v1/admin/users/${target}/audit?limit=999`, headers: authA
+  });
+  assert.equal(denied.statusCode, 400);
+});
