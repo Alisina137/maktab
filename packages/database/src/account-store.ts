@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
@@ -147,8 +147,16 @@ export interface AccountStore {
     userId: string,
     status: UserStatus,
     actorUserId: string,
-    auditAction: "user.suspended" | "user.reactivated"
+    auditAction: "user.suspended" | "user.reactivated",
+    reason?: string
   ): Promise<User | null>;
+  listAccountAuditLogs(schoolId: string, userId: string, limit?: number): Promise<Array<{
+    id: string;
+    action: string;
+    actorUserId: string | null;
+    reason: string | null;
+    createdAt: Date;
+  }>>;
   findUserForLogin(schoolId: string, username: string): Promise<UserLoginContext | null>;
   findUserById(schoolId: string, userId: string): Promise<User | null>;
   updateLastLogin(schoolId: string, userId: string): Promise<void>;
@@ -529,9 +537,9 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
       });
     },
 
-    async setUserStatusAsAdmin(schoolId, userId, status, actorUserId, auditAction) {
+    async setUserStatusAsAdmin(schoolId, userId, status, actorUserId, auditAction, reason) {
       return db.transaction(async (tx) => {
-        if (status === "ARCHIVED") {
+        if (status === "ARCHIVED" || status === "SUSPENDED" || status === "ACTIVE" || status === "INVITED") {
           await tx
             .update(authSessions)
             .set({ revokedAt: new Date() })
@@ -553,11 +561,37 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           action: auditAction,
           entityType: "user",
           entityId: user.id,
-          metadata: {}
+          metadata: reason ? { reason } : {}
         });
 
         return user;
       });
+    },
+
+    async listAccountAuditLogs(schoolId, userId, limit = 25) {
+      const bounded = Math.min(Math.max(limit, 1), 50);
+      const rows = await db.select({
+        id: auditLogs.id,
+        action: auditLogs.action,
+        actorUserId: auditLogs.actorUserId,
+        metadata: auditLogs.metadata,
+        createdAt: auditLogs.createdAt
+      }).from(auditLogs).where(and(
+        eq(auditLogs.schoolId, schoolId),
+        or(
+          and(eq(auditLogs.entityId, userId),
+            inArray(auditLogs.entityType, ["user", "parent_profile"])),
+          and(eq(auditLogs.entityType, "student"),
+            sql`${auditLogs.metadata} ->> 'userId' = ${userId}`)
+        )
+      )).orderBy(desc(auditLogs.createdAt), desc(auditLogs.id)).limit(bounded);
+      return rows.map((row) => ({
+        id: row.id,
+        action: row.action,
+        actorUserId: row.actorUserId,
+        reason: typeof row.metadata?.reason === "string" ? row.metadata.reason : null,
+        createdAt: row.createdAt
+      }));
     },
 
     async findUserForLogin(schoolId, username) {
@@ -626,7 +660,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async setUserStatus(schoolId, userId, status) {
       return db.transaction(async (tx) => {
-        if (status === "ARCHIVED") {
+        if (status === "ARCHIVED" || status === "SUSPENDED" || status === "ACTIVE" || status === "INVITED") {
           await tx
             .update(authSessions)
             .set({ revokedAt: new Date() })
