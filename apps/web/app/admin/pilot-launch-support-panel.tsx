@@ -15,6 +15,7 @@ type History = { id: string; status: string; operatorLabel: string; note: string
 type LaunchOverview = {
   evidence: Evidence[]; decision: Decision | null; decisionHistory: History[];
   verifiedCount: number; totalRequired: number; openCriticalTickets: number;
+  effectiveApproved: boolean;
 };
 type SupportTicket = { id: string; subject: string; description: string; category: string;
   priority: "NORMAL" | "HIGH" | "CRITICAL"; status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
@@ -124,7 +125,8 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
   }
 
   const selectedEvidence = overview?.evidence.find((item) => item.category === selectedCategory);
-  const approved = overview?.decision?.status === "APPROVED";
+  const approved = overview?.effectiveApproved === true;
+  const staleApproval = overview?.decision?.status === "APPROVED" && !approved;
   const verified = overview?.verifiedCount ?? 0;
 
   return (
@@ -141,7 +143,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
           <div className="pilot-workflow-grid">
             <article className="admin-panel pilot-launch-status">
               <span className="eyebrow">{t("Platform launch decision")}</span>
-              <h3>{t(approved ? "Approved by platform operator" : "Not approved for launch")}</h3>
+              <h3>{t(approved ? "Approved by platform operator" : staleApproval ? "Approval requires revalidation" : "Not approved for launch")}</h3>
               <span className={"pilot-badge " + (approved ? "pilot-badge-ok" : "pilot-badge-warning")}>
                 {t(approved ? "APPROVED" : "NOT_APPROVED")}
               </span>

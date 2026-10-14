@@ -52,13 +52,18 @@ function fail(reply: { code: (status: number) => { send: (body: unknown) => unkn
 }
 
 export function registerPilotLaunchRoutes(
-  app: FastifyInstance, accounts: AccountStore, launch: PilotLaunchStore
+  app: FastifyInstance, accounts: AccountStore, launch: PilotLaunchStore, pilot: PilotStore
 ) {
   app.get("/v1/admin/pilot/launch", async (request, reply) => {
     const ctx = await requireSchoolAdmin(request, reply, accounts);
     if (!ctx) return;
     reply.header("cache-control", "no-store");
-    return launch.getOverview(ctx.user.schoolId);
+    const [overview, readiness] = await Promise.all([
+      launch.getOverview(ctx.user.schoolId), pilot.getAdvancedReadiness(ctx.user.schoolId)
+    ]);
+    return { ...overview, configurationReady: readiness.ready,
+      effectiveApproved: overview.decision?.status === "APPROVED" && readiness.ready &&
+        overview.verifiedCount === overview.totalRequired && overview.openCriticalTickets === 0 };
   });
 
   app.put("/v1/admin/pilot/launch/evidence", async (request, reply) => {
@@ -126,7 +131,10 @@ export function registerPlatformPilotWorkflowRoutes(
     try {
       const { schoolId } = schoolSchema.parse(request.params);
       const result = await launch.getOverview(schoolId);
-      return { ...result, configurationReady: (await pilot.getAdvancedReadiness(schoolId)).ready };
+      const configurationReady = (await pilot.getAdvancedReadiness(schoolId)).ready;
+      return { ...result, configurationReady,
+        effectiveApproved: result.decision?.status === "APPROVED" && configurationReady &&
+          result.verifiedCount === result.totalRequired && result.openCriticalTickets === 0 };
     } catch (error) { return fail(reply, error); }
   });
 

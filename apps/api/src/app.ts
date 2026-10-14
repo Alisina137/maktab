@@ -99,7 +99,7 @@ export function buildApp(options: BuildAppOptions) {
   if (options.teacherTeachingStore) registerTeachingRoutes(app, options.accountStore, options.teacherTeachingStore);
   if (options.teacherTasksStore) registerTeacherTasksRoutes(app, options.accountStore, options.teacherTasksStore);
   registerPilotRoutes(app, options.accountStore, options.pilotStore);
-  registerPilotLaunchRoutes(app, options.accountStore, options.pilotLaunchStore);
+  registerPilotLaunchRoutes(app, options.accountStore, options.pilotLaunchStore, options.pilotStore);
   registerCommunicationRoutes(
     app,
     options.accountStore,
