@@ -133,13 +133,47 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 
 **No database migration.** Added pure-model tests and source guards via `pnpm verify:parent:phase5`, wired to Linux/Windows CI and `pnpm verify`. Step 20 production release remains **NO-GO** until external device/operator acceptance evidence exists.
 
+## Phase 6 — Parent More: Fees, Profile, School and Preferences (implemented)
+
+**Four-part navigation**
+- Parent More now has **Fees / Profile / School / Preferences** subtabs in a consistent segmented navigation. Fees is the default and remains the exact destination for fee notifications and the Home dashboard shortcut. Profile, School and Preferences are account-scoped and remain accessible even when no children are linked.
+- Child switching stays in the top parent shell. The Fees panel has a selected-child keyed component and is gated on `parentDataChildId === selectedChildId`, so invoices and expanded payment details never carry over to siblings.
+
+**Fees**
+- Live data comes from existing, authorized parent-child `GET /v1/parent/children/:studentId/fees`. The dashboard summarizes school-issued **billed**, net **paid** and **outstanding**; drafts and cancelled invoices are excluded from active ledger totals. Outstanding count uses the actual outstanding amount returned by the school backend, not guesswork.
+- Invoice filters: All, Outstanding, Paid and Cancelled. Each invoice expands to reveal its original amount, net paid/outstanding, issued date (when present), and payment/reversal ledger with date, amount, optional reference or reversal reason. No fake parent-side payments or invoices.
+- Clearly states that the ledger is read-only and payment/receipt disputes must be directed to the school administrator. Fees have independent loading/failed/retry states and manual refresh; a failed API read is not mistaken for zero debt.
+
+**Profile and School**
+- Account profile shows the parent full name, username, recorded phone or *Not provided*, with authorized linked children and classes/years. Profile and family links are school-managed and read-only, with a direct explanation of where to request corrections. Refresh fetches the official parent-home record.
+- School tab shows actual authenticated school name, code, province/city and reuses the verified school administrator contact card (phone/email/WhatsApp when available). No invented school URLs or untrusted contact data.
+
+**Preferences and account security**
+- Language selector reuses all supported English, Dari and Pashto locales with existing persistent device preference and RTL/LTR recalculation. Settings remain on-device; no false server-wide locale sync.
+- Current/new/confirm password inputs use secure text entry and client validation for length, letter, number, special character, identical old/new and confirmation. The POST is the existing `/v1/auth/change-password` endpoint; the server checks the current password, account authorization, and writes an audit event. Returned rotated access/refresh session is installed and persisted for the **same signed-in parent identity only**. No email/SMS verification is falsely claimed for parents (administrator-only 2FA remains in the API).
+- Password state clears only after confirmed success; failed requests show an error without claiming the password changed. Logout includes confirmation and invokes the existing local/server session cleanup logic.
+
+**Verification and scope**
+- New model tests validate active invoice sums, canceled/draft exclusion, all status filters, payment history order, and password field validation. `pnpm verify:parent:phase6` (included in monorepo verify and Linux/Windows GitHub CI) checks API and ownership guards, exact tabs, secure change-password wiring, RTL and English/Dari/Pashto copy.
+- No database migration or schema change is required; only an API client call was added for the existing authenticated password endpoint. This phase does **not** implement parent self-service verified identity editing, online payment processing, school-initiated receipts or new 2FA flows without supporting backend requirements.
+
+**Real-device acceptance required**
+1. Parent with no children can open Profile, School and Preferences; Fees shows no linked child. With two children and different invoices, expanded ledger and totals must never leak after switching children.
+2. Verify all 4 invoice filters, exact issued/paid/outstanding figures against real school ledger, partial payments, cancelled invoices and reversed payments.
+3. In a slow/offline state, Fees must show loading/errors with targeted retry and never misreport 0 outstanding. Test switching child during slow fee response.
+4. Confirm full name, recorded phone, username and all linked children are real authorized records; school admin contact links work only for populated values.
+5. Change to English, Dari, Pashto and reopen the app to verify language persistence/RTL. Verify large text, screen readers and compact Android screens.
+6. Change parent password with incorrect current password, weak new password, mismatch, successful new password and logout/re-login. Verify old session/auth invalidation behavior according to backend policy and no credential display after leaving Preferences.
+
+**Release status:** Phase 6 automated verification does not establish device/operator acceptance. Step 20 remains **NO-GO** until independently evidenced.
+
 ## Next phases
 
 - Phase 2 — implemented: interactive prioritized Home and independent resource retry.
 - Phase 3 — implemented: Attendance calendar, recorded-only monthly statistics, and dated detail.
 - Phase 4 — implemented: published-only Homework filters/details, released Result groups, and weekly Timetable day/subject views.
 - Phase 5 — implemented: Parent Inbox search/read/audience/topic filters, 20-at-a-time display paging and validated item deep links.
-- Phase 6 — Parent account/profile/security, fees, school info and preferences.
+- Phase 6 — implemented: child-scoped Fee ledger, read-only Profile, School information and password/language Preferences.
 - Phase 7 — full Android/RTL/offline/multi-child regression and release evidence.
 
 **Important:** Automated and source tests cannot establish that the live Android UI has been tested. Step 20 production release remains NO-GO until operator/device evidence is collected.
