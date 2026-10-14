@@ -138,8 +138,8 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     if (!context) return;
     try {
       const { username } = usernameCheckQuerySchema.parse(request.query);
-      const found = await store.findUserForLogin(context.user.schoolId, username);
-      return { available: !found };
+      const exists = await store.usernameExists(context.user.schoolId, username);
+      return { available: !exists };
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
       throw error;
