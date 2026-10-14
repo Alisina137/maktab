@@ -45,12 +45,37 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 5. Verify small-screen layout, Dari/Pashto RTL, TalkBack, large fonts, Solar Hijri dates and Kabul timezone midnight boundaries.
 6. Run `pnpm verify:parent:phase1`, `pnpm verify:parent:phase2`, `pnpm verify` plus Android physical smoke tests. Production Step 20 remains **NO-GO** until independent external acceptance evidence is recorded.
 
-**Remaining work:** Phase 3 attendance calendar/stats; Phase 4 academic filters/details; Phase 5 inbox filtering/deep links; Phase 6 account and finance; Phase 7 full device/accessibility/security acceptance. This phase does not assert that live Android tests have occurred.
+**Remaining work:** Phase 4 academic filters/details; Phase 5 inbox filtering/deep links; Phase 6 account and finance; Phase 7 full device/accessibility/security acceptance. This phase does not assert that live Android tests have occurred.
+
+## Phase 3 — Attendance Calendar, Monthly Statistics & Daily Details (implemented)
+
+**Calendar and history**
+- Replaced the old plain Attendance-tab history with an interactive seven-column calendar. The grid starts on **Saturday**, matching the Afghan school week; the selected date is highlighted and each recorded status has a distinct color/dot with an accessible text label and legend. Future dates cannot be selected.
+- English calendar navigation uses Gregorian months. Dari and Pashto navigation uses **Solar Hijri months and day numbers**, rather than merely formatting Gregorian month headers into Hijri dates. Day details remain formatted by the existing Afghan-localized date formatter.
+- Prev/next month controls query the existing **school- and parent-authorized** `GET /v1/parent/children/:studentId/attendance?from=...&to=...` endpoint with the precise start/end of the displayed month. The API client now accepts optional date bounds, while the existing Home read continues to use its default rolling history. Future-month navigation is disabled.
+- A selected date opens its **recorded status, class and teacher/school note**. A day without a submitted attendance mark explicitly says *Not recorded*, never *Absent*. No manual edits by parents are implied or exposed.
+
+**Statistics and resilience**
+- Monthly counts: Present, Absent, Late and Excused, plus recorded-day total.
+- **Attendance rate denominator:** `PRESENT + LATE + ABSENT`; numerator: `PRESENT + LATE`. Excused and unrecorded days do not count in either the numerator or denominator. If the denominator is zero, the rate is unavailable (`—`), not a misleading `0%`. This is a *rate across marked, non-excused days*, not a claim that all school days were marked.
+- Monthly queries have independent loading, error and retry states. On tab/child/account changes, late responses are ignored and the component is reset; sensitive session errors still use the global account guard. Home's independent resource loading remains intact.
+- Accessible button labels, 44px minimum navigation targets, language-specific RTL/LTR layout, and complete new copy in **English, Dari and Pashto**. No migration or new authorization path.
+- Automated model tests cover leap February, Hijri month boundaries, navigation, de-duplicated recorded totals, unknown days and excused exclusion. Guard: `pnpm verify:parent:phase3` (also included in `pnpm verify`).
+
+**Manual Android verification still required**
+1. View attendance for a parent with two children; switch children quickly while a prior month is loading. No old child's note or status may appear in the other child's calendar.
+2. Open previous and next months in English and Dari/Pashto. Verify Solar Hijri day labels, Saturday-first weekday order, leap month changes and correct query data.
+3. Verify Present, Absent, Late, Excused, no record, future day and school note. Confirm that absent is shown only with an actual submitted mark.
+4. Compare the monthly totals/rate against real administrator attendance; missing and excused marks must never lower the percentage. Check no-denominator state (`—`).
+5. Drop the connection while browsing a non-current month; verify explicit error, retry, and no stale data. Check session revocation and active child isolation.
+6. Test TalkBack, large text, RTL and small-screen 7-column calendar.
+
+**Deferred, not silently invented:** A parent-submitted attendance correction request workflow is not backed by an existing approved request/triage API. Phase 3 shows official school notes and attendance records only; a future correction workflow would need its own authenticated school-scoped record, school review, notifications and audit history. Step 20 release remains **NO-GO** pending device/operator evidence.
 
 ## Next phases
 
 - Phase 2 — implemented: interactive prioritized Home and independent resource retry.
-- Phase 3 — Attendance monthly calendar, totals, correctly defined denominator, and dated detail.
+- Phase 3 — implemented: Attendance calendar, recorded-only monthly statistics, and dated detail.
 - Phase 4 — full Academics homework/result/timetable filters and details.
 - Phase 5 — Inbox paging/filtering and precise notification-to-item navigation.
 - Phase 6 — Parent account/profile/security, fees, school info and preferences.
