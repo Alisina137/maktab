@@ -82,8 +82,24 @@
 - Automated endpoint, PGlite, data-redaction and cross-school tests run on Linux and Windows CI; manual device, language, accessibility and genuine live-data/export-size acceptance remain under Step 20.
 
 
-## Phase 5 — Subscription improvements
-Expiry alerting, clearer billing health, read-only school-facing guidance.
+## Phase 5 — Subscription improvements (implemented)
+
+- The existing platform-controlled subscription remains the only source of truth for status, pricing and dates. School administrators have **no billing write/renewal/payment controls**.
+- New `GET /v1/admin/pilot/subscription/health` requires an authenticated active school administrator, uses the current authorized school's subscription from the existing access context, returns no support notes or secrets, sets `no-store` and performs no writes.
+- A pure, unit-tested health evaluator uses the **Asia/Kabul civil day** to determine remaining days until expiry/grace, a category (healthy/info/warning/critical), informative status-specific guidance, platform reconciliation hints for expired-but-not-transitioned subscriptions, and the next potential reminder threshold. It does **not** pretend a date alone has changed the enforced status; only recorded SUSPENDED/CANCELLED block operational writes.
+- Improves the Subscription tab with a health alert, expiry/grace countdown cards, actual write permission status, existing billing detail readout, the scheduler's notification schedule, cautious renewal/support guidance and a refresh action. Overview includes a compact current-health panel. Loading/errors and changes of account/session are isolated with abortable fetches, no false "healthy" fallback.
+- Existing deduplicated subscription-expiry notifications (30/14/7/1 days before expiration) are preserved. Corrected their deep link to the actual subscription route and aligned scheduler's default day with Asia/Kabul. Scheduler execution/delivery is **not** guaranteed by the page; it remains an operational requirement under Step 20.
+- No new database migration or schema modification. Test coverage checks all subscription statuses, Kabul midnight boundaries, grace/expired edge cases, next threshold, permissions, translation and RTL/responsiveness.
+
+### Phase 5 manual acceptance remaining
+
+1. Check health for TRIAL, ACTIVE, PAST_DUE, GRACE, SUSPENDED and CANCELLED schools in two tenants; verify no cross-school information.
+2. Verify no-expiry and today-expiry, +1/7/14/30-day and past-expiry cases at Asia/Kabul midnight. Confirm the platform's actual recorded status controls write blocks, not predicted dates.
+3. Run existing platform-only subscription scheduler twice and confirm deduplicated reminders, correct destination `/admin/pilot/subscription`, and no repeated alerts; verify notification channel delivery on a real device.
+4. Verify school administrators cannot change plan, price, expiry, billing status or send payment/support requests from Pilot Operations.
+5. Test 320px/375px/768px/desktop, 200% zoom, keyboard navigation, Dari/Pashto RTL, network errors and rapid school session switching.
+6. Confirm manual Step 20 operator, live Neon, backups and release gates remain NO-GO.
+
 
 ## Phase 6 — Launch and support workflows
 Real evidence collection, support tickets and platform-only launch approval.
