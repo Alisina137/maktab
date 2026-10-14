@@ -35,9 +35,11 @@ assert.ok(shell.includes("selectedChildId") &&
 for(const marker of [
   'parentTab === "ACADEMICS"', 'parentTab === "ATTENDANCE"',
   'parentTab === "INBOX"', 'parentTab === "MORE"',
-  'section="FEES"', 'parentAcademicsTab === "HOMEWORK"',
+  'parentAcademicsTab === "HOMEWORK"',
   'parentInboxTab === "ANNOUNCEMENTS"', "ParentNotificationsContent"
 ]) assert.ok(app.includes(marker),"Missing parent section: "+marker);
+assert.ok(app.includes('section="FEES"') || app.includes("<ParentFeesPanel"),
+  "Parent Fees must remain under More for the selected child");
 assert.ok(app.includes('section="RESULTS"') || app.includes("<ParentAcademicResults"),
   "Parent published results must remain in Academics");
 assert.ok(app.includes("ParentTimetableContent") || app.includes("<ParentAcademicTimetable"),
