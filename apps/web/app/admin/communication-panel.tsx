@@ -86,13 +86,6 @@ function request<T>(accessToken: string, path: string, init?: RequestInit) {
   });
 }
 
-function datetimeLocalToIso(value: string) {
-  if (!value) return undefined;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new Error("Announcement publish time is invalid.");
-  return date.toISOString();
-}
-
 export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const { locale } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
@@ -317,7 +310,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         method: "PATCH",
         body: JSON.stringify({
           title: editTitle.trim(), content: editMessage.trim(),
-          ...(editPublishAt ? { publishAt: datetimeLocalToIso(editPublishAt) } : {})
+          ...(editPublishAt ? { publishAt: schoolLocalTimeToIso(
+            editPublishAt, schoolTimezone ?? "Asia/Kabul") } : {})
         })
       });
       if (accessRef.current !== accessToken) return;
@@ -622,7 +616,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   <h3>{t("Recent announcements")}</h3>
                   {visibleOverview.announcements.slice(0, 4).map(item => (
                     <button type="button" className="communication-recent-row" key={item.id}
-                      onClick={() => { setSection("COMMUNICATION"); setCommunicationPane("LIST"); }}>
+                      onClick={() => showAnnouncement(item.id)}>
                       <strong>{item.title}</strong>
                       <span>{t(item.archivedAt ? "ARCHIVED" :
                         Date.parse(item.publishAt) > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
@@ -795,37 +789,115 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <div className="communication-workflow-list">
               {ready && visibleOverview ? (
                 <>
-      <article className="admin-panel academic-list-panel">
+      <article className="admin-panel academic-list-panel communication-announcement-list">
         <div className="admin-section-header">
-          <div><h2>{t("Announcements")}</h2><p>{t("Scheduled and published school communication")}</p></div>
+          <div>
+            <h2>{t("Announcements")}</h2>
+            <p>{t("Published, scheduled and archived school notices.")}</p>
+          </div>
         </div>
-        <div className="academic-rows">
-          {visibleOverview.announcements.map((item) => (
-            <div className="academic-row communication-announcement-row" key={item.id}>
-              <div>
-                <strong>{item.title}</strong>
-                <span>{t(item.audienceScope)}{item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}{item.classId ? ` · ${t("class scoped")}` : ""}</span>
-                <span>{formatAdminHijriDateTime(locale, item.publishAt)} · {t(item.archivedAt ? "ARCHIVED" :
-                    new Date(item.publishAt).getTime() > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
-                <p>{item.content}</p>
-              </div>
-              {!item.archivedAt ? (
+        <div className="communication-announcement-filters">
+          <label>{t("Search announcements")}
+            <input type="search" value={announcementSearch}
+              placeholder={t("Search title or message")}
+              onChange={event => setAnnouncementSearch(event.target.value)} />
+          </label>
+          <label>{t("Status")}
+            <select value={announcementStatusFilter}
+              onChange={event => setAnnouncementStatusFilter(event.target.value as AnnouncementStatusFilter)}>
+              {(["ALL","PUBLISHED","SCHEDULED","ARCHIVED"] as AnnouncementStatusFilter[]).map(value=>(
+                <option key={value} value={value}>{t(value === "ALL" ? "All statuses" : value)}</option>
+              ))}
+            </select>
+          </label>
+          <label>{t("Audience")}
+            <select value={announcementAudienceFilter}
+              onChange={event => setAnnouncementAudienceFilter(event.target.value as AnnouncementAudienceFilter)}>
+              <option value="ALL">{t("All audiences")}</option>
+              <option value="SCHOOL">{t("Whole school")}</option>
+              <option value="CLASS">{t("One class")}</option>
+              <option value="ROLE">{t("One role")}</option>
+            </select>
+          </label>
+          <label>{t("Class")}
+            <select value={announcementClassFilter}
+              onChange={event => setAnnouncementClassFilter(event.target.value)}>
+              <option value="">{t("All classes")}</option>
+              {(visibleAcademics?.classes ?? []).map(row=>(
+                <option key={row.id} value={row.id}>{row.name} · {row.code}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="admin-copy" role="status">
+          {adminFormat(locale,"Showing {shown} of {total} matching announcements",{
+            shown:new Intl.NumberFormat(locale).format(announcementPage.shown),
+            total:new Intl.NumberFormat(locale).format(announcementPage.total)
+          })}
+        </p>
+        <div className="academic-rows communication-announcement-items">
+          {announcementPage.rows.map(item => {
+            const open = expandedAnnouncementId === item.id;
+            const status = announcementStatus(item,Date.now());
+            return (
+              <div className="academic-row communication-announcement-row" key={item.id}>
+                <div className="communication-announcement-row-head">
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{t(item.audienceScope)}{item.audienceRole ?
+                      ` · ${t(item.audienceRole)}` : ""}{item.classId ?
+                      ` · ${classLabel(item.classId)}` : ""}</span>
+                    <span>{formatAdminHijriDateTime(locale,item.publishAt,schoolTimezone ?? "Asia/Kabul")}
+                      {" · "}{t(status)}</span>
+                  </div>
+                  <span className={`communication-announcement-status status-${status.toLowerCase()}`}>{t(status)}</span>
+                </div>
+                <p className={open ? "communication-announcement-full" : "communication-announcement-preview"}>
+                  {item.content}
+                </p>
+                {open ? (
+                  <dl className="communication-announcement-details">
+                    <div><dt>{t("Audience")}</dt><dd>{t(item.audienceScope)}
+                      {item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}
+                      {item.classId ? ` · ${classLabel(item.classId)}` : ""}</dd></div>
+                    <div><dt>{t("Publication")}</dt>
+                      <dd>{formatAdminHijriDateTime(locale,item.publishAt,schoolTimezone ?? "Asia/Kabul")}</dd></div>
+                    <div><dt>{t("Status")}</dt><dd>{t(status)}</dd></div>
+                    <div><dt>{t("Reference")}</dt><dd>{item.id}</dd></div>
+                  </dl>
+                ) : null}
                 <div className="admin-actions">
-                  {new Date(item.publishAt).getTime() > Date.now() ? (
+                  <button className="admin-secondary" type="button"
+                    aria-expanded={open} onClick={() => setExpandedAnnouncementId(open ? null : item.id)}>
+                    {t(open ? "Hide details" : "View details")}
+                  </button>
+                  {status === "SCHEDULED" ? (
                     <button className="admin-secondary" type="button" disabled={busy}
                       onClick={() => {
-                        setEditingNotice(item); setEditTitle(item.title);
-                        setEditMessage(item.content); setEditPublishAt("");
+                        setEditingNotice(item);
+                        setEditTitle(item.title); setEditMessage(item.content);
+                        setEditPublishAt(""); setCommunicationPane("FORM");
                       }}>{t("Edit")}</button>
                   ) : null}
-                  <button className="admin-secondary" disabled={busy}
-                    onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
+                  {status !== "ARCHIVED" ? (
+                    <button className="admin-secondary" type="button" disabled={busy}
+                      onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          ))}
-          {visibleOverview.announcements.length === 0 ? <p className="admin-copy">{t("No announcements yet.")}</p> : null}
+              </div>
+            );
+          })}
+          {!announcementPage.total ? (
+            <p className="admin-copy">{t(visibleOverview.announcements.length===0 ?
+              "No announcements yet." : "No announcements match your filters.")}</p>
+          ) : null}
         </div>
+        {announcementPage.hasMore ? (
+          <button className="admin-secondary communication-more-button" type="button"
+            onClick={() => setAnnouncementLimit(value=>value+ANNOUNCEMENT_PAGE_SIZE)}>
+            {t("Load more announcements")}
+          </button>
+        ) : null}
       </article>
 
 
