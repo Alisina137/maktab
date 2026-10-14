@@ -282,6 +282,7 @@ function AppContent() {
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
   const sessionRefreshPromiseRef = useRef<Promise<SessionPayload | null> | null>(null);
+  const logoutInProgressRef = useRef(false);
   const onboardingScrollRef = useRef<ScrollView>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslate = useRef(new Animated.Value(0)).current;
@@ -366,7 +367,8 @@ function AppContent() {
         const refreshed = await api.refresh(activeSession.refreshToken);
 
         // Ignore a refresh result if the user logged out or changed accounts while it was in flight.
-        if (!sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool)) {
+        if ((logoutInProgressRef.current ||
+            !sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool))) {
           return null;
         }
 
@@ -384,7 +386,8 @@ function AppContent() {
       } catch (cause) {
         // A refresh from before a password change or logout cannot revoke
         // or replace the newer authorized session of the very same parent.
-        if (!sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool)) {
+        if ((logoutInProgressRef.current ||
+            !sameSessionEpoch(sessionRef.current, activeSession, schoolRef.current, activeSchool))) {
           return null;
         }
         if (isNetworkApiError(cause)) {
@@ -1806,6 +1809,8 @@ function AppContent() {
   }
 
   async function logout() {
+    if (logoutInProgressRef.current) return;
+    logoutInProgressRef.current = true;
     setBusy(true);
     try {
       if (sessionRef.current?.accessToken) {
@@ -1870,13 +1875,14 @@ function AppContent() {
       setUsername("");
       setScreen("role");
       setBusy(false);
+      logoutInProgressRef.current = false;
     }
   }
 
   async function changeParentAccountPassword(currentPassword: string, newPassword: string): Promise<boolean> {
     const active = sessionRef.current;
     const activeSchool = schoolRef.current;
-    if (!active || active.user.role !== "PARENT" || active.user.status !== "ACTIVE" ||
+    if (logoutInProgressRef.current || !active || active.user.role !== "PARENT" || active.user.status !== "ACTIVE" ||
       active.mustChangePassword || !activeSchool || screen !== "home" ||
       parentPasswordValidation(currentPassword, newPassword, newPassword)) return false;
     try {
@@ -1884,7 +1890,8 @@ function AppContent() {
         active.accessToken, currentPassword, newPassword
       );
       // Refuse to install another account's session when logout/switch happened during POST.
-      if (!sameSessionEpoch(sessionRef.current, active, schoolRef.current, activeSchool) ||
+      if (logoutInProgressRef.current ||
+          !sameSessionEpoch(sessionRef.current, active, schoolRef.current, activeSchool) ||
           changed.user.id !== active.user.id ||
           changed.user.schoolId !== active.user.schoolId ||
           changed.user.role !== "PARENT") return false;
