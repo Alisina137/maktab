@@ -96,8 +96,8 @@ export function AdminAccountDirectory({
   const pageSelected = eligiblePage.length > 0 && eligiblePage.every((user) => selectedIds.has(user.id));
   const partial = eligiblePage.some((user) => selectedIds.has(user.id)) && !pageSelected;
   const selected = users.filter((user) => selectedIds.has(user.id));
-  const canSuspend = selected.length > 0 && selected.every((user) => user.status === "ACTIVE" || user.status === "INVITED");
-  const canReactivate = selected.length > 0 && selected.every((user) => user.status === "SUSPENDED");
+  const canSuspend = selected.length > 0 && selected.length <= 20 && selected.every((user) => user.status === "ACTIVE" || user.status === "INVITED");
+  const canReactivate = selected.length > 0 && selected.length <= 20 && selected.every((user) => user.status === "SUSPENDED");
   const start = result.total ? (result.page - 1) * result.pageSize + 1 : 0;
   const end = result.total ? start + users.length - 1 : 0;
 
@@ -169,7 +169,7 @@ export function AdminAccountDirectory({
           <button className="admin-secondary" type="button" onClick={() => onSelectPage([...selectedIds], false)}>
             {t("Clear selection")}
           </button>
-          <span>{t("Bulk changes exclude school administrators and archived accounts.")}</span>
+          <span>{t("Bulk changes exclude school administrators and archived accounts.")} {t("Bulk actions are limited to 20 accounts.")}</span>
         </div>
       ) : null}
 
