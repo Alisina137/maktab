@@ -25,7 +25,7 @@ test("Pilot Phase 2 coverage checks current school/year relations and pages miss
     const content = await readFile(new URL("../drizzle/" + name, import.meta.url), "utf8");
     await client.exec(content.replaceAll("--> statement-breakpoint", ""));
   }
-  const ids = Array.from({ length: 17 }, () => randomUUID());
+  const ids = Array.from({ length: 17 }, () => randomUUID()) as [string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string, string];
   const [a, b, year, past, otherYear, grade, classOne, classTwo, oldClass,
     foreignClass, subject, admin, teacher, parent, blockedParent, firstStudent, secondStudent] = ids;
   const teacherAssignment = randomUUID();
