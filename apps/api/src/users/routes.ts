@@ -23,6 +23,14 @@ const adminProfileImageSchema = z
     }
   }, "Profile image must be a web image URL or an uploaded JPG, PNG, or WebP image.");
 
+const suspendAccountSchema = z.object({
+  reason: z.string().trim().min(3).max(500).optional()
+}).strict();
+
+const accountAuditQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(25)
+});
+
 const adminProfileSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
   jobTitle: z.string().trim().max(120).nullable().optional(),
@@ -79,6 +87,25 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       }))
     };
   });
+
+  app.get<{ Params: { userId: string }; Querystring: { limit?: string } }>(
+    "/v1/admin/users/:userId/audit",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, store);
+      if (!context) return;
+      try {
+        const userId = z.string().uuid().parse(request.params.userId);
+        const { limit } = accountAuditQuerySchema.parse(request.query);
+        const target = await store.findUserById(context.user.schoolId, userId);
+        if (!target) return reply.code(404).send({ error: "not_found", message: "User not found." });
+        const logs = await store.listAccountAuditLogs(context.user.schoolId, userId, limit);
+        return { logs };
+      } catch (error) {
+        if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+        throw error;
+      }
+    }
+  );
 
   app.get("/v1/admin/profile", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, store);
@@ -234,15 +261,30 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       return reply.code(409).send({ error: "self_suspend_blocked", message: "You cannot suspend your own administrator account." });
     }
 
-    const user = await store.setUserStatusAsAdmin(
-      context.user.schoolId,
-      request.params.userId,
-      "SUSPENDED",
-      context.user.id,
-      "user.suspended"
-    );
-    if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
-    return { user: safeUser(user) };
+    try {
+      const { reason } = suspendAccountSchema.parse(request.body ?? {});
+      const existing = await store.findUserById(context.user.schoolId, request.params.userId);
+      if (!existing) return reply.code(404).send({ error: "not_found", message: "User not found." });
+      if (existing.status === "ARCHIVED") {
+        return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be suspended." });
+      }
+      if (existing.status === "SUSPENDED") {
+        return reply.code(409).send({ error: "already_suspended", message: "This account is already suspended." });
+      }
+      const user = await store.setUserStatusAsAdmin(
+        context.user.schoolId,
+        existing.id,
+        "SUSPENDED",
+        context.user.id,
+        "user.suspended",
+        reason
+      );
+      if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
+      return { user: safeUser(user) };
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      throw error;
+    }
   });
 
   app.post<{ Params: { userId: string } }>("/v1/admin/users/:userId/reactivate", async (request, reply) => {
@@ -254,6 +296,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     if (!existing) return reply.code(404).send({ error: "not_found", message: "User not found." });
     if (existing.status === "ARCHIVED") {
       return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be reactivated." });
+    }
+    if (existing.status !== "SUSPENDED") {
+      return reply.code(409).send({ error: "not_suspended", message: "Only suspended accounts can be reactivated." });
     }
 
     const status = existing.mustChangePassword ? "INVITED" : "ACTIVE";
