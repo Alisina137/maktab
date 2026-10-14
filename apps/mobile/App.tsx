@@ -338,6 +338,14 @@ function AppContent() {
     if (session?.user.role === "TEACHER") setTeacherTab("TODAY");
   }, [session?.user.id]);
 
+  useEffect(() => {
+    const pending = pendingParentNotificationRef.current;
+    if (!pending || !parentHome || session?.user.role !== "PARENT" ||
+        session.accessToken !== pending.token) return;
+    pendingParentNotificationRef.current = null;
+    routeParentNotification(pending.item, parentHome.children);
+  }, [parentHome, session?.user.id, session?.accessToken]);
+
   async function refreshActiveSession(): Promise<SessionPayload | null> {
     if (sessionRefreshPromiseRef.current) return sessionRefreshPromiseRef.current;
 
@@ -1619,10 +1627,67 @@ function AppContent() {
     }
   }
 
+  function routeParentNotification(notification: ParentNotification,
+    children: ParentHomePayload["children"]) {
+    const target = parentInboxTarget(notification);
+    if (!target) return; // Unknown URLs never trigger navigation.
+    const childId = authorizedNotificationChild(
+      target, children, selectedChildIdRef.current, notification.metadata
+    );
+    // Student-specific links never silently open another child's records.
+    if ((target.section === "FEES" || target.section === "ATTENDANCE") && !childId) {
+      setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS");
+      setParentInboxFocusedNotificationId(notification.id);
+      return;
+    }
+    if (target.section === "HOMEWORK" && typeof notification.metadata.classId === "string" && !childId) {
+      setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS");
+      setParentInboxFocusedNotificationId(notification.id);
+      return;
+    }
+    if (childId && selectedChildIdRef.current !== childId) selectParentChild(childId);
+
+    resetParentNotificationFocus();
+    if (target.section === "ANNOUNCEMENTS") {
+      setParentTab("INBOX");
+      setParentInboxTab("ANNOUNCEMENTS");
+      setParentInboxFocusedAnnouncementId(target.announcementId);
+    } else if (target.section === "HOMEWORK") {
+      setParentTab("ACADEMICS");
+      setParentAcademicsTab("HOMEWORK");
+      setParentFocusedHomeworkId(target.homeworkId);
+    } else if (target.section === "RESULTS") {
+      setParentTab("ACADEMICS");
+      setParentAcademicsTab("RESULTS");
+      setParentFocusedExamId(target.examId);
+    } else if (target.section === "FEES") {
+      setParentTab("MORE");
+    } else if (target.section === "ATTENDANCE") {
+      setParentTab("ATTENDANCE");
+      setParentFocusedAttendanceDate(target.date);
+    } else {
+      setParentTab("HOME");
+    }
+    setNotice(null);
+    setAppError(null);
+    onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+  }
+
   function openNotification(notification: ParentNotification) {
     if (!session) return;
     const role = session.user.role;
     if (role !== "PARENT" && role !== "STUDENT" && role !== "TEACHER") return;
+    if (role === "PARENT") {
+      void readNotification(notification.id);
+      if (parentHome) {
+        routeParentNotification(notification, parentHome.children);
+      } else {
+        pendingParentNotificationRef.current = { token: session.accessToken, item: notification };
+        setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS");
+        setParentInboxFocusedNotificationId(notification.id);
+      }
+      return;
+    }
     const destination = notificationDestination(role, notification);
     void readNotification(notification.id);
     if (!destination) return;
@@ -1851,6 +1916,7 @@ function AppContent() {
   }
 
   function openParentDashboardDestination(destination: ParentDashboardDestination) {
+    resetParentNotificationFocus();
     switch (destination) {
       case "ATTENDANCE": setParentTab("ATTENDANCE"); break;
       case "ACADEMICS_TIMETABLE":
