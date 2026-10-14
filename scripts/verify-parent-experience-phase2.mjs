@@ -4,7 +4,7 @@ const read=(path)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const app=read("apps/mobile/App.tsx");
 const dashboard=read("apps/mobile/src/parent-dashboard.tsx");
 const model=read("apps/mobile/src/parent-home-model.ts");
-const tests=read("apps/mobile/src/parent-home-model.test.ts");
+const tests=read("scripts/test-parent-home-model.test.ts");
 const locale=read("packages/localization/src/index.ts");
 const prev=read("scripts/verify-parent-experience-phase1.mjs");
 const docs=read("docs/PARENT-EXPERIENCE-PHASES.md");

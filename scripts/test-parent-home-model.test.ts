@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildParentHomeView, kabulCivilDay, weekdayForSchoolDate } from "./parent-home-model.js";
-import type { FeeInvoiceViewPayload, LearnerAcademicPayload } from "./api.js";
+import { buildParentHomeView, kabulCivilDay, weekdayForSchoolDate } from "../apps/mobile/src/parent-home-model.js";
+import type { FeeInvoiceViewPayload, LearnerAcademicPayload } from "../apps/mobile/src/api.js";
 
 const base = () => ({
   classId: "class-a", todayDate: "2026-10-14",
