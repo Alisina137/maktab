@@ -59,6 +59,7 @@ export type ParentInboxTarget =
   | { section: "HOMEWORK"; homeworkId: string }
   | { section: "RESULTS"; examId: string }
   | { section: "FEES"; studentId: string | null }
+  | { section: "ATTENDANCE"; date: string | null }
   | { section: "HOME" };
 
 export function parentInboxTarget(notification: ParentNotification): ParentInboxTarget | null {
@@ -80,6 +81,11 @@ export function parentInboxTarget(notification: ParentNotification): ParentInbox
     const studentId = /^\/parent\/children\/([0-9a-f-]{36})\/fees$/i.exec(url)?.[1];
     return { section: "FEES", studentId: studentId && uuid.test(studentId) ? studentId : null };
   }
+  if (destination === "PARENT_ATTENDANCE") {
+    const date = notification.metadata.date;
+    return { section: "ATTENDANCE",
+      date: typeof date === "string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) ? date : null };
+  }
   if (destination === "PARENT_HOME") return { section: "HOME" };
   return null;
 }
@@ -92,6 +98,11 @@ export function authorizedNotificationChild(
   const linked = children.map(child => child.student);
   if (target.section === "FEES") {
     return linked.some(student => student.id === target.studentId) ? target.studentId : null;
+  }
+  if (target.section === "ATTENDANCE") {
+    const id = metadata.studentId;
+    return typeof id === "string" && linked.some(student => student.id === id)
+      ? id : null;
   }
   if (target.section === "HOMEWORK") {
     const id = metadata.classId;
