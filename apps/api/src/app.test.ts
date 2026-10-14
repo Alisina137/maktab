@@ -6610,3 +6610,50 @@ test("Phase 6 Accounts: bulk bounds, unknown fields, escaped search and no parti
   assert.ok(after.json<{ users: Array<{ id: string }> }>().users.some(u => u.id === first));
   assert.ok(after.json<{ users: Array<{ id: string }> }>().users.some(u => u.id === second));
 });
+
+
+test("Pilot Phase 2 coverage endpoints require a school admin and validate bounded issue pagination", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolA = await provisionSchool(app, "PILOT-P2-A");
+  const schoolB = await provisionSchool(app, "PILOT-P2-B");
+  const tokenA = await bootstrapAdmin(app, schoolA);
+  const tokenB = await bootstrapAdmin(app, schoolB);
+  const a = { authorization: "Bearer " + tokenA };
+  const b = { authorization: "Bearer " + tokenB };
+
+  const guest = await app.inject({ method: "GET", url: "/v1/admin/pilot/readiness/advanced" });
+  assert.equal(guest.statusCode, 401);
+
+  const resultA = await app.inject({ method: "GET", url: "/v1/admin/pilot/readiness/advanced", headers: a });
+  assert.equal(resultA.statusCode, 200, resultA.body);
+  const readiness = resultA.json<{ ready: boolean; metrics: Array<{
+    key: string; percentage: number | null; status: string; total: number
+  }> }>();
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.metrics.find((m) => m.key === "teaching")?.percentage, null);
+  assert.equal(readiness.metrics.find((m) => m.key === "family_links")?.status, "not_applicable");
+
+  const resultB = await app.inject({ method: "GET", url: "/v1/admin/pilot/readiness/advanced", headers: b });
+  assert.equal(resultB.statusCode, 200);
+  const allowed = await app.inject({
+    method: "GET", url: "/v1/admin/pilot/readiness/issues?metric=teaching&limit=1&offset=0", headers: a
+  });
+  assert.equal(allowed.statusCode, 200, allowed.body);
+  assert.deepEqual(allowed.json<{ rows: unknown[] }>().rows, []);
+  assert.equal(
+    (await app.inject({ method: "GET", url: "/v1/admin/pilot/readiness/issues?metric=teaching" })).statusCode,
+    401
+  );
+
+  for (const params of [
+    "metric=wrong", "metric=teaching&limit=51", "metric=family_links&limit=0",
+    "metric=teaching&offset=-1", "metric=timetable&offset=1000001", "metric=teaching&unexpected=1"
+  ]) {
+    const invalid = await app.inject({
+      method: "GET", url: "/v1/admin/pilot/readiness/issues?" + params, headers: a
+    });
+    assert.equal(invalid.statusCode, 400, params + ": " + invalid.body);
+  }
+});
