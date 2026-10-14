@@ -2,7 +2,7 @@ import type { ParentNotification } from "./api";
 
 export type NotificationDestination =
   | "PARENT_ANNOUNCEMENTS" | "PARENT_HOMEWORK" | "PARENT_RESULTS"
-  | "PARENT_HOME" | "PARENT_FEES" | "STUDENT_ANNOUNCEMENTS" | "STUDENT_HOMEWORK"
+  | "PARENT_HOME" | "PARENT_ATTENDANCE" | "PARENT_FEES" | "STUDENT_ANNOUNCEMENTS" | "STUDENT_HOMEWORK"
   | "STUDENT_RESULTS" | "STUDENT_HOME" | "TEACHER_ANNOUNCEMENTS"
   | "TEACHER_HOMEWORK" | "TEACHER_GRADES" | "TEACHER_TODAY";
 
@@ -26,7 +26,7 @@ export function notificationDestination(
       : role === "STUDENT" ? "STUDENT_RESULTS" : "TEACHER_GRADES";
   }
   if (type.startsWith("ATTENDANCE_")) {
-    return role === "PARENT" ? "PARENT_HOME"
+    return role === "PARENT" ? "PARENT_ATTENDANCE"
       : role === "STUDENT" ? "STUDENT_HOME" : "TEACHER_TODAY";
   }
   if (role === "PARENT" && (type === "FEE_DUE" || type === "FEE_OVERDUE") &&
