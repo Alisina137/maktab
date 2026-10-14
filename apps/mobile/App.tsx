@@ -63,6 +63,10 @@ import { initialParentResources, loadingParentChildResources,
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
 import { ParentAcademicHomework, ParentAcademicResults, ParentAcademicTimetable } from "./src/parent-academics";
 import { ParentAttendanceContent } from "./src/parent-attendance";
+import {
+  ParentFeesPanel, ParentProfilePanel, ParentSchoolPanel, ParentPreferencesPanel
+} from "./src/parent-more";
+import { parentPasswordValidation, type ParentMoreTab } from "./src/parent-more-model";
 import { ParentAnnouncementsInbox, ParentNotificationsContent } from "./src/parent-inbox";
 import { authorizedNotificationChild, parentInboxTarget } from "./src/parent-inbox-model";
 import { StudentDashboard } from "./src/student-dashboard";
@@ -71,11 +75,7 @@ import { StudentHomeworkContent } from "./src/student-homework";
 import { StudentResultsContent } from "./src/student-results";
 import { StudentCommunicationContent, type StudentCommunicationTab } from "./src/student-communication";
 import { StudentBottomNavigation, type StudentTab } from "./src/student-navigation";
-import {
-  ParentBottomNavigation,
-  ParentMoreAcademicContent,
-  type ParentTab
-} from "./src/parent-navigation";
+import { ParentBottomNavigation, type ParentTab } from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession, subscribeToPushOpens } from "./src/push";
 import { notificationDestination } from "./src/notification-destination";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
@@ -204,6 +204,7 @@ function AppContent() {
   const [parentTab, setParentTab] = useState<ParentTab>("HOME");
   const [parentAcademicsTab, setParentAcademicsTab] = useState<ParentAcademicsTab>("HOMEWORK");
   const [parentInboxTab, setParentInboxTab] = useState<ParentInboxTab>("ANNOUNCEMENTS");
+  const [parentMoreTab, setParentMoreTab] = useState<ParentMoreTab>("FEES");
   const [parentInboxFocusedAnnouncementId, setParentInboxFocusedAnnouncementId] = useState<string | null>(null);
   const [parentInboxFocusedNotificationId, setParentInboxFocusedNotificationId] = useState<string | null>(null);
   const [parentFocusedHomeworkId, setParentFocusedHomeworkId] = useState<string | null>(null);
@@ -339,6 +340,7 @@ function AppContent() {
       setParentTab("HOME");
       setParentAcademicsTab("HOMEWORK");
       setParentInboxTab("ANNOUNCEMENTS");
+      setParentMoreTab("FEES");
     }
     if (session?.user.role === "TEACHER") setTeacherTab("TODAY");
   }, [session?.user.id]);
@@ -1684,7 +1686,7 @@ function AppContent() {
       setParentAcademicsTab("RESULTS");
       setParentFocusedExamId(target.examId);
     } else if (target.section === "FEES") {
-      setParentTab("MORE");
+      setParentTab("MORE"); setParentMoreTab("FEES");
     } else if (target.section === "ATTENDANCE") {
       setParentTab("ATTENDANCE");
       setParentFocusedAttendanceDate(target.date);
@@ -1720,7 +1722,7 @@ function AppContent() {
       setParentTab("ACADEMICS"); setParentAcademicsTab("HOMEWORK");
     } else if (destination === "PARENT_RESULTS") {
       setParentTab("ACADEMICS"); setParentAcademicsTab("RESULTS");
-    } else if (destination === "PARENT_FEES") setParentTab("MORE");
+    } else if (destination === "PARENT_FEES") { setParentTab("MORE"); setParentMoreTab("FEES"); }
     else if (destination === "PARENT_HOME") setParentTab("HOME");
     else if (destination === "STUDENT_ANNOUNCEMENTS") {
       setStudentDetailReturnScreen("home");
@@ -1825,6 +1827,7 @@ function AppContent() {
       setParentTab("HOME");
       setParentAcademicsTab("HOMEWORK");
       setParentInboxTab("ANNOUNCEMENTS");
+      setParentMoreTab("FEES");
       pendingParentNotificationRef.current = null;
       resetParentNotificationFocus();
       setParentHome(null);
@@ -1864,6 +1867,35 @@ function AppContent() {
       setUsername("");
       setScreen("role");
       setBusy(false);
+    }
+  }
+
+  async function changeParentAccountPassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const active = sessionRef.current;
+    const activeSchool = schoolRef.current;
+    if (!active || active.user.role !== "PARENT" || active.user.status !== "ACTIVE" ||
+      active.mustChangePassword || !activeSchool || screen !== "home" ||
+      parentPasswordValidation(currentPassword, newPassword, newPassword)) return false;
+    try {
+      const changed = await api.changeParentPassword(
+        active.accessToken, currentPassword, newPassword
+      );
+      // Refuse to install another account's session when logout/switch happened during POST.
+      if (sessionRef.current?.user.id !== active.user.id ||
+          sessionRef.current?.user.schoolId !== active.user.schoolId ||
+          sessionRef.current?.user.role !== "PARENT") return false;
+      sessionRef.current = changed;
+      setSession(changed);
+      await saveStoredSession({ auth: changed, school: activeSchool }).catch(() => {
+        // In-memory session stays authorized. Next launch may need login if storage is unavailable.
+      });
+      return true;
+    } catch (cause) {
+      if (cause instanceof ApiRequestError && [
+        "account_suspended", "session_invalid", "school_service_unavailable",
+        "password_change_required"
+      ].includes(cause.code ?? "")) showCause(cause);
+      return false;
     }
   }
 
@@ -1948,7 +1980,7 @@ function AppContent() {
         setParentTab("ACADEMICS"); setParentAcademicsTab("HOMEWORK"); break;
       case "ACADEMICS_RESULTS":
         setParentTab("ACADEMICS"); setParentAcademicsTab("RESULTS"); break;
-      case "MORE_FEES": setParentTab("MORE"); break;
+      case "MORE_FEES": setParentTab("MORE"); setParentMoreTab("FEES"); break;
       case "INBOX_ANNOUNCEMENTS":
         setParentTab("INBOX"); setParentInboxTab("ANNOUNCEMENTS"); break;
       case "INBOX_NOTIFICATIONS":
@@ -2751,31 +2783,52 @@ function AppContent() {
                     ) : null}
                   </View>
                 </View>
-                {selectedChild ? (
-                  <>
-                    <ParentMoreAcademicContent
-                      section="FEES"
-                      learning={parentLearning}
-                      fees={parentFees}
-                      communicationReady={parentCommunicationReady}
-                      locale={locale}
-                      textDirection={textDirection}
+                <ParentSectionTabs
+                  locale={locale}
+                  selected={parentMoreTab}
+                  onSelect={(tab) => setParentMoreTab(tab as ParentMoreTab)}
+                  tabs={[
+                    { key: "FEES", label: "parent.moreFees" },
+                    { key: "PROFILE", label: "parent.moreProfile" },
+                    { key: "SCHOOL", label: "parent.moreSchool" },
+                    { key: "PREFERENCES", label: "parent.morePreferences" }
+                  ]}
+                />
+                {parentMoreTab === "FEES" ? (
+                  selectedChild ? (
+                    <ParentFeesPanel
+                      key={session.user.id + ":" + selectedChild.student.id}
+                      fees={parentDataChildId === selectedChildId ? parentFees : []}
+                      status={parentDataChildId === selectedChildId
+                        ? parentResourceStatus.fees : "loading"}
+                      locale={locale} onRetry={() => retryParentResource("fees")}
                     />
-                  </>
+                  ) : (
+                    <View style={styles.emptyCard}>
+                      <Text style={[styles.subtitle, textDirection]}>
+                        {translate(locale, "parent.noChildren")}
+                      </Text>
+                    </View>
+                  )
+                ) : parentMoreTab === "PROFILE" ? (
+                  <ParentProfilePanel
+                    key={session.user.id + ":profile"}
+                    home={parentHome} username={session.user.username} locale={locale}
+                    onRefresh={() => void loadParentHome(session.accessToken)}
+                  />
+                ) : parentMoreTab === "SCHOOL" ? (
+                  <ParentSchoolPanel
+                    key={session.user.id + ":school"}
+                    school={school} contact={adminContact} locale={locale}
+                  />
                 ) : (
-                  <View style={styles.emptyCard}>
-                    <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
-                  </View>
+                  <ParentPreferencesPanel
+                    key={session.user.id + ":preferences"}
+                    locale={locale} onSelectLocale={chooseLocale}
+                    onChangePassword={changeParentAccountPassword}
+                    onLogout={() => void logout()}
+                  />
                 )}
-
-                <AdminContactCard contact={adminContact} locale={locale} />
-
-                <Pressable
-                  style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-                  onPress={() => void logout()}
-                >
-                  <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
-                </Pressable>
               </>
             ) : null}
           </View>
