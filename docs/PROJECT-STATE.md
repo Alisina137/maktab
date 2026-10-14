@@ -1604,3 +1604,16 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - API and schema unchanged apart from optional range arguments in the mobile API client; **no database migration**.
 - Automated verification: `pnpm verify:parent:phase3`, integrated into `pnpm verify`. Device/TalkBack/offline/multi-child acceptance must still be run; production Step 20 remains NO-GO until evidenced.
 - Phase 4 next: deeper Academics homework/result/timetable organization, filtering and details. Other remaining parent phases: Inbox (5), Account/Finance (6), and device/regression acceptance (7).
+
+
+## Parent Experience — Phase 4: Parent Academics (2026-10-14)
+
+- Parent Academics now provides three enhanced child-scoped views: Homework, Published Results and Timetable.
+- Homework: subject/search and due/status filters, expandable instructions and attachment controls; excludes drafts/archived, and does not claim submission completion without a submission source.
+- Results: released/archived exam grouping, exam/subject filters, expandable subject scores, exam dates and teacher notes; totals reflect only the currently shown published marks.
+- Timetable: actual weekly day selector (Saturday-first), Whole Week/subject filters, class periods in scheduled time order, real teacher names. No invented future exam timetable.
+- The existing backend `GET /v1/parent/children/:studentId/learning` and timetable endpoints remain authoritative for parent-child, school and publication access. Phase 4 does not add new API, mutations or database migrations.
+- Existing child/role/session request-generation guards remain. The UI also gates resources by selected-child identity, resets child-specific filter state on component remount and offers targeted retry when learning or timetable fails independently.
+- New copy in English, Dari, Pashto. New tests `scripts/test-parent-academics-model.test.ts` and guard `pnpm verify:parent:phase4` (CI Linux + Windows, monorepo `pnpm verify`).
+- Android multi-child, accessibility, offline/retry, date boundary, and published-versus-draft visibility must be accepted by a human before production Step 20 can be GO.
+- Next Parent work: Phase 5 Inbox search/filter/pagination/deep links, Phase 6 Account/Finance and Phase 7 device/full regression acceptance.
