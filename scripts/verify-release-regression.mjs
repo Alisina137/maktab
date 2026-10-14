@@ -89,7 +89,7 @@ assert.ok(css.includes("@media (max-width:"), "Responsive breakpoint missing");
 assert.ok(css.includes("prefers-reduced-motion"), "Reduced motion CSS behavior missing");
 assert.ok(mobile.includes("accessibilityLabel"), "Android accessibility labels missing");
 assert.ok(mobile.includes("AccessibilityInfo"), "Android accessibility support missing");
-assert.ok(pilot.includes('readiness.checks.filter((check) => check.passed).length'),
+assert.ok((pilot.includes('readiness.checks.filter((check) => check.passed).length') || pilot.includes('currentReadiness.checks.filter((check) => check.passed).length')),
   "Onboarding progress must be computed from the server-side readiness checks");
 assert.ok(pilot.includes('aria-label={t("Onboarding progress")}'),
   "Onboarding progress meter requires an accessible name");
