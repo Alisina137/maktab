@@ -39,6 +39,7 @@ for(const invariant of [
   'useState<HomeworkView>("ALL")', 'useState<string | null>(null)',
   'accessibilityState={{ expanded }}', 'accessibilityState={{ selected: selected === option.key }}',
   'shareLearningFile(accessToken', 'item.homework.attachmentUrl?.startsWith("https://")',
+  'schoolToday || kabulCivilDay(new Date().toISOString())',
   'formatLocalizedDate(', 'formatLocalizedTimeRange(', 'formatLocalizedNumber(',
   'getDirection(locale)', 'onPress={onRetry}', 'academicWeekday(', 'onPress={() => setExpandedId(',
   'accessibilityLabel={translate(locale, "parent.academicRefresh")}',
