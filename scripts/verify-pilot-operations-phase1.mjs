@@ -29,7 +29,7 @@ assert.ok(src.includes('aria-current={section === item.section ? "page" : undefi
   "Active tab must be semantically selected and scrolled into view");
 assert.ok(src.includes("requestVersion.current") && src.includes("version !== requestVersion.current"),
   "Stale requests must not overwrite selected session data");
-assert.ok(src.includes("readiness.checks.filter((check) => check.passed).length") &&
+assert.ok((src.includes("readiness.checks.filter((check) => check.passed).length") || src.includes("currentReadiness.checks.filter((check) => check.passed).length")) &&
   src.includes('aria-label={t("Onboarding progress")}'),
   "Automated progress must derive from actual server readiness data");
 assert.ok(src.includes("pendingChecks.slice(0, 4)") && src.includes("CHECK_DESTINATIONS[check.key]"),
