@@ -42,10 +42,31 @@ Source of truth for currently implemented behavior: the main-branch application 
 4. Reset another account password and verify the same one-time credential panel displays. Verify self-reset, self-suspend and archived-account restrictions remain enforced.
 5. Check RTL, keyboard focus, screen readers, and responsive layouts on actual browsers. Run `pnpm verify` and check exact-commit Linux/Windows CI.
 
-## Future phases (not implemented in Phases 1–2)
-- **Phase 3 — Details:** account drawer and linked parent/child/teacher information; editing through canonical feature modules.
+## Phase 3 — Account details and related records (implemented)
+
+- **View details:** Every account row now opens a responsive side panel (RTL on Dari/Pashto, LTR on English) while retaining the directory's search, role, status, and scroll context. Dialog provides accessible title, Escape/close/backdrop dismissal, initial focus, keyboard focus containment, and focus restoration.
+- **Account identity:** Role/status badges, profile name and phone where the relevant school profile exists, username, creation date, last login, and first-login password setup state. Missing fields appear as unavailable instead of inferred.
+- **Parent:** Shows only student records linked by `student.parentUserId === selectedParent.id` with class, student code, academic year, and status. Links to the existing Families module.
+- **Student:** Joins the student login by `student.userId`; shows the linked student's class, code, year, and the parent named on that student record. Does not infer links from a shared surname or phone. Links to Families.
+- **Teacher:** Lazily fetches the existing school-admin-protected Academics overview and displays only the selected teacher's profile, subject/class/year teaching assignments, and Negaran assignments. Shows an explicit loading or failure state. Links to existing Teacher Profiles and Teacher Assignments modules, rather than adding duplicate editing APIs.
+- **Admin and staff:** Shows their school role/status and security metadata; the currently signed-in admin can open their existing profile page. Other admins and staff are not given an invented cross-user profile-editing endpoint.
+- **Contextual actions:** Existing password reset, suspend and reactivate operations are available inside details while preserving self/archived restrictions and Phase 2 one-time credential acknowledgment. Existing directory buttons continue to work.
+- **Scope and privacy:** No database migration or new API route. Family and academic overviews are fetched using existing school-scoped admin endpoints. No passwords, credential hashes, or tokens appear in account details. Teacher academic data is loaded only when opening a Teacher.
+- **Verification:** Added pure-data association regression tests to verify parent-child, student-parent and teacher assignment isolation. Source-level release guard covers dialog focus and RTL, existing canonical links, and translation parity.
+- **Deferred:** Per-account audit trail and password/suspension confirmation workflow (Phase 4), deep-linked edit forms and richer school-staff profile administration where product APIs do not yet provide them. A passing CI suite is not a substitute for manual keyboard/TalkBack/browser RTL smoke tests.
+
+### Manual acceptance for Phase 3
+
+1. From a filtered account directory, select View details on each role; confirm the drawer displays the correct name, role and status and closes without clearing filters.
+2. Inspect a Parent with two children, a Student linked to another parent, and two different Teachers; verify **no** unrelated student/assignment appears in the selected person's drawer.
+3. Verify teacher-profile and Negaran information, including historical year, class and subject, and missing-profile/loading/error states.
+4. Open the canonical Families, Teacher Profiles/Assignments, and self Admin Profile pages from account details; confirm they are school-scoped and editable only in those modules.
+5. Try context actions on active, suspended, archived and current-admin accounts. Password reset must close details before displaying the concealed one-time credential.
+6. Test Escape, Tab/Shift+Tab trap, backdrop click, focus restore, 200% zoom, narrow screens, and three-language RTL/LTR. Check `pnpm verify` plus GitHub CI at the exact final SHA.
+
+## Future phases (not implemented in Phases 1–3)
 - **Phase 4 — Security:** confirmation dialogs, revoked sessions on suspension, suspension reasons, account audit drill-down and appropriate security handling.
 - **Phase 5 — Scale:** server-side search/pagination/sorting, optional safely scoped bulk account operations.
 - **Phase 6 — Regression:** expanded end-to-end role, tenant, network, locale, accessibility and responsive verification.
 
-No new database schema changes or provisioning API changes were introduced in Phase 1.
+No new database migrations or provisioning API changes were introduced in Phases 1–3.
