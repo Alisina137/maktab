@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, friendlyAdminError, type User } from "../../admin-client";
 import { adminFormat } from "../../admin-i18n";
 import { validateAccountCreation } from "../../account-create-rules";
 import { AccountTemporaryCredentialPanel } from "../../account-temporary-credential";
+import { AdminAccountDetailsDrawer } from "../../admin-account-details-drawer";
+import type { AccountFamilyOverview } from "../../account-details-data";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 
@@ -26,21 +28,7 @@ function needsActivation(user: User): boolean {
   return user.status === "INVITED" || (user.status === "ACTIVE" && user.mustChangePassword);
 }
 
-type FamilyStudent = {
-  student: {
-    id: string;
-    userId: string | null;
-    studentCode: string;
-    fullName: string;
-    status: "ACTIVE" | "WITHDRAWN";
-  };
-  classSection: { code: string; name: string };
-  academicYear: { name: string };
-};
-
-type FamilyOverview = {
-  students: FamilyStudent[];
-};
+type FamilyStudent = AccountFamilyOverview["students"][number];
 
 export default function AccountsPage() {
   const { stored, locale, t, showToast } = useAdminWorkspace();
@@ -50,6 +38,9 @@ export default function AccountsPage() {
   const [parentFullName, setParentFullName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [familyStudents, setFamilyStudents] = useState<FamilyStudent[]>([]);
+  const [familyOverview, setFamilyOverview] = useState<AccountFamilyOverview | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const closeAccountDetails = useCallback(() => setSelectedAccountId(null), []);
   const [studentRecordId, setStudentRecordId] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [creationAttempted, setCreationAttempted] = useState(false);
@@ -72,11 +63,12 @@ export default function AccountsPage() {
         adminApi<{ users: User[] }>("/v1/admin/users", {
           headers: { Authorization: `Bearer ${stored.session.accessToken}` }
         }),
-        adminApi<FamilyOverview>("/v1/admin/families", {
+        adminApi<AccountFamilyOverview>("/v1/admin/families", {
           headers: { Authorization: `Bearer ${stored.session.accessToken}` }
         })
       ]);
       setUsers(accountsResult.users);
+      setFamilyOverview(familyResult);
       setFamilyStudents(familyResult.students);
       setStudentRecordId((current) => {
         const available = familyResult.students.filter(
@@ -193,6 +185,7 @@ export default function AccountsPage() {
         current.map((item) => item.id === result.user.id ? { ...item, ...result.user, profile: item.profile } : item)
       );
       if (result.temporaryPassword) {
+        setSelectedAccountId(null);
         setCredential({ username: result.user.username, password: result.temporaryPassword });
         setView("DIRECTORY");
       }
@@ -231,6 +224,7 @@ export default function AccountsPage() {
   const showNameIssue = creationAttempted || parentFullName.trim().length > 0;
   const showPhoneIssue = creationAttempted || parentPhone.length > 0;
 
+  const selectedAccount = selectedAccountId ? users.find((user) => user.id === selectedAccountId) ?? null : null;
   const staffCount = users.filter((u) => u.role === "SCHOOL_ADMIN" || u.role === "SCHOOL_STAFF").length;
   const counts: Record<AccountGroup, number> = {
     ALL: users.length,
@@ -292,6 +286,21 @@ export default function AccountsPage() {
 
   return (
     <section className="admin-dashboard-section admin-page-enter">
+      {selectedAccount && !credential ? (
+        <AdminAccountDetailsDrawer
+          key={selectedAccount.id}
+          user={selectedAccount}
+          currentAdminId={stored.session.user.id}
+          accessToken={stored.session.accessToken}
+          families={familyOverview}
+          locale={locale}
+          t={t}
+          busy={busy}
+          onClose={closeAccountDetails}
+          onAction={(user, next) => void action(user, next)}
+        />
+      ) : null}
+
       {credential ? (
         <AccountTemporaryCredentialPanel
           key={credential.username}
@@ -558,6 +567,23 @@ export default function AccountsPage() {
                   {isCurrentAdmin ? <span className="admin-current-account-badge">{t("Current administrator")}</span> : null}
                 </div>
                 <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="admin-account-view-details"
+                    onClick={() => {
+                      if (credential) {
+                        showToast({
+                          kind: "error",
+                          title: t("Account details"),
+                          message: t("Close the temporary credential panel before continuing.")
+                        });
+                        return;
+                      }
+                      setSelectedAccountId(user.id);
+                    }}
+                  >
+                    {t("View details")}
+                  </button>
                   <button
                     type="button"
                     onClick={() => void action(user, "reset-password")}
