@@ -17,7 +17,7 @@ for (const item of [
   '<ParentChildSwitcher', 'parentTab === "HOME"', 'parentTab === "ACADEMICS"',
   'parentTab === "ATTENDANCE"', 'parentTab === "INBOX"', 'parentTab === "MORE"',
   'parentAcademicsTab === "HOMEWORK"', 'parentAcademicsTab === "RESULTS"',
-  'parentAcademicsTab === "TIMETABLE"', 'parentInboxTab === "ANNOUNCEMENTS"',
+  'key: "TIMETABLE"', 'parentInboxTab === "ANNOUNCEMENTS"',
   'parentInboxTab === "NOTIFICATIONS"', 'parentMoreTab === "FEES"',
   'parentMoreTab === "PROFILE"', 'parentMoreTab === "SCHOOL"',
   '<ParentFeesPanel', '<ParentPreferencesPanel',
