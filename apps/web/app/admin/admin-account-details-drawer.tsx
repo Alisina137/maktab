@@ -41,6 +41,8 @@ type Props = {
   currentAdminId: string;
   accessToken: string;
   families: AccountFamilyOverview | null;
+  familiesLoading: boolean;
+  familiesError: string;
   locale: AdminLocale;
   t: (value: string) => string;
   busy: boolean;
@@ -72,7 +74,7 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
 }
 
 export function AdminAccountDetailsDrawer({
-  user, currentAdminId, accessToken, families, locale, t, busy, directoryUsers, onAction, onClose
+  user, currentAdminId, accessToken, families, familiesLoading, familiesError, locale, t, busy, directoryUsers, onAction, onClose
 }: Props) {
   const [audit, setAudit] = useState<AccountAuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(true);
@@ -219,7 +221,9 @@ export function AdminAccountDetailsDrawer({
           {user.role === "PARENT" ? (
             <section className="account-detail-section">
               <h3>{t("Linked children")}</h3>
-              {family.children.length ? (
+              {familiesLoading ? <p role="status" className="admin-copy">{t("Loading student records…")}</p> : null}
+              {familiesError ? <p role="alert" className="admin-error">{familiesError}</p> : null}
+              {!familiesLoading && !familiesError && family.children.length ? (
                 <div className="account-detail-records">
                   {family.children.map((row) => (
                     <div className="account-detail-record" key={row.student.id}>
@@ -230,7 +234,7 @@ export function AdminAccountDetailsDrawer({
                     </div>
                   ))}
                 </div>
-              ) : <p className="admin-copy">{t("No linked students are recorded.")}</p>}
+              ) : !familiesLoading && !familiesError ? <p className="admin-copy">{t("No linked students are recorded.")}</p> : null}
               <Link className="admin-secondary account-detail-link" href="/admin/families">{t("Manage families")}</Link>
             </section>
           ) : null}
@@ -238,7 +242,9 @@ export function AdminAccountDetailsDrawer({
           {user.role === "STUDENT" ? (
             <section className="account-detail-section">
               <h3>{t("Student record")}</h3>
-              {family.student ? (
+              {familiesLoading ? <p role="status" className="admin-copy">{t("Loading student records…")}</p> : null}
+              {familiesError ? <p role="alert" className="admin-error">{familiesError}</p> : null}
+              {!familiesLoading && !familiesError && family.student ? (
                 <dl className="account-detail-facts">
                   <Fact label={t("Full name")} value={family.student.student.fullName} />
                   <Fact label={t("Student code")} value={family.student.student.studentCode} />
@@ -247,7 +253,7 @@ export function AdminAccountDetailsDrawer({
                   <Fact label={t("Parent")} value={family.parent?.profile.fullName} />
                   <Fact label={t("Parent username")} value={family.parent?.user.username} />
                 </dl>
-              ) : <p className="admin-copy">{t("No linked student record was found.")}</p>}
+              ) : !familiesLoading && !familiesError ? <p className="admin-copy">{t("No linked student record was found.")}</p> : null}
               <Link className="admin-secondary account-detail-link" href="/admin/families">{t("Manage families")}</Link>
             </section>
           ) : null}
