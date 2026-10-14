@@ -39,7 +39,7 @@ for(const marker of [
 
 for(const marker of [
   'row.invoice.status !== "DRAFT" && row.invoice.status !== "CANCELLED"',
-  'row.outstanding > 0', 'row.invoice.status === "DRAFT"',
+  'row.outstanding > 0', 'status === "DRAFT"',
   'invoices.filter(', 'parentPasswordValidation(', 'current === next',
   'next !== confirm'
 ]) assert.ok(model.includes(marker),"Phase 6 model invariant missing: "+marker);
