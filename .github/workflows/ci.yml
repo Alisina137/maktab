@@ -34,6 +34,9 @@ jobs:
       - name: Step 20 release evidence and static gates
         run: pnpm verify:release
 
+      - name: Admin Accounts Phase 6 locale, a11y and network safeguards
+        run: pnpm verify:accounts
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -69,6 +72,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Release evidence and parent locale/resilience (Windows)
         run: |
+          pnpm verify:accounts
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience
