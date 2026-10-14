@@ -119,6 +119,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [recipientError, setRecipientError] = useState("");
   const [recipientRetryKey, setRecipientRetryKey] = useState(0);
   const recipientGeneration = useRef(0);
+  const [announcementClock, setAnnouncementClock] = useState(() => Date.now());
   const [announcementSearch, setAnnouncementSearch] = useState("");
   const [announcementStatusFilter, setAnnouncementStatusFilter] = useState<AnnouncementStatusFilter>("ALL");
   const [announcementAudienceFilter, setAnnouncementAudienceFilter] = useState<AnnouncementAudienceFilter>("ALL");
@@ -206,6 +207,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     }, 300);
     return () => { window.clearTimeout(timer); recipientGeneration.current += 1; };
   }, [accessToken, scope, targetClassId, targetRole, locale, recipientRetryKey]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAnnouncementClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE);
@@ -498,9 +504,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const announcementMatches = useMemo(() => findAnnouncements(
     visibleOverview?.announcements ?? [],
     { search: announcementSearch, status: announcementStatusFilter,
-      audience: announcementAudienceFilter, classId: announcementClassFilter }, Date.now()
+      audience: announcementAudienceFilter, classId: announcementClassFilter }, announcementClock
   ), [visibleOverview, announcementSearch, announcementStatusFilter,
-      announcementAudienceFilter, announcementClassFilter]);
+      announcementAudienceFilter, announcementClassFilter, announcementClock]);
   const announcementPage = pageAnnouncements(announcementMatches, announcementLimit);
   const classLabel = (id: string | null) => id
     ? visibleAcademics?.classes.find(row => row.id === id)?.name ?? t("Unknown class")
@@ -854,7 +860,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         <div className="academic-rows communication-announcement-items">
           {announcementPage.rows.map(item => {
             const open = expandedAnnouncementId === item.id;
-            const status = announcementStatus(item,Date.now());
+            const status = announcementStatus(item, announcementClock);
             return (
               <div className="academic-row communication-announcement-row" key={item.id}>
                 <div className="communication-announcement-row-head">
