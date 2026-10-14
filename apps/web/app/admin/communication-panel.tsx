@@ -306,12 +306,19 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setError("");
     setNotice("");
     try {
+      if (editPublishAt && !schoolTimezone) {
+        throw new Error(t("School timezone unavailable. Retry recipient preview before scheduling."));
+      }
+      if (editPublishAt &&
+          Date.parse(schoolLocalTimeToIso(editPublishAt, schoolTimezone!)) <= Date.now()) {
+        throw new Error(t("Scheduled publication must be in the future."));
+      }
       await request(accessToken, `/v1/admin/announcements/${editingNotice.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           title: editTitle.trim(), content: editMessage.trim(),
           ...(editPublishAt ? { publishAt: schoolLocalTimeToIso(
-            editPublishAt, schoolTimezone ?? "Asia/Kabul") } : {})
+            editPublishAt, schoolTimezone!) } : {})
         })
       });
       if (accessRef.current !== accessToken) return;
@@ -484,6 +491,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     visibleOverview?.announcements ?? [], new Date()
   ), [visibleOverview]);
 
+  const announcementDate = (instant: string) => schoolTimezone
+    ? formatAdminHijriDateTime(locale, instant, schoolTimezone)
+    : `${formatAdminHijriDateTime(locale, instant, "UTC")} UTC`;
   const announcementMatches = useMemo(() => findAnnouncements(
     visibleOverview?.announcements ?? [],
     { search: announcementSearch, status: announcementStatusFilter,
@@ -775,7 +785,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <AdminHijriDatePicker locale={locale} includeTime
                   value={editPublishAt} onChange={setEditPublishAt} />
               </label>
-              <button className="admin-primary" disabled={busy}>{t("Save changes")}</button>
+              <p className="admin-copy">{t("Leave the date blank to keep the existing scheduled time.")}</p>
+              <p className="admin-copy">{t("School timezone")}: {schoolTimezone ?? t("Checking school timezone…")}</p>
+              <button className="admin-primary" disabled={busy || (!!editPublishAt && !schoolTimezone)}>
+                {t("Save changes")}
+              </button>
               <button type="button" className="admin-secondary"
                 onClick={() => setEditingNotice(null)}>{t("Cancel")}</button>
             </form>
@@ -847,7 +861,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                     <span>{t(item.audienceScope)}{item.audienceRole ?
                       ` · ${t(item.audienceRole)}` : ""}{item.classId ?
                       ` · ${classLabel(item.classId)}` : ""}</span>
-                    <span>{formatAdminHijriDateTime(locale,item.publishAt,schoolTimezone ?? "Asia/Kabul")}
+                    <span>{announcementDate(item.publishAt)}
                       {" · "}{t(status)}</span>
                   </div>
                   <span className={`communication-announcement-status status-${status.toLowerCase()}`}>{t(status)}</span>
@@ -861,7 +875,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                       {item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}
                       {item.classId ? ` · ${classLabel(item.classId)}` : ""}</dd></div>
                     <div><dt>{t("Publication")}</dt>
-                      <dd>{formatAdminHijriDateTime(locale,item.publishAt,schoolTimezone ?? "Asia/Kabul")}</dd></div>
+                      <dd>{announcementDate(item.publishAt)}</dd></div>
                     <div><dt>{t("Status")}</dt><dd>{t(status)}</dd></div>
                     <div><dt>{t("Reference")}</dt><dd>{item.id}</dd></div>
                   </dl>
