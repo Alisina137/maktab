@@ -111,6 +111,16 @@ export function authorizedNotificationChild(
     return linked.find(student => student.classId === id && student.id === selectedId)?.id ??
       linked.find(student => student.classId === id)?.id ?? null;
   }
+  if (target.section === "RESULTS") {
+    // Result publication is keyed to an exam/academic year, not an individual student.
+    // Prefer the already selected linked child in that year; never trust a raw
+    // notification-provided student ID as authorization.
+    const yearId = metadata.academicYearId;
+    if (typeof yearId === "string") {
+      return linked.find(student => student.id === selectedId && student.academicYearId === yearId)?.id ??
+        linked.find(student => student.academicYearId === yearId)?.id ?? null;
+    }
+  }
   if (target.section === "ANNOUNCEMENTS") {
     const id = metadata.classId;
     if (typeof id === "string") {
