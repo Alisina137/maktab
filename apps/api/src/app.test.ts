@@ -6914,3 +6914,131 @@ test("Pilot Phase 5 subscription health is read-only, school-scoped and matches 
     "SELECT status FROM subscriptions WHERE school_id=$1", [a]
   )).rows[0]?.status, "SUSPENDED");
 });
+
+test("Pilot Phase 6 launch evidence requires operator verification, blocks premature approval and scopes schools", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PHASE6-A");
+  const schoolB = await provisionSchool(app, "PHASE6-B");
+  const adminA = { authorization: `Bearer ${await bootstrapAdmin(app, schoolA)}` };
+  const adminB = { authorization: `Bearer ${await bootstrapAdmin(app, schoolB)}` };
+  const platform = { "x-platform-provisioning-key": provisioningKey };
+  const schoolLaunchUrl = "/v1/admin/pilot/launch";
+  const operatorBase = `/v1/platform/pilot/schools/${schoolA}`;
+
+  assert.equal((await app.inject({ method:"GET", url:schoolLaunchUrl })).statusCode, 401);
+  assert.equal((await app.inject({ method:"GET", url:operatorBase+"/launch", headers:adminA })).statusCode, 401);
+  assert.equal((await app.inject({ method:"PUT", url:schoolLaunchUrl+"/evidence",
+    headers:adminA, payload:{category:"DATABASE",reference:"x",note:"short"} })).statusCode, 400);
+
+  const created = await app.inject({
+    method:"PUT",url:schoolLaunchUrl+"/evidence",headers:adminA,
+    payload:{category:"DATABASE",reference:"internal-report-2026-10",note:"Neon staging migration check saved in operator vault"}
+  });
+  assert.equal(created.statusCode, 200,created.body);
+  assert.equal(created.json<{evidence:{status:string}}>().evidence.status,"SUBMITTED");
+  const sameSchool = await app.inject({method:"GET",url:schoolLaunchUrl,headers:adminA});
+  assert.equal(sameSchool.statusCode,200);
+  assert.equal(sameSchool.json<{verifiedCount:number;evidence:unknown[]}>().verifiedCount,0);
+  assert.equal(sameSchool.json<{verifiedCount:number;evidence:unknown[]}>().evidence.length,1);
+  const foreign = await app.inject({method:"GET",url:schoolLaunchUrl,headers:adminB});
+  assert.equal(foreign.statusCode,200);
+  assert.equal(foreign.json<{evidence:unknown[]}>().evidence.length,0);
+
+  const premature = await app.inject({
+    method:"POST",url:operatorBase+"/launch/decision",headers:platform,
+    payload:{status:"APPROVED",operatorLabel:"Ops reviewer",note:"Attempt before verified release checks"}
+  });
+  assert.equal(premature.statusCode,409,premature.body);
+  const wrongMethod = await app.inject({method:"PATCH",url:operatorBase+"/evidence/DATABASE",headers:adminA,
+    payload:{status:"VERIFIED",operatorLabel:"not operator",note:"Fake approval attempted"}});
+  assert.equal(wrongMethod.statusCode,401);
+
+  const verified = await app.inject({
+    method:"PATCH",url:operatorBase+"/evidence/DATABASE",headers:platform,
+    payload:{status:"VERIFIED",operatorLabel:"Ops reviewer",note:"Reviewed evidence in operator evidence storage"}
+  });
+  assert.equal(verified.statusCode,200,verified.body);
+  assert.equal(verified.json<{evidence:{status:string}}>().evidence.status,"VERIFIED");
+
+  const resubmit = await app.inject({
+    method:"PUT",url:schoolLaunchUrl+"/evidence",headers:adminA,
+    payload:{category:"DATABASE",reference:"internal-report-updated",note:"Replaced with newer database evidence reference"}
+  });
+  assert.equal(resubmit.statusCode,200,resubmit.body);
+  assert.equal(resubmit.json<{evidence:{status:string;reviewedAt:string|null}}>().evidence.status,"SUBMITTED");
+  assert.equal(resubmit.json<{evidence:{status:string;reviewedAt:string|null}}>().evidence.reviewedAt,null);
+  const again = await app.inject({method:"GET",url:schoolLaunchUrl,headers:adminA});
+  assert.equal(again.json<{verifiedCount:number}>().verifiedCount,0);
+
+  const rejection = await app.inject({
+    method:"PATCH",url:operatorBase+"/evidence/DATABASE",headers:platform,
+    payload:{status:"REJECTED",operatorLabel:"Ops reviewer",note:"Database connectivity evidence is incomplete"}
+  });
+  assert.equal(rejection.statusCode,200,rejection.body);
+  assert.equal(rejection.json<{evidence:{status:string}}>().evidence.status,"REJECTED");
+  assert.equal((await client.query<{count:string}>("SELECT count(*)::text AS count FROM pilot_launch_evidence WHERE school_id=$1",
+    [schoolA])).rows[0]?.count,"1");
+});
+
+test("Pilot Phase 6 school support tickets have school-only threads, privileged triage, pagination and suspended write exception", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PHASE6-SUP-A");
+  const schoolB = await provisionSchool(app, "PHASE6-SUP-B");
+  const adminA = { authorization: `Bearer ${await bootstrapAdmin(app, schoolA)}` };
+  const adminB = { authorization: `Bearer ${await bootstrapAdmin(app, schoolB)}` };
+  const platform = { "x-platform-provisioning-key": provisioningKey };
+  const base = "/v1/admin/pilot/support";
+  const request = await app.inject({method:"POST",url:base,headers:adminA,
+    payload:{subject:"Push notifications delayed",description:"Mobile pilot message delivery fails repeatedly",
+      category:"TECHNICAL",priority:"CRITICAL"}});
+  assert.equal(request.statusCode,201,request.body);
+  const id=request.json<{ticket:{id:string}}>().ticket.id;
+  assert.equal((await app.inject({method:"GET",url:base+"?limit=0",headers:adminA})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:base+"/"+id,headers:adminB})).statusCode,404);
+  assert.equal((await app.inject({method:"POST",url:base+"/"+id+"/replies",headers:adminB,
+    payload:{note:"Other school should not be able to reply."}})).statusCode,404);
+  const scoped=await app.inject({method:"GET",url:base,headers:adminB});
+  assert.equal(scoped.statusCode,200);
+  assert.equal(scoped.json<{tickets:unknown[]}>().tickets.length,0);
+
+  const operatorBase=`/v1/platform/pilot/schools/${schoolA}/support/${id}`;
+  assert.equal((await app.inject({method:"PATCH",url:operatorBase,headers:adminA,
+    payload:{status:"RESOLVED",operatorLabel:"Not platform",note:"Attempt unauthorized update"}})).statusCode,401);
+  const updated=await app.inject({method:"PATCH",url:operatorBase,headers:platform,
+    payload:{status:"IN_PROGRESS",operatorLabel:"Support operator",note:"Investigating Expo delivery and job logs"}});
+  assert.equal(updated.statusCode,200,updated.body);
+
+  const reply=await app.inject({method:"POST",url:base+"/"+id+"/replies",headers:adminA,
+    payload:{note:"Thank you; app screenshots are stored in our private ticket system."}});
+  assert.equal(reply.statusCode,200,reply.body);
+  const thread=await app.inject({method:"GET",url:base+"/"+id,headers:adminA});
+  assert.equal(thread.statusCode,200);
+  assert.equal(thread.json<{updates:unknown[]}>().updates.length,3);
+  assert.equal(thread.json<{ticket:{status:string}}>().ticket.status,"IN_PROGRESS");
+  const closure=await app.inject({method:"PATCH",url:operatorBase,headers:platform,
+    payload:{status:"CLOSED",operatorLabel:"Support operator",note:"Operator closed this ticket after triage"}});
+  assert.equal(closure.statusCode,200);
+  assert.equal((await app.inject({method:"POST",url:base+"/"+id+"/replies",headers:adminA,
+    payload:{note:"Another reply attempted"}})).statusCode,409);
+
+  const suspended=await app.inject({method:"PATCH",url:`/v1/platform/schools/${schoolA}/subscription`,
+    headers:platform,payload:{status:"SUSPENDED"}});
+  assert.equal(suspended.statusCode,200);
+  const more=await app.inject({method:"POST",url:base,headers:adminA,
+    payload:{subject:"Subscription help needed",description:"School billing requires platform assistance",
+      category:"BILLING",priority:"NORMAL"}});
+  assert.equal(more.statusCode,201,more.body);
+  const list=await app.inject({method:"GET",url:base+"?limit=1&offset=0",headers:adminA});
+  assert.equal(list.statusCode,200);
+  assert.equal(list.json<{tickets:unknown[];hasMore:boolean}>().tickets.length,1);
+  assert.equal(list.json<{tickets:unknown[];hasMore:boolean}>().hasMore,true);
+  assert.equal((await app.inject({method:"PUT",url:"/v1/admin/pilot/launch/evidence",headers:adminA,
+    payload:{category:"CROSS_ROLE",reference:"evidence-reference-001",
+      note:"Attempted after suspended status to verify blocked operational writes"}})).statusCode,403);
+
+  assert.equal((await client.query<{count:string}>(
+    "SELECT count(*)::text AS count FROM pilot_support_tickets WHERE school_id=$1",[schoolA]
+  )).rows[0]?.count,"2");
+});
