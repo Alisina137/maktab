@@ -108,6 +108,7 @@ export function createPilotLaunchStore(db: FoundationDatabase): PilotLaunchStore
           set: { reference: data.reference, note: data.note, submittedBy: userId,
             status: "SUBMITTED", reviewedBy: null, reviewNote: null, reviewedAt: null, updatedAt: new Date() }
         }).returning();
+        if (!row) throw new Error("Evidence insertion returned no row.");
         await invalidateLaunch(tx, schoolId, "Evidence was resubmitted after approval.");
         await audit(tx, schoolId, "pilot.evidence_submitted", "pilot_launch_evidence", row.id, userId,
           { category: data.category, status: "SUBMITTED" });
@@ -156,6 +157,7 @@ export function createPilotLaunchStore(db: FoundationDatabase): PilotLaunchStore
         const [ticket] = await tx.insert(pilotSupportTickets).values({
           id: randomUUID(), schoolId, createdBy: userId, ...data
         }).returning();
+        if (!ticket) throw new Error("Ticket insertion returned no row.");
         await tx.insert(pilotSupportUpdates).values({
           id: randomUUID(), ticketId: ticket.id, schoolId, authorKind: "SCHOOL",
           actorUserId: userId, note: "Ticket opened.", statusAfter: "OPEN"
@@ -226,6 +228,7 @@ export function createPilotLaunchStore(db: FoundationDatabase): PilotLaunchStore
           target: pilotLaunchDecisions.schoolId,
           set: { status, operatorLabel, note, reviewedAt: now, updatedAt: now }
         }).returning();
+        if (!decision) throw new Error("Launch decision upsert returned no row.");
         await tx.insert(pilotLaunchDecisionHistory).values({
           id: randomUUID(), schoolId, status, operatorLabel, note
         });
