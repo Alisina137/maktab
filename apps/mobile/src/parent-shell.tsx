@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
@@ -121,26 +121,51 @@ export function ParentSectionTabs({
   locale: SupportedLocale;
 }) {
   const rtl = getDirection(locale) === "rtl";
+  const scrollable = tabs.length > 3;
+  const scrollRef = useRef<ScrollView>(null);
+  const positions = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (scrollable && positions.current[selected] !== undefined) {
+      scrollRef.current?.scrollTo({
+        x: Math.max(0, positions.current[selected]! - 12), animated: true
+      });
+    }
+  }, [selected, locale, scrollable]);
+
+  const items = tabs.map(tab => {
+    const active = selected === tab.key;
+    return (
+      <Pressable key={tab.key}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={translate(locale, tab.label)}
+        onLayout={scrollable ? event => {
+          const x = event.nativeEvent.layout.x;
+          positions.current[tab.key] = x;
+          if (active) scrollRef.current?.scrollTo({ x: Math.max(0,x-12),animated: false });
+        } : undefined}
+        style={({ pressed }) => [
+          styles.tab, scrollable && styles.tabScrollable,
+          active && styles.tabSelected, pressed && styles.pressed
+        ]}
+        onPress={() => onSelect(tab.key)}>
+        <Text numberOfLines={1} adjustsFontSizeToFit
+          style={[styles.tabLabel, active && styles.tabLabelSelected]}>
+          {translate(locale, tab.label)}
+        </Text>
+      </Pressable>
+    );
+  });
   return (
-    <View accessibilityRole="tablist" style={[styles.tabs, rtl && styles.rtlRow]}>
-      {tabs.map((tab) => {
-        const active = selected === tab.key;
-        return (
-          <Pressable
-            key={tab.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={translate(locale, tab.label)}
-            style={({ pressed }) => [styles.tab, active && styles.tabSelected, pressed && styles.pressed]}
-            onPress={() => onSelect(tab.key)}
-          >
-            <Text numberOfLines={1} adjustsFontSizeToFit
-              style={[styles.tabLabel, active && styles.tabLabelSelected]}>
-              {translate(locale, tab.label)}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View accessibilityRole="tablist">
+      {scrollable ? (
+        <ScrollView horizontal ref={scrollRef} showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.tabs, styles.scrollTabs, rtl && styles.rtlRow]}>
+          {items}
+        </ScrollView>
+      ) : (
+        <View style={[styles.tabs, rtl && styles.rtlRow]}>{items}</View>
+      )}
     </View>
   );
 }
@@ -182,6 +207,8 @@ const styles = StyleSheet.create({
   tab: { flex: 1, minWidth: 0, minHeight: 46, alignItems: "center",
     justifyContent: "center", borderRadius: 10, paddingHorizontal: 5 },
   tabSelected: { backgroundColor: tokens.color.surface, borderColor: "#d3e2f2", borderWidth: 1 },
+  scrollTabs: { minWidth: "100%", alignItems: "stretch" },
+  tabScrollable: { flexGrow: 0, flexShrink: 0, minWidth: 109, paddingHorizontal: 12 },
   tabLabel: { textAlign: "center", fontSize: 12, fontWeight: "700", color: tokens.color.textMuted },
   tabLabelSelected: { fontWeight: "900", color: tokens.color.brandStrong }
 });
