@@ -1,7 +1,8 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -82,8 +83,37 @@ async function downloadAuthenticated(accessToken: string, path: string, fallback
   URL.revokeObjectURL(url);
 }
 
-export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
+export const PILOT_TABS = [
+  { section: "overview", label: "Overview", href: "/admin/pilot" },
+  { section: "readiness", label: "School readiness", href: "/admin/pilot/readiness" },
+  { section: "onboarding", label: "Data onboarding", href: "/admin/pilot/onboarding" },
+  { section: "subscription", label: "Subscription", href: "/admin/pilot/subscription" },
+  { section: "audit", label: "Audit & exports", href: "/admin/pilot/audit" },
+  { section: "launch", label: "Launch & support", href: "/admin/pilot/launch" },
+] as const;
+
+export type PilotSection = (typeof PILOT_TABS)[number]["section"];
+
+export function isPilotSection(value: string): value is PilotSection {
+  return PILOT_TABS.some((item) => item.section === value);
+}
+
+const CHECK_DESTINATIONS: Record<string, string> = {
+  "school-active": "/admin/pilot/subscription",
+  subscription: "/admin/pilot/subscription",
+  admin: "/admin/accounts",
+  "academic-year": "/admin/academics/years",
+  classes: "/admin/academics/classes",
+  subjects: "/admin/academics/subjects",
+  teachers: "/admin/academics/teachers",
+  assignments: "/admin/academics/assignments",
+  families: "/admin/families"
+};
+
+export function PilotReadinessPanel({ accessToken, section = "overview" }: { accessToken: string; section?: PilotSection }) {
   const { locale } = useAdminWorkspace();
+  const pilotNavRef = useRef<HTMLElement | null>(null);
+  const requestVersion = useRef(0);
   const t = (english: string) => adminText(locale, english);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
@@ -94,10 +124,22 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
   useEffect(() => {
-    void load();
-  }, [accessToken]);
+    const active = pilotNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [section]);
+
+  useEffect(() => {
+    setSubscription(null);
+    setReadiness(null);
+    setAudit([]);
+    setAuditOffset(0);
+    setAuditHasMore(false);
+    void load(0);
+    return () => { requestVersion.current += 1; };
+  }, [accessToken, section]);
 
   async function load(offset = auditOffset) {
+    const version = ++requestVersion.current;
     setBusy(true);
     setError("");
     try {
@@ -109,15 +151,16 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
           `/v1/admin/audit?limit=20&offset=${offset}`
         )
       ]);
+      if (version !== requestVersion.current) return;
       setSubscription(subscriptionResult.subscription);
       setReadiness(readinessResult);
       setAudit(auditResult.logs);
       setAuditOffset(offset);
       setAuditHasMore(auditResult.hasMore);
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
+      if (version === requestVersion.current) setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
     } finally {
-      setBusy(false);
+      if (version === requestVersion.current) setBusy(false);
     }
   }
 
@@ -159,6 +202,9 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
     subscription?.status === "SUSPENDED" || subscription?.status === "CANCELLED";
   const passedChecks = readiness.checks.filter((check) => check.passed).length;
   const totalChecks = readiness.checks.length;
+  const pendingChecks = readiness.checks.filter((check) => !check.passed);
+  const progressPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
+  const billingAttention = subscription.status === "PAST_DUE" || subscription.status === "GRACE";
 
   return (
     <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
@@ -173,10 +219,42 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
         <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
 
+
+      <nav className="pilot-section-nav" aria-label={t("Pilot operations sections")} ref={pilotNavRef}>
+        {PILOT_TABS.map((item) => (
+          <Link key={item.section} href={item.href}
+            aria-current={section === item.section ? "page" : undefined}
+            className={section === item.section ? "pilot-section-link pilot-section-link-active" : "pilot-section-link"}>
+            {t(item.label)}
+          </Link>
+        ))}
+      </nav>
+
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
-      {subscription ? (
+
+      {section === "overview" ? (
+        <article className="admin-panel pilot-overview-hero">
+          <div className="pilot-overview-copy">
+            <span className="eyebrow">{t("Automated school setup")}</span>
+            <h3>{t(readiness.ready ? "Core setup ready" : "Setup in progress")}</h3>
+            <p>{t("These checks confirm basic school configuration, not approval for a live launch.")}</p>
+            <div className="pilot-overview-pills">
+              <span className="pilot-badge pilot-badge-ok">{adminFormat(locale, "{count} passed", { count: passedChecks })}</span>
+              <span className="pilot-badge pilot-badge-warning">{adminFormat(locale, "{count} needing attention", { count: pendingChecks.length })}</span>
+            </div>
+            <Link className="admin-primary" href="/admin/pilot/readiness">{t("Review missing checks")}</Link>
+          </div>
+          <div className="pilot-overview-score" aria-label={t("Setup progress")}>
+            <strong>{progressPercent}%</strong>
+            <span>{t("Core setup checks")}</span>
+            <progress className="pilot-onboarding-meter" value={passedChecks} max={Math.max(totalChecks, 1)} aria-label={t("Onboarding progress")} />
+          </div>
+        </article>
+      ) : null}
+
+      {subscription && (section === "overview" || section === "subscription") ? (
         <article className="admin-panel pilot-subscription">
           <div>
             <span className="eyebrow">{t("School subscription")}</span>
@@ -193,13 +271,13 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                 : ""}
             </p>
           </div>
-          <span className={writeBlocked ? "pilot-badge pilot-badge-danger" : "pilot-badge pilot-badge-ok"}>
-            {t(writeBlocked ? "Operational writes disabled" : "Operational access enabled")}
+          <span className={writeBlocked ? "pilot-badge pilot-badge-danger" : billingAttention ? "pilot-badge pilot-badge-warning" : "pilot-badge pilot-badge-ok"}>
+            {t(writeBlocked ? "Operational writes disabled" : billingAttention ? "Billing attention needed" : "Operational access enabled")}
           </span>
         </article>
       ) : null}
 
-      {readiness ? (
+      {readiness && (section === "overview" || section === "readiness") ? (
         <>
           <div className="academic-summary-grid pilot-summary-grid" aria-label="Pilot data summary">
             <Summary label={t("Students")} value={readiness.counts.students} />
@@ -210,6 +288,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             <Summary label={t("Assignments")} value={readiness.counts.teacherAssignments} />
           </div>
 
+          {section === "readiness" ? (
           <article className="admin-panel pilot-onboarding-card" aria-labelledby="pilot-onboarding-title">
             <div className="admin-section-header pilot-onboarding-header">
               <div>
@@ -240,16 +319,131 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
                   <div className="pilot-check-copy">
                     <strong>{pilotCheckLabel(check.key, t)}</strong>
                     <p>{pilotCheckDetail(check.key, readiness, subscription, locale, t)}</p>
+                    {!check.passed && CHECK_DESTINATIONS[check.key] ? (
+                      <Link className="pilot-inline-link" href={CHECK_DESTINATIONS[check.key]}>{t("Open section")}</Link>
+                    ) : null}
                   </div>
                   <span className="pilot-check-state">{t(check.passed ? "Passed" : "Not passed")}</span>
                 </div>
               ))}
             </div>
           </article>
+          ) : null}
         </>
       ) : null}
 
-      <div className="admin-grid">
+
+      {section === "overview" ? (
+        <>
+          <div className="pilot-overview-bottom">
+            <article className="admin-panel">
+              <h3>{t("Needs attention")}</h3>
+              <p className="admin-copy">{t("Resolve incomplete core checks in their existing modules.")}</p>
+              {pendingChecks.length ? (
+                <div className="pilot-issue-list">
+                  {pendingChecks.slice(0, 4).map((check) => (
+                    <div className="pilot-issue-row" key={check.key}>
+                      <span className="pilot-issue-dot" aria-hidden="true">!</span>
+                      <strong>{pilotCheckLabel(check.key, t)}</strong>
+                      <Link href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Review")}</Link>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="admin-copy">{t("No missing core setup checks.")}</p>}
+              {pendingChecks.length > 4 ? <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View all checks")}</Link> : null}
+            </article>
+            <article className="admin-panel pilot-launch-note">
+              <h3>{t("Launch approval")}</h3>
+              <span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span>
+              <p>{t("Live deployment, device tests, backup recovery, and operator approval require separate verification.")}</p>
+              <Link className="pilot-inline-link" href="/admin/pilot/launch">{t("View launch requirements")}</Link>
+            </article>
+          </div>
+          <h3 className="pilot-section-heading">{t("Quick actions")}</h3>
+          <div className="pilot-quick-grid">
+            {([
+              ["Manage accounts", "/admin/accounts", "◫"],
+              ["Configure academics", "/admin/academics", "▤"],
+              ["Import families", "/admin/families", "⇧"],
+              ["Configure timetable", "/admin/academics/timetable", "▦"],
+              ["Audit & exports", "/admin/pilot/audit", "≡"],
+              ["Subscription", "/admin/pilot/subscription", "◇"]
+            ] as const).map(([label, href, icon]) => (
+              <Link key={href} className="pilot-quick-link" href={href}>
+                <span aria-hidden="true" className="pilot-quick-icon">{icon}</span>
+                <strong>{t(label)}</strong><span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {section === "onboarding" ? (
+        <>
+          <div className="pilot-section-heading">
+            <h3>{t("Data onboarding")}</h3>
+            <p>{t("Follow the setup order, then use the existing validated import workflow in Families.")}</p>
+          </div>
+          <div className="pilot-steps">
+            {([
+              ["Academic year", "/admin/academics/years"],
+              ["Classes and subjects", "/admin/academics"],
+              ["School accounts", "/admin/accounts"],
+              ["Teaching assignments", "/admin/academics/assignments"],
+              ["Negaran and timetable", "/admin/academics/negaran"],
+              ["Families and students", "/admin/families"]
+            ] as const).map(([label, href], index) => (
+              <article className="admin-panel pilot-step-card" key={href}>
+                <span className="pilot-step-number">{index + 1}</span>
+                <div><h3>{t(label)}</h3><Link className="pilot-inline-link" href={href}>{t("Open section")}</Link></div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {section === "subscription" ? (
+        <article className="admin-panel">
+          <h3>{t("Subscription details")}</h3>
+          <p className="admin-copy">{t("Subscription changes are controlled by platform administrators.")}</p>
+          <dl className="pilot-detail-grid">
+            <div><dt>{t("Plan")}</dt><dd>{subscription.planCode}</dd></div>
+            <div><dt>{t("Status")}</dt><dd>{t(subscription.status)}</dd></div>
+            <div><dt>{t("Billing cycle")}</dt><dd>{t(subscription.billingCycle)}</dd></div>
+            <div><dt>{t("Price")}</dt><dd>{subscription.priceAfn.toLocaleString()} AFN</dd></div>
+            <div><dt>{t("Setup fee")}</dt><dd>{subscription.setupFeeAfn.toLocaleString()} AFN</dd></div>
+            <div><dt>{t("Start date")}</dt><dd>{subscription.startsOn ? formatAdminHijriDate(locale, subscription.startsOn) : "—"}</dd></div>
+            <div><dt>{t("Expiry date")}</dt><dd>{subscription.expiresOn ? formatAdminHijriDate(locale, subscription.expiresOn) : "—"}</dd></div>
+            <div><dt>{t("Grace period ends")}</dt><dd>{subscription.graceEndsOn ? formatAdminHijriDate(locale, subscription.graceEndsOn) : "—"}</dd></div>
+          </dl>
+          <p className="pilot-security-note">{t("Contact platform support to review or change your school's subscription.")}</p>
+        </article>
+      ) : null}
+
+      {section === "launch" ? (
+        <article className="admin-panel pilot-launch-note">
+          <span className="eyebrow">{t("Pilot launch review")}</span>
+          <h3>{t("Launch approval")}</h3>
+          <span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span>
+          <p>{t("Core setup checks are not a production launch approval. Complete the live release acceptance steps before launch.")}</p>
+          <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View readiness")}</Link>
+          <h3>{t("Manual verification still required")}</h3>
+          <div className="pilot-manual-list">
+            {[
+              "Real administrator, teacher, parent, and student journeys",
+              "Live database connectivity and migration verification",
+              "Encrypted backup and restore rehearsal",
+              "Push delivery, scheduled jobs, and monitoring",
+              "Device accessibility and Dari/Pashto RTL review"
+            ].map((item) => <div key={item}><span>{t(item)}</span><span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span></div>)}
+          </div>
+          <p className="pilot-security-note">{t("No approval or support ticket is created from this page.")}</p>
+        </article>
+      ) : null}
+
+      {(section === "audit" || section === "onboarding") ? (
+      <div className="admin-grid pilot-tools-grid">
+        {section === "audit" ? (
         <article className="admin-panel">
           <h3>{t("School data export")}</h3>
           <p className="admin-copy">
@@ -261,10 +455,14 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             disabled={busy}
             onClick={() => void download("/v1/admin/pilot/export", "maktablink-school-export.json", t("School export downloaded."))}
           >{t("Download core export")}</button>
+          <p className="pilot-security-note">{t("Exports may contain private school and family information. Store the file securely.")}</p>
         </article>
+        ) : null}
 
+        {section === "onboarding" ? (
         <article className="admin-panel">
           <h3>{t("Import templates")}</h3>
+          <Link className="pilot-inline-link" href="/admin/families">{t("Start import in Families")}</Link>
           <p className="admin-copy">{t("Use the exact pilot CSV headers before upload and validation.")}</p>
           <div className="admin-actions pilot-template-actions">
             {(["PARENT", "STUDENT", "TEACHER"] as const).map((entity) => (
@@ -286,8 +484,11 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
             ))}
           </div>
         </article>
+        ) : null}
       </div>
+      ) : null}
 
+      {section === "audit" ? (
       <article className="admin-panel">
         <div className="admin-section-header">
           <div>
@@ -323,6 +524,7 @@ export function PilotReadinessPanel({ accessToken }: { accessToken: string }) {
           {audit.length === 0 ? <p className="admin-copy">{t("No audit events on this page.")}</p> : null}
         </div>
       </article>
+      ) : null}
     </section>
   );
 }

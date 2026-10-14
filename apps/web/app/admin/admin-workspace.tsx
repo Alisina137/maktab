@@ -96,6 +96,11 @@ const pageCopy: Record<string, { title: string; description: string }> = {
     title: "Pilot operations",
     description: "Review readiness, subscription access, school exports, import templates, and audit activity."
   },
+  "/admin/pilot/readiness": { title: "Pilot operations", description: "Check school configuration and missing setup items." },
+  "/admin/pilot/onboarding": { title: "Pilot operations", description: "Prepare school setup and validated family imports." },
+  "/admin/pilot/subscription": { title: "Pilot operations", description: "Review school subscription and access." },
+  "/admin/pilot/audit": { title: "Pilot operations", description: "View school audit history and data exports." },
+  "/admin/pilot/launch": { title: "Pilot operations", description: "Review manual launch prerequisites and support." },
   "/admin/communication": {
     title: "Communication & fees",
     description: "Manage school announcements, fee invoices, payments, reminders, and reversals."
@@ -583,7 +588,8 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
           {navItems.map((item) => {
             const active =
               pathname === item.href ||
-              (item.href === "/admin/academics" && pathname.startsWith("/admin/academics/"));
+              (item.href === "/admin/academics" && pathname.startsWith("/admin/academics/")) ||
+              (item.href === "/admin/pilot" && pathname.startsWith("/admin/pilot/"));
             return (
               <Link
                 key={item.href}
