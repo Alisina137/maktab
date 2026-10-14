@@ -13,7 +13,8 @@ const parentNav=read("apps/mobile/src/parent-navigation.tsx");
 for(const nav of ["HOME","ACADEMICS","ATTENDANCE","INBOX","MORE"]) {
   assert.ok(parentNav.includes(`key: "${nav}"`),"Phase 1 main navigation must survive: "+nav);
 }
-for(const marker of ["buildParentHomeView(","onNavigate={openParentDashboardDestination}",
+assert.ok(dashboard.includes("buildParentHomeView("),"Dashboard must derive data from verified records");
+for(const marker of ["onNavigate={openParentDashboardDestination}",
   "onRetry={retryParentResource}","onRefresh={refreshParentDashboard}",
   "loadParentAttendance(","loadParentTimetable(","loadParentLearningData(",
   "loadParentAnnouncementsData(","loadParentFeesData(","loadParentNotifications(",
