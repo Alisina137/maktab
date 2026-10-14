@@ -12,11 +12,14 @@ import {
   AccountConflictError,
   SchoolConflictError,
   type AccountStore,
-  type PlatformSchoolStore
+  type PlatformSchoolStore,
+  type PilotLaunchStore,
+  type PilotStore
 } from "@maktablink/database";
 import { ZodError } from "zod";
 import { generateTemporaryPassword, hashPassword } from "../auth/security.js";
 import { safeUser } from "../auth/session.js";
+import { registerPlatformPilotWorkflowRoutes } from "../pilot/launch-routes.js";
 
 function secureEqual(left: string, right: string): boolean {
   const a = Buffer.from(left);
@@ -28,7 +31,9 @@ export function registerPlatformRoutes(
   app: FastifyInstance,
   schools: PlatformSchoolStore,
   accounts: AccountStore,
-  provisioningKey: string
+  provisioningKey: string,
+  launch: PilotLaunchStore,
+  pilot: PilotStore
 ) {
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/v1/platform/")) return;
@@ -37,6 +42,8 @@ export function registerPlatformRoutes(
       return reply.code(401).send({ error: "unauthorized", message: "Invalid platform provisioning credential." });
     }
   });
+
+  registerPlatformPilotWorkflowRoutes(app, launch, pilot);
 
   app.get("/v1/platform/schools", async () => ({ schools: await schools.listSchools() }));
 

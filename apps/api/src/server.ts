@@ -13,6 +13,7 @@ import {
   createTeacherTeachingStore,
   createTeacherTasksStore,
   createPilotStore,
+  createPilotLaunchStore,
   createSchoolStore
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
@@ -49,6 +50,7 @@ const app = buildApp({
   teacherTasksStore: createTeacherTasksStore(database.db),
   communicationStore: createCommunicationStore(database.db),
   pilotStore: createPilotStore(database.db),
+  pilotLaunchStore: createPilotLaunchStore(database.db),
   pushProvider: createExpoPushProvider(),
   passwordVerificationDelivery: createAdminPasswordVerificationDelivery(),
   passwordVerificationSecret: process.env.PASSWORD_2FA_SECRET ?? provisioningKey,

@@ -13,6 +13,7 @@ import { registerLearningExtensionsRoutes } from "./learning/extensions-routes.j
 import { registerTeachingRoutes } from "./teaching/routes.js";
 import { registerTeacherTasksRoutes } from "./teaching/tasks-routes.js";
 import { registerPilotRoutes } from "./pilot/routes.js";
+import { registerPilotLaunchRoutes } from "./pilot/launch-routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
 import { registerUserRoutes } from "./users/routes.js";
@@ -30,6 +31,7 @@ export interface BuildAppOptions {
   teacherTasksStore?: TeacherTasksStore;
   communicationStore: CommunicationStore;
   pilotStore: PilotStore;
+  pilotLaunchStore: PilotLaunchStore;
   pushProvider: PushProvider;
   passwordVerificationDelivery: AdminPasswordVerificationDelivery;
   passwordVerificationSecret: string;
@@ -97,6 +99,7 @@ export function buildApp(options: BuildAppOptions) {
   if (options.teacherTeachingStore) registerTeachingRoutes(app, options.accountStore, options.teacherTeachingStore);
   if (options.teacherTasksStore) registerTeacherTasksRoutes(app, options.accountStore, options.teacherTasksStore);
   registerPilotRoutes(app, options.accountStore, options.pilotStore);
+  registerPilotLaunchRoutes(app, options.accountStore, options.pilotLaunchStore);
   registerCommunicationRoutes(
     app,
     options.accountStore,
@@ -104,7 +107,7 @@ export function buildApp(options: BuildAppOptions) {
     options.pushProvider,
     options.provisioningKey
   );
-  registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey);
+  registerPlatformRoutes(app, options.schoolStore, options.accountStore, options.provisioningKey, options.pilotLaunchStore, options.pilotStore);
 
   app.setErrorHandler((error, request, reply) => {
     const maybeStatusCode =
