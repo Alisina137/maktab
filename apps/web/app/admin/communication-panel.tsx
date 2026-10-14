@@ -496,6 +496,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   }
 
   async function invoiceAction(id: string, action: "issue" | "cancel") {
+    if (!window.confirm(t(action === "issue"
+      ? "Issue this draft invoice to the family? This action cannot be undone."
+      : "Cancel this invoice? This action cannot be undone."))) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -1102,8 +1105,66 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         <div className="admin-section-header">
           <div><h2>{t("Fee invoices & payments")}</h2><p>{t("Payments are appended; reversals never overwrite the original transaction.")}</p></div>
         </div>
-        <div className="communication-invoice-list">
-          {visibleOverview.invoices.map((item) => {
+        <div className="communication-invoice-filters">
+          <label>{t("Search invoices")}
+            <input type="search" value={feeSearch}
+              onChange={event=>setFeeSearch(event.target.value)}
+              placeholder={t("Student name, code, description or invoice number")} />
+          </label>
+          <label>{t("Status")}
+            <select value={feeStatus} onChange={event=>setFeeStatus(event.target.value as AdminInvoiceStatus)}>
+              {INVOICE_STATUSES.map(value=><option value={value} key={value}>
+                {t(value==="ALL" ? "All statuses" : value)}
+              </option>)}
+            </select>
+          </label>
+          <label>{t("Academic year")}
+            <select value={feeAcademicYearId} onChange={event=>{
+              setFeeAcademicYearId(event.target.value);
+              setFeeClassId("");
+            }}>
+              <option value="">{t("All academic years")}</option>
+              {(visibleAcademics?.academicYears ?? []).map(year=>
+                <option key={year.id} value={year.id}>{year.name}</option>)}
+            </select>
+          </label>
+          <label>{t("Class")}
+            <select value={feeClassId} onChange={event=>setFeeClassId(event.target.value)}>
+              <option value="">{t("All classes")}</option>
+              {(visibleAcademics?.classes ?? []).filter(row=>
+                !feeAcademicYearId || row.academicYearId===feeAcademicYearId
+              ).map(row=><option key={row.id} value={row.id}>{row.name} · {row.code}</option>)}
+            </select>
+          </label>
+          <label>{t("Student")}
+            <select value={feeStudentId} onChange={event=>setFeeStudentId(event.target.value)}>
+              <option value="">{t("All students")}</option>
+              {(visibleFamilies?.students ?? []).map(row=>
+                <option key={row.student.id} value={row.student.id}>
+                  {row.student.fullName} · {row.student.studentCode}
+                </option>)}
+            </select>
+          </label>
+        </div>
+        {feeListingStatus==="error" ? (
+          <div className="admin-error" role="alert">
+            {feeListingError}
+            <button className="admin-secondary" type="button" onClick={() => setFeeReloadKey(value=>value+1)}>
+              {t("Retry")}
+            </button>
+          </div>
+        ) : null}
+        {feeListingStatus==="loading" ? <AdminLoader compact label={t("Loading fee invoices…")} /> : null}
+        {feeListingStatus==="ready" && feeListing ? (
+          <>
+            <p className="admin-copy" role="status">
+              {adminFormat(locale,"{total} matching invoices",{
+                total:formatCount(feeListing.total)
+              })}
+            </p>
+            <div className="communication-invoice-list">
+
+          {feeListing.invoices.map((item) => {
             const draft = paymentDraft[item.invoice.id] ?? { amount: "", method: "CASH", reference: "" };
             const reversedPaymentIds = new Set(
               item.payments.filter((payment) => payment.kind === "REVERSAL" && payment.reversalOfPaymentId)
@@ -1111,6 +1172,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             );
             return (
               <div className="communication-invoice" key={item.invoice.id}>
+                <div className="communication-invoice-topline">
+                  <strong>{invoiceReference(item.invoice.invoiceNumber)}</strong>
+                  <button type="button" className="admin-secondary"
+                    aria-expanded={openInvoiceId===item.invoice.id}
+                    onClick={()=>{ setOpenInvoiceId(openInvoiceId===item.invoice.id ? null : item.invoice.id);
+                      setEditingInvoice(null); }}>
+                    {t(openInvoiceId===item.invoice.id ? "Hide details" : "View details")}
+                  </button>
+                </div>
                 <div className="communication-invoice-header">
                   <div>
                     <strong>{item.studentName}</strong>
@@ -1118,6 +1188,14 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   </div>
                   <strong>{t(item.invoice.status)}</strong>
                 </div>
+                {openInvoiceId===item.invoice.id ? (
+                  <div className="communication-invoice-expanded">
+                    <dl className="communication-invoice-detail-fields">
+                      <div><dt>{t("Invoice number")}</dt><dd>{invoiceReference(item.invoice.invoiceNumber)}</dd></div>
+                      <div><dt>{t("Reference")}</dt><dd>{item.invoice.id}</dd></div>
+                      <div><dt>{t("Due date")}</dt><dd>{formatAdminHijriDate(locale,item.invoice.dueDate)}</dd></div>
+                      <div><dt>{t("Description")}</dt><dd>{item.invoice.description ?? "—"}</dd></div>
+                    </dl>
                 <div className="communication-money-grid">
                   <span>{t("Amount")}<strong>{formatMoney(item.invoice.amount)}</strong></span>
                   <span>{t("Paid")}<strong>{formatMoney(item.paid)}</strong></span>
@@ -1133,6 +1211,41 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   ) : null}
                 </div>
 
+                {item.invoice.status === "DRAFT" ? (
+                  <button type="button" className="admin-secondary" disabled={busy}
+                    onClick={() => openDraftEditor(item)}>{t("Edit draft")}</button>
+                ) : null}
+                {editingInvoice?.invoice.id===item.invoice.id ? (
+                  <form className="admin-form communication-draft-edit"
+                    onSubmit={updateDraftInvoice}>
+                    <h3>{t("Edit draft invoice")}</h3>
+                    <label>{t("Student")}
+                      <select required value={editFeeStudentId}
+                        onChange={event=>setEditFeeStudentId(event.target.value)}>
+                        {activeStudents.map(row=><option key={row.student.id} value={row.student.id}>
+                          {row.student.fullName} · {row.student.studentCode}
+                        </option>)}
+                      </select>
+                    </label>
+                    <label>{t("Amount (AFN)")}
+                      <input required type="number" min="1" max="100000000" step="1"
+                        value={editFeeAmount} onChange={event=>setEditFeeAmount(event.target.value)} />
+                    </label>
+                    <label>{t("Due date")}
+                      <AdminHijriDatePicker locale={locale} required value={editFeeDueDate}
+                        onChange={setEditFeeDueDate} />
+                    </label>
+                    <label>{t("Description")}
+                      <input maxLength={240} value={editFeeDescription}
+                        onChange={event=>setEditFeeDescription(event.target.value)} />
+                    </label>
+                    <div className="admin-actions">
+                      <button className="admin-primary" type="submit" disabled={busy}>{t("Save draft changes")}</button>
+                      <button className="admin-secondary" type="button"
+                        onClick={()=>setEditingInvoice(null)}>{t("Close")}</button>
+                    </div>
+                  </form>
+                ) : null}
                 {["ISSUED", "PARTIALLY_PAID", "OVERDUE"].includes(item.invoice.status) ? (
                   <div className="communication-payment-form">
                     <input
@@ -1200,12 +1313,30 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                       </div>
                     ))}
                   </div>
+                ) : null}                  </div>
                 ) : null}
               </div>
             );
           })}
-          {visibleOverview.invoices.length === 0 ? <p className="admin-copy">{t("No fee invoices yet.")}</p> : null}
+          {feeListing.total === 0 ? <p className="admin-copy">{t("No matching invoices.")}</p> : null}
         </div>
+        <div className="communication-invoice-pager">
+          <button type="button" className="admin-secondary" disabled={feePage===1}
+            onClick={()=>{setFeePage(page=>Math.max(1,page-1));setOpenInvoiceId(null);}}>
+            {t("Previous")}
+          </button>
+          <span>{adminFormat(locale,"Page {page} of {total}",{
+            page:formatCount(feePage),
+            total:formatCount(Math.max(1,Math.ceil(feeListing.total/feeListing.pageSize)))
+          })}</span>
+          <button type="button" className="admin-secondary"
+            disabled={feePage*feeListing.pageSize>=feeListing.total}
+            onClick={()=>{setFeePage(page=>page+1);setOpenInvoiceId(null);}}>
+            {t("Next")}
+          </button>
+        </div>
+          </>
+        ) : null}
       </article>
                 </>
               ) : resourceNotice("communication")}
