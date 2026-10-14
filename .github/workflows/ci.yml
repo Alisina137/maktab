@@ -46,6 +46,9 @@ jobs:
       - name: Pilot Operations Phase 3 import safety regression guard
         run: pnpm verify:pilot:phase3
 
+      - name: Pilot Operations Phase 4 safe audit and export guard
+        run: pnpm verify:pilot:phase4
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -85,6 +88,7 @@ jobs:
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
+          pnpm verify:pilot:phase4
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience

@@ -70,8 +70,17 @@
 7. Apply migrations on test/staging DB, run `pnpm verify:pilot:phase3`, `pnpm verify`, inspect CI on main, and keep Step 20 release gates open.
 
 
-## Phase 4 — Audit and export security
-Filters, human-readable details, redaction, export limits and event audit.
+## Phase 4 — Audit and export security (implemented)
+
+- Added `GET /v1/admin/pilot/audit` with strict school-admin authorization, category, safe action/actor search, optional UUID actor filtering, Kabul-civil start/end dates, bounded pagination and school-scoped actor/affected-user resolution.
+- Audit metadata is **allowlisted**, not sent raw; passwords, session/verification codes, contact details, raw diffs and arbitrary metadata are excluded, including from the legacy audit route and core export. Audit event detail drawer displays only server-approved fields and safely resolved identities.
+- School admins can filter the event list and export filtered audit history as spreadsheet-safe CSV (up to 500 matching rows). Formula injection is prevented; every export is itself audited before any file is sent.
+- School core JSON export remains available, requires an explicit browser confirmation, sets no-store/nosniff response headers, and records actor, scope and format in the existing audit table before download.
+- Core export omits confidential contact/reference values, excludes arbitrary audit metadata, and fails with 413 rather than silently truncate if a school exceeds 1,500 rows in any collection or the redacted JSON exceeds 5 MiB. This is a bounded **reporting export**, not a replacement for encrypted database backups.
+- No new migration or elevated privileges. Existing role/tenant restrictions and import/template endpoints remain unchanged.
+- The CSV audit export and the JSON core export both remain available during a suspended subscription to authorized school admins for legitimate record retrieval; export creation is audit logged even while ordinary writes are blocked.
+- Automated endpoint, PGlite, data-redaction and cross-school tests run on Linux and Windows CI; manual device, language, accessibility and genuine live-data/export-size acceptance remain under Step 20.
+
 
 ## Phase 5 — Subscription improvements
 Expiry alerting, clearer billing health, read-only school-facing guidance.

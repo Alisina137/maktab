@@ -6574,3 +6574,25 @@ html[dir="rtl"] body {
 .pilot-import-pagination { justify-content: flex-end; margin-top: 12px; }
 @media (max-width: 700px) { .pilot-import-row { grid-template-columns: 1fr; gap: 10px; padding: 14px; } }
 @media (max-width: 360px) { .pilot-import-filters label { min-width: 0; width: 100%; } }
+
+/* Pilot Operations Phase 4 — audited exports and detailed activity review. */
+.pilot-audit-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-block:18px; }
+.pilot-audit-form > label, .pilot-audit-date-label { display:grid; align-content:start; min-width:0; gap:8px; font-size:13px; font-weight:650; }
+.pilot-audit-form select, .pilot-audit-form input { width:100%; min-height:44px; border:1px solid var(--ml-color-border); border-radius:10px; padding:8px 12px; background:white; color:inherit; }
+.pilot-audit-form :is(input,select):focus-visible { outline:3px solid #7ba9eb; outline-offset:2px; }
+.pilot-audit-form + .admin-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.pilot-audit-row-readable { align-items:start; gap:14px; }
+.pilot-audit-row-readable > div:first-child { display:grid; gap:6px; min-width:0; overflow-wrap:anywhere; }
+.pilot-audit-row-end { display:grid; justify-items:end; align-content:start; gap:9px; }
+.pilot-audit-drawer-overlay { position:fixed; inset:0; z-index:400; display:flex; justify-content:flex-end; background:rgba(15,23,42,.5); }
+.pilot-audit-drawer { background:#fff; width:min(560px,100%); height:100%; overflow:auto; padding:24px; box-shadow:0 0 35px #17243a29; }
+.pilot-audit-drawer .pilot-detail-grid { grid-template-columns:1fr 1fr; }
+[dir="rtl"] .pilot-audit-drawer-overlay { justify-content:flex-start; }
+@media(max-width:1000px) { .pilot-audit-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) {
+ .pilot-audit-form { grid-template-columns:1fr; }
+ .pilot-audit-row-end { justify-items:start; }
+ .pilot-audit-drawer { padding:17px; }
+ .pilot-audit-drawer .pilot-detail-grid { grid-template-columns:1fr; }
+}
+@media(prefers-reduced-motion:reduce){ .pilot-audit-drawer { scroll-behavior:auto; } }
