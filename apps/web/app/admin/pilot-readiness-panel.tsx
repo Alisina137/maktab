@@ -320,7 +320,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                     <strong>{pilotCheckLabel(check.key, t)}</strong>
                     <p>{pilotCheckDetail(check.key, readiness, subscription, locale, t)}</p>
                     {!check.passed && CHECK_DESTINATIONS[check.key] ? (
-                      <Link className="pilot-inline-link" href={CHECK_DESTINATIONS[check.key]}>{t("Open section")}</Link>
+                      <Link className="pilot-inline-link" href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Open section")}</Link>
                     ) : null}
                   </div>
                   <span className="pilot-check-state">{t(check.passed ? "Passed" : "Not passed")}</span>
