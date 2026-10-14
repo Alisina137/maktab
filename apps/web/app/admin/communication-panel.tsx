@@ -187,7 +187,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setBusy(true);
     setError("");
     setNotice("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const classId = String(form.get("classId") ?? "");
       const audienceRole = String(form.get("audienceRole") ?? "");
@@ -203,7 +204,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         })
       });
       setNotice(t("Announcement saved. Its audience is enforced by the API."));
-      event.currentTarget.reset();
+      formElement.reset();
       setScope("SCHOOL");
       await loadResource("communication");
     } catch (cause) {
@@ -257,7 +258,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setBusy(true);
     setError("");
     setNotice("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       await request(accessToken, "/v1/admin/fees/invoices", {
         method: "POST",
@@ -269,7 +271,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         })
       });
       setNotice(t("Fee invoice created in DRAFT state."));
-      event.currentTarget.reset();
+      formElement.reset();
       await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not create fee invoice."));
