@@ -275,6 +275,25 @@ export type TranslationKey =
   | "parent.attendanceNoNote"
   | "parent.attendanceUnrecorded"
   | "parent.attendanceHistory"
+  | "parent.academicAll"
+  | "parent.academicUpcoming"
+  | "parent.academicPast"
+  | "parent.academicClosed"
+  | "parent.academicHomeworkHint"
+  | "parent.academicSearchHomework"
+  | "parent.academicStatusFilter"
+  | "parent.academicSubjectFilter"
+  | "parent.academicAllSubjects"
+  | "parent.academicNoMatches"
+  | "parent.academicResultHint"
+  | "parent.academicExamFilter"
+  | "parent.academicAllExams"
+  | "parent.academicReportedTotal"
+  | "parent.academicTimetableHint"
+  | "parent.academicDayFilter"
+  | "parent.academicWholeWeek"
+  | "parent.academicPeriods"
+  | "parent.academicNoPeriods"
   | "attendance.pending"
   | "attendance.submitted"
   | "attendance.marked"
@@ -757,6 +776,25 @@ const en: Record<TranslationKey, string> = {
     "parent.attendanceNoNote": "No note from the school.",
     "parent.attendanceUnrecorded": "No attendance recorded for this date.",
     "parent.attendanceHistory": "Monthly history",
+  "parent.academicAll": "All",
+  "parent.academicUpcoming": "Upcoming",
+  "parent.academicPast": "Past due date",
+  "parent.academicClosed": "Closed",
+  "parent.academicHomeworkHint": "School-published tasks only. Tap a task for instructions and attachments.",
+  "parent.academicSearchHomework": "Search homework",
+  "parent.academicStatusFilter": "Due date / status",
+  "parent.academicSubjectFilter": "Subject",
+  "parent.academicAllSubjects": "All subjects",
+  "parent.academicNoMatches": "No items match these filters.",
+  "parent.academicResultHint": "Only results released by the school are visible.",
+  "parent.academicExamFilter": "Exam",
+  "parent.academicAllExams": "All exams",
+  "parent.academicReportedTotal": "Total of shown marks",
+  "parent.academicTimetableHint": "Weekly classes and teachers assigned by the school.",
+  "parent.academicDayFilter": "Day",
+  "parent.academicWholeWeek": "Whole week",
+  "parent.academicPeriods": "Periods",
+  "parent.academicNoPeriods": "No periods match the selected day or subject.",
   "attendance.pending": "Daily attendance pending",
   "attendance.submitted": "Attendance submitted",
   "attendance.marked": "marked",
@@ -1255,6 +1293,25 @@ const dari: Record<TranslationKey, string> = {
     "parent.attendanceNoNote": "مکتب یادداشتی ثبت نکرده است.",
     "parent.attendanceUnrecorded": "برای این تاریخ حاضری ثبت نشده است.",
     "parent.attendanceHistory": "تاریخچه حاضری ماهانه",
+  "parent.academicAll": "همه",
+  "parent.academicUpcoming": "پیش‌رو",
+  "parent.academicPast": "تاریخ سپری‌شده",
+  "parent.academicClosed": "بسته‌شده",
+  "parent.academicHomeworkHint": "فقط کارخانگی‌های نشرشده توسط مکتب. برای دیدن رهنمود و ضمیمه روی کارخانگی بزنید.",
+  "parent.academicSearchHomework": "جستجوی کارخانگی",
+  "parent.academicStatusFilter": "تاریخ تحویل / وضعیت",
+  "parent.academicSubjectFilter": "مضمون",
+  "parent.academicAllSubjects": "همه مضامین",
+  "parent.academicNoMatches": "هیچ موردی مطابق فیلترها پیدا نشد.",
+  "parent.academicResultHint": "فقط نتایج نشرشده توسط مکتب قابل دید است.",
+  "parent.academicExamFilter": "امتحان",
+  "parent.academicAllExams": "همه امتحانات",
+  "parent.academicReportedTotal": "مجموع نمرات نشان‌داده‌شده",
+  "parent.academicTimetableHint": "برنامه هفتگی دروس و استادان تعیین‌شده توسط مکتب.",
+  "parent.academicDayFilter": "روز",
+  "parent.academicWholeWeek": "تمام هفته",
+  "parent.academicPeriods": "ساعات درسی",
+  "parent.academicNoPeriods": "برای این روز یا مضمون ساعت درسی پیدا نشد.",
   "attendance.pending": "حاضری روزانه باقی مانده",
   "attendance.submitted": "حاضری ثبت شده",
   "attendance.marked": "علامت‌گذاری شده",
@@ -1753,6 +1810,25 @@ const pashto: Record<TranslationKey, string> = {
     "parent.attendanceNoNote": "ښوونځي هېڅ یادښت نه دی ثبت کړی.",
     "parent.attendanceUnrecorded": "د دې نېټې حاضري نه ده ثبت شوې.",
     "parent.attendanceHistory": "د میاشتې د حاضرۍ تاریخچه",
+  "parent.academicAll": "ټول",
+  "parent.academicUpcoming": "راتلونکي",
+  "parent.academicPast": "نېټه تېره شوې",
+  "parent.academicClosed": "تړل شوي",
+  "parent.academicHomeworkHint": "یوازې د ښوونځي خپاره شوي کورني کارونه. د لارښوونو او ضمیمو لپاره پر کار کلیک وکړئ.",
+  "parent.academicSearchHomework": "د کورني کار لټون",
+  "parent.academicStatusFilter": "سپارلو نېټه / حالت",
+  "parent.academicSubjectFilter": "مضمون",
+  "parent.academicAllSubjects": "ټول مضمونونه",
+  "parent.academicNoMatches": "د دې چاڼونو لپاره هېڅ توکي ونه موندل شول.",
+  "parent.academicResultHint": "یوازې د ښوونځي خپرې شوې پایلې ښکاري.",
+  "parent.academicExamFilter": "ازموینه",
+  "parent.academicAllExams": "ټولې ازموینې",
+  "parent.academicReportedTotal": "د ښودل شوو نمرو مجموعه",
+  "parent.academicTimetableHint": "د ښوونځي له خوا ټاکل شوی اوونیز درسي مهالویش او ښوونکي.",
+  "parent.academicDayFilter": "ورځ",
+  "parent.academicWholeWeek": "ټوله اونۍ",
+  "parent.academicPeriods": "درسي ساعتونه",
+  "parent.academicNoPeriods": "د دې ورځې یا مضمون لپاره درسي ساعتونه نشته.",
   "attendance.pending": "ورځنۍ حاضري پاتې ده",
   "attendance.submitted": "حاضري ثبت شوې",
   "attendance.marked": "نښه شوي",
