@@ -1478,7 +1478,11 @@ function AppContent() {
   async function loadAdminContact(accessToken: string) {
     try {
       const result = await api.adminContact(accessToken);
-      setAdminContact(result.contact);
+      // School contact is account-scoped. An old school lookup must not render
+      // in a newly signed-in parent's School tab after a rapid account switch.
+      if (sessionRef.current?.accessToken === accessToken) {
+        setAdminContact(result.contact);
+      }
     } catch {
       // Contact information is supplementary; other home data should remain usable.
     }
