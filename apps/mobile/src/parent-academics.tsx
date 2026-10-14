@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet,
   Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -110,16 +110,21 @@ function academicWeekday(day: Weekday, locale: SupportedLocale) {
 }
 
 export function ParentAcademicHomework({
-  learning, status, accessToken, schoolToday, locale, onRetry
+  learning, status, accessToken, schoolToday, locale, onRetry, focusedId = null
 }: {
   learning: LearnerAcademicPayload | null; status: Status; accessToken: string;
   schoolToday: string; locale: SupportedLocale; onRetry: () => void;
+  focusedId?: string | null;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const [category, setCategory] = useState<HomeworkView>("ALL");
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(focusedId);
+  useEffect(() => {
+    if (!focusedId) return;
+    setCategory("ALL"); setSubjectId(null); setQuery(""); setExpandedId(focusedId);
+  }, [focusedId]);
   const referenceToday = schoolToday || kabulCivilDay(new Date().toISOString()) || "";
   const items = useMemo(() => parentHomeworkItems(learning), [learning]);
   const subjects = useMemo(() => academicSubjects(items.map(item => ({
@@ -128,6 +133,9 @@ export function ParentAcademicHomework({
   const filtered = useMemo(() => filterParentHomework(items, {
     category, subjectId, query, today: referenceToday
   }), [items, category, subjectId, query, referenceToday]);
+  const focusedHomework = focusedId ? filtered.find(row => row.homework.id === focusedId) : null;
+  const ordered = focusedHomework
+    ? [focusedHomework, ...filtered.filter(row => row.homework.id !== focusedId)] : filtered;
 
   if (status !== "ready") return <ErrorOrLoading status={status} locale={locale} onRetry={onRetry} />;
   return (
@@ -169,7 +177,12 @@ export function ParentAcademicHomework({
       </View>
       {!items.length ? <Empty locale={locale} text={translate(locale, "learning.noPublishedHomework")} /> :
         !filtered.length ? <Empty locale={locale} text={translate(locale, "parent.academicNoMatches")} /> : null}
-      {filtered.map(item => {
+      {focusedId && !focusedHomework && items.length > 0 ? (
+        <Text style={[styles.secondary, rtl && styles.rtlText]}>
+          {translate(locale, "parent.inboxTargetUnavailable")}
+        </Text>
+      ) : null}
+      {ordered.map(item => {
         const expanded = expandedId === item.homework.id;
         const tag = homeworkCategory(item, referenceToday);
         return (
@@ -220,21 +233,27 @@ export function ParentAcademicHomework({
 }
 
 export function ParentAcademicResults({
-  learning, status, locale, onRetry
+  learning, status, locale, onRetry, focusedId = null
 }: {
   learning: LearnerAcademicPayload | null; status: Status;
-  locale: SupportedLocale; onRetry: () => void;
+  locale: SupportedLocale; onRetry: () => void; focusedId?: string | null;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const [examId, setExamId] = useState<string | null>(null);
   const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>(focusedId ? [focusedId] : []);
+  useEffect(() => {
+    if (!focusedId) return;
+    setExamId(null); setSubjectId(null); setExpandedIds([focusedId]);
+  }, [focusedId]);
   const groups = useMemo(() => groupParentResults(learning), [learning]);
   const subjects = useMemo(() => academicSubjects(groups.flatMap(group => group.rows.map(row => ({
     id: row.examSubject.subjectId, name: row.subjectName
   })))), [groups]);
   const filtered = useMemo(() => filterParentResults(groups, examId, subjectId),
     [groups, examId, subjectId]);
+  const focusedResult = focusedId ? filtered.find(row => row.id === focusedId) : null;
+  const ordered = focusedResult ? [focusedResult, ...filtered.filter(row => row.id !== focusedId)] : filtered;
 
   if (status !== "ready") return <ErrorOrLoading status={status} locale={locale} onRetry={onRetry} />;
   return (
@@ -262,7 +281,12 @@ export function ParentAcademicResults({
       </View>
       {!groups.length ? <Empty locale={locale} text={translate(locale, "learning.noPublishedResults")} /> :
         !filtered.length ? <Empty locale={locale} text={translate(locale, "parent.academicNoMatches")} /> : null}
-      {filtered.map((group, index) => {
+      {focusedId && !focusedResult && groups.length > 0 ? (
+        <Text style={[styles.secondary, rtl && styles.rtlText]}>
+          {translate(locale, "parent.inboxTargetUnavailable")}
+        </Text>
+      ) : null}
+      {ordered.map((group, index) => {
         const expanded = expandedIds.includes(group.id) || (index === 0 && !expandedIds.length);
         return (
           <View key={group.id} style={styles.card}>
