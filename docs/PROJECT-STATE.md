@@ -1554,3 +1554,8 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Added `pnpm verify:accounts` source/regression gate covering both Dari/Pashto translations, template placeholder parity, UI accessible role/selection/dialog behaviors, RTL/mobile/reduced-motion CSS and client/session safety invariants, executed in Ubuntu and Windows CI.
 - Full acceptance checklist: `docs/TEST-ADMIN-ACCOUNTS-PHASE6.md`. Automated test success does **not** establish actual browser/Android/screen-reader/200%-zoom behavior or live Neon/production readiness. Existing Step 20 release NO-GO remains until operator sign-off.
 - No migrations or destructive changes to existing school account records.
+
+
+## Pilot Operations Phase 1 — navigation and Overview (2026-10-14)
+
+The Pilot Operations workspace now has Overview, School Readiness, Data Onboarding, Subscription, Audit & Exports, and Launch & Support routes. Overview uses existing school-scoped readiness counts/checks, shows pending configuration with navigation to owning modules, and distinguishes automated setup readiness from the unverified production launch gate. Readiness, subscription, existing CSV templates, safe JSON export and audit pagination remain available on dedicated routes. Billing is read-only for school administrators. English/Dari/Pashto navigation and responsive/RTL styles are included, with \`pnpm verify:pilot\` in Linux/Windows CI. No schema migration or new backend API was required. Real-device/browser and deployment acceptance remain pending under Step 20. See \`docs/PILOT-OPERATIONS-PHASES.md\`.

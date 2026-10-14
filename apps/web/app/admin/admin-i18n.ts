@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Unknown pilot operations section.": "بخش عملیات آزمایشی ناشناخته است.",
+  "Back to Pilot Operations": "بازگشت به عملیات آزمایشی",
   "Pilot operations sections": "بخش‌های عملیات آزمایشی",
   "Overview": "نمای کلی",
   "School readiness": "آمادگی مکتب",
@@ -1075,6 +1077,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Unknown pilot operations section.": "د ازمایښتي عملیاتو برخه نه پېژندل کېږي.",
+  "Back to Pilot Operations": "ازمایښتي عملیاتو ته ستنېدل",
   "Pilot operations sections": "د ازمایښتي عملیاتو برخې",
   "Overview": "عمومي کتنه",
   "School readiness": "د ښوونځي چمتووالی",

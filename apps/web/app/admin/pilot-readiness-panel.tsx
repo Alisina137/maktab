@@ -126,7 +126,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   useEffect(() => {
     const active = pilotNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
     active?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [section]);
+  }, [section, busy]);
 
   useEffect(() => {
     setSubscription(null);
@@ -279,7 +279,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
 
       {readiness && (section === "overview" || section === "readiness") ? (
         <>
-          <div className="academic-summary-grid pilot-summary-grid" aria-label="Pilot data summary">
+          <div className="academic-summary-grid pilot-summary-grid" aria-label={t("Pilot data summary")}>
             <Summary label={t("Students")} value={readiness.counts.students} />
             <Summary label={t("Parents")} value={readiness.counts.parents} />
             <Summary label={t("Teachers")} value={readiness.counts.teachers} />
@@ -297,7 +297,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                 <p>{t(readiness.ready ? "Core pilot setup is ready." : "Complete the remaining checks before pilot launch.")}</p>
               </div>
               <span className={readiness.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
-                {t(readiness.ready ? "Ready" : "Needs setup")}
+                {t(readiness.ready ? "Core setup ready" : "Needs setup")}
               </span>
             </div>
             <div className="pilot-onboarding-progress">
