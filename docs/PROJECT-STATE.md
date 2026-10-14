@@ -1544,3 +1544,13 @@ Implemented Phase 1 of the expanded Teacher mobile workspace, following Step 12:
 - Added explicit multi-account confirmation with optional audited suspension reason, selection caps, and clearer account-audit actor usernames when the actor is on another directory page.
 - Added PGlite and API integration regressions for tenant isolation, filters/paging/sort, wildcard search, username checking, lifecycle/audit and all-or-nothing batch behavior, plus release source guards.
 - No migrations; browser/device/manual school-scale acceptance is still required. See `docs/ADMIN-ACCOUNTS-PHASES.md`.
+
+
+### Admin Accounts — Phase 6: Regression and network/tenant safety (2026-10-14)
+
+- Hardened admin Accounts against stale network search responses and account leaks when switching session/school: accepted directory responses are bound to the active access token and current user search intent; old-school data is gated before UI rendering; family data is bound to the same active session; account dialogs, credentials and selection are cleared upon session changes.
+- Centralized and unit-tested visible-page selection eligibility, maximum 20 selected accounts and cancellation of aborted/foreign-session response updates. The page-select checkbox is disabled when >20 eligible rows are visible; individual selection remains possible up to the cap.
+- Expanded API integration tests for non-admin and first-login users, school-isolated directory and audit reads, invalid paging/sorting/batch parameters, literal wildcard search, foreign-school bulk rollback and role authorization.
+- Added `pnpm verify:accounts` source/regression gate covering both Dari/Pashto translations, template placeholder parity, UI accessible role/selection/dialog behaviors, RTL/mobile/reduced-motion CSS and client/session safety invariants, executed in Ubuntu and Windows CI.
+- Full acceptance checklist: `docs/TEST-ADMIN-ACCOUNTS-PHASE6.md`. Automated test success does **not** establish actual browser/Android/screen-reader/200%-zoom behavior or live Neon/production readiness. Existing Step 20 release NO-GO remains until operator sign-off.
+- No migrations or destructive changes to existing school account records.
