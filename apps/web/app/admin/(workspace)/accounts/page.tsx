@@ -77,7 +77,12 @@ export default function AccountsPage() {
   const isQueryPending = query.trim() !== debouncedQuery;
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<AccountPendingAction | null>(null);
-  const cancelPendingAction = useCallback(() => setPendingAction(null), []);
+  const [returnToAccountId, setReturnToAccountId] = useState<string | null>(null);
+  const cancelPendingAction = useCallback(() => {
+    setPendingAction(null);
+    setSelectedAccountId(returnToAccountId);
+    setReturnToAccountId(null);
+  }, [returnToAccountId]);
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -124,6 +129,7 @@ export default function AccountsPage() {
   useEffect(() => {
     setSelectedAccountId(null);
     setPendingAction(null);
+    setReturnToAccountId(null);
     setBulkPending(null);
     setCredential(null);
     setSelectedIds(new Set());
@@ -327,6 +333,7 @@ export default function AccountsPage() {
       });
       return;
     }
+    setReturnToAccountId(selectedAccountId);
     setSelectedAccountId(null);
     setPendingAction({ user, action });
   }
@@ -351,6 +358,7 @@ export default function AccountsPage() {
         )
       }));
       setPendingAction(null);
+      setReturnToAccountId(null);
       resetSelection();
       refreshDirectory();
       if (result.temporaryPassword) {
@@ -390,6 +398,8 @@ export default function AccountsPage() {
     studentRecordId
   }, users.map((user) => user.username), availableStudentRecords.map((item) => item.student.id));
   const showUsernameIssue = creationAttempted || newUsername.trim().length > 0;
+  const usernameUnavailable =
+    usernameAvailability?.username === newUsername.trim() && !usernameAvailability.available;
   const showNameIssue = creationAttempted || parentFullName.trim().length > 0;
   const showPhoneIssue = creationAttempted || parentPhone.length > 0;
 
@@ -656,8 +666,10 @@ export default function AccountsPage() {
                 autoCapitalize="none"
                 autoComplete="off"
                 spellCheck={false}
-                aria-invalid={showUsernameIssue && Boolean(creationIssues.username)}
-                aria-describedby={showUsernameIssue && creationIssues.username ? "account-create-username-error" : "account-create-username-help"}
+                aria-invalid={(showUsernameIssue && Boolean(creationIssues.username)) || usernameUnavailable}
+                aria-describedby={showUsernameIssue && creationIssues.username
+                  ? "account-create-username-error"
+                  : usernameUnavailable ? "account-create-username-unavailable" : "account-create-username-help"}
                 required
               />
               {showUsernameIssue && creationIssues.username ? (
@@ -666,8 +678,10 @@ export default function AccountsPage() {
                 <span id="account-create-username-help" className="admin-field-hint">{t(newRole === "PARENT" || newRole === "STUDENT" ? "Use English letters and numbers only." : "Use English letters, numbers, dots, underscores, @, + or hyphens.")}</span>
               )}
               {usernameChecking ? <span className="admin-field-hint" role="status">{t("Checking username…")}</span> : null}
-              {usernameAvailability?.username === newUsername.trim() && !usernameAvailability.available ? (
-                <span className="account-create-field-error" role="alert">{t("That username already exists in this school.")}</span>
+              {usernameUnavailable && !creationIssues.username ? (
+                <span id="account-create-username-unavailable" className="account-create-field-error" role="alert">
+                  {t("That username already exists in this school.")}
+                </span>
               ) : null}
             </label>
             <div className="account-create-notice">{t("A temporary password will be generated. The account holder must change it on first login.")}</div>
