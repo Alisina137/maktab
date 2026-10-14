@@ -26,7 +26,7 @@ const pageSchema = z.object({
   status: ticketStatusSchema.optional()
 }).strict();
 const idSchema = z.object({ ticketId: z.string().uuid() }).strict();
-const schoolSchema = z.object({ schoolId: z.string().uuid() }).strict();
+const schoolSchema = z.object({ schoolId: z.string().uuid() });
 const evidenceParamsSchema = z.object({
   schoolId: z.string().uuid(), category: categorySchema
 }).strict();
