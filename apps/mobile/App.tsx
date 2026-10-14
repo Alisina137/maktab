@@ -1606,6 +1606,9 @@ function AppContent() {
       const result = await api.markNotificationRead(session.accessToken, notificationId);
       if (sessionRef.current?.accessToken !== session.accessToken ||
           sessionRef.current?.user.id !== session.user.id) return;
+      // Discard an in-flight pre-mutation snapshot that could restore stale unread flags.
+      parentNotificationsRequestId.current += 1;
+      updateParentResource("notifications", "ready");
       setParentNotifications((current) =>
         current.map((item) => (item.id === notificationId ? result.notification : item))
       );
@@ -1624,6 +1627,8 @@ function AppContent() {
       const now = new Date().toISOString();
       if (sessionRef.current?.accessToken !== session.accessToken ||
           sessionRef.current?.user.id !== session.user.id) return;
+      parentNotificationsRequestId.current += 1;
+      updateParentResource("notifications", "ready");
       setParentNotifications(items => items.map(item =>
         item.readAt ? item : { ...item, readAt: now }));
       setStudentNotifications(items => items.map(item =>
