@@ -122,7 +122,7 @@ export function AdminAccountDetailsDrawer({
   const badge = (value: string) => <span className="account-detail-badge">{t(value)}</span>;
 
   return createPortal(
-    <div className="account-detail-layer">
+    <div className="account-detail-layer" dir={locale === "en" ? "ltr" : "rtl"}>
       <div className="account-detail-backdrop" aria-hidden="true" onClick={onClose} />
       <aside
         className="account-detail-drawer"
