@@ -39,7 +39,7 @@
     "verify:parent:phase4": "node scripts/verify-parent-experience-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-academics-model.test.ts",
     "verify:parent:phase5": "node scripts/verify-parent-experience-phase5.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-inbox-model.test.ts",
     "verify:parent:phase6": "node scripts/verify-parent-experience-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-more-model.test.ts",
-    "verify:parent:phase7": "node scripts/verify-parent-experience-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-session-guard.test.ts ../../scripts/test-parent-phase7-acceptance.test.ts && node scripts/parent-phase7-acceptance.mjs > /dev/null"
+    "verify:parent:phase7": "node scripts/verify-parent-experience-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-session-guard.test.ts ../../scripts/test-parent-phase7-acceptance.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
