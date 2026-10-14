@@ -2,7 +2,8 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { AdminLoader, AdminSkeleton } from "./admin-loader";
+import { announcementDashboard, feeDashboard } from "./communication-overview-model";
+import { AdminLoader } from "./admin-loader";
 import {
   AdminHijriDatePicker,
   formatAdminHijriDate,
@@ -10,7 +11,12 @@ import {
 } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
+import { adminApi } from "./admin-client";
 
+type Section = "OVERVIEW" | "COMMUNICATION" | "FEES";
+type Pane = "LIST" | "FORM";
+type ResourceKey = "communication" | "families" | "academics";
+type ResourceStatus = "idle" | "loading" | "ready" | "error";
 type AnnouncementScope = "SCHOOL" | "CLASS" | "ROLE";
 type AudienceRole = "TEACHER" | "PARENT" | "STUDENT";
 
@@ -69,21 +75,11 @@ type AcademicOverview = {
   classes: Array<{ id: string; code: string; name: string }>;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
-async function request<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
+function request<T>(accessToken: string, path: string, init?: RequestInit) {
+  return adminApi<T>(path, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      ...(init?.headers ?? {})
-    }
+    headers: { ...(init?.headers ?? {}), Authorization: `Bearer ${accessToken}` }
   });
-  const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(body?.message ?? "Request failed.");
-  return body as T;
 }
 
 function datetimeLocalToIso(value: string) {
@@ -100,6 +96,20 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [families, setFamilies] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
+  const [section, setSection] = useState<Section>("OVERVIEW");
+  const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
+  const [feesPane, setFeesPane] = useState<Pane>("LIST");
+  const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>({
+    communication: "idle", families: "idle", academics: "idle"
+  });
+  const [resourceError, setResourceError] = useState<Partial<Record<ResourceKey, string>>>({});
+  const [resourceOwner, setResourceOwner] = useState<Partial<Record<ResourceKey, string>>>({});
+  const accessRef = useRef(accessToken);
+  accessRef.current = accessToken;
+  const requestGeneration = useRef<Record<ResourceKey, number>>({
+    communication: 0, families: 0, academics: 0
+  });
+  const sectionRefs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({});
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [scope, setScope] = useState<AnnouncementScope>("SCHOOL");
   const [editingNotice, setEditingNotice] = useState<Announcement | null>(null);
@@ -113,25 +123,64 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [reversalReason, setReversalReason] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    void load();
+    setSection("OVERVIEW");
+    setCommunicationPane("LIST");
+    setFeesPane("LIST");
+    setOverview(null);
+    setFamilies(null);
+    setAcademics(null);
+    setResourceOwner({});
+    setResourceStatus({ communication: "idle", families: "idle", academics: "idle" });
+    setResourceError({});
+    void loadResource("communication");
+    void loadResource("families");
+    void loadResource("academics");
+    return () => {
+      for (const key of ["communication", "families", "academics"] as ResourceKey[]) {
+        requestGeneration.current[key] += 1;
+      }
+    };
   }, [accessToken]);
 
-  async function load() {
-    setError("");
+  useEffect(() => {
+    sectionRefs.current[section]?.scrollIntoView({
+      behavior: "smooth", block: "nearest", inline: "nearest"
+    });
+  }, [section]);
+
+  async function loadResource(key: ResourceKey) {
+    const generation = ++requestGeneration.current[key];
+    const token = accessToken;
+    setResourceStatus(current => ({ ...current, [key]: "loading" }));
+    setResourceError(current => ({ ...current, [key]: "" }));
     try {
-      const [communication, familyData, academicData] = await Promise.all([
-        request<CommunicationOverview>(accessToken, "/v1/admin/communication"),
-        request<FamilyOverview>(accessToken, "/v1/admin/families"),
-        request<AcademicOverview>(accessToken, "/v1/admin/academics")
-      ]);
-      setOverview(communication);
-      setFamilies(familyData);
-      setAcademics(academicData);
-      setReminderText(communication.feeReminderDays.join(", "));
+      if (key === "communication") {
+        const data = await request<CommunicationOverview>(token, "/v1/admin/communication");
+        if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
+        setOverview(data);
+        setReminderText(data.feeReminderDays.join(", "));
+      } else if (key === "families") {
+        const data = await request<FamilyOverview>(token, "/v1/admin/families");
+        if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
+        setFamilies(data);
+      } else {
+        const data = await request<AcademicOverview>(token, "/v1/admin/academics");
+        if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
+        setAcademics(data);
+      }
+      setResourceOwner(current => ({ ...current, [key]: token }));
+      setResourceStatus(current => ({ ...current, [key]: "ready" }));
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not load communication and fees."));
+      if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
+      const message = adminErrorText(locale, cause, "Could not load communication and fees.");
+      setResourceError(current => ({ ...current, [key]: message }));
+      setResourceStatus(current => ({ ...current, [key]: "error" }));
     }
   }
+
+  const visibleOverview = resourceOwner.communication === accessToken ? overview : null;
+  const visibleFamilies = resourceOwner.families === accessToken ? families : null;
+  const visibleAcademics = resourceOwner.academics === accessToken ? academics : null;
 
   async function createAnnouncement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,7 +205,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       setNotice(t("Announcement saved. Its audience is enforced by the API."));
       event.currentTarget.reset();
       setScope("SCHOOL");
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not create announcement."));
     } finally {
@@ -180,7 +229,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       });
       setEditingNotice(null);
       setNotice(t("Scheduled announcement updated."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not update scheduled announcement."));
     } finally {
@@ -195,7 +244,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     try {
       await request(accessToken, `/v1/admin/announcements/${id}/archive`, { method: "POST" });
       setNotice(t("Announcement archived."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not archive announcement."));
     } finally {
@@ -221,7 +270,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       });
       setNotice(t("Fee invoice created in DRAFT state."));
       event.currentTarget.reset();
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not create fee invoice."));
     } finally {
@@ -236,7 +285,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     try {
       await request(accessToken, `/v1/admin/fees/invoices/${id}/${action}`, { method: "POST" });
       setNotice(t(action === "issue" ? "Invoice issued to the family." : "Invoice cancelled."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Fee invoice action failed."));
     } finally {
@@ -266,7 +315,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       delete paymentAttempts.current[invoiceId];
       setPaymentDraft((current) => ({ ...current, [invoiceId]: { amount: "", method: "CASH", reference: "" } }));
       setNotice(t("Payment recorded as an immutable transaction."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not record payment."));
     } finally {
@@ -290,7 +339,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       });
       setReversalReason((current) => ({ ...current, [paymentId]: "" }));
       setNotice(t("Payment reversed with a separate immutable reversal transaction."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not reverse payment."));
     } finally {
@@ -318,7 +367,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       });
       setReminderText(result.daysBeforeDue.join(", "));
       setNotice(t("Fee reminder days updated."));
-      await load();
+      await loadResource("communication");
     } catch (cause) {
       setError(adminErrorText(locale, cause, "Could not update fee reminder settings."));
     } finally {
@@ -326,33 +375,28 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
-  const activeStudents = families?.students.filter((item) => item.student.status === "ACTIVE") ?? [];
-  const totals = useMemo(
-    () => (overview?.invoices ?? []).reduce(
-      (sum, item) => ({
-        billed: sum.billed + item.invoice.amount,
-        paid: sum.paid + item.paid,
-        outstanding: sum.outstanding + item.outstanding
-      }),
-      { billed: 0, paid: 0, outstanding: 0 }
-    ),
-    [overview]
-  );
+  const activeStudents = visibleFamilies?.students.filter(item => item.student.status === "ACTIVE") ?? [];
+  const money = useMemo(() => feeDashboard(visibleOverview?.invoices ?? []), [visibleOverview]);
+  const notices = useMemo(() => announcementDashboard(
+    visibleOverview?.announcements ?? [], new Date()
+  ), [visibleOverview]);
 
-  if (!overview || !families || !academics) {
+  const ready = resourceStatus.communication === "ready" && !!visibleOverview;
+  function resourceNotice(key: ResourceKey) {
     return (
-      <section className="admin-panel communication-section admin-loading-card">
-        <AdminLoader label={t("Loading Phase 7 data…")} />
-        <AdminSkeleton rows={5} />
-        {error ? (
+      <div className="admin-panel communication-resource-state" role="status">
+        {resourceStatus[key] === "error" ? (
           <>
-            <div className="admin-error" role="alert">{error}</div>
-            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+            <p role="alert">{resourceError[key] || t("Could not load communication and fees.")}</p>
+            <button type="button" className="admin-secondary" onClick={() => void loadResource(key)}>
+              {t("Retry")}
+            </button>
           </>
-        ) : null}
-      </section>
+        ) : <AdminLoader compact label={t("Loading Phase 7 data…")} />}
+      </div>
     );
   }
+
 
   return (
     <section className="communication-section admin-page-enter">
@@ -393,7 +437,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             {scope === "CLASS" ? (
               <label>{t("Class")}<select name="classId" required defaultValue="">
                   <option value="">{t("Select class")}</option>
-                  {academics.classes.map((item) => (
+                  {(visibleAcademics?.classes ?? []).map((item) => (
                     <option key={item.id} value={item.id}>{item.name} · {item.code}</option>
                   ))}
                 </select>
