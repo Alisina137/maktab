@@ -181,6 +181,44 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   }, [accessToken]);
 
   useEffect(() => {
+    const generation = ++recipientGeneration.current;
+    const token = accessToken;
+    if (scope === "CLASS" && !targetClassId) {
+      setRecipientCount(null); setRecipientStatus("idle"); setRecipientError("");
+      return;
+    }
+    setRecipientCount(null);
+    setRecipientStatus("loading");
+    const timer = window.setTimeout(() => {
+      void request<{recipientCount:number;schoolTimezone:string}>(
+        token, "/v1/admin/announcements/recipients/preview", {
+          method: "POST",
+          body: JSON.stringify({
+            audienceScope: scope,
+            ...(scope === "CLASS" ? { classId: targetClassId } : {}),
+            ...(scope !== "SCHOOL" && targetRole ? { audienceRole: targetRole } : {})
+          })
+        }
+      ).then(result => {
+        if (accessRef.current !== token || generation !== recipientGeneration.current) return;
+        setSchoolTimezone(result.schoolTimezone);
+        setRecipientCount(result.recipientCount);
+        setRecipientStatus("ready"); setRecipientError("");
+      }).catch(cause => {
+        if (accessRef.current !== token || generation !== recipientGeneration.current) return;
+        setRecipientStatus("error");
+        setRecipientError(adminErrorText(locale, cause, "Could not preview recipients."));
+      });
+    }, 300);
+    return () => { window.clearTimeout(timer); recipientGeneration.current += 1; };
+  }, [accessToken, scope, targetClassId, targetRole, locale]);
+
+  useEffect(() => {
+    setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE);
+  }, [announcementSearch, announcementStatusFilter,
+      announcementAudienceFilter, announcementClassFilter]);
+
+  useEffect(() => {
     sectionRefs.current[section]?.scrollIntoView({
       behavior: "smooth", block: "nearest", inline: "nearest"
     });
@@ -437,6 +475,23 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     visibleOverview?.announcements ?? [], new Date()
   ), [visibleOverview]);
 
+  const announcementMatches = useMemo(() => findAnnouncements(
+    visibleOverview?.announcements ?? [],
+    { search: announcementSearch, status: announcementStatusFilter,
+      audience: announcementAudienceFilter, classId: announcementClassFilter }, Date.now()
+  ), [visibleOverview, announcementSearch, announcementStatusFilter,
+      announcementAudienceFilter, announcementClassFilter]);
+  const announcementPage = pageAnnouncements(announcementMatches, announcementLimit);
+  const classLabel = (id: string | null) => id
+    ? visibleAcademics?.classes.find(row => row.id === id)?.name ?? t("Unknown class")
+    : "";
+  function showAnnouncement(id: string) {
+    setSection("COMMUNICATION");
+    setCommunicationPane("LIST");
+    setAnnouncementSearch(""); setAnnouncementStatusFilter("ALL");
+    setAnnouncementAudienceFilter("ALL"); setAnnouncementClassFilter("");
+    setExpandedAnnouncementId(id); setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE);
+  }
   const ready = resourceStatus.communication === "ready" && !!visibleOverview;
   function resourceNotice(key: ResourceKey) {
     return (
