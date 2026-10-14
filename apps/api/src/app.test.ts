@@ -6437,3 +6437,142 @@ test("Phase 5 bulk API enforces school scope, eligibility, size, atomicity and a
   const foreignList = await app.inject({ method: "GET", url: "/v1/admin/users/directory?pageSize=10", headers: authB });
   assert.equal(foreignList.json<{ counts: { total: number } }>().counts.total, 2);
 });
+
+
+test("Phase 6 Accounts: role denial, temporary-password restriction, and school-only operations", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "P6-ROLE-A");
+  const schoolB = await provisionSchool(app, "P6-ROLE-B");
+  const adminToken = await bootstrapAdmin(app, schoolA);
+  const otherSchoolAdmin = await bootstrapAdmin(app, schoolB);
+  const adminAuth = { authorization: `Bearer ${adminToken}` };
+  const foreignAuth = { authorization: `Bearer ${otherSchoolAdmin}` };
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/users", headers: adminAuth,
+    payload: { role: "TEACHER", username: "teacherphase6" }
+  });
+  assert.equal(created.statusCode, 201);
+  const { user, temporaryPassword } = created.json<{ user: { id: string }, temporaryPassword: string }>();
+
+  const login = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId: schoolA, expectedRole: "TEACHER", username: "teacherphase6", password: temporaryPassword }
+  });
+  assert.equal(login.statusCode, 200);
+  const teacherTemporary = login.json<{ accessToken: string }>().accessToken;
+
+  const readEndpoints = [
+    "/v1/admin/users",
+    "/v1/admin/users/directory?group=TEACHER&pageSize=20",
+    "/v1/admin/users/username-check?username=teacherphase6",
+    `/v1/admin/users/${user.id}/audit`
+  ];
+  for (const url of readEndpoints) {
+    const temporary = await app.inject({
+      method: "GET", url, headers: { authorization: `Bearer ${teacherTemporary}` }
+    });
+    assert.equal(temporary.statusCode, 403, `Temporary teacher access: ${url}`);
+    const missing = await app.inject({ method: "GET", url });
+    assert.equal(missing.statusCode, 401, `Unauthenticated access: ${url}`);
+  }
+  const changed = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${teacherTemporary}` },
+    payload: { newPassword: "TeacherPhase6Secure2026!" }
+  });
+  assert.equal(changed.statusCode, 200);
+  const teacherToken = changed.json<{ accessToken: string }>().accessToken;
+  for (const url of readEndpoints) {
+    const denied = await app.inject({ method: "GET", url, headers: { authorization: `Bearer ${teacherToken}` } });
+    assert.equal(denied.statusCode, 403, `Teacher role must not administer accounts: ${url}`);
+  }
+  const deniedBulk = await app.inject({
+    method: "POST", url: "/v1/admin/users/bulk-status",
+    headers: { authorization: `Bearer ${teacherToken}` },
+    payload: { action: "suspend", userIds: [user.id] }
+  });
+  assert.equal(deniedBulk.statusCode, 403);
+  const invalidBulk = await app.inject({
+    method: "POST", url: "/v1/admin/users/bulk-status",
+    payload: { action: "suspend", userIds: [user.id] }
+  });
+  assert.equal(invalidBulk.statusCode, 401);
+
+  for (const url of ["/v1/admin/users/directory?query=teacherphase6",
+    `/v1/admin/users/${user.id}/audit`]) {
+    const foreign = await app.inject({ method: "GET", url, headers: foreignAuth });
+    assert.equal(foreign.statusCode, url.includes("/audit") ? 404 : 200);
+    if (url.includes("/directory")) {
+      assert.equal(foreign.json<{ total: number }>().total, 0);
+    }
+  }
+  const crossSchoolWrite = await app.inject({
+    method: "POST", url: "/v1/admin/users/bulk-status",
+    headers: foreignAuth,
+    payload: { action: "suspend", userIds: [user.id] }
+  });
+  assert.equal(crossSchoolWrite.statusCode, 409);
+});
+
+test("Phase 6 Accounts: bulk bounds, unknown fields, escaped search and no partial writes", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "P6-VALIDATION");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const headers = { authorization: `Bearer ${adminToken}` };
+
+  const create = async (username: string) => {
+    const res = await app.inject({ method: "POST", url: "/v1/admin/users", headers,
+      payload: { role: "TEACHER", username } });
+    assert.equal(res.statusCode, 201);
+    return res.json<{ user: { id: string } }>().user.id;
+  };
+  const first = await create("phase6_teacher_one");
+  const second = await create("phase6_teacher_two");
+  const ids = Array.from({ length: 21 }, (_, index) =>
+    `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`);
+  const route = "/v1/admin/users/bulk-status";
+  const invalid = [
+    { action: "suspend", userIds: ids },
+    { action: "suspend", userIds: [] },
+    { action: "suspend", userIds: [first, first] },
+    { action: "delete", userIds: [first] },
+    { action: "reactivate", userIds: [first], reason: "Should be rejected" },
+    { action: "suspend", userIds: [first], extra: "forbidden" },
+    { action: "suspend", userIds: [first], reason: "xx" },
+    { action: "suspend", userIds: [first], reason: "r".repeat(501) }
+  ];
+  for (const payload of invalid) {
+    const res = await app.inject({ method: "POST", url: route, headers, payload });
+    assert.equal(res.statusCode, 400, JSON.stringify(payload).slice(0, 150));
+  }
+  const badSearches = [
+    "/v1/admin/users/directory?query=" + "q".repeat(121),
+    "/v1/admin/users/directory?sortBy=passwordHash",
+    "/v1/admin/users/directory?status=REMOVED",
+    "/v1/admin/users/directory?pageSize=21",
+    "/v1/admin/users/directory?page=0",
+    "/v1/admin/users/directory?order=random"
+  ];
+  for (const url of badSearches) {
+    const res = await app.inject({ method: "GET", url, headers });
+    assert.equal(res.statusCode, 400, url);
+  }
+  const literal = await app.inject({ method: "GET", url: "/v1/admin/users/directory?query=%25", headers });
+  assert.equal(literal.statusCode, 200);
+  assert.equal(literal.json<{ total: number }>().total, 0);
+  const before = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?status=INVITED&pageSize=10", headers
+  });
+  assert.ok(before.json<{ users: Array<{ id: string }> }>().users.some(u => u.id === first));
+  const mixed = await app.inject({
+    method: "POST", url: route, headers, payload: { action: "suspend", userIds: [first, ids[0]] }
+  });
+  assert.equal(mixed.statusCode, 409);
+  const after = await app.inject({
+    method: "GET", url: "/v1/admin/users/directory?status=INVITED&pageSize=10", headers
+  });
+  assert.ok(after.json<{ users: Array<{ id: string }> }>().users.some(u => u.id === first));
+  assert.ok(after.json<{ users: Array<{ id: string }> }>().users.some(u => u.id === second));
+});
