@@ -3,6 +3,8 @@ import {
   createAnnouncementSchema,
   updateScheduledAnnouncementSchema,
   createFeeInvoiceSchema,
+  updateDraftFeeInvoiceSchema,
+  adminFeeInvoiceQuerySchema,
   recordFeePaymentSchema,
   registerPushDeviceSchema,
   reverseFeePaymentSchema,
@@ -316,6 +318,34 @@ export function registerCommunicationRoutes(
           request.params.announcementId
         );
         return { announcement };
+      } catch (error) {
+        return sendCommunicationError(reply, error);
+      }
+    }
+  );
+
+  app.get("/v1/admin/fees/invoices", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = adminFeeInvoiceQuerySchema.parse(request.query);
+      return await communication.listAdminFeeInvoices(context.user.schoolId, query);
+    } catch (error) {
+      return sendCommunicationError(reply, error);
+    }
+  });
+
+  app.patch<{ Params: { invoiceId: string } }>(
+    "/v1/admin/fees/invoices/:invoiceId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const input = updateDraftFeeInvoiceSchema.parse(request.body);
+        const invoice = await communication.updateDraftFeeInvoice(
+          context.user.schoolId, context.user.id, request.params.invoiceId, input
+        );
+        return { invoice };
       } catch (error) {
         return sendCommunicationError(reply, error);
       }
