@@ -509,6 +509,22 @@ export const createFeeInvoiceSchema = z.object({
   description: z.string().trim().max(240).optional()
 });
 export type CreateFeeInvoiceInput = z.infer<typeof createFeeInvoiceSchema>;
+/** An invoice may only be revised while it is still a draft. A timestamp acts as a stale-editor guard. */
+export const updateDraftFeeInvoiceSchema = createFeeInvoiceSchema.extend({
+  expectedUpdatedAt: z.string().datetime({offset:true})
+});
+export type UpdateDraftFeeInvoiceInput = z.infer<typeof updateDraftFeeInvoiceSchema>;
+
+export const adminFeeInvoiceQuerySchema = z.object({
+  q: z.string().trim().max(120).default(""),
+  status: feeInvoiceStatusSchema.or(z.literal("ALL")).default("ALL"),
+  classId: z.string().uuid().optional(),
+  academicYearId: z.string().uuid().optional(),
+  studentId: z.string().uuid().optional(),
+  page: z.coerce.number().int().min(1).max(100000).default(1)
+});
+export type AdminFeeInvoiceQuery = z.infer<typeof adminFeeInvoiceQuerySchema>;
+
 
 export const recordFeePaymentSchema = z.object({
   amount: z.number().int().min(1).max(100000000),
