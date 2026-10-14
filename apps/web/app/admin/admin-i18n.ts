@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Approval requires revalidation": "تأیید راه‌اندازی نیازمند بررسی مجدد است",
   "Launch and support workflow": "روند راه‌اندازی و پشتیبانی",
   "Launch evidence and support": "شواهد راه‌اندازی و پشتیبانی",
   "Evidence submissions are requests for operator review, not verified proof or automatic launch approval.": "شواهد ارسالی تنها برای بررسی مسئول پلتفرم است؛ تأیید خودکار راه‌اندازی نیست.",
@@ -1270,6 +1271,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Approval requires revalidation": "د پیل تایید بیا کتنې ته اړتیا لري",
   "Launch and support workflow": "د پیل او ملاتړ بهیر",
   "Launch evidence and support": "د پیل شواهد او ملاتړ",
   "Evidence submissions are requests for operator review, not verified proof or automatic launch approval.": "سپارل شوي شواهد د پلېټفارم د بیاکتنې غوښتنه ده؛ په خپله د پیل تایید نه دی.",
