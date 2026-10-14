@@ -167,6 +167,17 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 
 **Release status:** Phase 6 automated verification does not establish device/operator acceptance. Step 20 remains **NO-GO** until independently evidenced.
 
+## Phase 7 — Parent Full Regression, Android Readiness & Release Evidence (automation implemented; device acceptance pending)
+
+- Added authenticated **Fastify/PGlite end-to-end tests**: two different parents, own/foreign children, denied foreign timetable/learning/attendance/fees requests, issued-invoice visibility (never drafts), parent read-only fee API, rejected wrong/same passwords, successful password rotation, old token revocation, and unaffected second-parent sessions.
+- Fixed an auth race in mobile refresh/change-password: asynchronous token responses now require an exact user + school + access/refresh-token epoch match; **same parent ID is not enough**. Refresh errors cannot revoke a newer password session, and concurrent logout prevents installing or persisting late credentials. Added a separate model regression test.
+- Improved nested Parent More navigation for compact devices: four subtabs become horizontally scrollable, preserve accessible selected-tab state, and auto-focus the selected tab, retaining the existing compact two/three-tab layout and RTL mirrored order.
+- Automated Phase 7 source guard, auth-epoch tests, and a deliberately conservative **parent Android evidence validator** are included in `pnpm verify:parent:phase7` and Linux/Windows CI. All earlier Phase 1–6 tests remain mandatory, with the stronger session invariant incorporated into Phase 6.
+- The operator runbook `docs/PARENT-PHASE7-ANDROID-ACCEPTANCE.md` defines 16 real-device/privacy/RTL/offline/finance/push/CI/sign-off gates. `scripts/parent-phase7-acceptance.mjs` records evidence for the exact build SHA but cannot independently verify a physical phone; its decision remains **NO_GO** even when a manifest is complete.
+- Tests cannot guarantee visually correct rendering on real Android or public tunnel availability. Real operator/device/PGlite-vs-PostgreSQL differences require independent acceptance; not pretending these were exercised.
+
+**Release state:** Phase 7 implementation and automated regression coverage are deliverable. Parent Android/manual sign-off and platform Step 20 evidence are **NOT_RUN / NO-GO**, not a completed launch. No schema migration.
+
 ## Next phases
 
 - Phase 2 — implemented: interactive prioritized Home and independent resource retry.
@@ -174,6 +185,6 @@ Implemented from repository `main` baseline Phase 7, continuing without replacin
 - Phase 4 — implemented: published-only Homework filters/details, released Result groups, and weekly Timetable day/subject views.
 - Phase 5 — implemented: Parent Inbox search/read/audience/topic filters, 20-at-a-time display paging and validated item deep links.
 - Phase 6 — implemented: child-scoped Fee ledger, read-only Profile, School information and password/language Preferences.
-- Phase 7 — full Android/RTL/offline/multi-child regression and release evidence.
+- Phase 7 — automated cross-account API regression, session race safeguards, compact RTL navigation and operator evidence pack implemented; actual device acceptance and Step 20 sign-off still NOT_RUN / NO-GO.
 
 **Important:** Automated and source tests cannot establish that the live Android UI has been tested. Step 20 production release remains NO-GO until operator/device evidence is collected.
