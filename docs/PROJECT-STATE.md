@@ -1600,7 +1600,7 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Dates show actual parent-authorized records only; future dates are disabled and days without school records are explicitly *not recorded*.
 - Month navigation fetches the requested month using the existing school-scoped / parent-child-authorized attendance API (`from` / `to`); Home keeps its 30-day default read. Child/account switching and component cleanup prevent stale responses.
 - Month summary counts Present, Absent, Late, Excused, and recorded days. Attendance percentage = (Present + Late) / (Present + Late + Absent); excused, unrecorded, and future dates are excluded, and a zero denominator displays an unavailable rate.
-- Day details reveal date, actual mark, class, and school note. Parents cannot edit marks.
+- Day details reveal date, actual mark, class, and school note; the month also has a chronological, selectable marked-day history with note previews. Parents cannot edit marks.
 - API and schema unchanged apart from optional range arguments in the mobile API client; **no database migration**.
 - Automated verification: `pnpm verify:parent:phase3`, integrated into `pnpm verify`. Device/TalkBack/offline/multi-child acceptance must still be run; production Step 20 remains NO-GO until evidenced.
 - Phase 4 next: deeper Academics homework/result/timetable organization, filtering and details. Other remaining parent phases: Inbox (5), Account/Finance (6), and device/regression acceptance (7).
