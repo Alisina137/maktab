@@ -64,8 +64,28 @@ Source of truth for currently implemented behavior: the main-branch application 
 5. Try context actions on active, suspended, archived and current-admin accounts. Password reset must close details before displaying the concealed one-time credential.
 6. Test Escape, Tab/Shift+Tab trap, backdrop click, focus restore, 200% zoom, narrow screens, and three-language RTL/LTR. Check `pnpm verify` plus GitHub CI at the exact final SHA.
 
-## Future phases (not implemented in Phases 1–3)
-- **Phase 4 — Security:** confirmation dialogs, revoked sessions on suspension, suspension reasons, account audit drill-down and appropriate security handling.
+## Phase 4 — Account security and lifecycle (implemented)
+
+- **Guarded actions:** Reset password, Suspend, and Reactivate, whether selected in the directory or account details, require an explicit accessible confirmation dialog. The dialog explains session effects and supports Cancel/Escape, keyboard focus management and Dari/Pashto RTL.
+- **Suspension reason:** Optional reason up to 500 characters (minimum three if supplied), trimmed and validated server-side. The UI discourages including secrets. A reason is stored only in the account's audit metadata (no new database column or migration).
+- **Atomic session invalidation:** Existing access/refresh sessions are revoked in the same transaction as a school administrator's suspension and reactivation. The general account status changer revokes on lifecycle changes as well. Previously signed-in users cannot regain access on reactivation with old tokens.
+- **Preserve suspended-account messaging:** The app's existing suspended-user login still returns a restricted, suspended-status session, allowing the school admin contact route but not operational features; a newly created restricted session is revoked when the account is reactivated. A user must log in again after reactivation. Previously issued sessions are invalidated immediately on suspension (HTTP 401 `session_invalid`, not a network outage).
+- **Lifecycle conflicts:** Archived accounts cannot be suspended/reactivated; already suspended accounts cannot be suspended twice; only suspended accounts can be reactivated. The current administrator still cannot self-suspend or self-reset. The account's subscription write rules remain unchanged.
+- **School-scoped audit:** New `GET /v1/admin/users/:userId/audit?limit=25` (max 50) requires an authenticated school administrator and an existing target user in their own school. It returns a safe projection: action, actor user ID, optional suspension reason, timestamp and event ID. It excludes password hashes and arbitrary audit metadata. Parent creation and student login creation metadata remain mapped to their respective accounts without revealing other accounts' events.
+- **Account details:** Shows up to 25 recent events, including localized event names, known administrator identity and optional reason; errors and empty states are explicit. Browser-only rendering never has access to stored password hashes.
+- **Testing:** PGlite tests cover session invalidation, cross-school audit filters, reason persistence and reset on reactivation; API tests check reason validation, conflicts, audit visibility, tenant isolation, and old-session rejection. Release evidence now checks the screen, store, API, and translations.
+- **Not added:** An automated notification/email for suspension, mandatory second-admin approval, account archival, or any separate staff permission system. Future server-side paging and bulk operations remain Phase 5.
+
+### Manual acceptance for Phase 4
+
+1. From both directory and detail views try Reset password, Suspend, and Reactivate; confirm none executes before the confirmation. Cancel/Escape should not make changes.
+2. Suspend a test user with a reason. Verify all previously issued access/refresh tokens fail. Login during suspension should show restricted-account status and still allow the admin-contact route.
+3. Reactivate the account. Confirm a suspended-session token also fails and that a **fresh login** is required; the account should return to `INVITED` if a first-login password change remains necessary.
+4. Check Account history for timestamps, action, performer, reason and chronology. Verify a second school cannot read or modify the test school's account or audit.
+5. Test invalid reasons, repeated actions, current-admin restrictions, archived states, failed requests and cancellation without unintended data changes.
+6. Exercise English/Dari/Pashto desktop and mobile UI, 200% zoom, keyboard, screen reader, RTL and current network error handling. Run `pnpm verify` and check Linux/Windows CI at the exact final SHA.
+
+## Future phases (not implemented in Phases 1–4)
 - **Phase 5 — Scale:** server-side search/pagination/sorting, optional safely scoped bulk account operations.
 - **Phase 6 — Regression:** expanded end-to-end role, tenant, network, locale, accessibility and responsive verification.
 
