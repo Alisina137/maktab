@@ -2593,6 +2593,7 @@ function AppContent() {
                       learning={parentDataChildId === selectedChildId ? parentLearning : null}
                       status={parentDataChildId === selectedChildId
                         ? parentResourceStatus.learning : "loading"}
+                      focusedId={parentFocusedHomeworkId}
                       onRetry={() => retryParentResource("learning")}
                     />
                   ) : parentAcademicsTab === "RESULTS" ? (
@@ -2601,7 +2602,8 @@ function AppContent() {
                       learning={parentDataChildId === selectedChildId ? parentLearning : null}
                       status={parentDataChildId === selectedChildId
                         ? parentResourceStatus.learning : "loading"}
-                      locale={locale} onRetry={() => retryParentResource("learning")}
+                      locale={locale} focusedId={parentFocusedExamId}
+                      onRetry={() => retryParentResource("learning")}
                     />
                   ) : (
                     <ParentAcademicTimetable
@@ -2638,6 +2640,7 @@ function AppContent() {
                       accessToken={session.accessToken}
                       studentId={selectedChild.student.id}
                       today={parentToday}
+                      focusedDate={parentFocusedAttendanceDate}
                       locale={locale}
                       onSensitiveError={(cause) => {
                         if (cause instanceof ApiRequestError && [
@@ -2680,7 +2683,10 @@ function AppContent() {
                 <ParentSectionTabs
                   locale={locale}
                   selected={parentInboxTab}
-                  onSelect={(value) => setParentInboxTab(value as ParentInboxTab)}
+                  onSelect={(value) => {
+                    resetParentNotificationFocus();
+                    setParentInboxTab(value as ParentInboxTab);
+                  }}
                   tabs={[
                     { key: "ANNOUNCEMENTS", label: "parent.navAnnouncements" },
                     { key: "NOTIFICATIONS", label: "notifications.title" }
@@ -2688,19 +2694,28 @@ function AppContent() {
                 />
                 {parentInboxTab === "ANNOUNCEMENTS" ? (
                   selectedChild ? (
-                    <ParentAnnouncementsContent key={selectedChild.student.id}
-                      announcements={parentAnnouncements}
-                      classId={selectedChild.student.classId} ready={parentCommunicationReady}
-                      locale={locale} textDirection={textDirection} />
+                    <ParentAnnouncementsInbox
+                      key={session.user.id + ":" + selectedChild.student.id}
+                      announcements={parentDataChildId === selectedChildId ? parentAnnouncements : []}
+                      classId={selectedChild.student.classId}
+                      status={parentDataChildId === selectedChildId
+                        ? parentResourceStatus.announcements : "loading"}
+                      locale={locale} focusedId={parentInboxFocusedAnnouncementId}
+                      onRetry={() => retryParentResource("announcements")} />
                   ) : (
                     <View style={styles.emptyCard}>
                       <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
                     </View>
                   )
                 ) : (
-                  <ParentNotificationsContent notifications={parentNotifications}
+                  <ParentNotificationsContent
+                    key={session.user.id}
+                    notifications={parentNotifications}
+                    status={parentResourceStatus.notifications}
+                    focusedId={parentInboxFocusedNotificationId}
+                    onRetry={() => retryParentResource("notifications")}
                     locale={locale} onOpen={openNotification}
-                    onMarkAllRead={() => void markAllNotificationsRead()} />
+                    onMarkAllRead={markAllNotificationsRead} />
                 )}
               </>
             ) : null}
