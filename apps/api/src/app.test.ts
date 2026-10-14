@@ -7164,3 +7164,103 @@ test("Pilot Phase 7 release acceptance is authenticated, school-scoped and never
   const unchanged = await app.inject({ method:"GET", url, headers:adminA });
   assert.equal(unchanged.json<{productionDecision:string}>().productionDecision,"NO_GO");
 });
+
+
+test("Parent Phase 7 authenticated child isolation and password rotation", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolId = await provisionSchool(app, "PARENT-PHASE7");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: `Bearer ${adminToken}` };
+  const year = await app.inject({ method:"POST", url:"/v1/admin/academics/years",
+    headers:admin, payload:{name:"1405",startDate:"2026-03-21",endDate:"2027-03-20"} });
+  assert.equal(year.statusCode,201,year.body);
+  const yearId = year.json<{academicYear:{id:string}}>().academicYear.id;
+  const grade = await app.inject({ method:"POST",url:"/v1/admin/academics/grades",
+    headers:admin,payload:{code:"P7G7",name:"Grade 7",sortOrder:7} });
+  assert.equal(grade.statusCode,201,grade.body);
+  const classResponse = await app.inject({method:"POST",url:"/v1/admin/academics/classes",
+    headers:admin,payload:{academicYearId:yearId,gradeLevelId:grade.json<{grade:{id:string}}>().grade.id,
+      code:"P7A",name:"Class P7 A"} });
+  assert.equal(classResponse.statusCode,201,classResponse.body);
+  const classId=classResponse.json<{class:{id:string}}>().class.id;
+
+  const parents=[] as Array<{user:{id:string};temporaryPassword:string}>;
+  for (const [username,fullName] of [["parent7a","Parent A"],["parent7b","Parent B"]]) {
+    const response = await app.inject({method:"POST",url:"/v1/admin/families/parents",
+      headers:admin,payload:{username,fullName}});
+    assert.equal(response.statusCode,201,response.body);
+    parents.push(response.json<{user:{id:string};temporaryPassword:string}>());
+  }
+  const studentIds=[] as string[];
+  for(let i=0;i<2;i++){
+    const response=await app.inject({method:"POST",url:"/v1/admin/families/students",
+      headers:admin,payload:{parentUserId:parents[i]!.user.id,
+        studentCode:"PHASE7-"+i,fullName:"Child "+i,academicYearId:yearId,classId} });
+    assert.equal(response.statusCode,201,response.body);
+    studentIds.push(response.json<{student:{id:string}}>().student.id);
+  }
+  const parentTokens=await Promise.all(
+    [0,1].map(i=>activateRoleLogin(app,schoolId,"PARENT","parent7"+(i?"b":"a"),
+      parents[i]!.temporaryPassword,"ParentSecure2026!"))
+  );
+  const own = {authorization:`Bearer ${parentTokens[0]}`};
+  const unrelated = {authorization:`Bearer ${parentTokens[1]}`};
+  const home=await app.inject({method:"GET",url:"/v1/parent/home",headers:own});
+  assert.equal(home.statusCode,200,home.body);
+  const children=home.json<{children:Array<{student:{id:string}}>} >().children;
+  assert.deepEqual(children.map(x=>x.student.id),[studentIds[0]]);
+  const otherHome=await app.inject({method:"GET",url:"/v1/parent/home",headers:unrelated});
+  assert.deepEqual(otherHome.json<{children:Array<{student:{id:string}}>} >().children
+    .map(x=>x.student.id),[studentIds[1]]);
+
+  for(const suffix of ["timetable","learning","attendance","fees"]){
+    const url=`/v1/parent/children/${studentIds[1]}/${suffix}`;
+    const blocked=await app.inject({method:"GET",url,headers:own});
+    assert.equal(blocked.statusCode,404,blocked.body);
+  }
+
+  // Draft invoices are not parent-visible; issued invoices never leak to another parent.
+  const invoice=await app.inject({method:"POST",url:"/v1/admin/fees/invoices",
+    headers:admin,payload:{studentId:studentIds[0],amount:1250,
+      dueDate:"2099-12-31",description:"School fee"}});
+  assert.equal(invoice.statusCode,201,invoice.body);
+  const invoiceId=invoice.json<{invoice:{id:string}}>().invoice.id;
+  const ownUrl=`/v1/parent/children/${studentIds[0]}/fees`;
+  const draft=await app.inject({method:"GET",url:ownUrl,headers:own});
+  assert.equal(draft.statusCode,200,draft.body);
+  assert.equal(draft.json<{invoices:unknown[]}>().invoices.length,0);
+  const issue=await app.inject({method:"POST",url:`/v1/admin/fees/invoices/${invoiceId}/issue`,
+    headers:admin});
+  assert.equal(issue.statusCode,200,issue.body);
+  const visible=await app.inject({method:"GET",url:ownUrl,headers:own});
+  assert.equal(visible.statusCode,200,visible.body);
+  assert.equal(visible.json<{invoices:Array<{outstanding:number}>}>().invoices[0]?.outstanding,1250);
+  assert.equal((await app.inject({method:"GET",url:ownUrl,headers:unrelated})).statusCode,404);
+  assert.equal((await app.inject({method:"POST",url:`/v1/admin/fees/invoices/${invoiceId}/issue`,
+    headers:own})).statusCode,403);
+
+  // Both password and active session are rotated by the existing audited API.
+  const wrong=await app.inject({method:"POST",url:"/v1/auth/change-password",
+    headers:own,payload:{currentPassword:"WrongSecure2026!",newPassword:"NextSecure2026!"}});
+  assert.equal(wrong.statusCode,401,wrong.body);
+  const same=await app.inject({method:"POST",url:"/v1/auth/change-password",
+    headers:own,payload:{currentPassword:"ParentSecure2026!",newPassword:"ParentSecure2026!"}});
+  assert.equal(same.statusCode,400,same.body);
+  const changed=await app.inject({method:"POST",url:"/v1/auth/change-password",
+    headers:own,payload:{currentPassword:"ParentSecure2026!",newPassword:"NextSecure2026!"}});
+  assert.equal(changed.statusCode,200,changed.body);
+  const newToken=changed.json<{accessToken:string}>().accessToken;
+  assert.notEqual(newToken,parentTokens[0]);
+  assert.equal((await app.inject({method:"GET",url:"/v1/parent/home",headers:own})).statusCode,401);
+  assert.equal((await app.inject({method:"GET",url:"/v1/parent/home",
+    headers:{authorization:`Bearer ${newToken}`}})).statusCode,200);
+  assert.equal((await app.inject({method:"GET",url:"/v1/parent/home",headers:unrelated})).statusCode,200);
+  const oldLogin=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId,expectedRole:"PARENT",username:"parent7a",password:"ParentSecure2026!"}});
+  assert.equal(oldLogin.statusCode,401);
+  const newLogin=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId,expectedRole:"PARENT",username:"parent7a",password:"NextSecure2026!"}});
+  assert.equal(newLogin.statusCode,200,newLogin.body);
+});
