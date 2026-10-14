@@ -34,6 +34,56 @@ type Readiness = {
   checks: Array<{ key: string; passed: boolean; detail: string }>;
 };
 
+
+type CoverageMetric = {
+  key: "teaching" | "timetable" | "negaran" | "class_students" |
+    "family_links" | "student_logins" | "teacher_logins";
+  category: "academics" | "attendance" | "families";
+  severity: "critical" | "warning";
+  status: "complete" | "critical" | "warning" | "not_applicable";
+  total: number; complete: number; missing: number; percentage: number | null;
+};
+
+type AdvancedReadiness = {
+  ready: boolean;
+  coreReady: boolean;
+  warnings: number;
+  critical: number;
+  metrics: CoverageMetric[];
+};
+
+type CoverageIssues = {
+  metric: CoverageMetric["key"];
+  rows: Array<{ id: string; label: string }>;
+  offset: number; limit: number; hasMore: boolean;
+};
+
+const coverageCategories = [
+  { key: "academics", label: "Academic coverage" },
+  { key: "attendance", label: "Attendance coverage" },
+  { key: "families", label: "Families & account coverage" }
+] as const;
+
+const coverageLabels: Record<CoverageMetric["key"], string> = {
+  teaching: "Classes with active teacher assignments",
+  timetable: "Classes with matching timetable periods",
+  negaran: "Classes with a current Negaran",
+  class_students: "Classes with enrolled students",
+  family_links: "Students with accessible parents and matching classes",
+  student_logins: "Students with activated logins",
+  teacher_logins: "Teachers with completed first login"
+};
+
+const coverageDestinations: Record<CoverageMetric["key"], string> = {
+  teaching: "/admin/academics/assignments",
+  timetable: "/admin/academics/timetable",
+  negaran: "/admin/academics/negaran",
+  class_students: "/admin/families",
+  family_links: "/admin/families",
+  student_logins: "/admin/accounts",
+  teacher_logins: "/admin/accounts"
+};
+
 type AuditLog = {
   id: string;
   actorUserId: string | null;
@@ -114,12 +164,21 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const { locale } = useAdminWorkspace();
   const pilotNavRef = useRef<HTMLElement | null>(null);
   const requestVersion = useRef(0);
+  const issueRequestVersion = useRef(0);
   const t = (english: string) => adminText(locale, english);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [audit, setAudit] = useState<AuditLog[]>([]);
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditLoaded, setAuditLoaded] = useState(false);
+  const [advanced, setAdvanced] = useState<AdvancedReadiness | null>(null);
+  const [advancedBusy, setAdvancedBusy] = useState(false);
+  const [advancedError, setAdvancedError] = useState("");
+  const [selectedMetric, setSelectedMetric] = useState<CoverageMetric["key"] | null>(null);
+  const [issues, setIssues] = useState<CoverageIssues | null>(null);
+  const [issuesBusy, setIssuesBusy] = useState(false);
+  const [issuesError, setIssuesError] = useState("");
   const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
@@ -134,6 +193,12 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     setAudit([]);
     setAuditOffset(0);
     setAuditHasMore(false);
+    setAuditLoaded(false);
+    setAdvanced(null);
+    setAdvancedError("");
+    setSelectedMetric(null);
+    setIssues(null);
+    issueRequestVersion.current += 1;
     void load(0);
     return () => { requestVersion.current += 1; };
   }, [accessToken, section]);
@@ -142,25 +207,80 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
+    const wantsCoverage = section === "overview" || section === "readiness";
+    setAdvancedBusy(wantsCoverage);
+    if (wantsCoverage) setAdvancedError("");
     try {
-      const [subscriptionResult, readinessResult, auditResult] = await Promise.all([
-        request<{ subscription: Subscription }>(accessToken, "/v1/admin/subscription"),
-        request<Readiness>(accessToken, "/v1/admin/pilot/readiness"),
-        request<{ logs: AuditLog[]; hasMore: boolean }>(
-          accessToken,
-          `/v1/admin/audit?limit=20&offset=${offset}`
-        )
-      ]);
-      if (version !== requestVersion.current) return;
-      setSubscription(subscriptionResult.subscription);
-      setReadiness(readinessResult);
-      setAudit(auditResult.logs);
-      setAuditOffset(offset);
-      setAuditHasMore(auditResult.hasMore);
+      // Audit failure cannot hide subscription/readiness and vice versa.
+      if (section === "audit") {
+        const auditResult = await request<{ logs: AuditLog[]; hasMore: boolean }>(
+          accessToken, "/v1/admin/audit?limit=20&offset=" + offset
+        );
+        if (version !== requestVersion.current) return;
+        setAudit(auditResult.logs);
+        setAuditOffset(offset);
+        setAuditHasMore(auditResult.hasMore);
+        setAuditLoaded(true);
+      } else {
+        const [subscriptionResult, readinessResult] = await Promise.all([
+          request<{ subscription: Subscription }>(accessToken, "/v1/admin/subscription"),
+          request<Readiness>(accessToken, "/v1/admin/pilot/readiness")
+        ]);
+        if (version !== requestVersion.current) return;
+        setSubscription(subscriptionResult.subscription);
+        setReadiness(readinessResult);
+        if (wantsCoverage) {
+          // A failed advisory coverage request must not hide working core setup data.
+          void request<AdvancedReadiness>(accessToken, "/v1/admin/pilot/readiness/advanced")
+            .then((result) => {
+              if (version === requestVersion.current) setAdvanced(result);
+            })
+            .catch((cause) => {
+              if (version === requestVersion.current) {
+                setAdvanced(null);
+                setAdvancedError(adminErrorText(locale, cause, "Advanced coverage could not be loaded."));
+              }
+            })
+            .finally(() => {
+              if (version === requestVersion.current) setAdvancedBusy(false);
+            });
+        }
+      }
     } catch (cause) {
       if (version === requestVersion.current) setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
     } finally {
-      if (version === requestVersion.current) setBusy(false);
+      if (version === requestVersion.current) {
+        setBusy(false);
+        if (!wantsCoverage) setAdvancedBusy(false);
+      }
+    }
+  }
+
+  async function openIssues(metric: CoverageMetric["key"], offset = 0) {
+    if (metric === selectedMetric && offset === 0 && issues?.offset === 0) {
+      setSelectedMetric(null);
+      setIssues(null);
+      issueRequestVersion.current += 1;
+      return;
+    }
+    const version = ++issueRequestVersion.current;
+    setSelectedMetric(metric);
+    setIssues(null);
+    setIssuesError("");
+    setIssuesBusy(true);
+    try {
+      const result = await request<CoverageIssues>(
+        accessToken,
+        "/v1/admin/pilot/readiness/issues?metric=" + encodeURIComponent(metric) +
+          "&limit=10&offset=" + offset
+      );
+      if (version === issueRequestVersion.current) setIssues(result);
+    } catch (cause) {
+      if (version === issueRequestVersion.current) {
+        setIssuesError(adminErrorText(locale, cause, "Could not load missing records."));
+      }
+    } finally {
+      if (version === issueRequestVersion.current) setIssuesBusy(false);
     }
   }
 
@@ -178,7 +298,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     }
   }
 
-  if ((!subscription || !readiness) && !error) {
+  const coreMissing = section !== "audit" && (!subscription || !readiness);
+  const auditMissing = section === "audit" && !auditLoaded;
+  if ((coreMissing || auditMissing) && !error) {
     return (
       <section className="admin-panel pilot-section admin-loading-card">
         <AdminLoader label={t("Loading…")} />
@@ -187,7 +309,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     );
   }
 
-  if (!subscription || !readiness) {
+  if (coreMissing || auditMissing) {
     return (
       <section className="admin-panel pilot-section admin-loading-card">
         <div className="admin-error" role="alert">{error}</div>
@@ -198,13 +320,23 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     );
   }
 
+  // Audit-only render does not require the two core responses.
+  const fallbackSubscription: Subscription = { planCode: "", status: "TRIAL", billingCycle: "ANNUAL",
+    priceAfn: 0, setupFeeAfn: 0, startsOn: null, expiresOn: null, graceEndsOn: null };
+  const fallbackReadiness: Readiness = { ready: false,
+    counts: { admins: 0, teachers: 0, parents: 0, students: 0,
+      activeAcademicYears: 0, classes: 0, subjects: 0, teacherAssignments: 0 },
+    checks: [] };
+  const currentSubscription = subscription ?? fallbackSubscription;
+  const currentReadiness = readiness ?? fallbackReadiness;
+  const effectiveSetupReady = Boolean(advanced?.ready);
   const writeBlocked =
     subscription?.status === "SUSPENDED" || subscription?.status === "CANCELLED";
-  const passedChecks = readiness.checks.filter((check) => check.passed).length;
-  const totalChecks = readiness.checks.length;
-  const pendingChecks = readiness.checks.filter((check) => !check.passed);
+  const passedChecks = currentReadiness.checks.filter((check) => check.passed).length;
+  const totalChecks = currentReadiness.checks.length;
+  const pendingChecks = currentReadiness.checks.filter((check) => !check.passed);
   const progressPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
-  const billingAttention = subscription.status === "PAST_DUE" || subscription.status === "GRACE";
+  const billingAttention = currentSubscription.status === "PAST_DUE" || currentSubscription.status === "GRACE";
 
   return (
     <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
@@ -233,12 +365,106 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
+      {(section === "overview" || section === "readiness") && advancedBusy ? (
+        <div className="admin-panel" role="status">
+          <AdminLoader label={t("Checking configuration coverage…")} />
+        </div>
+      ) : null}
+      {(section === "overview" || section === "readiness") && advancedError ? (
+        <div className="admin-error" role="alert">{advancedError}
+          <button className="admin-secondary" type="button" onClick={() => void load()}>{t("Retry")}</button>
+        </div>
+      ) : null}
+      {section === "overview" && advanced ? (
+        <div className="pilot-coverage-mini" aria-label={t("Coverage results")}>
+          <span className="pilot-badge pilot-badge-danger">
+            {adminFormat(locale, "{count} critical gaps", { count: advanced.critical })}
+          </span>
+          <span className="pilot-badge pilot-badge-warning">
+            {adminFormat(locale, "{count} warnings", { count: advanced.warnings })}
+          </span>
+          <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("Review coverage")}</Link>
+        </div>
+      ) : null}
+      {section === "readiness" && advanced ? (
+        <section className="pilot-coverage-section" aria-labelledby="pilot-coverage-title">
+          <div className="pilot-section-heading">
+            <h3 id="pilot-coverage-title">{t("Configuration coverage")}</h3>
+            <p>{t("Coverage applies only to active academic years. Critical gaps prevent automated setup readiness; warnings do not.")}</p>
+            <span className={advanced.ready ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
+              {t(advanced.ready ? "Automated setup ready" : "Setup needs attention")}
+            </span>
+          </div>
+          {coverageCategories.map((category) => (
+            <article key={category.key} className="admin-panel pilot-coverage-category">
+              <h3>{t(category.label)}</h3>
+              <div className="pilot-coverage-grid">
+                {advanced.metrics.filter((metric) => metric.category === category.key).map((metric) => (
+                  <div className="pilot-coverage-card" key={metric.key}>
+                    <div className="pilot-coverage-top">
+                      <strong>{t(coverageLabels[metric.key])}</strong>
+                      <span className={"pilot-badge " + (
+                        metric.status === "critical" ? "pilot-badge-danger" :
+                          metric.status === "warning" ? "pilot-badge-warning" : "pilot-badge-ok"
+                      )}>
+                        {t(metric.status === "not_applicable" ? "Not applicable" :
+                          metric.status === "complete" ? "Complete" :
+                            metric.status === "critical" ? "Critical" : "Warning")}
+                      </span>
+                    </div>
+                    <p>{metric.percentage === null
+                      ? t("No eligible records in the active academic year.")
+                      : adminFormat(locale, "{complete} of {total} covered ({percentage}%)", {
+                          complete: metric.complete, total: metric.total, percentage: metric.percentage
+                        })}</p>
+                    <progress value={metric.complete} max={Math.max(metric.total, 1)}
+                      aria-label={t(coverageLabels[metric.key])} />
+                    {metric.missing > 0 ? (
+                      <div className="pilot-coverage-actions">
+                        <button className="admin-secondary" type="button" disabled={issuesBusy}
+                          aria-expanded={selectedMetric === metric.key}
+                          onClick={() => void openIssues(metric.key)}>
+                          {adminFormat(locale, "Review {count} missing", { count: metric.missing })}
+                        </button>
+                        <Link className="pilot-inline-link" href={coverageDestinations[metric.key]}>{t("Open section")}</Link>
+                      </div>
+                    ) : null}
+                    {selectedMetric === metric.key ? (
+                      <div className="pilot-coverage-issues">
+                        {issuesBusy ? <p role="status">{t("Loading missing records…")}</p> : null}
+                        {issuesError ? <p role="alert">{issuesError}</p> : null}
+                        {issues?.metric === metric.key ? (
+                          <>
+                            <ul>{issues.rows.map((item) => <li key={item.id}>{item.label}</li>)}</ul>
+                            <div className="pilot-coverage-paging">
+                              <button type="button" className="admin-secondary"
+                                disabled={issues.offset === 0 || issuesBusy}
+                                onClick={() => void openIssues(metric.key, Math.max(0, issues.offset - issues.limit))}>{t("Newer")}</button>
+                              <button type="button" className="admin-secondary"
+                                disabled={!issues.hasMore || issuesBusy}
+                                onClick={() => void openIssues(metric.key, issues.offset + issues.limit)}>{t("Older")}</button>
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+          <p className="pilot-security-note">{t("Completing these checks does not verify live database health, backups, push delivery, or launch approval.")}</p>
+        </section>
+      ) : null}
 
-      {section === "overview" ? (
+
+
+      {section === "overview" && readiness ? (
         <article className="admin-panel pilot-overview-hero">
           <div className="pilot-overview-copy">
             <span className="eyebrow">{t("Automated school setup")}</span>
-            <h3>{t(readiness.ready ? "Core setup ready" : "Setup in progress")}</h3>
+            <h3>{t(advancedBusy ? "Checking configuration coverage…" :
+              effectiveSetupReady ? "Core setup ready" : "Setup in progress")}</h3>
             <p>{t("These checks confirm basic school configuration, not approval for a live launch.")}</p>
             <div className="pilot-overview-pills">
               <span className="pilot-badge pilot-badge-ok">{adminFormat(locale, "{count} passed", { count: passedChecks })}</span>
@@ -318,7 +544,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                   <span className="pilot-check-icon" aria-hidden="true">{check.passed ? "✓" : "!"}</span>
                   <div className="pilot-check-copy">
                     <strong>{pilotCheckLabel(check.key, t)}</strong>
-                    <p>{pilotCheckDetail(check.key, readiness, subscription, locale, t)}</p>
+                    <p>{pilotCheckDetail(check.key, currentReadiness, currentSubscription, locale, t)}</p>
                     {!check.passed && CHECK_DESTINATIONS[check.key] ? (
                       <Link className="pilot-inline-link" href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Open section")}</Link>
                     ) : null}
@@ -333,7 +559,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
 
-      {section === "overview" ? (
+      {section === "overview" && readiness ? (
         <>
           <div className="pilot-overview-bottom">
             <article className="admin-panel">
@@ -378,7 +604,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </>
       ) : null}
 
-      {section === "onboarding" ? (
+      {section === "onboarding" && readiness ? (
         <>
           <div className="pilot-section-heading">
             <h3>{t("Data onboarding")}</h3>
@@ -402,7 +628,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </>
       ) : null}
 
-      {section === "subscription" ? (
+      {section === "subscription" && subscription ? (
         <article className="admin-panel">
           <h3>{t("Subscription details")}</h3>
           <p className="admin-copy">{t("Subscription changes are controlled by platform administrators.")}</p>
@@ -420,7 +646,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </article>
       ) : null}
 
-      {section === "launch" ? (
+      {section === "launch" && readiness ? (
         <article className="admin-panel pilot-launch-note">
           <span className="eyebrow">{t("Pilot launch review")}</span>
           <h3>{t("Launch approval")}</h3>
@@ -441,7 +667,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </article>
       ) : null}
 
-      {(section === "audit" || section === "onboarding") ? (
+      {(section === "audit" || section === "onboarding") && !coreMissing && !auditMissing ? (
       <div className="admin-grid pilot-tools-grid">
         {section === "audit" ? (
         <article className="admin-panel">
@@ -488,7 +714,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       </div>
       ) : null}
 
-      {section === "audit" ? (
+      {section === "audit" && auditLoaded ? (
       <article className="admin-panel">
         <div className="admin-section-header">
           <div>
