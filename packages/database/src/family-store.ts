@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import type {
   CreateParentAccountInput,
   CreateStudentInput,
@@ -13,6 +13,7 @@ import {
   academicYears,
   classSections,
   feeInvoices,
+  familyImportBatches,
   gradeRecords,
   parentProfiles,
   studentAttendances,
@@ -22,6 +23,7 @@ import {
   users,
   type AcademicYear,
   type ClassSection,
+  type FamilyImportBatch,
   type ParentProfile,
   type Student,
   type StudentClassHistory,
@@ -72,8 +74,27 @@ export interface PreparedTeacherImportRow extends TeacherImportRow {
   passwordHash: string;
 }
 
+export type ImportBatchMeta = {
+  key: string;
+  fingerprint: string;
+  actorUserId: string;
+  entityType: "PARENT" | "STUDENT" | "TEACHER";
+  rowCount: number;
+};
+export type ImportBatchPublic = Pick<FamilyImportBatch,
+  "id" | "entityType" | "rowCount" | "importedCount" | "rejectedCount" | "status" | "reason" | "createdAt"> & {
+  actorUsername: string | null;
+};
+export type ImportBatchPage = { rows: ImportBatchPublic[]; offset: number; limit: number; hasMore: boolean };
+
 export interface FamilyStore {
   getOverview(schoolId: string): Promise<FamilyOverview>;
+  getImportBatch(schoolId: string, key: string): Promise<FamilyImportBatch | null>;
+  listImportBatches(schoolId: string, options: { limit: number; offset: number; entityType?: ImportBatchMeta["entityType"] }): Promise<ImportBatchPage>;
+  recordImportAttempt(schoolId: string, actorUserId: string, input: {
+    entityType: ImportBatchMeta["entityType"]; rowCount: number;
+    rejectedCount: number; status: "REJECTED" | "FAILED"; reason: string;
+  }): Promise<void>;
   getParentHome(schoolId: string, parentUserId: string): Promise<ParentHome>;
   createParentAccount(
     schoolId: string,
@@ -90,15 +111,18 @@ export interface FamilyStore {
   deleteStudent(schoolId: string, studentId: string): Promise<void>;
   importParents(
     schoolId: string,
-    rows: PreparedParentImportRow[]
+    rows: PreparedParentImportRow[],
+    batch?: ImportBatchMeta
   ): Promise<Array<{ user: User; profile: ParentProfile }>>;
   importStudents(
     schoolId: string,
-    rows: PreparedStudentImportRow[]
+    rows: PreparedStudentImportRow[],
+    batch?: ImportBatchMeta
   ): Promise<Array<{ user: User; student: Student }>>;
   importTeachers(
     schoolId: string,
-    rows: PreparedTeacherImportRow[]
+    rows: PreparedTeacherImportRow[],
+    batch?: ImportBatchMeta
   ): Promise<Array<{ user: User }>>;
 }
 
@@ -162,6 +186,19 @@ function isForeignKeyError(error: unknown): boolean {
 }
 
 export function createFamilyStore(db: FoundationDatabase): FamilyStore {
+  async function markBatch(
+    tx: FamilyTransaction, schoolId: string, batch: ImportBatchMeta | undefined
+  ) {
+    if (!batch) return;
+    const result = await tx.insert(familyImportBatches).values({
+      id: randomUUID(), schoolId, idempotencyKey: batch.key,
+      actorUserId: batch.actorUserId, entityType: batch.entityType,
+      fingerprint: batch.fingerprint, rowCount: batch.rowCount,
+      importedCount: batch.rowCount, rejectedCount: 0, status: "COMPLETED"
+    }).onConflictDoNothing({ target: [familyImportBatches.schoolId, familyImportBatches.idempotencyKey] }).returning({ id: familyImportBatches.id });
+    if (result.length !== 1) throw new FamilyConflictError("This import request has already been processed.");
+  }
+
   async function getParent(schoolId: string, parentUserId: string) {
     const [row] = await db
       .select({ profile: parentProfiles, user: users })
@@ -242,6 +279,41 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
   }
 
   return {
+    async getImportBatch(schoolId, key) {
+      const [row] = await db.select().from(familyImportBatches)
+        .where(and(eq(familyImportBatches.schoolId, schoolId), eq(familyImportBatches.idempotencyKey, key)))
+        .limit(1);
+      return row ?? null;
+    },
+
+    async listImportBatches(schoolId, options) {
+      const conditions = [eq(familyImportBatches.schoolId, schoolId)];
+      if (options.entityType) conditions.push(eq(familyImportBatches.entityType, options.entityType));
+      const rows = await db.select({
+        id: familyImportBatches.id, entityType: familyImportBatches.entityType,
+        rowCount: familyImportBatches.rowCount,
+        importedCount: familyImportBatches.importedCount,
+        rejectedCount: familyImportBatches.rejectedCount,
+        status: familyImportBatches.status, reason: familyImportBatches.reason,
+        createdAt: familyImportBatches.createdAt, actorUsername: users.username
+      }).from(familyImportBatches)
+        .leftJoin(users, and(eq(users.id, familyImportBatches.actorUserId), eq(users.schoolId, familyImportBatches.schoolId)))
+        .where(and(...conditions))
+        .orderBy(desc(familyImportBatches.createdAt), desc(familyImportBatches.id))
+        .limit(options.limit + 1).offset(options.offset);
+      return { rows: rows.slice(0, options.limit), limit: options.limit, offset: options.offset,
+        hasMore: rows.length > options.limit };
+    },
+
+    async recordImportAttempt(schoolId, actorUserId, input) {
+      await db.insert(familyImportBatches).values({
+        id: randomUUID(), schoolId, idempotencyKey: randomUUID(), actorUserId,
+        entityType: input.entityType, rowCount: input.rowCount,
+        importedCount: 0, rejectedCount: input.rejectedCount, status: input.status,
+        reason: input.reason
+      });
+    },
+
     async getOverview(schoolId) {
       const [parentRows, studentRows, enrollmentRows] = await Promise.all([
         db
@@ -530,9 +602,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       });
     },
 
-    async importParents(schoolId, rows) {
+    async importParents(schoolId, rows, batch) {
       try {
         return await db.transaction(async (tx) => {
+          await markBatch(tx, schoolId, batch);
           const created: Array<{ user: User; profile: ParentProfile }> = [];
           for (const row of rows) {
             const [user] = await tx
@@ -568,13 +641,14 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       }
     },
 
-    async importStudents(schoolId, rows) {
+    async importStudents(schoolId, rows, batch) {
       try {
         for (const row of rows) {
           await validateParentForStudent(schoolId, row.parentUserId);
           await getClassYear(schoolId, row.academicYearId, row.classId);
         }
         return await db.transaction(async (tx) => {
+          await markBatch(tx, schoolId, batch);
           const created: Array<{ user: User; student: Student }> = [];
           for (const row of rows) {
             const [user] = await tx
@@ -612,9 +686,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       }
     },
 
-    async importTeachers(schoolId, rows) {
+    async importTeachers(schoolId, rows, batch) {
       try {
         return await db.transaction(async (tx) => {
+          await markBatch(tx, schoolId, batch);
           const created: Array<{ user: User }> = [];
           for (const row of rows) {
             const [user] = await tx
