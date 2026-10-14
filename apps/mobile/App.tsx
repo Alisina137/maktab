@@ -63,7 +63,8 @@ import { initialParentResources, loadingParentChildResources,
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
 import { ParentAcademicHomework, ParentAcademicResults, ParentAcademicTimetable } from "./src/parent-academics";
 import { ParentAttendanceContent } from "./src/parent-attendance";
-import { ParentNotificationsContent } from "./src/parent-inbox";
+import { ParentAnnouncementsInbox, ParentNotificationsContent } from "./src/parent-inbox";
+import { authorizedNotificationChild, parentInboxTarget } from "./src/parent-inbox-model";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
 import { StudentHomeworkContent } from "./src/student-homework";
@@ -71,7 +72,6 @@ import { StudentResultsContent } from "./src/student-results";
 import { StudentCommunicationContent, type StudentCommunicationTab } from "./src/student-communication";
 import { StudentBottomNavigation, type StudentTab } from "./src/student-navigation";
 import {
-  ParentAnnouncementsContent,
   ParentBottomNavigation,
   ParentMoreAcademicContent,
   type ParentTab
@@ -204,6 +204,11 @@ function AppContent() {
   const [parentTab, setParentTab] = useState<ParentTab>("HOME");
   const [parentAcademicsTab, setParentAcademicsTab] = useState<ParentAcademicsTab>("HOMEWORK");
   const [parentInboxTab, setParentInboxTab] = useState<ParentInboxTab>("ANNOUNCEMENTS");
+  const [parentInboxFocusedAnnouncementId, setParentInboxFocusedAnnouncementId] = useState<string | null>(null);
+  const [parentInboxFocusedNotificationId, setParentInboxFocusedNotificationId] = useState<string | null>(null);
+  const [parentFocusedHomeworkId, setParentFocusedHomeworkId] = useState<string | null>(null);
+  const [parentFocusedExamId, setParentFocusedExamId] = useState<string | null>(null);
+  const [parentFocusedAttendanceDate, setParentFocusedAttendanceDate] = useState<string | null>(null);
   const [parentAttendance, setParentAttendance] = useState<ParentAttendanceDay[]>([]);
   const [parentToday, setParentToday] = useState("");
   const [parentTimetable, setParentTimetable] = useState<ParentTimetablePeriod[]>([]);
@@ -269,6 +274,7 @@ function AppContent() {
   const studentHomeLoadRequestId = useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
+  const pendingParentNotificationRef = useRef<{ token: string; item: ParentNotification } | null>(null);
   const sessionRef = useRef<SessionPayload | null>(null);
   const schoolRef = useRef<SchoolOption | null>(null);
   const sessionRefreshPromiseRef = useRef<Promise<SessionPayload | null> | null>(null);
@@ -867,8 +873,18 @@ function AppContent() {
     }
   }
 
+  function resetParentNotificationFocus() {
+    setParentInboxFocusedAnnouncementId(null);
+    setParentInboxFocusedNotificationId(null);
+    setParentFocusedHomeworkId(null);
+    setParentFocusedExamId(null);
+    setParentFocusedAttendanceDate(null);
+  }
+
   function clearOperationalHomeData() {
     // Stop in-flight reads before clearing child/account data.
+    pendingParentNotificationRef.current = null;
+    resetParentNotificationFocus();
     parentHomeRequestId.current += 1;
     parentNotificationsRequestId.current += 1;
     parentChildLoadRequestId.current += 1;
@@ -1276,6 +1292,7 @@ function AppContent() {
 
   function selectParentChild(studentId: string) {
     if (selectedChildIdRef.current === studentId) return;
+    resetParentNotificationFocus();
     selectedChildIdRef.current = studentId;
     parentChildLoadRequestId.current += 1;
     setParentDataChildId(null);
@@ -1720,6 +1737,8 @@ function AppContent() {
       setParentTab("HOME");
       setParentAcademicsTab("HOMEWORK");
       setParentInboxTab("ANNOUNCEMENTS");
+      pendingParentNotificationRef.current = null;
+      resetParentNotificationFocus();
       setParentHome(null);
       setSelectedChildId("");
       setParentAttendance([]);
@@ -1823,6 +1842,7 @@ function AppContent() {
 
   function selectParentTab(tab: ParentTab) {
     if (parentTab === tab) return;
+    resetParentNotificationFocus();
     setParentTab(tab);
     setNotice(null);
     setTimeout(() => {
