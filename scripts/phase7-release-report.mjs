@@ -3,7 +3,7 @@
 // GitHub Actions verifier, or automatic release-approval mechanism.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 export const GATES = Object.freeze({
   exact_commit_ci: "Successful Linux and Windows jobs for the actual deployment commit",
@@ -127,8 +127,6 @@ function main() {
   }
   if (opts.strict && report.evidenceState === "INCOMPLETE") process.exitCode = 2;
 }
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
-  main();
-} else if (process.argv[1]?.endsWith("phase7-release-report.mjs")) {
+if (process.argv[1] && basename(process.argv[1]) === "phase7-release-report.mjs") {
   main();
 }
