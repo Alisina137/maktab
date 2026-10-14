@@ -2,6 +2,7 @@
 
 import type { User } from "./admin-client";
 import { adminFormat, type AdminLocale } from "./admin-i18n";
+import { isSelectableAccount, MAX_ACCOUNT_BULK_SELECTION } from "./account-directory-safety";
 
 export type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 export type AccountHighlight = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
@@ -76,10 +77,6 @@ function roleLabel(role: User["role"]) {
   return role === "PARENT" ? "Parents" : role === "TEACHER" ? "Teacher" :
     role === "STUDENT" ? "Students" : role === "SCHOOL_ADMIN" ? "School admin" : "School staff";
 }
-function eligible(user: User, currentAdminId: string) {
-  return user.id !== currentAdminId && user.role !== "SCHOOL_ADMIN" &&
-    (user.status === "ACTIVE" || user.status === "INVITED" || user.status === "SUSPENDED");
-}
 
 export function AdminAccountDirectory({
   result, group, status, highlight, query, sortBy, order, page, pageSize, selectedIds,
@@ -92,12 +89,12 @@ export function AdminAccountDirectory({
     ALL: count.total, PARENT: count.parent, TEACHER: count.teacher, STUDENT: count.student, STAFF: count.staff
   };
   const users = result.users;
-  const eligiblePage = users.filter((user) => eligible(user, currentAdminId));
+  const eligiblePage = users.filter((user) => isSelectableAccount(user, currentAdminId));
   const pageSelected = eligiblePage.length > 0 && eligiblePage.every((user) => selectedIds.has(user.id));
   const partial = eligiblePage.some((user) => selectedIds.has(user.id)) && !pageSelected;
   const selected = users.filter((user) => selectedIds.has(user.id));
-  const canSuspend = selected.length > 0 && selected.length <= 20 && selected.every((user) => user.status === "ACTIVE" || user.status === "INVITED");
-  const canReactivate = selected.length > 0 && selected.length <= 20 && selected.every((user) => user.status === "SUSPENDED");
+  const canSuspend = selected.length > 0 && selected.length <= MAX_ACCOUNT_BULK_SELECTION && selected.every((user) => user.status === "ACTIVE" || user.status === "INVITED");
+  const canReactivate = selected.length > 0 && selected.length <= MAX_ACCOUNT_BULK_SELECTION && selected.every((user) => user.status === "SUSPENDED");
   const start = result.total ? (result.page - 1) * result.pageSize + 1 : 0;
   const end = result.total ? start + users.length - 1 : 0;
 
@@ -179,12 +176,12 @@ export function AdminAccountDirectory({
             type="checkbox" checked={pageSelected}
             aria-label={t("Select all eligible accounts on this page")}
             ref={(node) => { if (node) node.indeterminate = partial; }}
-            disabled={busy || loading || eligiblePage.length === 0 || credentialOpen}
+            disabled={busy || loading || eligiblePage.length === 0 || eligiblePage.length > MAX_ACCOUNT_BULK_SELECTION || credentialOpen}
             onChange={(event) => onSelectPage(eligiblePage.map((user) => user.id), event.target.checked)}
           />
           <span>{t("Select current page")}</span>
         </label>
-        <span>{t("Selection is limited to the current page.")}</span>
+        <span id="account-directory-selection-note">{t("Selection is limited to the current page.")} {t("Bulk actions are limited to 20 accounts.")}</span>
       </div>
 
       {error ? (
@@ -197,12 +194,13 @@ export function AdminAccountDirectory({
       <div className="admin-user-list admin-user-list-premium" aria-busy={loading}>
         {!loading && !error && users.map((user) => {
           const self = user.id === currentAdminId;
-          const canSelect = eligible(user, currentAdminId);
+          const canSelect = isSelectableAccount(user, currentAdminId);
           return (
             <div className="admin-user-row admin-user-row-premium" key={user.id}>
               <label className="account-directory-check">
                 <input type="checkbox" checked={selectedIds.has(user.id)}
-                  disabled={!canSelect || busy || credentialOpen}
+                  disabled={!canSelect || busy || credentialOpen || (selectedIds.size >= MAX_ACCOUNT_BULK_SELECTION && !selectedIds.has(user.id))}
+                  aria-describedby="account-directory-selection-note"
                   aria-label={adminFormat(locale, "Select {username}", { username: user.username })}
                   onChange={(event) => onSelect(user.id, event.target.checked)} />
               </label>
