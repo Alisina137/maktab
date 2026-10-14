@@ -463,7 +463,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         const updated = await tx.update(users).set(
           action === "suspend"
             ? { status: "SUSPENDED", updatedAt: now }
-            : { status: sql`case when ${users.mustChangePassword} then 'INVITED' else 'ACTIVE' end`, updatedAt: now }
+            : { status: sql`(case when ${users.mustChangePassword} then 'INVITED' else 'ACTIVE' end)::user_status`, updatedAt: now }
         ).where(and(
           eq(users.schoolId, schoolId),
           inArray(users.id, unique),
