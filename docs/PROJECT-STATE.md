@@ -1651,3 +1651,14 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - The More subnavigation scrolls at small widths with auto-focus for its four tabs and preserves existing two/three-tab navigation and localized RTL.
 - Automated evidence checks added in `pnpm verify:parent:phase7`, CI (Linux/Windows) and a conservative Android manual readiness report `scripts/parent-phase7-acceptance.mjs`. The source of truth for 16 manual scenario gates is `docs/PARENT-PHASE7-ANDROID-ACCEPTANCE.md`.
 - Actual Android devices, TalkBack, unreliable public tunnel, real multi-school credentials, push cold-start, backup/restore, payment concurrency and independent Step 20 operator sign-off **have not been executed or verified by automation**. Parent Phase 7 device status is **NOT_RUN**, and production status remains **NO-GO**, regardless of passing CI. No migrations.
+
+
+## Admin Communication & Fees — Phase 1 (2026-10-14)
+
+- Admin `/admin/communication` reorganized into **Overview / Communication / Fees** subtabs. Overview is default; the two creation/management workflows retain their working endpoints and are not lost in a long mixed page.
+- Issued-only school financial KPIs exclude cancelled and draft invoices and show issued billed, net paid, collectible outstanding, overdue balance, unique students owing, and defined collection rate; nothing here claims online payment capture or bank reconciliation.
+- Desktop provides <=600px creation and list panels side by side; tablet and mobile select List or Create with single-pane layout. RTL and navigation focus are retained.
+- Communication, Families and Academics requests now load/retry independently with access-token identity and request-generation stale-response guards; unrelated failure does not blank school communication/fee listings. Admin fetches reuse standardized API error handling. HTML form references remain stable across async requests.
+- Added pure model tests, static verification and English/Dari/Pashto labels in `pnpm verify:admin-communication:phase1`, plus Linux/Windows CI.
+- Remaining seven-phase roadmap is `docs/ADMIN-COMMUNICATION-FEES-PHASES.md`; next Phase 2 is Announcement list, recipient preview, scheduling, status filters and search.
+- Real browser, RTL, slow-session/manual school-ledger comparison and Step 20 pilot/production acceptance evidence are still pending. **Production NO-GO**. No migration required.
