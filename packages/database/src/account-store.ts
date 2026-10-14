@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
@@ -199,6 +200,7 @@ export interface AccountStore {
     id: string;
     action: string;
     actorUserId: string | null;
+    actorUsername: string | null;
     reason: string | null;
     createdAt: Date;
   }>>;
@@ -784,14 +786,19 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
     },
 
     async listAccountAuditLogs(schoolId, userId, limit = 25) {
+      const auditActor = alias(users, "audit_actor");
       const bounded = Math.min(Math.max(limit, 1), 50);
       const rows = await db.select({
         id: auditLogs.id,
         action: auditLogs.action,
         actorUserId: auditLogs.actorUserId,
+        actorUsername: auditActor.username,
         metadata: auditLogs.metadata,
         createdAt: auditLogs.createdAt
-      }).from(auditLogs).where(and(
+      }).from(auditLogs).leftJoin(
+        auditActor,
+        and(eq(auditActor.id, auditLogs.actorUserId), eq(auditActor.schoolId, schoolId))
+      ).where(and(
         eq(auditLogs.schoolId, schoolId),
         or(
           and(eq(auditLogs.entityId, userId),
@@ -804,6 +811,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         id: row.id,
         action: row.action,
         actorUserId: row.actorUserId,
+        actorUsername: row.actorUsername,
         reason: typeof row.metadata?.reason === "string" ? row.metadata.reason : null,
         createdAt: row.createdAt
       }));
