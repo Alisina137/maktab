@@ -1007,7 +1007,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
             sql`lower(${auditLogs.action}) LIKE ${p.toLowerCase() + "%"}`), sql` OR `)})`);
         }
       }
-      const bounded = Math.min(Math.max(input.limit, 1), 100);
+      const bounded = Math.min(Math.max(input.limit, 1), 501);
       const offset = Math.max(input.offset, 0);
       const rows = await db.select({
         id: auditLogs.id, action: auditLogs.action,
