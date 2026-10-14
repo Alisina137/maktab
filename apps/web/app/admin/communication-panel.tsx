@@ -460,6 +460,23 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             id={`communication-tab-${key.toLowerCase()}`}
             tabIndex={section === key ? 0 : -1}
             className={section === key ? "communication-main-tab is-active" : "communication-main-tab"}
+            onKeyDown={event => {
+              const keys: Section[] = ["OVERVIEW", "COMMUNICATION", "FEES"];
+              const index = keys.indexOf(key);
+              const forward = locale === "en" ? "ArrowRight" : "ArrowLeft";
+              const backward = locale === "en" ? "ArrowLeft" : "ArrowRight";
+              let target = -1;
+              if (event.key === "Home") target = 0;
+              else if (event.key === "End") target = keys.length - 1;
+              else if (event.key === forward) target = (index + 1) % keys.length;
+              else if (event.key === backward) target = (index - 1 + keys.length) % keys.length;
+              if (target !== -1) {
+                event.preventDefault();
+                const next = keys[target]!;
+                setSection(next);
+                sectionRefs.current[next]?.focus();
+              }
+            }}
             onClick={() => setSection(key)}>{t(label)}</button>
         ))}
       </nav>
