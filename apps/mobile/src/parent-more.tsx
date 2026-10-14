@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text,
   TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -35,7 +35,7 @@ const passwordErrors: Record<NonNullable<ReturnType<typeof parentPasswordValidat
 function Head({
   title, description, icon, locale, action
 }: { title: TranslationKey; description: TranslationKey; icon: keyof typeof Ionicons.glyphMap;
-  locale: SupportedLocale; action?: React.ReactNode }) {
+  locale: SupportedLocale; action?: ReactNode }) {
   const rtl = getDirection(locale) === "rtl";
   return <View style={[styles.head, rtl && styles.rtlRow]}>
     <View style={styles.icon}><Ionicons name={icon} size={21} color={tokens.color.brandStrong}/></View>
