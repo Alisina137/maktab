@@ -11,7 +11,7 @@ const locale = read("apps/web/app/admin/admin-i18n.ts");
 const docs = read("docs/PILOT-OPERATIONS-PHASES.md");
 const journal = JSON.parse(read("packages/database/drizzle/meta/_journal.json"));
 
-assert.equal(journal.entries.at(-1).tag, "0020_pilot_import_history");
+assert.ok(journal.entries.some((entry) => entry.tag === "0020_pilot_import_history"), "Phase 3 migration must remain in the journal");
 assert.ok(schema.includes("familyImportBatches,") && migration.includes("family_import_batches_school_key_unique"),
   "Persistent ledger and unique school+request key required");
 assert.ok(migration.includes("fingerprint") && migration.includes("row_count") &&
