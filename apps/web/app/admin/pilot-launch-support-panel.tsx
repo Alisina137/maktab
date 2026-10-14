@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PilotReleaseReadinessPanel } from "./pilot-release-readiness-panel";
 import Link from "next/link";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
@@ -39,6 +40,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
 }) {
   const t = (value: string) => adminText(locale, value);
   const sessionVersion = useRef(0);
+  const loadVersion = useRef(0);
   const [overview, setOverview] = useState<LaunchOverview | null>(null);
   const [tickets, setTickets] = useState<SupportPage | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<{ ticket: SupportTicket; updates: SupportUpdate[] } | null>(null);
@@ -69,11 +71,12 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
   }, [accessToken]);
 
   const load = useCallback(async (pageOffset: number, signal?: AbortSignal) => {
+    const currentLoad = ++loadVersion.current;
     const [launchResult, supportResult] = await Promise.all([
       request<LaunchOverview>("/v1/admin/pilot/launch", {}, signal),
       request<SupportPage>("/v1/admin/pilot/support?limit=10&offset=" + pageOffset, {}, signal)
     ]);
-    if (!signal?.aborted) {
+    if (!signal?.aborted && currentLoad === loadVersion.current) {
       setOverview(launchResult);
       setTickets(supportResult);
       setOffset(pageOffset);
@@ -91,7 +94,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
     });
-    return () => { controller.abort(); sessionVersion.current += 1; };
+    return () => { controller.abort(); sessionVersion.current += 1; loadVersion.current += 1; };
   }, [load, locale]);
 
   async function mutate(path: string, method: string, payload: Record<string, unknown>, after: () => void) {
@@ -131,6 +134,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
 
   return (
     <section className="pilot-workflow" aria-label={t("Launch and support workflow")}>
+      <PilotReleaseReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} />
       <header className="pilot-section-heading">
         <h3>{t("Launch evidence and support")}</h3>
         <p>{t("Evidence submissions are requests for operator review, not verified proof or automatic launch approval.")}</p>

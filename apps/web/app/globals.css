@@ -6652,3 +6652,21 @@ html[dir="rtl"] body {
 .pilot-support-message > span { margin-inline-start:10px; }
 @media(max-width:840px){.pilot-workflow-grid {grid-template-columns:1fr;} }
 @media(max-width:600px){.pilot-support-form {grid-template-columns:1fr;} .pilot-support-description,.pilot-support-form button {grid-column:auto;} }
+
+/* Pilot Operations Phase 7: independent release acceptance is not pilot approval. */
+.pilot-phase7 { display:grid; gap:14px; min-width:0; border-inline-start:5px solid #b94848; }
+.pilot-phase7 .admin-section-header { display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.pilot-phase7 .admin-section-header>div { min-width:0; flex:1 1 260px; }
+.pilot-phase7 .admin-section-header h3 { margin:6px 0 10px; }
+.pilot-phase7 p { line-height:1.65; overflow-wrap:anywhere; }
+.pilot-phase7-gates { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.pilot-phase7-gates>div { padding:13px; border:1px solid #dae3e9; border-radius:10px; display:grid; gap:12px; align-content:space-between; }
+.pilot-phase7-checks summary { cursor:pointer; padding:12px 0; font-weight:700; }
+.pilot-phase7-checks summary:focus-visible { outline:2px solid #1553a4; outline-offset:3px; }
+.pilot-phase7-list { display:grid; gap:8px; padding-block:8px; }
+.pilot-phase7-row { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; border-block-end:1px solid #e5e9ee; padding:11px 4px; }
+.pilot-phase7-row>span:first-child { flex:1 1 250px; }
+.pilot-phase7-row strong { margin-inline-end:8px; font-variant-numeric:tabular-nums; }
+@media(max-width:900px) { .pilot-phase7-gates { grid-template-columns:1fr; } }
+@media(max-width:620px) { .pilot-phase7-row { align-items:start; } }
+@media(prefers-reduced-motion:reduce) { .pilot-phase7 * { scroll-behavior:auto; transition:none; } }
