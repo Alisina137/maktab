@@ -22,6 +22,9 @@ const accountPage = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
 const accountRules = read("apps/web/app/admin/account-create-rules.ts");
 const credentialPanel = read("apps/web/app/admin/account-temporary-credential.tsx");
 const detailsDrawer = read("apps/web/app/admin/admin-account-details-drawer.tsx");
+const actionConfirm = read("apps/web/app/admin/admin-account-action-confirm.tsx");
+const userRoutes = read("apps/api/src/users/routes.ts");
+const accountStoreSource = read("packages/database/src/account-store.ts");
 const detailsData = read("apps/web/app/admin/account-details-data.ts");
 const detailsTests = read("apps/api/src/account-details-data.test.ts");
 const creationTests = read("apps/api/src/account-create-rules.test.ts");
@@ -188,6 +191,40 @@ for (const key of ['"Account details":', '"View details":',
   '"Linked children":', '"Teacher profile and assignments":', '"Manage families":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase3 missing a Dari or Pashto translation: ${key}`);
+}
+/* Admin Accounts Phase 4 — confirm and audit user lifecycle mutations. */
+assert.ok(accountPage.includes('<AdminAccountActionConfirm') &&
+  accountPage.includes('setPendingAction({ user, action })') &&
+  accountPage.includes('onConfirm={(reason) => void executeAction(reason)}'),
+  "Phase4 account actions must require an explicit confirmation");
+assert.ok(actionConfirm.includes('role="alertdialog"') &&
+  actionConfirm.includes('aria-modal="true"') &&
+  actionConfirm.includes('Suspension reason (optional)') &&
+  actionConfirm.includes('event.key === "Escape"') &&
+  actionConfirm.includes('onCancel'),
+  "Phase4 confirmations need accessible dismissal and an optional reason");
+assert.ok(userRoutes.includes('suspendAccountSchema') &&
+  userRoutes.includes('/v1/admin/users/:userId/audit') &&
+  userRoutes.includes('already_suspended') &&
+  userRoutes.includes('not_suspended'),
+  "Phase4 API must validate lifecycle transitions and expose scoped user history");
+assert.ok(accountStoreSource.includes('status === "SUSPENDED"') &&
+  accountStoreSource.includes('status === "ACTIVE"') &&
+  accountStoreSource.includes('async listAccountAuditLogs(schoolId, userId') &&
+  accountStoreSource.includes('eq(auditLogs.schoolId, schoolId)') &&
+  accountStoreSource.includes('metadata: reason ? { reason } : {}'),
+  "Phase4 store must revoke sessions transactionally and keep audit tenant scoped");
+assert.ok(detailsDrawer.includes('account-detail-audit-list') &&
+  detailsDrawer.includes('/audit?limit=25') &&
+  detailsDrawer.includes('actorUserId'),
+  "Phase4 details must show the actor, reason, and account history");
+assert.ok(api.includes('Phase 4 account lifecycle confirms reasons') &&
+  accounts.includes('admin status transition stores suspension reason'),
+  "Phase4 API and datastore lifecycle regressions are missing");
+for (const key of ['"Confirm password reset":', '"Confirm suspension":',
+  '"Account history":', '"Suspension reason (optional)":', '"Performed by":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Account Phase4 missing a Dari or Pashto translation: ${key}`);
 }
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
