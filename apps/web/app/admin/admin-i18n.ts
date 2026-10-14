@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Retry recipient preview": "تلاش دوباره برای پیش‌نمایش مخاطبان",
   "Recipient preview": "پیش‌نمایش مخاطبان",
   "Select a class to estimate recipients.": "برای تخمین مخاطبان یک صنف انتخاب کنید.",
   "Calculating recipients…": "محاسبه تعداد مخاطبان…",
@@ -1370,6 +1371,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Retry recipient preview": "د ترلاسه کوونکو مخکتنه بیا وازموئ",
   "Recipient preview": "د ترلاسه کوونکو مخکتنه",
   "Select a class to estimate recipients.": "د ترلاسه کوونکو د شمېر لپاره یو ټولګی وټاکئ.",
   "Calculating recipients…": "د ترلاسه کوونکو شمېرل…",
