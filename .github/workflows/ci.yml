@@ -69,6 +69,9 @@ jobs:
       - name: Parent Experience Phase 2 daily Home and alert regression
         run: pnpm verify:parent:phase2
 
+      - name: Parent Experience Phase 3 attendance calendar and access regression
+        run: pnpm verify:parent:phase3
+
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
 
@@ -125,5 +128,6 @@ jobs:
           pnpm verify:parent-resilience
           pnpm verify:parent:phase1
           pnpm verify:parent:phase2
+          pnpm verify:parent:phase3
       - name: Test API (Windows / Node 22)
         run: pnpm --filter @maktablink/api test
