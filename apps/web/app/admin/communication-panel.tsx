@@ -578,6 +578,27 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
         {editingNotice ? (
   
+        <article className="admin-panel communication-form-card">
+            <div><h2>{t("Edit scheduled announcement")}</h2>
+              <p>{t("Published announcements are immutable; only future scheduled notices may be edited.")}</p>
+            </div>
+            <form className="admin-form" onSubmit={saveScheduledEdit}>
+              <label>{t("Title")}<input required minLength={2} maxLength={160}
+                value={editTitle} onChange={event => setEditTitle(event.target.value)} /></label>
+              <label>{t("Message")}<textarea required maxLength={10000} rows={5}
+                value={editMessage} onChange={event => setEditMessage(event.target.value)} /></label>
+              <label>{t("Publish at")}
+                <AdminHijriDatePicker locale={locale} includeTime
+                  value={editPublishAt} onChange={setEditPublishAt} />
+              </label>
+              <button className="admin-primary" disabled={busy}>{t("Save changes")}</button>
+              <button type="button" className="admin-secondary"
+                onClick={() => setEditingNotice(null)}>{t("Cancel")}</button>
+            </form>
+          </article>
+        ) : null}
+
+
                   </>
                 ) : resourceNotice("academics")}
             </div>
@@ -651,26 +672,6 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <div className="communication-workflow-form">
               {visibleFamilies && resourceStatus.families === "ready" && ready ? (
                 <>
-        <article className="admin-panel communication-form-card">
-            <div><h2>{t("Edit scheduled announcement")}</h2>
-              <p>{t("Published announcements are immutable; only future scheduled notices may be edited.")}</p>
-            </div>
-            <form className="admin-form" onSubmit={saveScheduledEdit}>
-              <label>{t("Title")}<input required minLength={2} maxLength={160}
-                value={editTitle} onChange={event => setEditTitle(event.target.value)} /></label>
-              <label>{t("Message")}<textarea required maxLength={10000} rows={5}
-                value={editMessage} onChange={event => setEditMessage(event.target.value)} /></label>
-              <label>{t("Publish at")}
-                <AdminHijriDatePicker locale={locale} includeTime
-                  value={editPublishAt} onChange={setEditPublishAt} />
-              </label>
-              <button className="admin-primary" disabled={busy}>{t("Save changes")}</button>
-              <button type="button" className="admin-secondary"
-                onClick={() => setEditingNotice(null)}>{t("Cancel")}</button>
-            </form>
-          </article>
-        ) : null}
-
         <article className="admin-panel communication-form-card">
           <div><h2>{t("Create fee invoice")}</h2><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
           <form className="admin-form" onSubmit={createInvoice}>
