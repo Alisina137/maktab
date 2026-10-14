@@ -737,9 +737,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   <strong>{t(item.invoice.status)}</strong>
                 </div>
                 <div className="communication-money-grid">
-                  <span>{t("Amount")}<strong>AFN {item.invoice.amount}</strong></span>
-                  <span>{t("Paid")}<strong>AFN {item.paid}</strong></span>
-                  <span>{t("Outstanding")}<strong>AFN {item.outstanding}</strong></span>
+                  <span>{t("Amount")}<strong>{formatMoney(item.invoice.amount)}</strong></span>
+                  <span>{t("Paid")}<strong>{formatMoney(item.paid)}</strong></span>
+                  <span>{t("Outstanding")}<strong>{formatMoney(item.outstanding)}</strong></span>
                 </div>
 
                 <div className="admin-actions">
@@ -800,7 +800,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                     {item.payments.map((payment) => (
                       <div key={payment.id} className="communication-payment-row">
                         <div>
-                          <strong>{t(payment.kind)} · AFN {payment.amount}</strong>
+                          <strong>{t(payment.kind)} · {formatMoney(payment.amount)}</strong>
                           <span>{payment.method} · {formatAdminHijriDateTime(locale, payment.recordedAt)}</span>
                           {payment.transactionReference ? <span>{t("Ref")}: {payment.transactionReference}</span> : null}
                           {payment.reversalReason ? <span>{t("Reason")}: {payment.reversalReason}</span> : null}
