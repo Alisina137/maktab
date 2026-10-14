@@ -123,5 +123,11 @@
 6. Check real browser/Android, RTL Dari/Pashto, keyboard, 200% zoom, API downtime, refresh and account switching. Run `pnpm verify:pilot:phase6`, `pnpm verify`, Linux/Windows CI, and follow all independent Step 20 production NO-GO controls.
 
 
-## Phase 7 — Cross-role regression and release acceptance
-Android/desktop/RTL/a11y plus production-environment proof, security and operator approval. Existing Step 20 NO-GO blockers remain in effect.
+## Phase 7 — Cross-role regression and final release acceptance (implemented software; external acceptance pending)
+
+- Added school-scoped read-only API and truthful Launch & Support Step 20 panel. Distinguishes pilot setup/approval from production go/no-go; Step 20 live acceptance stays UNVERIFIED until independently inspected.
+- Added exact-commit manifest report CLI, 11 hard external gates, evidence timestamps and references, dirty checkout detection, sanitized report output, never-automatic GO, operator runbook and an example manifest intentionally marked NOT_RUN.
+- API/PGlite regression enforces school role/tenant separation and suspended access; unit tests enforce no false release approval, evidence validity and SHA mismatch handling; static/CI guards cover RTL, responsive keyboard UI and source scenario coverage.
+- Ubuntu GitHub Actions attaches a machine-readable production NO-GO report to the tested commit; Windows runs Phase 7 guard and full API suite. A green build is **not** a release sign-off.
+- No new migrations in Phase 7. The operator must run real Android/desktop, TalkBack/RTL/zoom, live push/scheduler/monitoring, hosted Postgres migration, backup/recovery and parallel DB acceptance and obtain signed approval. Full instructions: `docs/PHASE7-RELEASE-ACCEPTANCE.md`. Existing Step 20 production **NO-GO** remains until those independent gates are met.
+

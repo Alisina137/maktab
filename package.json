@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -22,7 +22,7 @@
     "db:migrate": "pnpm --filter @maktablink/database db:migrate",
     "backup:db": "node scripts/backup-database.mjs",
     "restore:db": "node scripts/restore-database.mjs",
-    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs && node --check packages/database/scripts/check-db.mjs && node --check scripts/test-db-check.mjs && node --check scripts/verify-release-regression.mjs",
+    "ops:check": "node --check scripts/db-tool-common.mjs && node --check scripts/backup-database.mjs && node --check scripts/restore-database.mjs && node --check packages/database/scripts/check-db.mjs && node --check scripts/test-db-check.mjs && node --check scripts/verify-release-regression.mjs && node --check scripts/phase7-release-report.mjs && node --check scripts/verify-pilot-operations-phase7.mjs",
     "demo:parent-dashboard": "pnpm --filter @maktablink/database demo:parent-dashboard",
     "db:check": "pnpm --filter @maktablink/database db:check",
     "verify:release": "node scripts/verify-release-regression.mjs",
@@ -31,7 +31,8 @@
     "verify:pilot:phase3": "node scripts/verify-pilot-operations-phase3.mjs",
     "verify:pilot:phase4": "node scripts/verify-pilot-operations-phase4.mjs",
     "verify:pilot:phase5": "node scripts/verify-pilot-operations-phase5.mjs",
-    "verify:pilot:phase6": "node scripts/verify-pilot-operations-phase6.mjs"
+    "verify:pilot:phase6": "node scripts/verify-pilot-operations-phase6.mjs",
+    "verify:pilot:phase7": "node scripts/verify-pilot-operations-phase7.mjs && node --test scripts/test-phase7-release-report.mjs && node scripts/phase7-release-report.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
