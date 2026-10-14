@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { kabulCivilDate } from "./subscription-health.js";
 import { and, eq, ilike, or, sql } from "drizzle-orm";
 import type {
   CreateSchoolInput,
@@ -74,7 +75,8 @@ function addDays(date: string, days: number) {
 }
 
 function utcDate() {
-  return new Date().toISOString().slice(0, 10);
+  // Lifecycle date must match the school-facing Kabul-local calculation.
+  return kabulCivilDate();
 }
 
 function daysBetween(from: string, to: string) {
@@ -360,7 +362,7 @@ export function createSchoolStore(db: FoundationDatabase): PlatformSchoolStore {
             type: "SUBSCRIPTION_EXPIRING",
             title: "Subscription expiring",
             message: `School subscription expires in ${remaining} day${remaining === 1 ? "" : "s"}.`,
-            deepLink: "/admin/pilot-readiness",
+            deepLink: "/admin/pilot/subscription",
             dedupKey,
             metadata: {
               expiresOn: subscription.expiresOn,

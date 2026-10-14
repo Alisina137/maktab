@@ -4,7 +4,7 @@ import {
   bulkImportEntitySchema,
   type BulkImportEntity
 } from "@maktablink/contracts";
-import { PilotExportLimitError, type AccountStore, type PilotStore } from "@maktablink/database";
+import { PilotExportLimitError, evaluateSubscriptionHealth, type AccountStore, type PilotStore } from "@maktablink/database";
 import { requireSchoolAdmin } from "../users/routes.js";
 
 const auditDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
@@ -63,6 +63,13 @@ export function registerPilotRoutes(
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
     return { subscription: context.subscription };
+  });
+
+  app.get("/v1/admin/pilot/subscription/health", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    reply.header("cache-control", "no-store");
+    return { health: evaluateSubscriptionHealth(context.subscription) };
   });
 
   app.get("/v1/admin/pilot/readiness", async (request, reply) => {

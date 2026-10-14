@@ -14,3 +14,5 @@ export * from "./teacher-teaching-store.js";
 export * from "./teacher-tasks-store.js";
 
 export * from "./pilot-readiness-advanced.js";
+
+export * from "./subscription-health.js";
