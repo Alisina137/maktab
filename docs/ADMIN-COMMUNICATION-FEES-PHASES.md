@@ -16,9 +16,20 @@ Scope: the existing administrator route `/admin/communication`. The real reposit
 
 **Manual browser acceptance pending**: exact current school balances against issued invoices after payments and reversals; no zero-looking dashboard when communication endpoint fails; academic/family endpoint outage retaining read-only authorized lists; two concurrent admin sessions in different schools; narrow-width 320/375px, tablet, desktop, Dari/Pashto RTL, 200% browser zoom and screen reader; payment idempotency and cancellation flows. No manual browser run is claimed. Production remains **NO-GO** pending Step 20 external checks.
 
-## Phase 2 — Announcements
+## Phase 2 — Announcements (implemented)
 
-Search, status/audience/class filters, pagination, actual class names, recipient preview backed by authorized server calculation, explicit Publish Now vs Schedule, timezone-safe scheduling and dedicated detail view. Proposed draft lifecycle requires a new contract and audit logic.
+- The Communication list has title/body **search**, status filters (All/Published/Scheduled/Archived), audience filters (school/class/role), actual authorized class-name filters, and **20-at-a-time display pagination**. Expanded details include complete title/body, class and role audience, school-local publication date, status and record reference; editing is offered only for unpublished scheduled announcements.
+- Added a new **school-admin-only** `POST /v1/admin/announcements/recipients/preview` endpoint. It reuses the database's actual `announcementRecipients` rules: eligible active accounts, class membership, optional role intersection, tenant ownership, unique account IDs, withdrawn students and suspended/archived users. The response contains **only an aggregate recipientCount** and schoolTimezone, never names or IDs. An invalid class returns 404; invalid audience fields fail validation. The preview does not issue announcements or mark delivery.
+- The editor shows a debounced **current eligible recipient count** for the intended school/class/role with account-generation protection, clear loading/errors and a warning that scheduled membership can change before publication. It does **not** claim device receipt or push delivery.
+- Publishing now and scheduling are explicit choices. Scheduled date/time is interpreted using the **school's saved IANA timezone**, independently of the administrator computer/browser time zone. Invalid dates and impossible daylight-saving times are rejected, and past scheduled instants are blocked. Scheduled-announcement edit can retain the original publication date when left blank. List publication dates use the verified school zone; while unavailable they are explicitly labeled UTC.
+- Existing audited announcement lifecycle (immediate publish, scheduled update, archive) is unchanged; published text remains immutable. Archiving requires confirmation and warns that previously dispatched push notifications cannot be recalled.
+- Announcement search/filter/paging is **client-side display paging of the existing authenticated school overview**, not backend cursor pagination or a reduced network payload. True server-side pagination and persistent drafts remain separate future API work and must not be claimed here.
+- Native HTML form controls, role/status labels, screen-reader count/status, accessible actions, visual badges, English/Dari/Pashto translations and RTL small-screen layout are included.
+- Automated verification: `pnpm verify:admin-communication:phase2` runs pure filtering/page/timezone tests and guards. The API integration suite tests recipient count matching actual published class audience, PARENT/STUDENT role intersections, privilege enforcement, validation, no side effects, and cross-school class rejection behavior.
+
+**Manual acceptance still pending:** compare preview with actual eligible school users before/after suspension, test scheduled publication across DST in a non-Kabul school, Android browser and desktop date-picker RTL, archive and failed preview, 45+ announcements, slow requests, and notification delivery monitoring. Step 20 production status remains **NO-GO**. No migration. 
+
+**Not included in Phase 2:** persistent draft announcements, content editing after publication, guaranteed delivery/read analytics, and backend cursor pagination. These require separately scoped lifecycle and storage changes.
 
 ## Phase 3 — Fee invoices
 
