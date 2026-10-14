@@ -258,6 +258,23 @@ export function registerCommunicationRoutes(
     return communication.getAdminOverview(context.user.schoolId);
   });
 
+  app.post("/v1/admin/announcements/recipients/preview", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      // Reuse the real publication audience validation. No write, no user IDs
+      // returned, and no recipient information from another tenant.
+      const body = request.body && typeof request.body === "object"
+        && !Array.isArray(request.body) ? request.body : {};
+      const input = createAnnouncementSchema.parse({
+        ...body, title: "Audience preview", content: "Audience preview"
+      });
+      return await communication.previewAnnouncementAudience(context.user.schoolId, input);
+    } catch (error) {
+      return sendCommunicationError(reply, error);
+    }
+  });
+
   app.post("/v1/admin/announcements", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
