@@ -56,7 +56,10 @@ import { AdminContactCard } from "./src/admin-contact-card";
 import { TeacherBottomNavigation, TeacherExperience, type TeacherTab } from "./src/teacher-experience";
 import { NegaranHistoryPanel } from "./src/negaran-history";
 import { countAttendance, fillUnmarkedPresent } from "./src/negaran-attendance-utils";
-import { ParentDashboardPanel } from "./src/parent-dashboard";
+import { ParentDashboardPanel, type ParentDashboardDestination } from "./src/parent-dashboard";
+import { initialParentResources, loadingParentChildResources,
+  type ParentHomeResource, type ParentHomeResourceMap, type ParentHomeResourceStatus
+} from "./src/parent-home-model";
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
 import { ParentTimetableContent } from "./src/parent-timetable";
 import { ParentNotificationsContent } from "./src/parent-inbox";
@@ -210,6 +213,9 @@ function AppContent() {
   const [parentFees, setParentFees] = useState<FeeInvoiceViewPayload[]>([]);
   const [parentCommunicationReady, setParentCommunicationReady] = useState(false);
   const [parentNotifications, setParentNotifications] = useState<ParentNotification[]>([]);
+  const [parentResourceStatus, setParentResourceStatus] =
+    useState<ParentHomeResourceMap>({ ...initialParentResources });
+  const [parentDataChildId, setParentDataChildId] = useState<string | null>(null);
   const [teacherToday, setTeacherToday] = useState<TeacherTodayPayload | null>(null);
   const [teacherAcademics, setTeacherAcademics] = useState<TeacherAcademicsPayload | null>(null);
   const [teacherTodayReady, setTeacherTodayReady] = useState(false);
@@ -575,6 +581,10 @@ function AppContent() {
       setParentAnnouncements([]);
       setParentFees([]);
       setParentCommunicationReady(false);
+      setParentDataChildId(selectedChildId);
+      setParentResourceStatus((current) => ({
+        ...loadingParentChildResources(), notifications: current.notifications
+      }));
       void loadParentAttendance(session.accessToken, selectedChildId, requestId);
       void loadParentTimetable(session.accessToken, selectedChildId, requestId);
       void loadParentLearningData(session.accessToken, selectedChildId, requestId);
@@ -868,6 +878,8 @@ function AppContent() {
     setParentFees([]);
     setParentCommunicationReady(false);
     setParentNotifications([]);
+    setParentResourceStatus({ ...initialParentResources });
+    setParentDataChildId(null);
     setTeacherToday(null);
     setStudentTimetable(null);
     setStudentTimetableReady(false);
@@ -1251,6 +1263,18 @@ function AppContent() {
     if (selectedChildIdRef.current === studentId) return;
     selectedChildIdRef.current = studentId;
     parentChildLoadRequestId.current += 1;
+    setParentDataChildId(null);
+    setParentAttendance([]);
+    setParentToday("");
+    setParentTimetable([]);
+    setParentTimetableReady(false);
+    setParentLearning(null);
+    setParentAnnouncements([]);
+    setParentFees([]);
+    setParentCommunicationReady(false);
+    setParentResourceStatus((current) => ({
+      ...loadingParentChildResources(), notifications: current.notifications
+    }));
     setNotice(null);
     setSelectedChildId(studentId);
     if (school && session?.user.role === "PARENT") {
@@ -1260,67 +1284,109 @@ function AppContent() {
     }
   }
 
-  async function loadParentAttendance(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  function updateParentResource(resource: ParentHomeResource, status: ParentHomeResourceStatus) {
+    setParentResourceStatus((current) => ({ ...current, [resource]: status }));
+  }
+
+  function handleParentResourceFailure(resource: ParentHomeResource, cause: unknown) {
+    updateParentResource(resource, "error");
+    // A recoverable failure in one card must not hide unrelated data. Account
+    // and authentication failures still go through the existing global guard.
+    if (cause instanceof ApiRequestError && ["account_suspended", "session_invalid",
+      "school_service_unavailable", "password_change_required"].includes(cause.code ?? "")) {
+      showCause(cause);
+    }
+  }
+
+  function isCurrentParentChildRequest(accessToken: string, studentId: string, requestId: number) {
+    return requestId === parentChildLoadRequestId.current &&
+      sessionRef.current?.accessToken === accessToken &&
+      sessionRef.current?.user.role === "PARENT" &&
+      selectedChildIdRef.current === studentId;
+  }
+
+  async function loadParentAttendance(accessToken: string, studentId: string, requestId: number) {
+    updateParentResource("attendance", "loading");
     try {
       const result = await api.parentAttendance(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!isCurrentParentChildRequest(accessToken, studentId, requestId)) return;
       setParentToday(result.today);
       setParentAttendance(result.days);
+      updateParentResource("attendance", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+        handleParentResourceFailure("attendance", cause);
+      }
     }
   }
 
-  async function loadParentTimetable(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  async function loadParentTimetable(accessToken: string, studentId: string, requestId: number) {
+    updateParentResource("timetable", "loading");
     try {
       const result = await api.parentTimetable(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!isCurrentParentChildRequest(accessToken, studentId, requestId)) return;
       setParentTimetable(result.periods);
       setParentTimetableReady(true);
+      updateParentResource("timetable", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+        setParentTimetableReady(true);
+        handleParentResourceFailure("timetable", cause);
+      }
     }
   }
 
-  async function loadParentLearningData(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
+  async function loadParentLearningData(accessToken: string, studentId: string, requestId: number) {
+    updateParentResource("learning", "loading");
     try {
       const result = await api.parentLearning(accessToken, studentId);
-      if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
+      if (!isCurrentParentChildRequest(accessToken, studentId, requestId)) return;
       setParentLearning(result);
+      updateParentResource("learning", "ready");
     } catch (cause) {
-      if (requestId === parentChildLoadRequestId.current && sessionRef.current?.accessToken === accessToken && selectedChildIdRef.current === studentId) showCause(cause);
+      if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+        handleParentResourceFailure("learning", cause);
+      }
     }
   }
 
-  async function loadParentCommunicationData(
-    accessToken: string,
-    studentId: string,
-    requestId: number
-  ) {
-    const [announcementsResult, feesResult] = await Promise.allSettled([
-      api.announcements(accessToken),
-      api.parentFees(accessToken, studentId)
-    ] as const);
-    if (requestId !== parentChildLoadRequestId.current || sessionRef.current?.accessToken !== accessToken || selectedChildIdRef.current !== studentId) return;
-    if (announcementsResult.status === "fulfilled") {
-      setParentAnnouncements(announcementsResult.value.announcements);
+  async function loadParentAnnouncementsData(accessToken: string, studentId: string, requestId: number) {
+    updateParentResource("announcements", "loading");
+    try {
+      const result = await api.announcements(accessToken);
+      if (!isCurrentParentChildRequest(accessToken, studentId, requestId)) return;
+      setParentAnnouncements(result.announcements);
+      updateParentResource("announcements", "ready");
+    } catch (cause) {
+      if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+        handleParentResourceFailure("announcements", cause);
+      }
     }
-    if (feesResult.status === "fulfilled") setParentFees(feesResult.value.invoices);
-    setParentCommunicationReady(true);
-    const failure = [announcementsResult, feesResult].find((item) => item.status === "rejected");
-    if (failure?.status === "rejected") showCause(failure.reason);
+  }
+
+  async function loadParentFeesData(accessToken: string, studentId: string, requestId: number) {
+    updateParentResource("fees", "loading");
+    try {
+      const result = await api.parentFees(accessToken, studentId);
+      if (!isCurrentParentChildRequest(accessToken, studentId, requestId)) return;
+      setParentFees(result.invoices);
+      updateParentResource("fees", "ready");
+    } catch (cause) {
+      if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+        handleParentResourceFailure("fees", cause);
+      }
+    }
+  }
+
+  async function loadParentCommunicationData(accessToken: string, studentId: string, requestId: number) {
+    // Separate request outcomes: broken announcements do not make fees fail.
+    await Promise.allSettled([
+      loadParentAnnouncementsData(accessToken, studentId, requestId),
+      loadParentFeesData(accessToken, studentId, requestId)
+    ] as const);
+    if (isCurrentParentChildRequest(accessToken, studentId, requestId)) {
+      setParentCommunicationReady(true);
+    }
   }
 
   async function loadParentNotifications(accessToken: string) {
@@ -1332,11 +1398,15 @@ function AppContent() {
       sessionRef.current?.accessToken === accessToken &&
       sessionRef.current?.user.id === identity &&
       sessionRef.current?.user.role === "PARENT";
+    updateParentResource("notifications", "loading");
     try {
       const result = await api.parentNotifications(accessToken);
-      if (valid()) setParentNotifications(result.notifications);
+      if (valid()) {
+        setParentNotifications(result.notifications);
+        updateParentResource("notifications", "ready");
+      }
     } catch (cause) {
-      if (valid()) showCause(cause);
+      if (valid()) handleParentResourceFailure("notifications", cause);
     }
   }
 
@@ -1635,6 +1705,8 @@ function AppContent() {
       setParentFees([]);
       setParentCommunicationReady(false);
       setParentNotifications([]);
+      setParentResourceStatus({ ...initialParentResources });
+      setParentDataChildId(null);
       teacherHomeLoadRequestId.current += 1;
       setTeacherToday(null);
       setTeacherAcademics(null);
@@ -1729,6 +1801,57 @@ function AppContent() {
     setTimeout(() => {
       onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
     }, 0);
+  }
+
+  function openParentDashboardDestination(destination: ParentDashboardDestination) {
+    switch (destination) {
+      case "ATTENDANCE": setParentTab("ATTENDANCE"); break;
+      case "ACADEMICS_TIMETABLE":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("TIMETABLE"); break;
+      case "ACADEMICS_HOMEWORK":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("HOMEWORK"); break;
+      case "ACADEMICS_RESULTS":
+        setParentTab("ACADEMICS"); setParentAcademicsTab("RESULTS"); break;
+      case "MORE_FEES": setParentTab("MORE"); break;
+      case "INBOX_ANNOUNCEMENTS":
+        setParentTab("INBOX"); setParentInboxTab("ANNOUNCEMENTS"); break;
+      case "INBOX_NOTIFICATIONS":
+        setParentTab("INBOX"); setParentInboxTab("NOTIFICATIONS"); break;
+    }
+    setNotice(null);
+    onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
+  }
+
+  function retryParentResource(resource: ParentHomeResource) {
+    const active = sessionRef.current;
+    const studentId = selectedChildIdRef.current;
+    if (screen !== "home" || active?.user.role !== "PARENT" ||
+        active.user.status === "SUSPENDED" || active.mustChangePassword) return;
+    if (resource === "notifications") {
+      void loadParentNotifications(active.accessToken);
+      return;
+    }
+    if (!studentId) return;
+    const requestId = parentChildLoadRequestId.current;
+    const token = active.accessToken;
+    switch (resource) {
+      case "attendance": void loadParentAttendance(token, studentId, requestId); break;
+      case "timetable": void loadParentTimetable(token, studentId, requestId); break;
+      case "learning": void loadParentLearningData(token, studentId, requestId); break;
+      case "announcements": void loadParentAnnouncementsData(token, studentId, requestId); break;
+      case "fees": void loadParentFeesData(token, studentId, requestId); break;
+    }
+  }
+
+  function refreshParentDashboard() {
+    const active = sessionRef.current;
+    if (screen !== "home" || active?.user.role !== "PARENT" ||
+        active.user.status === "SUSPENDED" || active.mustChangePassword) return;
+    for (const resource of [
+      "attendance", "timetable", "learning", "announcements", "fees", "notifications"
+    ] as const) {
+      retryParentResource(resource);
+    }
   }
 
   const attendanceSummary = attendanceSheet
@@ -2219,13 +2342,18 @@ function AppContent() {
                         parentAttendance.find((item) => item.date === parentToday)?.status ?? null
                       }
                       timetable={parentTimetable}
-                      timetableReady={parentTimetableReady}
                       learning={parentLearning}
                       announcements={parentAnnouncements}
                       fees={parentFees}
-                      communicationReady={parentCommunicationReady}
+                      notifications={parentNotifications}
+                      resourceStatus={parentDataChildId === selectedChildId
+                        ? parentResourceStatus
+                        : { ...loadingParentChildResources(), notifications: parentResourceStatus.notifications }}
                       locale={locale}
                       textDirection={textDirection}
+                      onNavigate={openParentDashboardDestination}
+                      onRetry={retryParentResource}
+                      onRefresh={refreshParentDashboard}
                     />
 
                     <View style={styles.parentSectionCard}>
