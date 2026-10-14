@@ -6081,3 +6081,185 @@ html[dir="rtl"] body {
     animation: none;
   }
 }
+
+
+/* Admin Accounts Phase 4 — audited, accessible security actions. */
+.admin-account-confirm-layer {
+  position: fixed;
+  z-index: 1120;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 18px;
+  isolation: isolate;
+}
+
+.admin-account-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 29, 51, .54);
+  backdrop-filter: blur(3px);
+}
+
+.admin-account-confirm-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 470px);
+  max-height: min(92dvh, 750px);
+  overflow-y: auto;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid #e3eaf4;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(19, 32, 53, .25);
+}
+
+.admin-account-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #fff0da;
+  color: #a76a26;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.admin-account-confirm-card h2 {
+  margin: 15px 0 8px;
+  color: #203755;
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.admin-account-confirm-card p {
+  color: #576880;
+  line-height: 1.65;
+  font-size: 13px;
+}
+
+.admin-account-confirm-card .admin-account-confirm-subject {
+  margin: 0 0 14px;
+  color: #29476e;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-account-confirm-form {
+  display: grid;
+  gap: 19px;
+}
+
+.admin-account-confirm-form label {
+  display: grid;
+  gap: 8px;
+  color: #405878;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-account-confirm-form textarea {
+  resize: vertical;
+  width: 100%;
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid #d6dfec;
+  border-radius: 11px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.admin-account-confirm-form textarea[aria-invalid="true"] {
+  border-color: #c34b4b;
+}
+
+.admin-account-confirm-error {
+  color: #a33333;
+  font-weight: 650;
+  font-size: 12px;
+}
+
+.admin-account-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-account-confirm-actions button {
+  min-height: 42px;
+}
+
+.admin-account-confirm-danger {
+  padding: 0 16px;
+  border: 1px solid #ac3940;
+  border-radius: 10px;
+  color: #fff;
+  background: #b53d44;
+  font-weight: 800;
+}
+
+.admin-account-confirm-danger:hover:not(:disabled) {
+  background: #963139;
+}
+
+.admin-account-confirm-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.admin-account-confirm-card :focus-visible {
+  outline: 3px solid #317fce;
+  outline-offset: 3px;
+}
+
+.account-detail-audit-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-inline-start: 21px;
+}
+
+.account-detail-audit-list li {
+  padding: 9px 10px;
+  border: 1px solid #e6edf5;
+  border-radius: 11px;
+  background: #fafcff;
+  color: #50627c;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.account-detail-audit-list li > strong,
+.account-detail-audit-list li > span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.account-detail-audit-list li > strong {
+  color: #2c4d77;
+  font-size: 13px;
+}
+
+.account-detail-audit-list li > p {
+  margin: 8px 0 0;
+  border-inline-start: 3px solid #e6c389;
+  padding-inline-start: 9px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .admin-account-confirm-layer {
+    padding: 10px;
+  }
+
+  .admin-account-confirm-card {
+    border-radius: 16px;
+  }
+
+  .admin-account-confirm-actions button {
+    flex: 1 1 auto;
+  }
+}
