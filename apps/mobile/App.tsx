@@ -62,6 +62,7 @@ import { initialParentResources, loadingParentChildResources,
 } from "./src/parent-home-model";
 import { ParentChildSwitcher, ParentSectionTabs, type ParentAcademicsTab, type ParentInboxTab } from "./src/parent-shell";
 import { ParentTimetableContent } from "./src/parent-timetable";
+import { ParentAttendanceContent } from "./src/parent-attendance";
 import { ParentNotificationsContent } from "./src/parent-inbox";
 import { StudentDashboard } from "./src/student-dashboard";
 import { StudentTimetableAgenda } from "./src/student-timetable";
@@ -2524,24 +2525,33 @@ function AppContent() {
                   </Text>
                 </View>
                 {selectedChild ? (
-                  <View style={styles.parentSectionCard}>
-                    <Text style={[styles.sectionLabel, textDirection]}>
-                      {translate(locale, "attendance.recent")}
-                    </Text>
-                    {parentAttendance.map((day) => (
-                      <View key={day.attendanceId} style={[styles.historyRow, direction === "rtl" && styles.rowRtl]}>
-                        <Text style={[styles.historyDate, textDirection]}>
-                          {formatLocalizedDate(day.date, locale)}
-                        </Text>
-                        <AttendanceBadge locale={locale} status={day.status} />
-                      </View>
-                    ))}
-                    {parentAttendance.length === 0 ? (
-                      <Text style={[styles.muted, textDirection]}>
-                        {translate(locale, parentToday ? "attendance.noHistory" : "common.loading")}
-                      </Text>
-                    ) : null}
-                  </View>
+                  parentToday ? (
+                    <ParentAttendanceContent
+                      key={session.user.id + ":" + selectedChild.student.id}
+                      accessToken={session.accessToken}
+                      studentId={selectedChild.student.id}
+                      today={parentToday}
+                      locale={locale}
+                      onSensitiveError={(cause) => {
+                        if (cause instanceof ApiRequestError && [
+                          "account_suspended", "session_invalid",
+                          "school_service_unavailable", "password_change_required"
+                        ].includes(cause.code ?? "")) showCause(cause);
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.parentSectionCard}>
+                      {parentResourceStatus.attendance === "error" ? (
+                        <Pressable accessibilityRole="button" onPress={() => retryParentResource("attendance")}>
+                          <Text style={[styles.muted, textDirection]}>
+                            {translate(locale, "parent.unavailable")} · {translate(locale, "parent.tryAgain")}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <ActivityIndicator color={tokens.color.brand} />
+                      )}
+                    </View>
+                  )
                 ) : (
                   <View style={styles.emptyCard}>
                     <Text style={[styles.subtitle, textDirection]}>{translate(locale, "parent.noChildren")}</Text>
