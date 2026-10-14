@@ -398,29 +398,137 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   }
 
 
+
+  const formatCount = (value: number) => new Intl.NumberFormat(locale).format(value);
+  const formatMoney = (value: number) => `${formatCount(value)} ${t("AFN")}`;
+
   return (
     <section className="communication-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">{t("Phase 7 · Communication & Fees")}</span>
-          <h2>{t("School-family communication")}</h2>
-          <p>{t("Publish scoped updates and maintain fee visibility using manual school-recorded transactions.")}</p>
+          <span className="eyebrow">{t("Communication & fees workspace")}</span>
+          <h2>{t("School-family communication & fee management")}</h2>
+          <p>{t("Review announcements and issued school fees without mixing creation, records, and balances.")}</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
+        <button className="admin-secondary" type="button" disabled={busy}
+          onClick={() => {
+            void loadResource("communication");
+            void loadResource("families");
+            void loadResource("academics");
+          }}>{t("Refresh all")}</button>
       </div>
+
+      <nav className="communication-main-tabs" role="tablist" aria-label={t("Communication & fees sections")} dir={locale === "en" ? "ltr" : "rtl"}>
+        {([
+          ["OVERVIEW", "Overview"],
+          ["COMMUNICATION", "Communication"],
+          ["FEES", "Fees"]
+        ] as Array<[Section,string]>).map(([key,label]) => (
+          <button type="button" key={key}
+            ref={element => { sectionRefs.current[key] = element; }}
+            role="tab" aria-selected={section === key}
+            aria-controls={`communication-panel-${key.toLowerCase()}`}
+            id={`communication-tab-${key.toLowerCase()}`}
+            tabIndex={section === key ? 0 : -1}
+            className={section === key ? "communication-main-tab is-active" : "communication-main-tab"}
+            onClick={() => setSection(key)}>{t(label)}</button>
+        ))}
+      </nav>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
-      <div className="academic-summary-grid communication-summary-grid">
-        <Summary label={t("Announcements")} value={overview.announcements.filter((item) => !item.archivedAt).length} />
-        <Summary label={t("Invoices")} value={overview.invoices.length} />
-        <Summary label={t("Billed AFN")} value={totals.billed} />
-        <Summary label={t("Paid AFN")} value={totals.paid} />
-        <Summary label={t("Outstanding AFN")} value={totals.outstanding} />
-      </div>
+      {section === "OVERVIEW" ? (
+        <section id="communication-panel-overview" role="tabpanel"
+          aria-labelledby="communication-tab-overview" className="communication-tab-panel">
+          {ready && visibleOverview ? (
+            <>
+              <div className="communication-dashboard-group">
+                <div className="communication-dashboard-heading">
+                  <h3>{t("Communication overview")}</h3>
+                  <button type="button" className="admin-secondary"
+                    onClick={() => setSection("COMMUNICATION")}>{t("View announcements")}</button>
+                </div>
+                <div className="academic-summary-grid communication-overview-grid">
+                  <Summary label={t("Total announcements")} value={formatCount(notices.total)} />
+                  <Summary label={t("Published announcements")} value={formatCount(notices.published)} />
+                  <Summary label={t("Scheduled announcements")} value={formatCount(notices.scheduled)} />
+                  <Summary label={t("Archived announcements")} value={formatCount(notices.archived)} />
+                </div>
+              </div>
+              <div className="communication-dashboard-group">
+                <div className="communication-dashboard-heading">
+                  <h3>{t("Financial overview")}</h3>
+                  <button type="button" className="admin-secondary"
+                    onClick={() => setSection("FEES")}>{t("View fee invoices")}</button>
+                </div>
+                <p className="admin-copy">{t("Issued school invoices only. Drafts and cancelled invoices do not count toward balances.")}</p>
+                <div className="academic-summary-grid communication-overview-grid">
+                  <Summary label={t("Issued invoices")} value={formatCount(money.issuedInvoices)} />
+                  <Summary label={t("Billed AFN")} value={formatMoney(money.billed)} />
+                  <Summary label={t("Paid AFN")} value={formatMoney(money.paid)} />
+                  <Summary label={t("Outstanding AFN")} value={formatMoney(money.outstanding)} />
+                  <Summary label={t("Overdue AFN")} value={formatMoney(money.overdue)} />
+                  <Summary label={t("Students with outstanding fees")} value={formatCount(money.owingStudents)} />
+                  <Summary label={t("Collection rate")} value={money.collectionRate === null
+                    ? "—" : `${formatCount(Math.round(money.collectionRate))}%`} />
+                </div>
+              </div>
+              <div className="communication-overview-recent">
+                <article className="admin-panel communication-recent-card">
+                  <h3>{t("Recent announcements")}</h3>
+                  {visibleOverview.announcements.slice(0, 4).map(item => (
+                    <button type="button" className="communication-recent-row" key={item.id}
+                      onClick={() => { setSection("COMMUNICATION"); setCommunicationPane("LIST"); }}>
+                      <strong>{item.title}</strong>
+                      <span>{t(item.archivedAt ? "ARCHIVED" :
+                        Date.parse(item.publishAt) > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
+                    </button>
+                  ))}
+                  {!visibleOverview.announcements.length ? <p className="admin-copy">{t("No announcements yet.")}</p> : null}
+                </article>
+                <article className="admin-panel communication-recent-card">
+                  <h3>{t("Recent fee invoices")}</h3>
+                  {visibleOverview.invoices.slice(0, 4).map(item => (
+                    <button type="button" className="communication-recent-row" key={item.invoice.id}
+                      onClick={() => { setSection("FEES"); setFeesPane("LIST"); }}>
+                      <strong>{item.studentName}</strong>
+                      <span>{t(item.invoice.status)} · {formatMoney(item.outstanding)}</span>
+                    </button>
+                  ))}
+                  {!visibleOverview.invoices.length ? <p className="admin-copy">{t("No fee invoices yet.")}</p> : null}
+                </article>
+              </div>
+            </>
+          ) : resourceNotice("communication")}
+        </section>
+      ) : null}
 
-      <div className="communication-two-column">
+      {section === "COMMUNICATION" ? (
+        <section id="communication-panel-communication" role="tabpanel"
+          aria-labelledby="communication-tab-communication" className="communication-tab-panel">
+          <div className="communication-dashboard-heading">
+            <div>
+              <h3>{t("Announcements")}</h3>
+              <p>{t("Create and manage school, class, and role announcements.")}</p>
+            </div>
+            <button type="button" className="admin-secondary" onClick={() => void loadResource("communication")}>
+              {t("Refresh announcements")}
+            </button>
+          </div>
+          <div className="communication-mobile-toggle" role="group" aria-label={t("Choose announcement workspace")}>
+            <button type="button" className={communicationPane === "LIST" ? "is-active" : ""}
+              aria-pressed={communicationPane === "LIST"}
+              onClick={() => setCommunicationPane("LIST")}>{t("Announcement list")}</button>
+            <button type="button" className={communicationPane === "FORM" ? "is-active" : ""}
+              aria-pressed={communicationPane === "FORM"}
+              onClick={() => setCommunicationPane("FORM")}>{t("Create announcement")}</button>
+          </div>
+          <div className="communication-workflow-layout" data-pane={communicationPane}>
+            <div className="communication-workflow-form">
+              {visibleAcademics && resourceStatus.academics === "ready"
+                ? (
+                  <>
         <article className="admin-panel communication-form-card">
           <div><h2>{t("Create announcement")}</h2><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
@@ -467,7 +575,81 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         </article>
 
         {editingNotice ? (
-          <article className="admin-panel communication-form-card">
+  
+                  </>
+                ) : resourceNotice("academics")}
+            </div>
+            <div className="communication-workflow-list">
+              {ready && visibleOverview ? (
+                <>
+      <article className="admin-panel academic-list-panel">
+        <div className="admin-section-header">
+          <div><h2>{t("Announcements")}</h2><p>{t("Scheduled and published school communication")}</p></div>
+        </div>
+        <div className="academic-rows">
+          {visibleOverview.announcements.map((item) => (
+            <div className="academic-row communication-announcement-row" key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                <span>{t(item.audienceScope)}{item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}{item.classId ? ` · ${t("class scoped")}` : ""}</span>
+                <span>{formatAdminHijriDateTime(locale, item.publishAt)} · {t(item.archivedAt ? "ARCHIVED" :
+                    new Date(item.publishAt).getTime() > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
+                <p>{item.content}</p>
+              </div>
+              {!item.archivedAt ? (
+                <div className="admin-actions">
+                  {new Date(item.publishAt).getTime() > Date.now() ? (
+                    <button className="admin-secondary" type="button" disabled={busy}
+                      onClick={() => {
+                        setEditingNotice(item); setEditTitle(item.title);
+                        setEditMessage(item.content); setEditPublishAt("");
+                      }}>{t("Edit")}</button>
+                  ) : null}
+                  <button className="admin-secondary" disabled={busy}
+                    onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+          {visibleOverview.announcements.length === 0 ? <p className="admin-copy">{t("No announcements yet.")}</p> : null}
+        </div>
+      </article>
+
+
+                </>
+              ) : resourceNotice("communication")}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {section === "FEES" ? (
+        <section id="communication-panel-fees" role="tabpanel"
+          aria-labelledby="communication-tab-fees" className="communication-tab-panel">
+          <div className="communication-dashboard-heading">
+            <div>
+              <h3>{t("Fee invoices & payments")}</h3>
+              <p>{t("Manage draft invoices and the append-only payment ledger.")}</p>
+            </div>
+            <button type="button" className="admin-secondary" onClick={() => void loadResource("communication")}>
+              {t("Refresh fee invoices")}
+            </button>
+          </div>
+          <div className="communication-mobile-toggle" role="group" aria-label={t("Choose fee workspace")}>
+            <button type="button" className={feesPane === "LIST" ? "is-active" : ""}
+              aria-pressed={feesPane === "LIST"} onClick={() => setFeesPane("LIST")}>
+              {t("Invoice list")}
+            </button>
+            <button type="button" className={feesPane === "FORM" ? "is-active" : ""}
+              aria-pressed={feesPane === "FORM"} onClick={() => setFeesPane("FORM")}>
+              {t("Create fee invoice")}
+            </button>
+          </div>
+          <div className="communication-workflow-layout" data-pane={feesPane}>
+            <div className="communication-workflow-form">
+              {visibleFamilies && resourceStatus.families === "ready" && ready ? (
+                <>
+        <article className="admin-panel communication-form-card">
             <div><h2>{t("Edit scheduled announcement")}</h2>
               <p>{t("Published announcements are immutable; only future scheduled notices may be edited.")}</p>
             </div>
@@ -515,47 +697,18 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <button className="admin-secondary" disabled={busy}>{t("Save reminder days")}</button>
           </form>
         </article>
-      </div>
-
-      <article className="admin-panel academic-list-panel">
-        <div className="admin-section-header">
-          <div><h2>{t("Announcements")}</h2><p>{t("Scheduled and published school communication")}</p></div>
-        </div>
-        <div className="academic-rows">
-          {overview.announcements.map((item) => (
-            <div className="academic-row communication-announcement-row" key={item.id}>
-              <div>
-                <strong>{item.title}</strong>
-                <span>{t(item.audienceScope)}{item.audienceRole ? ` · ${t(item.audienceRole)}` : ""}{item.classId ? ` · ${t("class scoped")}` : ""}</span>
-                <span>{formatAdminHijriDateTime(locale, item.publishAt)} · {t(item.archivedAt ? "ARCHIVED" :
-                    new Date(item.publishAt).getTime() > Date.now() ? "SCHEDULED" : "PUBLISHED")}</span>
-                <p>{item.content}</p>
-              </div>
-              {!item.archivedAt ? (
-                <div className="admin-actions">
-                  {new Date(item.publishAt).getTime() > Date.now() ? (
-                    <button className="admin-secondary" type="button" disabled={busy}
-                      onClick={() => {
-                        setEditingNotice(item); setEditTitle(item.title);
-                        setEditMessage(item.content); setEditPublishAt("");
-                      }}>{t("Edit")}</button>
-                  ) : null}
-                  <button className="admin-secondary" disabled={busy}
-                    onClick={() => void archiveAnnouncement(item.id)}>{t("Archive")}</button>
-                </div>
-              ) : null}
+                </>
+              ) : !ready ? resourceNotice("communication") : resourceNotice("families")}
             </div>
-          ))}
-          {overview.announcements.length === 0 ? <p className="admin-copy">{t("No announcements yet.")}</p> : null}
-        </div>
-      </article>
-
+            <div className="communication-workflow-list">
+              {ready && visibleOverview ? (
+                <>
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div><h2>{t("Fee invoices & payments")}</h2><p>{t("Payments are appended; reversals never overwrite the original transaction.")}</p></div>
         </div>
         <div className="communication-invoice-list">
-          {overview.invoices.map((item) => {
+          {visibleOverview.invoices.map((item) => {
             const draft = paymentDraft[item.invoice.id] ?? { amount: "", method: "CASH", reference: "" };
             const reversedPaymentIds = new Set(
               item.payments.filter((payment) => payment.kind === "REVERSAL" && payment.reversalOfPaymentId)
@@ -656,14 +809,20 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               </div>
             );
           })}
-          {overview.invoices.length === 0 ? <p className="admin-copy">{t("No fee invoices yet.")}</p> : null}
+          {visibleOverview.invoices.length === 0 ? <p className="admin-copy">{t("No fee invoices yet.")}</p> : null}
         </div>
       </article>
+                </>
+              ) : resourceNotice("communication")}
+            </div>
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
 
-function Summary({ label, value }: { label: string; value: number }) {
+function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="academic-summary">
       <strong>{value}</strong>
