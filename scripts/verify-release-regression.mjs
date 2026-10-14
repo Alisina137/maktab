@@ -27,6 +27,8 @@ const userRoutes = read("apps/api/src/users/routes.ts");
 const accountStoreSource = read("packages/database/src/account-store.ts");
 const detailsData = read("apps/web/app/admin/account-details-data.ts");
 const detailsTests = read("apps/api/src/account-details-data.test.ts");
+const directoryUi = read("apps/web/app/admin/admin-account-directory.tsx");
+const bulkConfirm = read("apps/web/app/admin/admin-account-bulk-confirm.tsx");
 const creationTests = read("apps/api/src/account-create-rules.test.ts");
 const adminTranslations = read("apps/web/app/admin/admin-i18n.ts");
 const ci = read(".github/workflows/ci.yml");
@@ -105,11 +107,12 @@ assert.ok(accountPage.includes('useState<AccountView>("DIRECTORY")') &&
   accountPage.includes('admin-account-grid-creating'),
   "Accounts must default to the directory and retain the two adaptive layouts");
 assert.ok(accountPage.includes('const summaries = [') &&
-  accountPage.includes('users.filter(needsActivation)') &&
+  accountPage.includes('summaryCounts.pending') &&
+  accountPage.includes('adminApi<AccountDirectoryResult>') &&
   accountPage.includes('onClick={() => selectSummary(summary.id)}'),
   "Account overview status cards must be derived from users and be actionable");
-assert.ok(accountPage.includes('role="group" aria-label={t("Account role")}') &&
-  accountPage.includes('aria-pressed={group === value}'),
+assert.ok(directoryUi.includes('role="group" aria-label={t("Account role")}') &&
+  directoryUi.includes('aria-pressed={group === value}'),
   "Role filters must expose their selection to assistive technology");
 assert.ok(accountPage.includes('placeholder={newRole === "PARENT" ? "parent001"') &&
   !accountPage.includes('"parent.001"'),
@@ -162,7 +165,7 @@ for (const key of ['"Step 1 · Account role":', '"Copy username":',
 assert.ok(accountPage.includes('selectedAccountId') &&
   accountPage.includes('<AdminAccountDetailsDrawer') &&
   accountPage.includes('familyOverview') &&
-  accountPage.includes('className="admin-account-view-details"'),
+  directoryUi.includes('className="admin-account-view-details"'),
   "Accounts must expose a selection-preserving account details experience");
 assert.ok(detailsDrawer.includes('role="dialog"') &&
   detailsDrawer.includes('aria-modal="true"') &&
@@ -225,6 +228,49 @@ for (const key of ['"Confirm password reset":', '"Confirm suspension":',
   '"Account history":', '"Suspension reason (optional)":', '"Performed by":']) {
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase4 missing a Dari or Pashto translation: ${key}`);
+}
+/* Admin Accounts Phase 5: server pagination and atomic batch selection. */
+assert.ok(accountPage.includes('/v1/admin/users/directory?') &&
+  accountPage.includes('new AbortController()') &&
+  accountPage.includes('setDebouncedQuery(query.trim())') &&
+  accountPage.includes('setSelectedIds(new Set())'),
+  "Account directory must use abortable, debounced server pagination and reset page selection");
+assert.ok(accountPage.includes('/v1/admin/users/username-check?') &&
+  accountPage.includes('<AdminAccountBulkConfirm') &&
+  accountPage.includes('/v1/admin/users/bulk-status'),
+  "Phase5 must check school usernames and require explicit bulk confirmation");
+assert.ok(directoryUi.includes('onSelectPage(eligiblePage.map') &&
+  directoryUi.includes('user.role !== "SCHOOL_ADMIN"') &&
+  directoryUi.includes('pageSize') &&
+  directoryUi.includes('sortBy') &&
+  directoryUi.includes('role="region" aria-label={t("Bulk account actions")}'),
+  "Phase5 directory must have safe current-page-only selection and sorting controls");
+assert.ok(bulkConfirm.includes('role="alertdialog"') &&
+  bulkConfirm.includes('Changes are all-or-nothing.'),
+  "Bulk account actions require an accessible confirmation dialog and atomic disclosure");
+assert.ok(userRoutes.includes('/v1/admin/users/directory') &&
+  userRoutes.includes('/v1/admin/users/username-check') &&
+  userRoutes.includes('/v1/admin/users/bulk-status') &&
+  userRoutes.includes('accountBatchSchema.parse(request.body)'),
+  "Phase5 API routes and payload validation missing");
+assert.ok(accountStoreSource.includes('async searchUserDirectory(schoolId, input)') &&
+  accountStoreSource.includes('eq(users.schoolId, schoolId)') &&
+  accountStoreSource.includes('async bulkSetUserStatusAsAdmin') &&
+  accountStoreSource.includes('AccountBatchConflictError') &&
+  accountStoreSource.includes('tx.insert(auditLogs).values(updated.map'),
+  "Phase5 SQL scoping, transactional lifecycle, and audit must remain");
+assert.ok(accounts.includes('Phase 5 directory paging, school counts') &&
+  accounts.includes('Phase 5 batch actions are atomic') &&
+  api.includes('Phase 5 bulk API enforces school scope'),
+  "Phase5 backend regression tests are missing");
+assert.ok(css.includes('.account-directory-pagination') &&
+  css.includes('.account-directory-bulk-toolbar') &&
+  css.includes('.account-bulk-preview'),
+  "Phase5 responsive list, selection, or bulk confirmation styling missing");
+for (const key of ['"Accounts per page":', '"Bulk account actions":',
+  '"Confirm bulk suspension":', '"Select current page":', '"Ascending":']) {
+  assert.ok(adminTranslations.split(key).length >= 3,
+    `Account Phase5 missing a Dari or Pashto translation: ${key}`);
 }
 assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
