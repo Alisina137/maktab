@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
@@ -68,6 +68,42 @@ export interface UserDirectoryEntry {
   };
 }
 
+export interface UserDirectoryQuery {
+  query: string;
+  group: "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
+  status: "ALL" | UserStatus;
+  highlight: "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
+  sortBy: "name" | "username" | "role" | "status" | "createdAt" | "lastLoginAt";
+  order: "asc" | "desc";
+  page: number;
+  pageSize: number;
+}
+
+export interface UserDirectoryPage {
+  entries: UserDirectoryEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+  counts: {
+    total: number;
+    active: number;
+    pending: number;
+    suspended: number;
+    parent: number;
+    teacher: number;
+    student: number;
+    staff: number;
+  };
+}
+
+export class AccountBatchConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AccountBatchConflictError";
+  }
+}
+
 export interface AdminContactProfile {
   fullName: string;
   jobTitle: string | null;
@@ -101,6 +137,14 @@ export interface AccountStore {
   createUser(input: CreateAccountInput): Promise<User>;
   listUsers(schoolId: string): Promise<User[]>;
   listUserDirectory(schoolId: string): Promise<UserDirectoryEntry[]>;
+  searchUserDirectory(schoolId: string, input: UserDirectoryQuery): Promise<UserDirectoryPage>;
+  bulkSetUserStatusAsAdmin(
+    schoolId: string,
+    ids: string[],
+    action: "suspend" | "reactivate",
+    actorUserId: string,
+    reason?: string
+  ): Promise<User[]>;
   getAdminProfile(schoolId: string, userId: string): Promise<AdminContactProfile | null>;
   getSchoolAdminContact(schoolId: string): Promise<SchoolAdminContact | null>;
   upsertAdminProfile(
@@ -273,6 +317,168 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
                 ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
                 : { fullName: null, phone: null, code: null }
       }));
+    },
+
+
+    async searchUserDirectory(schoolId, input) {
+      const nameExpr = sql<string>`coalesce(
+        case ${users.role}
+          when 'PARENT' then ${parentProfiles.fullName}
+          when 'TEACHER' then ${teacherProfiles.fullName}
+          when 'STUDENT' then ${students.fullName}
+          else null
+        end, ${users.username}
+      )`;
+      const phoneExpr = sql<string>`coalesce(
+        case ${users.role}
+          when 'PARENT' then ${parentProfiles.phone}
+          when 'TEACHER' then ${teacherProfiles.phone}
+          else null
+        end, ''
+      )`;
+      const codeExpr = sql<string>`coalesce(
+        case ${users.role}
+          when 'TEACHER' then ${teacherProfiles.employeeCode}
+          when 'STUDENT' then ${students.studentCode}
+          else null
+        end, ''
+      )`;
+      const conditions: SQL[] = [eq(users.schoolId, schoolId)];
+      if (input.group === "STAFF") conditions.push(inArray(users.role, ["SCHOOL_ADMIN", "SCHOOL_STAFF"]));
+      else if (input.group !== "ALL") conditions.push(eq(users.role, input.group));
+      if (input.status !== "ALL") conditions.push(eq(users.status, input.status));
+      if (input.highlight === "ACTIVE") conditions.push(eq(users.status, "ACTIVE"));
+      else if (input.highlight === "SUSPENDED") conditions.push(eq(users.status, "SUSPENDED"));
+      else if (input.highlight === "PENDING") {
+        conditions.push(or(eq(users.status, "INVITED"),
+          and(eq(users.status, "ACTIVE"), eq(users.mustChangePassword, true)))!);
+      }
+      const escaped = input.query.trim().replace(/[\\%_]/g, "\\    async getAdminProfile(schoolId, userId) {");
+      if (escaped) {
+        const pattern = `%${escaped}%`;
+        conditions.push(or(
+          ilike(users.username, pattern),
+          ilike(nameExpr, pattern),
+          ilike(phoneExpr, pattern),
+          ilike(codeExpr, pattern),
+          ilike(sql<string>`${users.role}::text`, pattern),
+          ilike(sql<string>`${users.status}::text`, pattern)
+        )!);
+      }
+      const where = and(...conditions)!;
+      const baseSelect = () => db.select({
+        user: users,
+        parentFullName: parentProfiles.fullName,
+        parentPhone: parentProfiles.phone,
+        teacherFullName: teacherProfiles.fullName,
+        teacherPhone: teacherProfiles.phone,
+        employeeCode: teacherProfiles.employeeCode,
+        studentFullName: students.fullName,
+        studentCode: students.studentCode
+      }).from(users)
+        .leftJoin(parentProfiles, and(eq(parentProfiles.userId, users.id), eq(parentProfiles.schoolId, schoolId)))
+        .leftJoin(teacherProfiles, and(eq(teacherProfiles.userId, users.id), eq(teacherProfiles.schoolId, schoolId)))
+        .leftJoin(students, and(eq(students.userId, users.id), eq(students.schoolId, schoolId)));
+      const sortField = input.sortBy === "name" ? nameExpr :
+        input.sortBy === "role" ? users.role :
+        input.sortBy === "status" ? users.status :
+        input.sortBy === "createdAt" ? users.createdAt :
+        input.sortBy === "lastLoginAt" ? users.lastLoginAt : users.username;
+      const sort = input.order === "asc" ? asc : desc;
+      const [matches, countRows, summary] = await Promise.all([
+        baseSelect().where(where).orderBy(sort(sortField), asc(users.id))
+          .limit(input.pageSize).offset((input.page - 1) * input.pageSize),
+        db.select({ value: count() }).from(users)
+          .leftJoin(parentProfiles, and(eq(parentProfiles.userId, users.id), eq(parentProfiles.schoolId, schoolId)))
+          .leftJoin(teacherProfiles, and(eq(teacherProfiles.userId, users.id), eq(teacherProfiles.schoolId, schoolId)))
+          .leftJoin(students, and(eq(students.userId, users.id), eq(students.schoolId, schoolId)))
+          .where(where),
+        db.select({
+          total: count(),
+          active: sql<number>`count(*) filter (where ${users.status} = 'ACTIVE')`,
+          pending: sql<number>`count(*) filter (where ${users.status} = 'INVITED'
+            or (${users.status} = 'ACTIVE' and ${users.mustChangePassword} = true))`,
+          suspended: sql<number>`count(*) filter (where ${users.status} = 'SUSPENDED')`,
+          parent: sql<number>`count(*) filter (where ${users.role} = 'PARENT')`,
+          teacher: sql<number>`count(*) filter (where ${users.role} = 'TEACHER')`,
+          student: sql<number>`count(*) filter (where ${users.role} = 'STUDENT')`,
+          staff: sql<number>`count(*) filter (where ${users.role} in ('SCHOOL_ADMIN', 'SCHOOL_STAFF'))`
+        }).from(users).where(eq(users.schoolId, schoolId))
+      ]);
+      const total = Number(countRows[0]?.value ?? 0);
+      const tally = summary[0];
+      return {
+        entries: matches.map((row) => ({
+          user: row.user,
+          profile: row.user.role === "PARENT"
+            ? { fullName: row.parentFullName, phone: row.parentPhone, code: null }
+            : row.user.role === "TEACHER"
+              ? { fullName: row.teacherFullName, phone: row.teacherPhone, code: row.employeeCode }
+              : row.user.role === "STUDENT"
+                ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
+                : { fullName: null, phone: null, code: null }
+        })),
+        total,
+        page: input.page,
+        pageSize: input.pageSize,
+        pages: Math.max(1, Math.ceil(total / input.pageSize)),
+        counts: {
+          total: Number(tally?.total ?? 0),
+          active: Number(tally?.active ?? 0),
+          pending: Number(tally?.pending ?? 0),
+          suspended: Number(tally?.suspended ?? 0),
+          parent: Number(tally?.parent ?? 0),
+          teacher: Number(tally?.teacher ?? 0),
+          student: Number(tally?.student ?? 0),
+          staff: Number(tally?.staff ?? 0)
+        }
+      };
+    },
+
+    async bulkSetUserStatusAsAdmin(schoolId, ids, action, actorUserId, reason) {
+      return db.transaction(async (tx) => {
+        const unique = [...new Set(ids)];
+        if (unique.length !== ids.length || unique.length === 0 || unique.length > 20) {
+          throw new AccountBatchConflictError("Select between 1 and 20 distinct accounts.");
+        }
+        const current = await tx.select().from(users).where(and(
+          eq(users.schoolId, schoolId), inArray(users.id, unique)
+        ));
+        const validStatus = action === "suspend" ? ["ACTIVE", "INVITED"] : ["SUSPENDED"];
+        if (current.length !== unique.length || current.some((user) =>
+          user.id === actorUserId || user.role === "SCHOOL_ADMIN" || !validStatus.includes(user.status)
+        )) {
+          throw new AccountBatchConflictError("Some accounts are unavailable or no longer eligible. Refresh and try again.");
+        }
+        const now = new Date();
+        const updated = await tx.update(users).set(
+          action === "suspend"
+            ? { status: "SUSPENDED", updatedAt: now }
+            : { status: sql`case when ${users.mustChangePassword} then 'INVITED' else 'ACTIVE' end`, updatedAt: now }
+        ).where(and(
+          eq(users.schoolId, schoolId),
+          inArray(users.id, unique),
+          inArray(users.status, action === "suspend" ? ["ACTIVE", "INVITED"] : ["SUSPENDED"]),
+          sql`${users.role} <> 'SCHOOL_ADMIN'`,
+          sql`${users.id} <> ${actorUserId}`
+        )).returning();
+        if (updated.length !== unique.length) {
+          throw new AccountBatchConflictError("Accounts changed during this request. No accounts were updated.");
+        }
+        await tx.update(authSessions).set({ revokedAt: now }).where(and(
+          eq(authSessions.schoolId, schoolId), inArray(authSessions.userId, unique), isNull(authSessions.revokedAt)
+        ));
+        await tx.insert(auditLogs).values(updated.map((user) => ({
+          id: randomUUID(),
+          schoolId,
+          actorUserId,
+          entityType: "user",
+          entityId: user.id,
+          action: action === "suspend" ? "user.suspended" : "user.reactivated",
+          metadata: reason && action === "suspend" ? { reason, bulk: true } : { bulk: true }
+        })));
+        return updated;
+      });
     },
 
     async getAdminProfile(schoolId, userId) {
