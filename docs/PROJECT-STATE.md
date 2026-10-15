@@ -1858,3 +1858,13 @@ After completing all seven admin Learning phases, the fifth Admin navigation tab
 - **Known gaps:** This does not yet provide a formally versioned holiday/school calendar covering historic years, recurring closure rules, configurable teacher submission deadlines, student-level calendar views, or server-side pagination of the legacy multi-day report. Class room setup/historical roster changes can affect retrospective monitoring; do not use the live expected count as a legally authoritative historical snapshot.
 
 **Next:** Phase 3 — Daily Registers & Student History.
+
+
+## Admin Attendance Phase 3 — Student History (2026-10-15)
+
+The Attendance Students section now uses server-paginated school/year-scoped enrollment directory search (15/page UI; up to 50/page API) and supports selected student profiles and actual submitted-attendance histories. Dates are real and ranges are limited to 62 days; missing records are not absences. English uses Gregorian months, Dari and Pashto use Solar Hijri months, all with Saturday-first calendars. Attendance percentage is calculated from Present, Late and Absent, excluding Excused and unrecorded days.
+
+Daily Registers now provides per-class roster drilldown, submitted status, searchable rows and actual marks. The existing admin correction editor remains available below the drilldown. The detailed read models validate academic year and entity relationships before returning content. Class rosters use current assignment and historical submitted marks, not a versioned historical enrollment snapshot.
+
+Added admin-only student directory, student history, and class register endpoints to the attendance API; no additional migration is needed beyond Phase 2. Local verification is `pnpm verify:admin-attendance:phase3` with model tests, API checks, and both-platform CI. Remaining scope: Phase 4 correction reasons, concurrency guards, dedicated attendance audit history; later server paging of the legacy report.
+
