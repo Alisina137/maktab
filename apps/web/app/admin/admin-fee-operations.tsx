@@ -184,7 +184,8 @@ export function AdminFeeOperations({
     setBalance(null);
     setOwner("");
     setError("");
-    if (mode === "BALANCES" && !studentId) {
+    if ((mode === "BALANCES" && !studentId) ||
+        (mode === "PAYMENTS" && from && to && from > to)) {
       setStatus("idle");
       return () => { generation.current += 1; };
     }
