@@ -1709,3 +1709,10 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Audited 1–100 row bulk invoice preview detects existing and within-request duplicates plus unavailable students; this creates no invoices. Parent/student API scopes are unchanged.
 - Migration required: `0024_fee_payment_reconciliation.sql` after `0023_notification_scheduler_health.sql`. Admin UI is localized and responsive; Phase 6 store tests, CSV safety tests and CI guard are added.
 - External bank evidence, pilot school ledger reconciliation, live PostgreSQL migration, browsers/devices and independent Step 20 release signoff **NOT RUN**. Production remains **NO-GO**; Phase 7 integrated verification next.
+
+## Admin Communication & Fees — Phase 7 (2026-10-15)
+
+- Added invoice-row transaction locks around fee reminder materialization to prevent stale overdue writes from racing paid/cancelled invoices. The locked transaction checks the student and current immutable payment ledger before changing status or enqueueing notifications.
+- Added background notification push claim with an expiring lease, bounded Expo HTTP attempts and safe conditional release; a concurrent worker/admin retry cannot claim a live notification, and mixed-device provider acceptance keeps remaining failures retryable. New schema migration `0025_notification_push_lease.sql` applies after `0024_fee_payment_reconciliation.sql`.
+- Extended notification-worker regressions, `pnpm verify:admin-communication:phase7`, Linux/Windows CI and a dedicated 15-gate real-world operator acceptance matrix.
+- Actual live PostgreSQL concurrency, migrations/backups, production scheduler, EAS/Android receipt, browser RTL/TalkBack, independent financial comparison and exact-commit Step 20 signoff remain **NOT RUN — PRODUCTION NO-GO**. This phase does not authorize a production launch.
