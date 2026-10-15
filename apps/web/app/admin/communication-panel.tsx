@@ -684,7 +684,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               {t("Retry")}
             </button>
           </>
-        ) : <AdminLoader compact label={t("Loading Phase 7 data…")} />}
+        ) : <AdminLoader compact label={t(section === "OVERVIEW" ? "Loading overview data…" : section === "COMMUNICATION" ? "Loading communication data…" : "Loading fees data…")} />}
       </div>
     );
   }
