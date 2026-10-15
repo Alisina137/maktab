@@ -360,7 +360,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     }
     try {
       // Audit failure cannot hide subscription/readiness and vice versa.
-      if (section === "audit") {
+      if (section === "adoption") {
+        // Usage reports load in their own component. Subscription/readiness
+        // outages must not block adoption reporting or show unrelated errors.
+      } else if (section === "audit") {
         const auditResult = await request<{ logs: AuditLog[]; hasMore: boolean }>(
           accessToken, "/v1/admin/pilot/audit?" + auditQuery(filters, offset)
         );
