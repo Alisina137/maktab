@@ -183,6 +183,13 @@
       "when": 1790800400000,
       "tag": "0025_notification_push_lease",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790808800000,
+      "tag": "0026_admin_attendance_calendar",
+      "breakpoints": true
     }
   ]
 }
