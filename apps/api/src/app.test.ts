@@ -3034,6 +3034,58 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal((await app.inject({method:"GET",
     url:"/v1/admin/attendance/report?academicYearId="+yearId,
     headers:teacherAuth})).statusCode,403);
+  // Admin Attendance Phase 2: school/year-scoped monitoring and closure
+  // operations are audited; a closed school day blocks Negaran submission.
+  const dailyUrl = `/v1/admin/attendance/monitor?academicYearId=${yearId}&date=${today.date}`;
+  const monitoringBefore = await app.inject({method:"GET",url:dailyUrl,headers:admin});
+  assert.equal(monitoringBefore.statusCode,200,monitoringBefore.body);
+  const dailyBefore=monitoringBefore.json<{
+    today:string; classes:Array<{classId:string;state:string}>;
+    summary:{expectedClasses:number;submittedExpected:number;pendingClasses:number};
+  }>();
+  assert.equal(dailyBefore.today,today.date);
+  assert.equal(dailyBefore.classes.length,1);
+  assert.equal(dailyBefore.classes[0]?.classId,classId);
+  assert.equal(dailyBefore.classes[0]?.state,"NOT_SCHEDULED");
+  assert.equal(dailyBefore.summary.expectedClasses,0);
+  assert.equal(dailyBefore.summary.pendingClasses,0);
+  assert.equal((await app.inject({method:"GET",url:dailyUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:dailyUrl})).statusCode,401);
+  const invalidCalendarDay=await app.inject({method:"GET",
+    url:`/v1/admin/attendance/monitor?academicYearId=${yearId}&date=2026-02-30`,headers:admin});
+  assert.equal(invalidCalendarDay.statusCode,400);
+  const closureInput={academicYearId:yearId,date:today.date,reason:"School holiday"};
+  const createClosure=await app.inject({method:"POST",
+    url:"/v1/admin/attendance/closures",headers:admin,payload:closureInput});
+  assert.equal(createClosure.statusCode,201,createClosure.body);
+  const closureId=createClosure.json<{closure:{id:string}}>().closure.id;
+  const duplicateClosure=await app.inject({method:"POST",
+    url:"/v1/admin/attendance/closures",headers:admin,payload:closureInput});
+  assert.equal(duplicateClosure.statusCode,409);
+  const closureList=await app.inject({method:"GET",url:
+    `/v1/admin/attendance/closures?academicYearId=${yearId}`,headers:admin});
+  assert.equal(closureList.statusCode,200);
+  assert.equal(closureList.json<{closures:unknown[]}>().closures.length,1);
+  const closedMonitor=await app.inject({method:"GET",url:dailyUrl,headers:admin});
+  assert.equal(closedMonitor.statusCode,200);
+  assert.equal(closedMonitor.json<{classes:Array<{state:string}>}>().classes[0]?.state,"CLOSED");
+  const deniedClosedSubmission=await app.inject({method:"POST",
+    url:"/v1/teacher/negaran/attendance",headers:teacherAuth,
+    payload:{classId,date:today.date,entries:[{studentId,status:"ABSENT"}]}});
+  assert.equal(deniedClosedSubmission.statusCode,409);
+  assert.equal((await app.inject({method:"DELETE",url:
+    `/v1/admin/attendance/closures/${closureId}`,headers:teacherAuth})).statusCode,403);
+  const reopen=await app.inject({method:"DELETE",
+    url:`/v1/admin/attendance/closures/${closureId}`,headers:admin});
+  assert.equal(reopen.statusCode,200,reopen.body);
+  const reopenedMonitoring=await app.inject({method:"GET",url:dailyUrl,headers:admin});
+  assert.equal(reopenedMonitoring.statusCode,200);
+  assert.equal(reopenedMonitoring.json<{classes:Array<{state:string}>}>().classes[0]?.state,"NOT_SCHEDULED");
+  const calendarAudit=await client.query<{action:string}>(
+    "SELECT action FROM audit_logs WHERE school_id=$1 AND action LIKE 'attendance.calendar_%' ORDER BY created_at",
+    [schoolId]);
+  assert.deepEqual(calendarAudit.rows.map(item=>item.action).sort(),
+    ["attendance.calendar_closed","attendance.calendar_reopened"]);
   const payload = {
     classId,
     date: today.date,
