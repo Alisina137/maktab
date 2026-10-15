@@ -104,6 +104,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
   const [feesPane, setFeesPane] = useState<Pane>("LIST");
   const [feesModule, setFeesModule] = useState<"INVOICES" | "PAYMENTS" | "BALANCES">("INVOICES");
+  const feeModuleRefs = useRef<Partial<Record<"INVOICES" | "PAYMENTS" | "BALANCES", HTMLButtonElement | null>>>({});
   const [feeSearch, setFeeSearch] = useState("");
   const [feeStatus, setFeeStatus] = useState<AdminInvoiceStatus>("ALL");
   const [feeClassId, setFeeClassId] = useState("");
@@ -123,6 +124,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [editFeeAmount, setEditFeeAmount] = useState("");
   const [editFeeDueDate, setEditFeeDueDate] = useState("");
   const [editFeeDescription, setEditFeeDescription] = useState("");
+  useEffect(() => {
+    feeModuleRefs.current[feesModule]?.scrollIntoView({ behavior:"smooth", block:"nearest", inline:"nearest" });
+  }, [feesModule]);
   const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>({
     communication: "idle", families: "idle", academics: "idle"
   });
@@ -1081,6 +1085,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               ["BALANCES", "Student balances"]
             ] as const).map(([key,label]) => (
               <button type="button" key={key} aria-current={feesModule === key ? "page" : undefined}
+                ref={element => { feeModuleRefs.current[key] = element; }}
                 className={feesModule === key ? "is-active" : ""}
                 onClick={() => setFeesModule(key)}>{t(label)}</button>
             ))}
