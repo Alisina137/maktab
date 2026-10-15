@@ -546,6 +546,8 @@ export const notifications = pgTable(
     dedupKey: varchar("dedup_key", { length: 180 }).notNull(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     deliveryStatus: notificationDeliveryStatusEnum("delivery_status").notNull().default("PENDING"),
+    pushClaimToken: uuid("push_claim_token"),
+    pushClaimUntil: timestamp("push_claim_until", { withTimezone: true }),
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()

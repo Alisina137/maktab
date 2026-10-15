@@ -188,6 +188,7 @@ export function createExpoPushProvider(fetchImpl: typeof fetch = fetch): PushPro
     async send(message) {
       try {
         const response = await fetchImpl("https://exp.host/--/api/v2/push/send", {
+          signal: AbortSignal.timeout(15_000),
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({
@@ -439,17 +440,6 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     };
   }
 
-  async function createNotificationOnce(input: {
-    schoolId: string; userId: string; type: string; title: string; message: string;
-    deepLink: string; dedupKey: string; metadata?: Record<string, unknown>;
-  }): Promise<boolean> {
-    const inserted = await db.insert(notifications).values({
-      id: randomUUID(), schoolId: input.schoolId, userId: input.userId,
-      type: input.type, title: input.title, message: input.message, deepLink: input.deepLink,
-      dedupKey: input.dedupKey, metadata: input.metadata ?? {}
-    }).onConflictDoNothing().returning({ id: notifications.id });
-    return inserted.length > 0;
-  }
 
   return {
     ...createFeeFinancialStore(db),
@@ -1094,7 +1084,9 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       const [updated] = await db.update(notifications).set({
         deliveryStatus: "PENDING", updatedAt: new Date()
       }).where(and(eq(notifications.schoolId, schoolId), eq(notifications.id, notificationId),
-        eq(notifications.deliveryStatus, "FAILED"))).returning({ id: notifications.id });
+        eq(notifications.deliveryStatus, "FAILED"),
+        or(isNull(notifications.pushClaimUntil), lte(notifications.pushClaimUntil, new Date()))
+      )).returning({ id: notifications.id });
       if (!updated) throw new CommunicationConflictError("Notification state changed; refresh before retrying.");
       // The scheduler retries FAILED device rows; accepted device rows remain SENT and are never reset.
       return true;
@@ -1137,37 +1129,59 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
             eq(feeInvoices.schoolId, settings.schoolId),
             inArray(feeInvoices.status, ["ISSUED","PARTIALLY_PAID","OVERDUE"])
           ));
-        for (let invoice of invoices) {
-          const student = await getStudent(settings.schoolId, invoice.studentId);
-          if (student.status !== "ACTIVE") continue; // Never remind a withdrawn family.
-          const totals = await paymentTotals(settings.schoolId, invoice.id);
-          const outstanding = Math.max(0, invoice.amount - totals.paid);
-          if (outstanding <= 0) continue;
-          const daysUntil = dayDiff(today, invoice.dueDate);
-          if (daysUntil < 0 && invoice.status !== "OVERDUE") {
-            const [updated] = await db.update(feeInvoices).set({ status: "OVERDUE", updatedAt: now })
-              .where(and(eq(feeInvoices.schoolId, settings.schoolId), eq(feeInvoices.id, invoice.id))).returning();
-            if (updated) invoice = updated;
-            overdueInvoices += 1;
-          }
-          if (reminderDays.includes(daysUntil)) {
-            if (await createNotificationOnce({
-              schoolId: settings.schoolId, userId: student.parentUserId, type: "FEE_DUE",
-              title: "Fee payment due", message: `${student.fullName} has AFN ${outstanding} due on ${invoice.dueDate}.`,
-              deepLink: `/parent/children/${student.id}/fees`,
-              dedupKey: `fee-reminder:${invoice.id}:before:${daysUntil}`,
-              metadata: { invoiceId: invoice.id, studentId: student.id, dueDate: invoice.dueDate, outstanding }
-            })) feeReminders += 1;
-          }
-          if (daysUntil < 0) {
-            if (await createNotificationOnce({
-              schoolId: settings.schoolId, userId: student.parentUserId, type: "FEE_OVERDUE",
-              title: "Fee payment overdue", message: `${student.fullName} has AFN ${outstanding} overdue.`,
-              deepLink: `/parent/children/${student.id}/fees`,
-              dedupKey: `fee-reminder:${invoice.id}:overdue`,
-              metadata: { invoiceId: invoice.id, studentId: student.id, dueDate: invoice.dueDate, outstanding }
-            })) feeReminders += 1;
-          }
+        for (const candidate of invoices) {
+          // Lock the invoice first, just like payments/reversals/cancellation, then
+          // recalculate its current ledger and student eligibility inside this transaction.
+          // This prevents an overdue scheduler write from overwriting a concurrent PAID state.
+          const outcome = await db.transaction(async tx => {
+            const [invoice] = await tx.select().from(feeInvoices).where(and(
+              eq(feeInvoices.schoolId, settings.schoolId), eq(feeInvoices.id, candidate.id)
+            )).limit(1).for("update");
+            if (!invoice || !["ISSUED", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status)) {
+              return { due: 0, overdue: 0, markedOverdue: 0 };
+            }
+            const [student] = await tx.select().from(students).where(and(
+              eq(students.schoolId, settings.schoolId), eq(students.id, invoice.studentId)
+            )).limit(1).for("update");
+            if (!student || student.status !== "ACTIVE") {
+              return { due: 0, overdue: 0, markedOverdue: 0 };
+            }
+            const ledger = await tx.select().from(feePayments).where(and(
+              eq(feePayments.schoolId, settings.schoolId), eq(feePayments.invoiceId, invoice.id)
+            ));
+            const paid = ledger.reduce((total, payment) =>
+              total + (payment.kind === "PAYMENT" ? payment.amount : -payment.amount), 0);
+            const outstanding = Math.max(0, invoice.amount - paid);
+            if (outstanding === 0) return { due: 0, overdue: 0, markedOverdue: 0 };
+            const daysUntil = dayDiff(today, invoice.dueDate);
+            let markedOverdue = 0;
+            if (daysUntil < 0 && invoice.status !== "OVERDUE") {
+              await tx.update(feeInvoices).set({ status: "OVERDUE", updatedAt: now })
+                .where(and(eq(feeInvoices.schoolId, settings.schoolId), eq(feeInvoices.id, invoice.id)));
+              markedOverdue = 1;
+            }
+            const insertAlert = async (type: "FEE_DUE" | "FEE_OVERDUE", key: string, title: string, message: string) => {
+              const inserted = await tx.insert(notifications).values({
+                id: randomUUID(), schoolId: settings.schoolId, userId: student.parentUserId,
+                type, title, message, deepLink: `/parent/children/${student.id}/fees`,
+                dedupKey: key, metadata: {
+                  invoiceId: invoice.id, studentId: student.id, dueDate: invoice.dueDate, outstanding
+                }
+              }).onConflictDoNothing().returning({ id: notifications.id });
+              return inserted.length;
+            };
+            const due = reminderDays.includes(daysUntil)
+              ? await insertAlert("FEE_DUE", `fee-reminder:${invoice.id}:before:${daysUntil}`,
+                "Fee payment due", `${student.fullName} has AFN ${outstanding} due on ${invoice.dueDate}.`)
+              : 0;
+            const overdue = daysUntil < 0
+              ? await insertAlert("FEE_OVERDUE", `fee-reminder:${invoice.id}:overdue`,
+                "Fee payment overdue", `${student.fullName} has AFN ${outstanding} overdue.`)
+              : 0;
+            return { due, overdue, markedOverdue };
+          });
+          feeReminders += outcome.due + outcome.overdue;
+          overdueInvoices += outcome.markedOverdue;
         }
         // This is a materialization heartbeat. Provider acceptance/read are tracked separately.
         await db.insert(communicationSettings).values({
@@ -1277,96 +1291,119 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let sent = 0;
       let failed = 0;
       let skipped = 0;
-      for (const notification of pending) {
-        if (!(await feeAlertIsCurrentForPush(notification))) {
-          await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
-            .where(and(eq(notifications.schoolId, notification.schoolId), eq(notifications.id, notification.id)));
-          skipped += 1;
-          continue;
-        }
-        if (notification.type === "ANNOUNCEMENT") {
-          const id = notification.metadata.announcementId;
-          const [item] = typeof id === "string"
-            ? await db.select().from(announcements).where(and(
-                eq(announcements.schoolId, notification.schoolId),
-                eq(announcements.id, id), isNull(announcements.archivedAt),
-                lte(announcements.publishAt, new Date())
-              )).limit(1) : [];
-          if (!item || !(await announcementRecipients(item)).includes(notification.userId)) {
-            await db.update(notifications).set({
-              deliveryStatus: "CANCELLED", updatedAt: new Date()
-            }).where(and(eq(notifications.schoolId, notification.schoolId),
-              eq(notifications.id, notification.id)));
+      for (const queued of pending) {
+        // Compare-and-swap delivery lease. Multiple servers / overlapping cron runs
+        // cannot process the same queued notification while its lease is live.
+        // A crashed worker leaves a bounded lease, not a permanent stuck row.
+        const claimToken = randomUUID();
+        const now = new Date();
+        const claimUntil = new Date(now.getTime() + 30 * 60_000);
+        const [notification] = await db.update(notifications).set({
+          pushClaimToken: claimToken, pushClaimUntil: claimUntil, updatedAt: now
+        }).where(and(
+          eq(notifications.id, queued.id), eq(notifications.schoolId, queued.schoolId),
+          inArray(notifications.deliveryStatus, ["PENDING", "FAILED"]),
+          or(isNull(notifications.pushClaimUntil), lte(notifications.pushClaimUntil, now))
+        )).returning();
+        if (!notification) { skipped += 1; continue; }
+        try {
+          if (!(await feeAlertIsCurrentForPush(notification))) {
+            await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+              .where(and(eq(notifications.schoolId, notification.schoolId), eq(notifications.id, notification.id),
+                eq(notifications.pushClaimToken, claimToken)));
             skipped += 1;
             continue;
           }
-        }
-        const [recipient] = await db.select({ role: users.role, status: users.status }).from(users)
-          .where(and(eq(users.id, notification.userId), eq(users.schoolId, notification.schoolId)))
-          .limit(1);
-        // INVITED accounts may already have school-issued push registrations.
-        // Only suspended/archived identities or withdrawn Students lose delivery.
-        const permitted = !!recipient &&
-          recipient.status !== "SUSPENDED" && recipient.status !== "ARCHIVED" &&
-          (recipient.role !== "STUDENT" ||
-            await this.hasActiveStudentEnrollment(notification.schoolId, notification.userId));
-        if (!permitted) {
-          // A queued notification must never reach a withdrawn/suspended user.
-          await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
-            .where(and(eq(notifications.id, notification.id), eq(notifications.schoolId, notification.schoolId)));
-          skipped += 1;
-          continue;
-        }
-        const userDevices = await db.select().from(devices)
-          .where(and(eq(devices.schoolId, notification.schoolId), eq(devices.userId, notification.userId), eq(devices.active, true)));
-        if (userDevices.length === 0) {
-          skipped += 1;
-          continue;
-        }
-        let anySent = false;
-        let anyFailed = false;
-        for (const device of userDevices) {
-          let [delivery] = await db.select().from(notificationPushDeliveries)
-            .where(and(eq(notificationPushDeliveries.notificationId, notification.id), eq(notificationPushDeliveries.deviceId, device.id))).limit(1);
-          if (delivery?.status === "SENT") {
-            anySent = true;
+          if (notification.type === "ANNOUNCEMENT") {
+            const id = notification.metadata.announcementId;
+            const [item] = typeof id === "string"
+              ? await db.select().from(announcements).where(and(
+                  eq(announcements.schoolId, notification.schoolId),
+                  eq(announcements.id, id), isNull(announcements.archivedAt),
+                  lte(announcements.publishAt, new Date())
+                )).limit(1) : [];
+            if (!item || !(await announcementRecipients(item)).includes(notification.userId)) {
+              await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+                .where(and(eq(notifications.schoolId, notification.schoolId), eq(notifications.id, notification.id),
+                  eq(notifications.pushClaimToken, claimToken)));
+              skipped += 1;
+              continue;
+            }
+          }
+          const [recipient] = await db.select({ role: users.role, status: users.status }).from(users)
+            .where(and(eq(users.id, notification.userId), eq(users.schoolId, notification.schoolId)))
+            .limit(1);
+          const permitted = !!recipient &&
+            recipient.status !== "SUSPENDED" && recipient.status !== "ARCHIVED" &&
+            (recipient.role !== "STUDENT" ||
+              await this.hasActiveStudentEnrollment(notification.schoolId, notification.userId));
+          if (!permitted) {
+            await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
+              .where(and(eq(notifications.id, notification.id), eq(notifications.schoolId, notification.schoolId),
+                eq(notifications.pushClaimToken, claimToken)));
+            skipped += 1;
             continue;
           }
-          if (!delivery) {
-            [delivery] = await db.insert(notificationPushDeliveries).values({
-              id: randomUUID(), schoolId: notification.schoolId, notificationId: notification.id, deviceId: device.id
-            }).returning();
+          const userDevices = await db.select().from(devices)
+            .where(and(eq(devices.schoolId, notification.schoolId),
+              eq(devices.userId, notification.userId), eq(devices.active, true)));
+          if (userDevices.length === 0) { skipped += 1; continue; }
+          let anySent = false;
+          let anyFailed = false;
+          for (const device of userDevices) {
+            let [delivery] = await db.select().from(notificationPushDeliveries)
+              .where(and(eq(notificationPushDeliveries.notificationId, notification.id),
+                eq(notificationPushDeliveries.deviceId, device.id))).limit(1);
+            if (delivery?.status === "SENT") { anySent = true; continue; }
+            if (!delivery) {
+              const created = await db.insert(notificationPushDeliveries).values({
+                id: randomUUID(), schoolId: notification.schoolId,
+                notificationId: notification.id, deviceId: device.id
+              }).onConflictDoNothing().returning();
+              delivery = created[0] ?? (await db.select().from(notificationPushDeliveries)
+                .where(and(eq(notificationPushDeliveries.notificationId, notification.id),
+                  eq(notificationPushDeliveries.deviceId, device.id))).limit(1))[0];
+            }
+            if (!delivery) throw new Error("Could not establish push delivery row.");
+            if (delivery.status === "SENT") { anySent = true; continue; }
+            const result = await provider.send({
+              token: device.pushToken, title: notification.title, body: notification.message,
+              data: { notificationId: notification.id, deepLink: notification.deepLink, ...notification.metadata }
+            });
+            if (result.ok) {
+              anySent = true; sent += 1;
+              await db.update(notificationPushDeliveries).set({
+                status: "SENT", attempts: delivery.attempts + 1,
+                providerMessageId: result.providerMessageId ?? null, lastError: null,
+                lastAttemptAt: new Date(), updatedAt: new Date()
+              }).where(and(eq(notificationPushDeliveries.id, delivery.id),
+                eq(notificationPushDeliveries.schoolId, notification.schoolId)));
+            } else {
+              anyFailed = true; failed += 1;
+              await db.update(notificationPushDeliveries).set({
+                status: "FAILED", attempts: delivery.attempts + 1,
+                lastError: (result.error ?? "Push delivery failed.").slice(0, 500),
+                lastAttemptAt: new Date(), updatedAt: new Date()
+              }).where(and(eq(notificationPushDeliveries.id, delivery.id),
+                eq(notificationPushDeliveries.schoolId, notification.schoolId)));
+            }
           }
-          const result = await provider.send({
-            token: device.pushToken,
-            title: notification.title,
-            body: notification.message,
-            data: { notificationId: notification.id, deepLink: notification.deepLink, ...notification.metadata }
-          });
-          if (result.ok) {
-            anySent = true;
-            sent += 1;
-            await db.update(notificationPushDeliveries).set({
-              status: "SENT", attempts: (delivery?.attempts ?? 0) + 1,
-              providerMessageId: result.providerMessageId ?? null, lastError: null,
-              lastAttemptAt: new Date(), updatedAt: new Date()
-            }).where(eq(notificationPushDeliveries.id, delivery!.id));
-          } else {
-            anyFailed = true;
-            failed += 1;
-            await db.update(notificationPushDeliveries).set({
-              status: "FAILED", attempts: (delivery?.attempts ?? 0) + 1,
-              lastError: (result.error ?? "Push delivery failed.").slice(0, 500),
-              lastAttemptAt: new Date(), updatedAt: new Date()
-            }).where(eq(notificationPushDeliveries.id, delivery!.id));
-          }
+          // A partially accepted multi-device notification must stay retryable.
+          // SENT device rows are skipped during the next run; FAILED rows retry.
+          await db.update(notifications).set({
+            deliveryStatus: anyFailed ? "FAILED" : anySent ? "SENT" : notification.deliveryStatus,
+            updatedAt: new Date()
+          }).where(and(eq(notifications.id, notification.id),
+            eq(notifications.schoolId, notification.schoolId),
+            eq(notifications.pushClaimToken, claimToken)));
+        } finally {
+          await db.update(notifications).set({
+            pushClaimToken: null, pushClaimUntil: null, updatedAt: new Date()
+          }).where(and(eq(notifications.id, queued.id),
+            eq(notifications.schoolId, queued.schoolId),
+            eq(notifications.pushClaimToken, claimToken)));
         }
-        await db.update(notifications).set({
-          deliveryStatus: anySent ? "SENT" : anyFailed ? "FAILED" : notification.deliveryStatus,
-          updatedAt: new Date()
-        }).where(eq(notifications.id, notification.id));
       }
       return { sent, failed, skipped };
-    }
-  };
+    }  };
 }

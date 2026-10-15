@@ -51,7 +51,8 @@ async function createTestApp() {
     "0021_pilot_launch_support.sql",
     "0022_fee_invoice_numbers.sql",
     "0023_notification_scheduler_health.sql",
-    "0024_fee_payment_reconciliation.sql"
+    "0024_fee_payment_reconciliation.sql",
+    "0025_notification_push_lease.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),

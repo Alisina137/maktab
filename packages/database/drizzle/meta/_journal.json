@@ -176,6 +176,13 @@
       "when": 1790792000000,
       "tag": "0024_fee_payment_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790800400000,
+      "tag": "0025_notification_push_lease",
+      "breakpoints": true
     }
   ]
 }
