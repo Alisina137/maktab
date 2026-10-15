@@ -4,6 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { announcementDashboard, feeDashboard } from "./communication-overview-model";
 import { invoiceReference, invoiceQuery, INVOICE_STATUSES, type AdminInvoiceStatus } from "./communication-invoices-model";
+import { AdminFeeOperations, AdminFeeReceiptButton } from "./admin-fee-operations";
 import { ANNOUNCEMENT_PAGE_SIZE, announcementStatus, findAnnouncements,
   pageAnnouncements, schoolLocalTimeToIso,
   type AnnouncementAudienceFilter, type AnnouncementStatusFilter
@@ -102,6 +103,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
   const [feesPane, setFeesPane] = useState<Pane>("LIST");
+  const [feesModule, setFeesModule] = useState<"INVOICES" | "PAYMENTS" | "BALANCES">("INVOICES");
   const [feeSearch, setFeeSearch] = useState("");
   const [feeStatus, setFeeStatus] = useState<AdminInvoiceStatus>("ALL");
   const [feeClassId, setFeeClassId] = useState("");
@@ -167,6 +169,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     setSection("OVERVIEW");
     setCommunicationPane("LIST");
     setFeesPane("LIST");
+    setFeesModule("INVOICES");
     setFeeSearch(""); setFeeStatus("ALL"); setFeeClassId("");
     setFeeAcademicYearId(""); setFeeStudentId(""); setFeePage(1);
     setFeeListing(null); setFeeListingStatus("idle"); setFeeListingError("");
@@ -515,9 +518,24 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
-  async function recordPayment(invoiceId: string) {
+  async function recordPayment(invoiceId: string, outstanding: number, studentName: string, reference: string) {
     const draft = paymentDraft[invoiceId] ?? { amount: "", method: "CASH", reference: "" };
-    const signature = JSON.stringify([Number(draft.amount), draft.method.trim(), draft.reference.trim()]);
+    const amount = Number(draft.amount);
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > outstanding) {
+      setError(t("Payment amount must be a whole AFN value within the outstanding balance."));
+      return;
+    }
+    if (!["CASH", "BANK_TRANSFER", "MOBILE_MONEY", "OTHER"].includes(draft.method)) {
+      setError(t("Choose a valid payment method."));
+      return;
+    }
+    if (!window.confirm(adminFormat(locale,
+      "Record {amount} for {student} ({invoice}) using {method}? Remaining after payment: {remaining}. This records an immutable transaction.", {
+        amount: new Intl.NumberFormat(locale).format(amount) + " " + t("AFN"),
+        student: studentName, invoice: reference,
+        method: t(draft.method), remaining: new Intl.NumberFormat(locale).format(outstanding - amount) + " " + t("AFN")
+      }))) return;
+    const signature = JSON.stringify([amount, draft.method, draft.reference.trim()]);
     const previous = paymentAttempts.current[invoiceId];
     const idempotencyKey = previous?.signature === signature ? previous.key : crypto.randomUUID();
     paymentAttempts.current[invoiceId] = { signature, key: idempotencyKey };
@@ -528,8 +546,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       await request(accessToken, `/v1/admin/fees/invoices/${invoiceId}/payments`, {
         method: "POST",
         body: JSON.stringify({
-          amount: Number(draft.amount),
-          method: draft.method.trim(),
+          amount, method: draft.method,
           transactionReference: draft.reference.trim() || undefined,
           idempotencyKey
         })
@@ -1053,6 +1070,28 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               {t("Refresh fee invoices")}
             </button>
           </div>
+          <nav className="admin-fee-module-tabs" aria-label={t("Fee management sections")}>
+            {([
+              ["INVOICES", "Invoices"],
+              ["PAYMENTS", "Payment history"],
+              ["BALANCES", "Student balances"]
+            ] as const).map(([key,label]) => (
+              <button type="button" key={key} aria-current={feesModule === key ? "page" : undefined}
+                className={feesModule === key ? "is-active" : ""}
+                onClick={() => setFeesModule(key)}>{t(label)}</button>
+            ))}
+          </nav>
+          {feesModule !== "INVOICES" ? (
+            <AdminFeeOperations mode={feesModule} accessToken={accessToken}
+              locale={locale}
+              students={(visibleFamilies?.students ?? []).map(row => ({
+                id: row.student.id, fullName: row.student.fullName,
+                studentCode: row.student.studentCode
+              }))}
+              refreshVersion={feeReloadKey} />
+          ) : null}
+          {feesModule === "INVOICES" ? (
+          <>
           <div className="communication-mobile-toggle" role="group" aria-label={t("Choose fee workspace")}>
             <button type="button" className={feesPane === "LIST" ? "is-active" : ""}
               aria-pressed={feesPane === "LIST"} onClick={() => setFeesPane("LIST")}>
@@ -1262,16 +1301,21 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                       }
                       placeholder={t("Amount")}
                     />
-                    <input
-                      value={draft.method}
-                      onChange={(event) =>
-                        setPaymentDraft((current) => ({
+                    <label className="admin-fee-method-label">{t("Method")}
+                      <select
+                        aria-label={t("Payment method")}
+                        value={draft.method}
+                        onChange={event => setPaymentDraft(current => ({
                           ...current,
                           [item.invoice.id]: { ...draft, method: event.target.value }
-                        }))
-                      }
-                      placeholder={t("Method · CASH")}
-                    />
+                        }))}
+                      >
+                        <option value="CASH">{t("Cash")}</option>
+                        <option value="BANK_TRANSFER">{t("Bank transfer")}</option>
+                        <option value="MOBILE_MONEY">{t("Mobile money")}</option>
+                        <option value="OTHER">{t("Other")}</option>
+                      </select>
+                    </label>
                     <input
                       value={draft.reference}
                       onChange={(event) =>
@@ -1285,7 +1329,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                     <button
                       className="admin-primary"
                       disabled={busy || !draft.amount || !draft.method.trim()}
-                      onClick={() => void recordPayment(item.invoice.id)}
+                      onClick={() => void recordPayment(item.invoice.id, item.outstanding, item.studentName, invoiceReference(item.invoice.invoiceNumber))}
                     >{t("Record payment")}</button>
                   </div>
                 ) : null}
@@ -1296,7 +1340,12 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                       <div key={payment.id} className="communication-payment-row">
                         <div>
                           <strong>{t(payment.kind)} · {formatMoney(payment.amount)}</strong>
-                          <span>{payment.method} · {formatAdminHijriDateTime(locale, payment.recordedAt)}</span>
+                          <span>{t(payment.method === "CASH" ? "Cash" : payment.method === "BANK_TRANSFER" ?
+                            "Bank transfer" : payment.method === "MOBILE_MONEY" ? "Mobile money" :
+                            payment.method === "OTHER" ? "Other" : payment.method)} · {formatAdminHijriDateTime(locale, payment.recordedAt)}</span>
+                          {payment.kind === "PAYMENT" ? (
+                            <AdminFeeReceiptButton accessToken={accessToken} paymentId={payment.id} locale={locale} />
+                          ) : null}
                           {payment.transactionReference ? <span>{t("Ref")}: {payment.transactionReference}</span> : null}
                           {payment.reversalReason ? <span>{t("Reason")}: {payment.reversalReason}</span> : null}
                         </div>
@@ -1342,6 +1391,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               ) : resourceNotice("communication")}
             </div>
           </div>
+          </>
+          ) : null}
         </section>
       ) : null}
     </section>
