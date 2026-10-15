@@ -16,7 +16,7 @@ const tests=read("apps/api/src/app.test.ts");
 for(const x of [
   'AdminAttendanceStudents','AdminAttendanceClassRegister',
   'setSelectedRegisterClass(classId)','onOpenClass',
-  'selectedRegisterClass && appliedFilters?.from === appliedFilters?.to'
+  'selectedRegisterClass && appliedFilters && appliedFilters.from === appliedFilters.to'
 ])assert.ok(panel.includes(x),"Attendance panel integration missing: "+x);
 for(const x of [
   'onOpenClass?: (classId: string, date: string) => void',
