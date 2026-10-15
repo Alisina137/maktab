@@ -2,6 +2,7 @@
 
 import { AdminAttendanceAudit } from "./admin-attendance-audit";
 import { AdminAttendanceFollowups } from "./admin-attendance-followups";
+import { AdminAttendanceAnalytics } from "./admin-attendance-analytics";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
 import { AdminAttendanceStudents } from "./admin-attendance-students";
 import { AdminAttendanceClassRegister } from "./admin-attendance-class-register";
@@ -265,7 +266,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       {status === "ready" && report && academics ? <>
-        {activeTab !== "AUDIT" ? (
+        {(activeTab === "OVERVIEW" || activeTab === "REGISTERS") ? (
           <form className="admin-panel attendance-filter" onSubmit={applyFilters} aria-label={t("Attendance filters")}>
             <label>{t("From")}
               <AdminHijriDatePicker locale={locale} value={draftFilters.from}
@@ -289,7 +290,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           </form>
         ) : null}
 
-        {activeTab !== "AUDIT" ? <p className="attendance-period-caption">{appliedDescription}</p> : null}
+        {(activeTab === "OVERVIEW" || activeTab === "REGISTERS") ? <p className="attendance-period-caption">{appliedDescription}</p> : null}
         {historicalReadOnly && activeTab === "REGISTERS" ? (
           <p className="attendance-readonly-note" role="note">
             {t("This academic year is not active. Historical attendance is read-only.")}
@@ -319,6 +320,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <span>{t("Submission overview")}</span>
                 <strong>{report.summary.submittedClasses}</strong>
                 <p>{t("Submitted registers in the selected period. Daily eligibility is shown below.")}</p>
+                <p>{t("Daily submission monitoring follows the timetable and declared school closures.")}</p>
                 <button type="button" className="admin-secondary"
                   onClick={() => setActiveTab("REGISTERS")}>{t("Open daily registers")}</button>
               </article>
@@ -379,14 +381,9 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             academicYearStatus={selectedAcademicYear?.status??""}
             schoolToday={schoolToday} locale={locale} classes={classes} /> : null}
 
-          {activeTab === "REPORTS" ? <article className="admin-panel attendance-preview-panel">
-            <h3>{t("Attendance reporting summary")}</h3>
-            <p>{t("This summary uses existing submitted attendance marks. Trends and CSV exports are not available yet.")}</p>
-            <div className="academic-summary-grid attendance-summary-grid">
-              {metrics.map(([label,value]) => <Summary key={label} label={t(label)} value={value} />)}
-            </div>
-            <p className="admin-copy">{t("Unrecorded days are not absences. Daily submission monitoring follows the timetable and declared school closures.")}</p>
-          </article> : null}
+          {activeTab === "REPORTS" ? <AdminAttendanceAnalytics
+            accessToken={accessToken} academicYearId={selectedAcademicYearId}
+            schoolToday={schoolToday} locale={locale} classes={classes}/> : null}
 
           {activeTab === "AUDIT" ? <AdminAttendanceAudit
             accessToken={accessToken} academicYearId={selectedAcademicYearId}

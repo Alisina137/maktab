@@ -17,6 +17,7 @@ import {
 import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
+import { formatAttendanceAnalyticsCsv } from "./analytics-csv.js";
 
 function sendAttendanceError(reply: FastifyReply, error: unknown) {
   if (error instanceof ZodError) {
@@ -146,6 +147,21 @@ const adminAttendanceAuditQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(100000).default(0)
 }).strict();
 
+
+
+const adminAnalyticsFiltersSchema = z.object({
+  academicYearId:z.string().uuid(),
+  from:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  classId:z.string().uuid().optional()
+}).strict();
+const adminAnalyticsStudentsSchema = adminAnalyticsFiltersSchema.extend({
+  limit:z.coerce.number().int().min(1).max(50).default(20),
+  offset:z.coerce.number().int().min(0).max(100000).default(0)
+}).strict();
+const adminAnalyticsExportSchema = adminAnalyticsFiltersSchema.extend({
+  kind:z.enum(["classes","days","students"])
+}).strict();
 
 const followupStateSchema = z.enum(["OPEN","IN_PROGRESS","RESOLVED","DISMISSED"]);
 const followupPageSchema = z.object({
@@ -310,6 +326,59 @@ export function registerAttendanceRoutes(
     }
   );
 
+
+
+  // Class/day trends count only submitted attendance marks. Students are
+  // paginated separately; no unsubmitted day is inferred to be ABSENT.
+  app.get("/v1/admin/attendance/analytics",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try{
+      const filters=adminAnalyticsFiltersSchema.parse(request.query);
+      reply.header("cache-control","no-store");
+      return await attendance.getAdminAttendanceAnalytics(context.user.schoolId,filters);
+    }catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.get("/v1/admin/attendance/analytics/students",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try{
+      const {limit,offset,...filters}=adminAnalyticsStudentsSchema.parse(request.query);
+      reply.header("cache-control","no-store");
+      return await attendance.getAdminAttendanceAnalyticsStudents(
+        context.user.schoolId,filters,limit,offset);
+    }catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.get("/v1/admin/attendance/analytics/export",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try{
+      const {kind,...filters}=adminAnalyticsExportSchema.parse(request.query);
+      let result:string;
+      if(kind==="students"){
+        const first=await attendance.getAdminAttendanceAnalyticsStudents(
+          context.user.schoolId,filters,1,0);
+        // Never transfer an unlimited student directory to an API consumer.
+        if(first.total>2000)return reply.code(413).send({
+          error:"analytics_export_too_large",
+          message:"More than 2,000 student-class rows match. Narrow the date or class filters."
+        });
+        const page=first.total?await attendance.getAdminAttendanceAnalyticsStudents(
+          context.user.schoolId,filters,first.total,0):first;
+        result=formatAttendanceAnalyticsCsv(kind,page.rows);
+      }else{
+        const report=await attendance.getAdminAttendanceAnalytics(context.user.schoolId,filters);
+        result=formatAttendanceAnalyticsCsv(kind,kind==="classes"?report.classes:report.days);
+      }
+      reply.header("cache-control","private, no-store");
+      reply.header("content-type","text/csv; charset=utf-8");
+      reply.header("content-disposition",
+        `attachment; filename="attendance-${kind}-${filters.from}-to-${filters.to}.csv"`);
+      return result;
+    }catch(error){return sendAttendanceError(reply,error);}
+  });
 
   // Only submitted ABSENT/LATE marks can be promoted to a human-managed case.
   // These endpoints never contact families or fabricate absences from empty registers.

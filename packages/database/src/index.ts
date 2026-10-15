@@ -8,6 +8,7 @@ export * from "./attendance-monitoring-store.js";
 export * from "./attendance-history-store.js";
 export * from "./attendance-audit-store.js";
 export * from "./attendance-followup-store.js";
+export * from "./attendance-analytics-store.js";
 export * from "./learning-store.js";
 export * from "./admin-learning-reports-store.js";
 export * from "./communication-store.js";

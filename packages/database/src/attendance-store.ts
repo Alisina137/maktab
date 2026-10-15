@@ -3,6 +3,7 @@ import { createAttendanceMonitoringStore, type AttendanceMonitoringStore } from 
 import { createAttendanceHistoryStore, type AttendanceHistoryStore } from "./attendance-history-store.js";
 import { createAttendanceAuditStore, type AttendanceAuditStore } from "./attendance-audit-store.js";
 import { createAttendanceFollowupStore, type AttendanceFollowupStore } from "./attendance-followup-store.js";
+import { createAttendanceAnalyticsStore, type AttendanceAnalyticsStore } from "./attendance-analytics-store.js";
 import {
   and,
   asc,
@@ -162,7 +163,7 @@ export interface AttendanceCorrection {
   previousStatus: AttendanceStatus;
 }
 
-export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore, AttendanceAuditStore, AttendanceFollowupStore {
+export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore, AttendanceAuditStore, AttendanceFollowupStore, AttendanceAnalyticsStore {
   getSchoolToday(schoolId: string): Promise<string>;
   getTeacherToday(schoolId: string, teacherUserId: string): Promise<TeacherToday>;
   getTeacherAttendanceSheet(
@@ -508,6 +509,7 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     ...createAttendanceHistoryStore(db,schoolToday),
     ...createAttendanceAuditStore(db),
     ...createAttendanceFollowupStore(db),
+    ...createAttendanceAnalyticsStore(db),
     getSchoolToday: schoolToday,
 
     async getTeacherToday(schoolId, teacherUserId) {
