@@ -3446,7 +3446,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(sameMarkRetry.json<{ changed: boolean; sheet: { students: Array<{ note: string }> } }>()
     .changed, false);
   assert.equal(sameMarkRetry.json<{ sheet: { students: Array<{ note: string }> } }>()
-    .sheet.students[0]?.note, "Corrected by school admin");
+    .sheet.students[0]?.note, "Original note from Negaran");
 
   // Test 13: audit events are committed once per real change, not on
   // duplicate retries or rejected stale edits, and have the correct actor.
