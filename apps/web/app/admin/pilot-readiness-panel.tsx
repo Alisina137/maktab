@@ -7,6 +7,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
 import { PilotOverviewActivity } from "./pilot-overview-activity";
+import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -105,6 +106,12 @@ type ImportHistoryPage = {
   offset: number;
   limit: number;
   hasMore: boolean;
+};
+type ImportHistoryFilters = {
+  entityType: string; status: string; actor: string; dateFrom: string; dateTo: string;
+};
+const EMPTY_IMPORT_HISTORY_FILTERS: ImportHistoryFilters = {
+  entityType: "", status: "", actor: "", dateFrom: "", dateTo: ""
 };
 
 type AuditLog = {
@@ -234,7 +241,8 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const [importHistory, setImportHistory] = useState<ImportHistoryPage | null>(null);
   const [importHistoryBusy, setImportHistoryBusy] = useState(false);
   const [importHistoryError, setImportHistoryError] = useState("");
-  const [importEntityFilter, setImportEntityFilter] = useState("");
+  const [importDraftFilters, setImportDraftFilters] = useState<ImportHistoryFilters>({ ...EMPTY_IMPORT_HISTORY_FILTERS });
+  const [importAppliedFilters, setImportAppliedFilters] = useState<ImportHistoryFilters>({ ...EMPTY_IMPORT_HISTORY_FILTERS });
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
   const [auditLoaded, setAuditLoaded] = useState(false);
@@ -274,18 +282,30 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   useEffect(() => {
     setImportHistory(null);
     setImportHistoryError("");
-    setImportEntityFilter("");
-    if (section === "onboarding") void loadImportHistory(0, "");
+    const defaults = { ...EMPTY_IMPORT_HISTORY_FILTERS };
+    setImportDraftFilters(defaults);
+    setImportAppliedFilters(defaults);
+    if (section === "onboarding") void loadImportHistory(0, defaults);
     return () => { importHistoryRequestVersion.current += 1; };
   }, [accessToken, section]);
 
-  async function loadImportHistory(offset: number, entityType = importEntityFilter) {
+  async function loadImportHistory(offset: number, filters: ImportHistoryFilters = importAppliedFilters) {
     const version = ++importHistoryRequestVersion.current;
     setImportHistoryBusy(true);
     setImportHistoryError("");
+    if (filters.actor.trim().length === 1 ||
+        (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo)) {
+      setImportHistoryError(adminText(locale, "Enter at least two characters for an actor and a valid chronological date range."));
+      setImportHistoryBusy(false);
+      return;
+    }
     try {
       const query = new URLSearchParams({ limit: "20", offset: String(offset) });
-      if (entityType) query.set("entityType", entityType);
+      if (filters.entityType) query.set("entityType", filters.entityType);
+      if (filters.status) query.set("status", filters.status);
+      if (filters.actor.trim()) query.set("actor", filters.actor.trim());
+      if (filters.dateFrom) query.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) query.set("dateTo", filters.dateTo);
       const page = await request<ImportHistoryPage>(accessToken,
         "/v1/admin/families/import/history?" + query.toString());
       if (version === importHistoryRequestVersion.current) setImportHistory(page);
@@ -296,6 +316,21 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     } finally {
       if (version === importHistoryRequestVersion.current) setImportHistoryBusy(false);
     }
+  }
+
+  function applyImportFilters() {
+    const applied = { ...importDraftFilters };
+    setImportAppliedFilters(applied);
+    setImportHistory(null);
+    void loadImportHistory(0, applied);
+  }
+
+  function clearImportFilters() {
+    const cleared = { ...EMPTY_IMPORT_HISTORY_FILTERS };
+    setImportDraftFilters(cleared);
+    setImportAppliedFilters(cleared);
+    setImportHistory(null);
+    void loadImportHistory(0, cleared);
   }
 
   async function load(offset = auditOffset, filters: AuditFilters = auditAppliedFilters) {
@@ -784,35 +819,8 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {section === "onboarding" && readiness ? (
-        <>
-          <div className="pilot-section-heading">
-            <h3>{t("Data onboarding")}</h3>
-            <p>{t("Follow the setup order, then use the existing validated import workflow in Families.")}</p>
-          </div>
-          <div className="pilot-steps">
-            {([
-              ["Academic year", "/admin/academics/years", readiness.counts.activeAcademicYears === 1],
-              ["Classes and subjects", "/admin/academics", readiness.counts.classes > 0 && readiness.counts.subjects > 0],
-              ["School accounts", "/admin/accounts", readiness.counts.teachers > 0],
-              ["Teaching assignments", "/admin/academics/assignments", advanced?.metrics.find((m) => m.key === "teaching")?.status === "complete"],
-              ["Negaran and timetable", "/admin/academics/negaran", advanced?.metrics.find((m) => m.key === "negaran")?.status === "complete" &&
-                advanced?.metrics.find((m) => m.key === "timetable")?.status === "complete"],
-              ["Families and students", "/admin/families", readiness.counts.students > 0 &&
-                advanced?.metrics.find((m) => m.key === "family_links")?.status === "complete"]
-            ] as const).map(([label, href, done], index) => (
-              <article className="admin-panel pilot-step-card" key={href}>
-                <span className="pilot-step-number" aria-hidden="true">{index + 1}</span>
-                <div className="pilot-step-content">
-                  <h3>{t(label)}</h3>
-                  <span className={done ? "pilot-badge pilot-badge-ok" : "pilot-badge pilot-badge-warning"}>
-                    {t(done ? "Configured" : advancedBusy ? "Checking configuration coverage…" : "Review setup")}
-                  </span>
-                  <Link className="pilot-inline-link" href={href}>{t("Open section")}</Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </>
+        <PilotOnboardingGuide readiness={readiness} advanced={advanced}
+          advancedLoading={advancedBusy} locale={locale} />
       ) : null}
 
       {section === "onboarding" ? (
@@ -826,21 +834,46 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
               disabled={importHistoryBusy}
               onClick={() => void loadImportHistory(0)}>{t("Refresh")}</button>
           </div>
-          <div className="pilot-import-filters">
-            <label>
-              {t("Import type")}
-              <select value={importEntityFilter} disabled={importHistoryBusy}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setImportEntityFilter(next);
-                  void loadImportHistory(0, next);
-                }}>
+          <div className="pilot-import-filters pilot-import-filters-expanded">
+            <label>{t("Import type")}
+              <select value={importDraftFilters.entityType} disabled={importHistoryBusy}
+                onChange={(event) => setImportDraftFilters((prev) => ({ ...prev, entityType: event.target.value }))}>
                 <option value="">{t("All types")}</option>
                 <option value="PARENT">{t("Parents")}</option>
                 <option value="STUDENT">{t("Students")}</option>
                 <option value="TEACHER">{t("Teachers")}</option>
               </select>
             </label>
+            <label>{t("Import outcome")}
+              <select value={importDraftFilters.status} disabled={importHistoryBusy}
+                onChange={(event) => setImportDraftFilters((prev) => ({ ...prev, status: event.target.value }))}>
+                <option value="">{t("All statuses")}</option>
+                <option value="COMPLETED">{t("Completed")}</option>
+                <option value="REJECTED">{t("Rejected")}</option>
+                <option value="FAILED">{t("Failed")}</option>
+              </select>
+            </label>
+            <label>{t("Administrator username")}
+              <input value={importDraftFilters.actor} maxLength={64} disabled={importHistoryBusy}
+                placeholder={t("Search by username")}
+                onChange={(event) => setImportDraftFilters((prev) => ({ ...prev, actor: event.target.value }))} />
+            </label>
+            <div className="pilot-import-date">
+              <span>{t("Start date")}</span>
+              <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateFrom}
+                onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateFrom: date }))} />
+            </div>
+            <div className="pilot-import-date">
+              <span>{t("End date")}</span>
+              <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateTo}
+                onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateTo: date }))} />
+            </div>
+          </div>
+          <div className="admin-actions pilot-import-filter-actions">
+            <button className="admin-primary" type="button" disabled={importHistoryBusy}
+              onClick={applyImportFilters}>{t("Apply filters")}</button>
+            <button className="admin-secondary" type="button" disabled={importHistoryBusy}
+              onClick={clearImportFilters}>{t("Clear filters")}</button>
           </div>
           {importHistoryBusy ? <p role="status">{t("Loading import history…")}</p> : null}
           {importHistoryError ? (
