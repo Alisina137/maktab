@@ -4,6 +4,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { useEffect, useRef, useState } from "react";
 import { AdminLearningResults } from "./admin-learning-results";
 import { AdminLearningHomework } from "./admin-learning-homework";
+import { AdminLearningTeaching } from "./admin-learning-teaching";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext } from "./admin-learning-exams";
@@ -296,18 +297,9 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
 
       {activeTab === "TEACHING" ? (
         <section id="learning-panel-teaching" role="tabpanel" aria-labelledby="learning-tab-teaching"
-          className="learning-tab-panel admin-panel learning-module-summary">
-          <h3>{t("Teaching progress")}</h3>
-          <p>{t("Curriculum definitions are managed in Academics. Teachers record chapter progress in their own workspace.")}</p>
-          <div className="learning-summary-inline">
-            <div><span>{t("Assigned curriculum units completed")}</span>
-              <strong>{dashboard?.metrics.curriculumAssignedUnits
-                ? `${formatCount(dashboard.metrics.curriculumCompletedUnits)}/${formatCount(dashboard.metrics.curriculumAssignedUnits)}`
-                : "—"}</strong></div>
-          </div>
-          <Link className="admin-secondary learning-module-link" href="/admin/academics/curriculum">
-            {t("Open curriculum management")}
-          </Link>
+          className="learning-tab-panel">
+          <AdminLearningTeaching accessToken={accessToken} locale={locale}
+            yearId={selectedAcademicYearId} academics={academics} />
         </section>
       ) : null}
 

@@ -1800,3 +1800,18 @@ The Learning → Homework placeholder is replaced by an operational, read-only s
 - No new migration; Phase 5 verification: `pnpm verify:admin-learning:phase5`, `pnpm typecheck`, `pnpm test`, `pnpm build`; CI on Linux and Windows.
 
 Next planned admin Learning enhancement: Phase 6 — Teaching Progress dashboard and curriculum follow-ups.
+
+
+## Admin Learning Phase 6 — Teaching Progress (2026-10-15)
+
+Learning → Teaching progress now provides an administrator-wide read-only operational view, replacing the previous placeholder:
+
+- Role-protected `GET /v1/admin/teaching/progress` aggregates curriculum coverage across **assigned** teacher/class/subject/year combinations. Includes the teacher's name, configured chapters, completed/in-progress/not-started counts, lesson plans by PLANNED/COMPLETED/POSTPONED status, and date of the latest completed lesson.
+- Search by teacher, class or subject; filters for exact class/subject and focus cases: missing curriculum, chapters not started, incomplete curriculum, postponed lesson plans, and no lesson plans. Combined summary counts and stable server-side pagination (20/page, API max 50).
+- Read-only, independently paginated assignment drilldowns `GET /v1/admin/teaching/progress/:assignmentId/units` and `GET /v1/admin/teaching/progress/:assignmentId/lessons` with status filters and chapter/lesson sub-tabs. Endpoints expose progress, titles/dates and statuses, not teacher private tasks or unrelated school data.
+- **Scope:** Every API requires school administrator authentication and school/year scoping; individual assignment lookups fail with 404 outside that school/year, including requests for other schools' records. Academic years may remain historically readable; teacher-only progress write routes remain unchanged. Unrecorded chapter progress is NOT_STARTED; unconfigured curriculum is not treated as 0% completion.
+- **Limitations:** No official chapter deadlines or pacing targets are stored, so attention states indicate missing configuration, incomplete recording, or postponed lesson plans, **not verified lateness**. Comparisons are descriptive rather than teacher performance rankings.
+- RTL responsive layouts, Dari/Pashto translations, accessible loading/errors/navigation, explicit refresh and AbortController guards on credential/year/filter/detail changes. Curriculum changes remain in the Academics → Curriculum page.
+- Verification: `pnpm verify:admin-learning:phase6` and repository TypeScript, API and production builds in Linux/Windows CI; integration tests for tenant isolation, invalid query parameters, lesson states, curriculum completion, and missing chapter progress. No schema migration.
+
+Next planned phase: Phase 7 — Academic reports, audit search and safe exports.

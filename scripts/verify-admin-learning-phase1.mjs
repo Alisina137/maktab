@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const panel = read("apps/web/app/admin/learning-panel.tsx");
 const examWorkspace = read("apps/web/app/admin/admin-learning-exams.tsx");
+const teachingWorkspace = read("apps/web/app/admin/admin-learning-teaching.tsx");
 const css = read("apps/web/app/globals.css");
 const routes = read("apps/api/src/learning/routes.ts");
 const store = read("packages/database/src/learning-store.ts");
@@ -30,8 +31,10 @@ for (const fragment of [
   'role="tabpanel" aria-labelledby="learning-tab-results"',
   'Learning dashboard unavailable.',
   'AdminLearningHomework',
-  'href="/admin/academics/curriculum"'
+  'AdminLearningTeaching'
 ]) assert.ok(panel.includes(fragment), "Missing Phase 1 UI safeguard: "+fragment);
+assert.ok(teachingWorkspace.includes('href="/admin/academics/curriculum"'),
+  "Curriculum management remains reachable from Learning.");
 for (const fragment of [
   '"Exam lifecycle"', 'role="tablist" aria-label={t("Examination detail sections")}',
   'window.confirm(adminFormat(locale,'
