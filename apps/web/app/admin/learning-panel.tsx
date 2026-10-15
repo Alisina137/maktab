@@ -1,7 +1,8 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -54,6 +55,35 @@ type LearningOverview = {
   publishedGrades: PublishedGrade[];
 };
 
+type LearningTab = "OVERVIEW" | "HOMEWORK" | "EXAMS" | "RESULTS" | "TEACHING" | "REPORTS";
+type ExamPane = "SETUP" | "LIFECYCLE";
+type LearningDashboard = {
+  academicYearId: string;
+  metrics: {
+    activeExams: number;
+    examsAwaitingPublication: number;
+    publishedExams: number;
+    publishedHomework: number;
+    submissionsAwaitingReview: number;
+    classesWithMissingMarks: number;
+    continuousAssessments: number;
+    curriculumCompletedUnits: number;
+    curriculumAssignedUnits: number;
+  };
+  attention: Array<{
+    id: string; category: "EXAMS" | "RESULTS" | "HOMEWORK";
+    title: string; detail: string; count: number;
+  }>;
+};
+const learningTabs: Array<{ id: LearningTab; title: string }> = [
+  { id: "OVERVIEW", title: "Overview" },
+  { id: "HOMEWORK", title: "Homework" },
+  { id: "EXAMS", title: "Exams" },
+  { id: "RESULTS", title: "Gradebook & results" },
+  { id: "TEACHING", title: "Teaching progress" },
+  { id: "REPORTS", title: "Reports & audit" }
+];
+
 type AcademicOverview = {
   academicYears: Array<{ id: string; name: string; status: string }>;
   classes: Array<{ id: string; name: string; code: string; academicYearId: string }>;
@@ -83,6 +113,15 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   const t = (english: string) => adminText(locale, english);
   const [learning, setLearning] = useState<LearningOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
+  const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [activeTab, setActiveTab] = useState<LearningTab>("OVERVIEW");
+  const [examPane, setExamPane] = useState<ExamPane>("SETUP");
+  const tabRefs = useRef<Partial<Record<LearningTab, HTMLButtonElement | null>>>({});
+  const generation = useRef(0);
+  const pending = useRef<AbortController | null>(null);
+  const currentToken = useRef(accessToken);
+  currentToken.current = accessToken;
   const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
   const [examId, setExamId] = useState("");
@@ -91,22 +130,56 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   const [dateEditSubjectId, setDateEditSubjectId] = useState("");
   const [revisedExamDate, setRevisedExamDate] = useState("");
 
+
   useEffect(() => {
+    // Also refresh when the selected academic year changes; never reuse a
+    // previous user's or previous year's overview after an account switch.
+    setLearning(null);
+    setAcademics(null);
+    setDashboard(null);
     void load();
-  }, [accessToken]);
+    return () => {
+      generation.current += 1;
+      pending.current?.abort();
+    };
+  }, [accessToken, selectedAcademicYearId]);
+
+  useEffect(() => {
+    tabRefs.current[activeTab]?.scrollIntoView({
+      block: "nearest", inline: "nearest", behavior: "smooth"
+    });
+  }, [activeTab]);
 
   async function load() {
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
+    const id = ++generation.current;
+    const token = accessToken;
+    setLoadingStatus("loading");
     setError("");
     try {
-      const [learningData, academicData] = await Promise.all([
-        request<LearningOverview>(accessToken, "/v1/admin/learning"),
-        request<AcademicOverview>(accessToken, "/v1/admin/academics")
+      const [learningData, academicData, dashboardData] = await Promise.all([
+        request<LearningOverview>(token, "/v1/admin/learning", { signal: controller.signal }),
+        request<AcademicOverview>(token, "/v1/admin/academics", { signal: controller.signal }),
+        selectedAcademicYearId ? request<LearningDashboard>(
+          token, `/v1/admin/learning/dashboard?academicYearId=${encodeURIComponent(selectedAcademicYearId)}`,
+          { signal: controller.signal }
+        ) : Promise.resolve(null)
       ]);
+      if (controller.signal.aborted || generation.current !== id || currentToken.current !== token) return;
       setLearning(learningData);
       setAcademics(academicData);
-      setExamId((current) => current || learningData.exams.find((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED")?.id || "");
+      setDashboard(dashboardData);
+      setLoadingStatus("ready");
+      setExamId(current => learningData.exams.some(exam =>
+        exam.id === current && exam.academicYearId === selectedAcademicYearId)
+        ? current : learningData.exams.find(exam => exam.academicYearId === selectedAcademicYearId &&
+          ["DRAFT", "SCHEDULED"].includes(exam.status))?.id ?? "");
     } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not load exams and results."));
+      if (controller.signal.aborted || generation.current !== id || currentToken.current !== token) return;
+      setLoadingStatus("error");
+      setError(adminErrorText(locale, cause, "Could not load learning data."));
     }
   }
 
@@ -267,17 +340,21 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     );
   }, [selectedAcademicYearId, learning]);
 
-  if (!learning || !academics) {
+  if (!learning || !academics || loadingStatus === "error") {
     return (
       <section className="admin-panel learning-section admin-loading-card">
-        <AdminLoader label={t("Loading learning data…")} />
-        <AdminSkeleton rows={5} />
-        {error ? (
+        {loadingStatus === "error" ? (
           <>
-            <div className="admin-error" role="alert">{error}</div>
-            <button className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
+            <h2>{t("Learning data unavailable")}</h2>
+            <p className="admin-error" role="alert">{error || t("Could not load learning data.")}</p>
+            <button type="button" className="admin-secondary" onClick={() => void load()}>{t("Retry")}</button>
           </>
-        ) : null}
+        ) : (
+          <>
+            <AdminLoader label={t("Loading learning data…")} />
+            <AdminSkeleton rows={5} />
+          </>
+        )}
       </section>
     );
   }
@@ -286,9 +363,9 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     <section className="learning-section admin-page-enter">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">{t("Phase 6 · Homework, Exams & Results")}</span>
-          <h2>{t("Exam cycles & result publication")}</h2>
-          <p>{t("Configure exam subjects and maximum scores, control the publication lifecycle, and audit corrections after publication.")}</p>
+          <span className="eyebrow">{t("Academic management")}</span>
+          <h2>{t("Learning management")}</h2>
+          <p>{t("Review academic activity, manage examinations, and monitor results across the selected academic year.")}</p>
         </div>
         <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
       </div>
