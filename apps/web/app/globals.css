@@ -7977,3 +7977,63 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .learning-results-card-header > button { margin-inline-start: 0; width: 100%; }
   .learning-results-score { flex: 1 1 100px; }
 }
+
+
+/* Admin Learning Phase 5: read-only schoolwide homework monitoring. */
+.learning-homework-workspace { display: grid; gap: 16px; min-width: 0; }
+.learning-homework-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.learning-homework-metrics > div { display: grid; gap: 5px; padding: 14px 16px;
+  border: 1px solid var(--ml-color-border); border-radius: 14px; background: var(--ml-color-surface); }
+.learning-homework-metrics span { color: var(--ml-color-text-muted); font-size: 13px; }
+.learning-homework-metrics strong { font-variant-numeric: tabular-nums; font-size: clamp(18px,2vw,24px); }
+.learning-homework-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px;
+  align-items: end; border-radius: 16px; border: 1px solid var(--ml-color-border);
+  background: var(--ml-color-surface); padding: 15px; min-width: 0; }
+.learning-homework-filters label, .learning-homework-roster-head label { display: grid; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--ml-color-text-muted); min-width: 0; }
+.learning-homework-filters input, .learning-homework-filters select,
+.learning-homework-roster-head select { border: 1px solid var(--ml-color-border);
+  background: var(--ml-color-surface); color: var(--ml-color-text);
+  padding: 8px 11px; border-radius: 10px; min-height: 44px; width: 100%; min-width: 0; font: inherit; }
+.learning-homework-filters button, .learning-homework-card button { min-height: 44px; }
+.learning-homework-list { display: grid; gap: 12px; min-width: 0; }
+.learning-homework-card { border: 1px solid var(--ml-color-border);
+  border-radius: 16px; padding: 15px; background: var(--ml-color-surface);
+  display: grid; gap: 13px; min-width: 0; }
+.learning-homework-head { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+.learning-homework-title { min-width: 0; flex: 2 1 220px; display: grid; gap: 5px; }
+.learning-homework-title strong { font-size: 16px; overflow-wrap: anywhere; }
+.learning-homework-title small, .learning-homework-student small { color: var(--ml-color-text-muted); font-size: 12px; }
+.learning-homework-warning { color: #97521d; background: #fff3e8; border: 1px solid #edc6a4;
+  padding: 6px 9px; border-radius: 10px; font-size: 12px; font-weight: 750; }
+.learning-homework-counts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; min-width: 0; }
+.learning-homework-counts > div { display: grid; gap: 4px; padding: 11px;
+  background: var(--ml-color-background, #f6f8fb); border: 1px solid var(--ml-color-border);
+  border-radius: 11px; min-width: 0; }
+.learning-homework-counts span { color: var(--ml-color-text-muted); font-size: 12px; }
+.learning-homework-counts strong { font-size: 17px; font-variant-numeric: tabular-nums; }
+.learning-homework-card > button { justify-self: start; }
+.learning-homework-detail { display: grid; gap: 12px; border-top: 1px solid var(--ml-color-border);
+  padding-top: 13px; min-width: 0; }
+.learning-homework-roster { display: grid; gap: 12px; min-width: 0; }
+.learning-homework-roster-head { display: flex; gap: 12px; flex-wrap: wrap;
+  justify-content: space-between; align-items: end; }
+.learning-homework-roster-head h4 { margin: 0; font-size: 16px; }
+.learning-homework-roster-head label { min-width: min(100%,200px); }
+.learning-homework-students { display: grid; gap: 8px; }
+.learning-homework-student { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px;
+  background: var(--ml-color-background,#f6f8fb); border: 1px solid var(--ml-color-border);
+  border-radius: 11px; padding: 12px; overflow-wrap: anywhere; }
+.learning-homework-student > div { display: grid; gap: 4px; min-width: 0; }
+.learning-homework-student strong { font-size: 13px; }
+@media (max-width: 850px) {
+  .learning-homework-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .learning-homework-counts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 540px) {
+  .learning-homework-filters, .learning-homework-student { grid-template-columns: minmax(0,1fr); }
+  .learning-homework-counts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .learning-homework-metrics { grid-template-columns: minmax(0,1fr); }
+  .learning-homework-card { padding: 12px; }
+  .learning-homework-card > button { width: 100%; }
+}
