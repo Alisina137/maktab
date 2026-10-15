@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const panel = read("apps/web/app/admin/learning-panel.tsx");
+const examWorkspace = read("apps/web/app/admin/admin-learning-exams.tsx");
 const css = read("apps/web/app/globals.css");
 const routes = read("apps/api/src/learning/routes.ts");
 const store = read("packages/database/src/learning-store.ts");
@@ -11,7 +12,7 @@ const apiTests = read("apps/api/src/app.test.ts");
 for (const tab of ["OVERVIEW","HOMEWORK","EXAMS","RESULTS","TEACHING","REPORTS"])
   assert.ok(panel.includes('id: "' + tab + '"'), "Missing learning tab "+tab);
 for (const fragment of [
-  'setActiveTab] = useState<LearningTab>("OVERVIEW")',
+  'setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW")',
   'role="tablist" aria-label={t("Learning sections")}',
   'role="tab" aria-selected={activeTab === id}',
   'tabRefs.current[activeTab]?.scrollIntoView',
@@ -25,13 +26,16 @@ for (const fragment of [
   'loadingStatus === "error"',
   'Learning data unavailable',
   'selectedAcademicYearId ? request<LearningDashboard>',
-  '"Exam lifecycle"',
   'role="tabpanel" aria-labelledby="learning-tab-exams"',
   'role="tabpanel" aria-labelledby="learning-tab-results"',
   'Learning dashboard unavailable.',
   'Schoolwide homework records and submission filters are not yet available in this view.',
   'href="/admin/academics/curriculum"'
 ]) assert.ok(panel.includes(fragment), "Missing Phase 1 UI safeguard: "+fragment);
+for (const fragment of [
+  '"Exam lifecycle"', 'role="tablist" aria-label={t("Examination detail sections")}',
+  'window.confirm(t(exam.status === "RESULTS_READY"'
+]) assert.ok(examWorkspace.includes(fragment), "Phase 2 must preserve relocated Phase 1 exam behavior: "+fragment);
 assert.ok(!panel.includes('Phase 6 · Homework, Exams & Results'), "No internal phase language on Learning page.");
 for (const fragment of [
   '"/v1/admin/learning/dashboard"',

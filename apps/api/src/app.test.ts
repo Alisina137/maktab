@@ -4123,6 +4123,46 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(zoologyExamSubject.statusCode, 201, zoologyExamSubject.body);
   const secondExamSubjectId = zoologyExamSubject.json<{ examSubject: { id: string } }>().examSubject.id;
+
+  // Admin Learning Phase 2: year-scoped direct detail, role/tenant denial,
+  // and same-class same-calendar-day warnings (not alleged time collisions).
+  const detailUrl = `/v1/admin/exams/${examId}/detail`;
+  assert.equal((await app.inject({ method: "GET", url: detailUrl })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: detailUrl,
+    headers: assignedTeacher.auth })).statusCode, 403);
+  assert.equal((await app.inject({ method: "GET", url: detailUrl,
+    headers: otherAdmin })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/exams/not-a-uuid/detail", headers: admin })).statusCode, 400);
+  const detailBefore = await app.inject({ method: "GET", url: detailUrl, headers: admin });
+  assert.equal(detailBefore.statusCode, 200, detailBefore.body);
+  const detailPayload = detailBefore.json<{
+    exam: { id: string; academicYearId: string };
+    subjects: Array<{ examSubject: { id: string; examDate: string } }>;
+    sameDayWarnings: unknown[];
+  }>();
+  assert.equal(detailPayload.exam.id, examId);
+  assert.equal(detailPayload.exam.academicYearId, yearId);
+  assert.equal(detailPayload.subjects.length, 2);
+  assert.deepEqual(detailPayload.sameDayWarnings, []);
+  const collision = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`, headers: admin,
+    payload: { examDate: "2028-09-15" } });
+  assert.equal(collision.statusCode, 200, collision.body);
+  const advisory = await app.inject({ method: "GET", url: detailUrl, headers: admin });
+  assert.equal(advisory.statusCode, 200, advisory.body);
+  const advisories = advisory.json<{
+    sameDayWarnings: Array<{ classId: string; examDate: string; subjectNames: string[] }>
+  }>().sameDayWarnings;
+  assert.equal(advisories.length, 1);
+  assert.equal(advisories[0]?.classId, classId);
+  assert.equal(advisories[0]?.examDate, "2028-09-15");
+  assert.equal(advisories[0]?.subjectNames.length, 2);
+  const restoreDate = await app.inject({ method: "PATCH",
+    url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`, headers: admin,
+    payload: { examDate: "2028-09-17" } });
+  assert.equal(restoreDate.statusCode, 200, restoreDate.body);
+
   // Legacy rows have a nullable date after migration. School Admin can date
   // them before IN_PROGRESS; the change and old date are audited.
   await client.query("UPDATE exam_subjects SET exam_date = NULL WHERE id = $1",
@@ -4463,8 +4503,10 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(forExam.filter(x => x.action === "exam.results_published").length, 1);
   assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_added" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
+  // Phase 2 tests two legitimate date changes for the same-day advisory,
+  // restores the original date, and later exercises the original date repair.
   assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_date_changed" &&
-    x.entity_id === secondExamSubjectId).length, 1);
+    x.entity_id === secondExamSubjectId).length, 3);
   assert.equal(auditLog.rows.filter(x => x.action === "grades.draft_saved" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
   const correctionAudit = auditLog.rows.filter(x =>

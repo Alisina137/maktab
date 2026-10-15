@@ -132,6 +132,22 @@ export interface AdminLearningDashboard {
   }>;
 }
 
+export interface AdminExamDetail {
+  exam: Exam;
+  subjects: Array<{
+    examSubject: ExamSubject;
+    className: string;
+    classCode: string;
+    subjectName: string;
+  }>;
+  sameDayWarnings: Array<{
+    classId: string;
+    className: string;
+    examDate: string;
+    subjectNames: string[];
+  }>;
+}
+
 export interface LearningStore {
   getTeacherLearning(schoolId: string, teacherUserId: string): Promise<TeacherLearningView>;
   createHomework(schoolId: string, teacherUserId: string, input: CreateHomeworkInput): Promise<Homework>;
@@ -146,6 +162,7 @@ export interface LearningStore {
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
+  getAdminExamDetail(schoolId: string, examId: string): Promise<AdminExamDetail>;
   getAdminDashboard(schoolId: string, academicYearId: string): Promise<AdminLearningDashboard>;
   createExam(schoolId: string, actorUserId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, actorUserId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
@@ -820,6 +837,48 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         },
         attention: attention.slice(0, 8)
       };
+    },
+
+    async getAdminExamDetail(schoolId, examId) {
+      const [exam] = await db.select().from(exams)
+        .where(and(eq(exams.schoolId, schoolId), eq(exams.id, examId))).limit(1);
+      if (!exam) throw new LearningNotFoundError("Exam not found.");
+
+      const configured = await db.select({
+        examSubject: examSubjects,
+        className: classSections.name,
+        classCode: classSections.code,
+        subjectName: subjects.name
+      }).from(examSubjects)
+        .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId),
+          eq(classSections.schoolId, examSubjects.schoolId)))
+        .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId),
+          eq(subjects.schoolId, examSubjects.schoolId)))
+        .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)))
+        .orderBy(asc(examSubjects.examDate), asc(classSections.name), asc(subjects.name));
+      // Dates are calendar days only. More than one subject on the same day
+      // for the same class is an advisory, NOT a proven time/room conflict.
+      const byDayClass = new Map<string, typeof configured>();
+      for (const row of configured) {
+        const date = row.examSubject.examDate;
+        if (!date) continue;
+        const key = row.examSubject.classId + ":" + date;
+        const group = byDayClass.get(key) ?? [];
+        group.push(row);
+        byDayClass.set(key, group);
+      }
+      const sameDayWarnings: AdminExamDetail["sameDayWarnings"] = [];
+      for (const group of byDayClass.values()) {
+        if (group.length < 2) continue;
+        const first = group[0]!;
+        sameDayWarnings.push({
+          classId: first.examSubject.classId,
+          className: first.className,
+          examDate: first.examSubject.examDate!,
+          subjectNames: group.map(item => item.subjectName)
+        });
+      }
+      return { exam, subjects: configured, sameDayWarnings };
     },
 
     async getAdminOverview(schoolId) {
