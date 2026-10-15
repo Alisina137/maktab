@@ -3115,11 +3115,11 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(register.statusCode,200,register.body);
   assert.equal(register.json<{students:Array<{status:string}>}>().students[0]?.status,"ABSENT");
   assert.equal((await app.inject({method:"GET",url:classUrl,headers:teacherAuth})).statusCode,403);
-  const historyUrl=`/v1/admin/attendance/students/${studentId}/history?academicYearId=${yearId}&from=${today.date}&to=${today.date}`;
-  const studentHistory=await app.inject({method:"GET",url:historyUrl,headers:admin});
+  const phase3HistoryUrl=`/v1/admin/attendance/students/${studentId}/history?academicYearId=${yearId}&from=${today.date}&to=${today.date}`;
+  const studentHistory=await app.inject({method:"GET",url:phase3HistoryUrl,headers:admin});
   assert.equal(studentHistory.statusCode,200,studentHistory.body);
   assert.equal(studentHistory.json<{days:Array<{status:string}>}>().days[0]?.status,"ABSENT");
-  assert.equal((await app.inject({method:"GET",url:historyUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:phase3HistoryUrl,headers:teacherAuth})).statusCode,403);
 
   const retried = await app.inject({
     method: "POST",
