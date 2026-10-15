@@ -343,7 +343,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
               schoolToday={schoolToday}
               onOpenClass={(classId) => setSelectedRegisterClass(classId)}
             />
-            {selectedRegisterClass && appliedFilters?.from === appliedFilters?.to ?
+            {selectedRegisterClass && appliedFilters && appliedFilters.from === appliedFilters.to ?
               <AdminAttendanceClassRegister
                 accessToken={accessToken} academicYearId={selectedAcademicYearId}
                 classId={selectedRegisterClass} date={appliedFilters.from}
