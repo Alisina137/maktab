@@ -4503,8 +4503,10 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(forExam.filter(x => x.action === "exam.results_published").length, 1);
   assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_added" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
+  // Phase 2 tests two legitimate date changes for the same-day advisory,
+  // restores the original date, and later exercises the original date repair.
   assert.equal(auditLog.rows.filter(x => x.action === "exam.subject_date_changed" &&
-    x.entity_id === secondExamSubjectId).length, 1);
+    x.entity_id === secondExamSubjectId).length, 3);
   assert.equal(auditLog.rows.filter(x => x.action === "grades.draft_saved" &&
     [examSubjectId, secondExamSubjectId].includes(x.entity_id)).length, 2);
   const correctionAudit = auditLog.rows.filter(x =>
