@@ -29,7 +29,7 @@ for (const fragment of [
   'role="tabpanel" aria-labelledby="learning-tab-exams"',
   'role="tabpanel" aria-labelledby="learning-tab-results"',
   'Learning dashboard unavailable.',
-  'Schoolwide homework records and submission filters are not yet available in this view.',
+  'AdminLearningHomework',
   'href="/admin/academics/curriculum"'
 ]) assert.ok(panel.includes(fragment), "Missing Phase 1 UI safeguard: "+fragment);
 for (const fragment of [
