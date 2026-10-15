@@ -55,6 +55,7 @@ export function PilotOperationalReadinessPanel({ accessToken, locale }: {
   const [selected, setSelected] = useState<MetricKey | null>(null);
   const [offset, setOffset] = useState(0);
   const [issues, setIssues] = useState<IssuePage | null>(null);
+  const [issueRevision, setIssueRevision] = useState(0);
   const [issuesBusy, setIssuesBusy] = useState(false);
   const [issuesError, setIssuesError] = useState("");
 
@@ -83,7 +84,7 @@ export function PilotOperationalReadinessPanel({ accessToken, locale }: {
       ); })
       .finally(() => { if (!abort.signal.aborted) setIssuesBusy(false); });
     return () => abort.abort();
-  }, [accessToken, locale, selected, offset, revision]);
+  }, [accessToken, locale, selected, offset, issueRevision]);
 
   return (
     <section className="pilot-operational admin-panel" aria-labelledby="pilot-operational-title">
@@ -155,7 +156,7 @@ export function PilotOperationalReadinessPanel({ accessToken, locale }: {
                       <div role="alert" className="pilot-activity-error">
                         <span>{issuesError}</span>
                         <button type="button" className="admin-secondary"
-                          onClick={() => setRevision((v) => v + 1)}>{t("Retry")}</button>
+                          onClick={() => setIssueRevision((v) => v + 1)}>{t("Retry")}</button>
                       </div>
                     ) : null}
                     {issues?.metric === metric.key ? (
