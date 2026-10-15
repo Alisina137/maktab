@@ -270,7 +270,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
   if (!learning || !academics) {
     return (
       <section className="admin-panel learning-section admin-loading-card">
-        <AdminLoader label={t("Loading Phase 6 academic communication…")} />
+        <AdminLoader label={t("Loading learning data…")} />
         <AdminSkeleton rows={5} />
         {error ? (
           <>
