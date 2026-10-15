@@ -444,7 +444,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const totalChecks = currentReadiness.checks.length;
   const pendingChecks = currentReadiness.checks.filter((check) => !check.passed);
   const progressPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
-  const billingAttention = subscription?.status === "PAST_DUE" || subscription?.status === "GRACE";
+  const billingAttention = Boolean(subscription) && (subscription?.status === "PAST_DUE" || subscription?.status === "GRACE");
   const overviewStats = [
     { label: "Students", value: currentReadiness.counts.students, href: "/admin/accounts" },
     { label: "Teachers", value: currentReadiness.counts.teachers, href: "/admin/academics/teachers" },
