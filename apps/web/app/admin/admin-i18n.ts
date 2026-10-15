@@ -10,6 +10,21 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Data quality": "کیفیت معلومات",
+  "Enrollment and account quality": "کیفیت ثبت‌نام و حساب‌ها",
+  "Actual active-year coverage checks reveal incomplete records after import. Open School Readiness to inspect affected records.": "بررسی سال تعلیمی فعال معلومات ناقص پس از وارد کردن را نشان می‌دهد. برای جزئیات به آمادگی مکتب بروید.",
+  "Inspect affected records": "بررسی موارد متأثر",
+  "Student family and class relationships": "ارتباط شاگردان با خانواده و صنف",
+  "Classes missing active teacher assignments": "صنف‌های بدون معلم فعال",
+  "Students without activated logins": "شاگردان بدون ورود فعال‌شده",
+  "Teachers without first login": "معلمان بدون نخستین ورود",
+  "Classes without enrolled students": "صنف‌های بدون شاگرد",
+  "Classes without matching timetable periods": "صنف‌های بدون تقسیم اوقات مطابق",
+  "Classes missing a current Negaran": "صنف‌های بدون نگران فعلی",
+  "Data quality is unavailable; no all-clear can be confirmed.": "گزارش کیفیت معلومات در دسترس نیست؛ تکمیل بودن آن تأیید نمی‌شود.",
+  "{count} of {total} records need review": "{count} از {total} مورد نیازمند بررسی است",
+  "No outstanding issues in these seven data-quality checks.": "در این هفت بررسی کیفیت معلومات مشکلی باقی نمانده است.",
+  "A clean report covers these checks only. It does not verify actual attendance, delivery or production launch.": "این گزارش تنها این بررسی‌ها را پوشش می‌دهد؛ حاضری واقعی، ارسال پیام و نشر نهایی را تأیید نمی‌کند.",
   "Guided setup": "راهنمای تنظیمات",
   "School onboarding checklist": "فهرست مراحل آماده‌سازی مکتب",
   "Follow these steps in order. Progress comes from current school data, not manual checkboxes.": "این مراحل را به ترتیب تکمیل کنید. پیشرفت از معلومات واقعی مکتب محاسبه می‌شود.",
@@ -2085,6 +2100,21 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Data quality": "د معلوماتو کیفیت",
+  "Enrollment and account quality": "د نوم‌لیکنې او حسابونو کیفیت",
+  "Actual active-year coverage checks reveal incomplete records after import. Open School Readiness to inspect affected records.": "د روان تعلیمي کال ارزونې له واردولو وروسته نیمګړي معلومات ښيي. د جزئیاتو لپاره د ښوونځي چمتووالی وګورئ.",
+  "Inspect affected records": "اغېزمن ریکارډونه وګورئ",
+  "Student family and class relationships": "د زده کوونکو د کورنۍ او ټولګي اړیکې",
+  "Classes missing active teacher assignments": "له فعال ښوونکي پرته ټولګي",
+  "Students without activated logins": "بې فعالې ننوتنې زده کوونکي",
+  "Teachers without first login": "هغه ښوونکي چې لومړی ځل نه دي ننوتي",
+  "Classes without enrolled students": "له زده کوونکو پرته ټولګي",
+  "Classes without matching timetable periods": "له مناسب مهالویش پرته ټولګي",
+  "Classes missing a current Negaran": "له اوسني نګران پرته ټولګي",
+  "Data quality is unavailable; no all-clear can be confirmed.": "د معلوماتو کیفیت نشته؛ بشپړوالی نه شي تاییدېدای.",
+  "{count} of {total} records need review": "له {total} څخه {count} ریکارډونه بیاکتنه غواړي",
+  "No outstanding issues in these seven data-quality checks.": "په دې اوو کیفیتي ارزونو کې پاتې ستونزه نشته.",
+  "A clean report covers these checks only. It does not verify actual attendance, delivery or production launch.": "دا راپور یوازې همدا ارزونې پوښي؛ عملي حاضري، پیغام رسونه او وروستۍ خپرونه نه تاییدوي.",
   "Guided setup": "د تنظیماتو لارښود",
   "School onboarding checklist": "د ښوونځي د چمتووالي لېست",
   "Follow these steps in order. Progress comes from current school data, not manual checkboxes.": "دا ګامونه په ترتیب بشپړ کړئ. پرمختګ د ښوونځي له واقعي معلوماتو محاسبه کېږي.",
