@@ -29,11 +29,11 @@ for(const x of [
   'attendanceAdjacentMonth','aria-pressed={selected===row.studentId}',
   'setPage(v=>v+1)','history.summary.rate',
   'cell.iso>history.today','Not recorded',
-  'history.closures','role="grid"'
+  'history?.closures','role="grid"'
 ])assert.ok(student.includes(x),"Safe student directory/calendar missing: "+x);
 for(const x of [
   'new AbortController()','controller.abort()',
-  '/register?', 'data.record', 'status:null',
+  '/register?', 'data.record', 'item.status?',
   'No register was submitted for this date',
   'This roster includes currently assigned students and historical marks',
   'statusFilter','attendance-class-student'
