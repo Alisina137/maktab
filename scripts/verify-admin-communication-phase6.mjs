@@ -17,14 +17,12 @@ const state=read("docs/PROJECT-STATE.md");
 
 for(const marker of ["MAX_REPORT_ROWS = 5000","feeInvoices.status, \"DRAFT\"",
   "feeInvoices.status, \"CANCELLED\"","schoolDate(","daysBetween(",
-  "getFeeFinancialReport(schoolId, query)","getFeePaymentReconciliation",
+  "getFeeFinancialReport(schoolId, query)",
   "setFeePaymentReconciliation(schoolId, actorUserId, paymentId, input)",
   "fee_payment.reconciliation_updated","eq(feePayments.schoolId, schoolId)",
   "eq(feePaymentReconciliations.schoolId, schoolId)",
   "Reversed payments cannot be reconciled.","previewBulkFeeInvoices(schoolId, actorUserId, input)",
   "fee_invoice.bulk_previewed","created: false","DUPLICATE_BATCH","EXISTING_INVOICE"]) {
-  // getFeePaymentReconciliation is conceptual, not a standalone endpoint.
-  if(marker==="getFeePaymentReconciliation")continue;
   assert.ok(store.includes(marker),"Missing tenant/report/reconciliation safeguard: "+marker);
 }
 for(const marker of ["feePaymentReconciliations","paymentId: uuid(\"payment_id\").primaryKey()",
