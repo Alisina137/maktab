@@ -297,9 +297,8 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       if (options.dateFrom) conditions.push(gte(familyImportBatches.createdAt, options.dateFrom));
       if (options.dateToExclusive) conditions.push(lt(familyImportBatches.createdAt, options.dateToExclusive));
       if (options.actor) {
-        // Escape LIKE wildcards to make the search literal, not an arbitrary pattern.
-        const escaped = options.actor.replace(/[\\%_]/g, "\\      if (options.entityType) conditions.push(eq(familyImportBatches.entityType, options.entityType));
-      const rows = await db.select({");
+        // Escape SQL LIKE wildcards before wrapping in the contains pattern.
+        const escaped = options.actor.replace(/[\\%_]/g, (character) => "\\" + character);
         conditions.push(ilike(users.username, `%${escaped}%`));
       }
       const rows = await db.select({
