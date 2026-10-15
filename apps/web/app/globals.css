@@ -4118,6 +4118,26 @@ html[dir="rtl"] body {
   font-family: var(--ml-font-family-rtl);
 }
 
+/* Language-specific Admin fonts. Next/font variables are self-hosted and scoped
+   to the workspace: English = Inter; Dari/Persian and Pashto = Vazirmatn.
+   Do not change student/parent pages or scale navigation/form controls. */
+.admin-workspace[lang="en"] {
+  font-family: var(--ml-admin-font-english), "Segoe UI", Arial, sans-serif;
+}
+.admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) {
+  font-family: var(--ml-admin-font-persian), Tahoma, "Noto Sans Arabic", sans-serif;
+}
+/* The existing global English heading rules assign a separate display font.
+   Ensure headings in the admin workspace use its selected font consistently. */
+html .admin-workspace[lang="en"] :is(h1, h2, h3, h4) {
+  font-family: var(--ml-admin-font-english), "Segoe UI", Arial, sans-serif;
+}
+html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
+  font-family: var(--ml-admin-font-persian), Tahoma, "Noto Sans Arabic", sans-serif;
+  letter-spacing: 0;
+}
+
+
 .admin-error,
 .admin-success {
   animation: admin-inline-feedback-in .18s ease-out both;
