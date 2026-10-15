@@ -44,8 +44,8 @@ async function request<T>(token: string, path: string, signal: AbortSignal): Pro
   return json as T;
 }
 
-export function PilotOperationalReadinessPanel({ accessToken, locale }: {
-  accessToken: string; locale: AdminLocale;
+export function PilotOperationalReadinessPanel({ accessToken, locale, compact = false }: {
+  accessToken: string; locale: AdminLocale; compact?: boolean;
 }) {
   const t = (value: string) => adminText(locale, value);
   const [summary, setSummary] = useState<Operational | null>(null);
@@ -85,6 +85,28 @@ export function PilotOperationalReadinessPanel({ accessToken, locale }: {
       .finally(() => { if (!abort.signal.aborted) setIssuesBusy(false); });
     return () => abort.abort();
   }, [accessToken, locale, selected, offset, issueRevision]);
+
+  if (compact) {
+    return (
+      <section className="pilot-operational-compact admin-panel" aria-label={t("Timetable integrity")}>
+        <div>
+          <strong>{t("Timetable integrity")}</strong>
+          {loading ? <p role="status">{t("Checking timetable integrity…")}</p> : null}
+          {error ? <p role="alert">{error}</p> : null}
+          {summary ? (
+            <p>{summary.evaluatedPeriods === 0 ?
+              t("No active-year periods exist; readiness cannot be confirmed. Configure the timetable first.") :
+              adminFormat(locale, "{count} timetable issues require review.", {
+                count: summary.metrics.reduce((sum, metric) => sum + metric.missing, 0)
+              })}</p>
+          ) : null}
+        </div>
+        <Link className="pilot-inline-link" href="/admin/pilot/readiness">
+          {t("Review timetable")}
+        </Link>
+      </section>
+    );
+  }
 
   return (
     <section className="pilot-operational admin-panel" aria-labelledby="pilot-operational-title">
