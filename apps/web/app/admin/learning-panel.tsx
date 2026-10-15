@@ -3,6 +3,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useRef, useState } from "react";
 import { AdminLearningResults } from "./admin-learning-results";
+import { AdminLearningHomework } from "./admin-learning-homework";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext } from "./admin-learning-exams";
@@ -281,14 +282,15 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
 
       {activeTab === "HOMEWORK" ? (
         <section id="learning-panel-homework" role="tabpanel" aria-labelledby="learning-tab-homework"
-          className="learning-tab-panel admin-panel learning-module-summary">
-          <h3>{t("Homework monitoring")}</h3>
-          <p>{t("Homework creation and submission review remain with assigned teachers.")}</p>
-          <div className="learning-summary-inline">
-            <div><span>{t("Published homework")}</span><strong>{dashboard ? formatCount(dashboard.metrics.publishedHomework) : "—"}</strong></div>
-            <div><span>{t("Submissions awaiting review")}</span><strong>{dashboard ? formatCount(dashboard.metrics.submissionsAwaitingReview) : "—"}</strong></div>
-          </div>
-          <p className="admin-copy">{t("Schoolwide homework records and submission filters are not yet available in this view.")}</p>
+          className="learning-tab-panel">
+          <AdminLearningHomework
+            accessToken={accessToken}
+            locale={locale}
+            yearId={selectedAcademicYearId}
+            academics={academics}
+            publishedCount={dashboard?.metrics.publishedHomework ?? null}
+            reviewCount={dashboard?.metrics.submissionsAwaitingReview ?? null}
+          />
         </section>
       ) : null}
 

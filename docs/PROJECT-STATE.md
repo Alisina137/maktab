@@ -1782,3 +1782,21 @@ Implemented on `feature/admin-learning-phase4-results` (merge to `main` after ve
 Verification: `pnpm verify:admin-learning:phase4`, `pnpm typecheck`, `pnpm test`, `pnpm build`; GitHub Actions CI should also pass before merging. Physical browser and RTL/keyboard acceptance still require a manual smoke test.
 
 Next: Phase 5 — Homework directory, assigned-teacher submission monitoring and administrator follow-up.
+
+
+## Admin Learning Phase 5 — Homework Monitoring (2026-10-15)
+
+The Learning → Homework placeholder is replaced by an operational, read-only schoolwide workspace:
+
+- Academic-year-scoped school administrator homework directory, searched by title and filtered by draft/published/closed/archived status, class, subject and actionable attention states. Stable server pagination (20/page; API max 50); teacher name, due date, publishing state, and recipient review counts are visible.
+- Per-homework active-roster counts for submitted, awaiting teacher review, reviewed, revision requested, and no submission. "Past due" means published homework past its deadline **with missing submissions**; draft homework has no expected submissions.
+- Drill-down to per-student current submission status and teacher feedback. The student list is independently paginated and filterable. Answers, uploaded files, private credentials and parent details are excluded from the admin monitoring payload.
+- Teacher ownership is unchanged: school administrators can monitor but **cannot** create homework, publish it, review submissions or change the teacher's feedback through Phase 5 endpoints.
+- Strong tenant isolation via school ID on homework, teacher, subject, class and submission joins, with role checks at API entry; authorized student rosters require matching school, class and academic year and active enrollment. Individual homework from another school returns 404.
+- **Important definition:** coverage percentages/counts represent students **currently actively enrolled** in the homework's academic year and class. Historical class membership snapshots are not available in this schema; the UI explicitly warns against interpreting this as historic enrollment reconstruction.
+- Year/token/filter switches invalidate client results, abort stale fetches and provide retry and accessible detail controls. Dari, Pashto, English and responsive desktop/mobile layouts supported.
+- New endpoints: `GET /v1/admin/learning/homework` and `GET /v1/admin/learning/homework/:homeworkId/roster`, both read-only and limited.
+- Regression tests cover role/tenant rejection, drafts, status and attention filters, submission/revision/review transitions, archive visibility and safe roster access.
+- No new migration; Phase 5 verification: `pnpm verify:admin-learning:phase5`, `pnpm typecheck`, `pnpm test`, `pnpm build`; CI on Linux and Windows.
+
+Next planned admin Learning enhancement: Phase 6 — Teaching Progress dashboard and curriculum follow-ups.
