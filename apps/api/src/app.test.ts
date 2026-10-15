@@ -1204,6 +1204,48 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   // Phase 2: class details derive from exact active teacher assignment.
   const ownAssignmentId = assignmentResponse.json<{ assignment: { id: string } }>().assignment.id;
 
+  // Admin Learning Phase 6: read-only school/year-scoped teaching progress.
+  const progressUrl = "/v1/admin/teaching/progress?academicYearId=" + yearId;
+  const chaptersUrl = "/v1/admin/teaching/progress/" + ownAssignmentId +
+    "/units?academicYearId=" + yearId;
+  const lessonsUrl = "/v1/admin/teaching/progress/" + ownAssignmentId +
+    "/lessons?academicYearId=" + yearId;
+  const teacherAccess = { authorization: `Bearer ${otherToken}` };
+  for (const url of [progressUrl, chaptersUrl, lessonsUrl]) {
+    assert.equal((await app.inject({ method:"GET",url })).statusCode,401);
+    assert.equal((await app.inject({ method:"GET",url,headers:teacherHeaders })).statusCode,403);
+    assert.equal((await app.inject({ method:"GET",url,headers:teacherAccess })).statusCode,403);
+  }
+  const progressOtherAdmin = { authorization: `Bearer ${await bootstrapAdmin(app,
+    await provisionSchool(app, "LEARN-TEACH-PHASE6-OTHER"))}` };
+  assert.equal((await app.inject({method:"GET",url:progressUrl,headers:progressOtherAdmin})).statusCode,404);
+  assert.equal((await app.inject({method:"GET",url:chaptersUrl,headers:progressOtherAdmin})).statusCode,404);
+  assert.equal((await app.inject({method:"GET",url:lessonsUrl,headers:progressOtherAdmin})).statusCode,404);
+  for (const invalid of ["&limit=0","&limit=51","&offset=-2","&focus=INVALID",
+    "&classId=invalid","&subjectId=invalid","&teacherUserId=invalid"]) {
+    assert.equal((await app.inject({method:"GET",url:progressUrl+invalid,
+      headers:auth})).statusCode,400);
+  }
+  for (const invalid of ["&status=INVALID","&limit=0","&offset=-5"]) {
+    assert.equal((await app.inject({method:"GET",url:chaptersUrl+invalid,headers:auth})).statusCode,400);
+    assert.equal((await app.inject({method:"GET",url:lessonsUrl+invalid,headers:auth})).statusCode,400);
+  }
+  const emptyTeaching = await app.inject({method:"GET",url:progressUrl,headers:auth});
+  assert.equal(emptyTeaching.statusCode,200,emptyTeaching.body);
+  const emptyProgress = emptyTeaching.json<{total:number;summary:{
+    assignments:number;noCurriculum:number;completedUnits:number
+  };rows:Array<{assignmentId:string;unitsTotal:number;attention:string[]}>}>();
+  assert.equal(emptyProgress.total,1);
+  assert.equal(emptyProgress.summary.assignments,1);
+  assert.equal(emptyProgress.summary.noCurriculum,1);
+  assert.equal(emptyProgress.summary.completedUnits,0);
+  assert.equal(emptyProgress.rows[0]?.assignmentId,ownAssignmentId);
+  assert.equal(emptyProgress.rows[0]?.unitsTotal,0);
+  assert.ok(emptyProgress.rows[0]?.attention.includes("NO_CURRICULUM"));
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&focus=NO_CURRICULUM",headers:auth})).json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:chaptersUrl,headers:auth})).json<{total:number}>().total,0);
+
   // Phase 5: only school administration defines official curriculum units.
   const curriculumUnitCreate = await app.inject({
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
@@ -1211,6 +1253,27 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   });
   assert.equal(curriculumUnitCreate.statusCode, 201, curriculumUnitCreate.body);
   const unitId = curriculumUnitCreate.json<{ unit: { id: string } }>().unit.id;
+  const unstartedChapterList = await app.inject({method:"GET",url:chaptersUrl+
+    "&status=NOT_STARTED&limit=1&offset=0",headers:auth});
+  assert.equal(unstartedChapterList.statusCode,200,unstartedChapterList.body);
+  assert.equal(unstartedChapterList.json<{total:number;rows:Array<{id:string;status:string}>}>().total,1);
+  assert.equal(unstartedChapterList.json<{rows:Array<{status:string}>}>().rows[0]?.status,"NOT_STARTED");
+  const focusNotStarted = await app.inject({method:"GET",url:progressUrl+
+    "&focus=NOT_STARTED",headers:auth});
+  assert.equal(focusNotStarted.statusCode,200,focusNotStarted.body);
+  assert.equal(focusNotStarted.json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&focus=INCOMPLETE&classId="+classId+"&subjectId="+subjectId,
+    headers:auth})).json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&focus=NO_LESSONS",headers:auth})).json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&search=Academic%20Teacher",headers:auth})).json<{total:number}>().total,1);
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&search=Nobody",headers:auth})).json<{total:number}>().total,0);
+  assert.equal((await app.inject({method:"GET",url:progressUrl+
+    "&limit=1&offset=1",headers:auth})).json<{rows:unknown[];total:number}>().rows.length,0);
+
   const duplicateUnit = await app.inject({
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
     payload: { academicYearId: yearId, classId, subjectId, title: "Another chapter", sortOrder: 1 }
@@ -1319,12 +1382,59 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.equal(reportBody.summary.unitsTotal, 1);
   assert.equal(reportBody.summary.assessmentCount, 0);
   assert.deepEqual(reportBody.lessons.map((x) => x.topic), ["Fraction addition"]);
+  const completedTeaching = await app.inject({method:"GET",
+    url:progressUrl+"&limit=1&offset=0",headers:auth});
+  assert.equal(completedTeaching.statusCode,200,completedTeaching.body);
+  const completedTeachingRow = completedTeaching.json<{summary:{
+    totalUnits:number;completedUnits:number;inProgressUnits:number;
+  };rows:Array<{unitsTotal:number;unitsCompleted:number;unitsNotStarted:number;
+    lessonCompleted:number;lessonPlanned:number;attention:string[]}>}> ();
+  assert.equal(completedTeachingRow.summary.totalUnits,1);
+  assert.equal(completedTeachingRow.summary.completedUnits,1);
+  assert.equal(completedTeachingRow.rows[0]?.unitsCompleted,1);
+  assert.equal(completedTeachingRow.rows[0]?.unitsNotStarted,0);
+  assert.equal(completedTeachingRow.rows[0]?.lessonCompleted,1);
+  assert.equal(completedTeachingRow.rows[0]?.attention.includes("INCOMPLETE"),false);
+  const completedChapter = await app.inject({method:"GET",url:chaptersUrl+"&status=COMPLETED",headers:auth});
+  assert.equal(completedChapter.statusCode,200,completedChapter.body);
+  assert.equal(completedChapter.json<{total:number;rows:Array<{status:string}>}>().total,1);
+  assert.equal(completedChapter.json<{rows:Array<{status:string}>}>().rows[0]?.status,"COMPLETED");
+  assert.equal((await app.inject({method:"GET",url:chaptersUrl+
+    "&status=NOT_STARTED",headers:auth})).json<{total:number}>().total,0);
+  const completedLessons = await app.inject({method:"GET",url:lessonsUrl+"&status=COMPLETED",headers:auth});
+  assert.equal(completedLessons.statusCode,200,completedLessons.body);
+  assert.equal(completedLessons.json<{rows:Array<{topic:string;status:string;chapterTitle:string}>}>()
+    .rows[0]?.chapterTitle,"Adding fractions");
+  assert.equal(completedLessons.json<{rows:Array<{status:string}>}>().rows[0]?.status,"COMPLETED");
+
   const invalidReport = await app.inject({
     method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-31&to=2026-10-01`,
     headers: teacherHeaders
   });
   assert.equal(invalidReport.statusCode, 400);
 
+
+  const postponedLesson = await app.inject({method:"POST",
+    url:`/v1/teacher/teaching/${ownAssignmentId}/lessons`,headers:teacherHeaders,
+    payload:{lessonDate:"2026-11-03",topic:"Postponed class",
+      objective:"Practice fractions",materials:"",notes:""}
+  });
+  assert.equal(postponedLesson.statusCode,201,postponedLesson.body);
+  const postponedLessonId = postponedLesson.json<{lesson:{id:string}}>().lesson.id;
+  assert.equal((await app.inject({method:"PATCH",url:
+    `/v1/teacher/teaching/${ownAssignmentId}/lessons/${postponedLessonId}`,headers:teacherHeaders,
+    payload:{status:"POSTPONED"}})).statusCode,200);
+  const postponedTeaching = await app.inject({method:"GET",url:progressUrl+
+    "&focus=POSTPONED",headers:auth});
+  assert.equal(postponedTeaching.statusCode,200,postponedTeaching.body);
+  assert.equal(postponedTeaching.json<{total:number;summary:{postponedLessons:number}}>().total,1);
+  assert.equal(postponedTeaching.json<{summary:{postponedLessons:number}}>()
+    .summary.postponedLessons,1);
+  const postponedPlans = await app.inject({method:"GET",url:lessonsUrl+
+    "&status=POSTPONED",headers:auth});
+  assert.equal(postponedPlans.statusCode,200,postponedPlans.body);
+  assert.equal(postponedPlans.json<{total:number;rows:Array<{topic:string}>}>().total,1);
+  assert.equal(postponedPlans.json<{rows:Array<{topic:string}>}>().rows[0]?.topic,"Postponed class");
 
   const createdParent = await app.inject({
     method: "POST", url: "/v1/admin/families/parents", headers: auth,
