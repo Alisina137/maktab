@@ -8037,3 +8037,87 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .learning-homework-card { padding: 12px; }
   .learning-homework-card > button { width: 100%; }
 }
+
+
+/* Learning Phase 6 — schoolwide teaching progress and curriculum follow-up */
+.learning-teaching-workspace { display: grid; gap: 16px; min-width: 0; }
+.learning-teaching-overview { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; min-width: 0; }
+.learning-teaching-overview > div { display: grid; gap: 7px; padding: 14px;
+  background: var(--ml-color-surface,#fff); border: 1px solid var(--ml-color-border,#dde3ed);
+  border-radius: 14px; min-width: 0; }
+.learning-teaching-overview span, .learning-teaching-counts span { color: var(--ml-color-text-muted,#667085); font-size: 12px; }
+.learning-teaching-overview strong { font-size: clamp(17px,2vw,22px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.learning-teaching-filters { padding: 15px; border: 1px solid var(--ml-color-border,#dde3ed);
+  border-radius: 16px; background: var(--ml-color-surface,#fff);
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: end; gap: 12px; }
+.learning-teaching-filters label, .learning-teaching-detail-controls label { display: grid; gap: 6px;
+  min-width: 0; color: var(--ml-color-text-muted,#667085); font-size: 12px; font-weight: 700; }
+.learning-teaching-filters input, .learning-teaching-filters select, .learning-teaching-detail-controls select {
+  width: 100%; min-width: 0; border: 1px solid var(--ml-color-border,#dde3ed); border-radius: 10px;
+  background: var(--ml-color-surface,#fff); color: var(--ml-color-text,#162135);
+  font: inherit; padding: 9px 11px; min-height: 44px; }
+.learning-teaching-filters button { min-height: 44px; }
+.learning-teaching-rows { display: grid; gap: 13px; min-width: 0; }
+.learning-teaching-card { display: grid; gap: 14px; padding: 16px; min-width: 0;
+  border: 1px solid var(--ml-color-border,#dde3ed); background: var(--ml-color-surface,#fff);
+  border-radius: 16px; }
+.learning-teaching-card-head { display: flex; justify-content: space-between;
+  align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.learning-teaching-card-title { display: grid; gap: 5px; min-width: 0; flex: 2 1 220px; }
+.learning-teaching-card-title strong { font-size: 16px; overflow-wrap: anywhere; }
+.learning-teaching-card-title small { color: var(--ml-color-text-muted,#667085); font-size: 12px; }
+.learning-teaching-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px;
+  flex: 1 1 170px; }
+.learning-teaching-warning, .learning-teaching-ok { padding: 6px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 750; line-height: 1.4; }
+.learning-teaching-warning { color: #915015; background: #fff3e5; border: 1px solid #efc897; }
+.learning-teaching-ok { color: #14644a; background: #e5f6ee; border: 1px solid #acd7c5; }
+.learning-teaching-progress { display: grid; gap: 7px; }
+.learning-teaching-progress > div { display: flex; justify-content: space-between; gap: 12px; }
+.learning-teaching-progress span, .learning-teaching-progress small {
+  font-size: 12px; color: var(--ml-color-text-muted,#667085); }
+.learning-teaching-progress strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.learning-teaching-progress progress { width: 100%; height: 10px; border: 0; overflow: hidden; border-radius: 10px; }
+.learning-teaching-progress progress::-webkit-progress-bar { background: #e5eaf2; border-radius: 10px; }
+.learning-teaching-progress progress::-webkit-progress-value { background: #2c8e7c; border-radius: 10px; }
+.learning-teaching-progress progress::-moz-progress-bar { background: #2c8e7c; border-radius: 10px; }
+.learning-teaching-counts { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 9px; }
+.learning-teaching-counts > div { display: grid; gap: 5px; padding: 10px;
+  border-radius: 11px; background: var(--ml-color-background,#f6f8fb);
+  border: 1px solid var(--ml-color-border,#dde3ed); min-width: 0; }
+.learning-teaching-counts strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.learning-teaching-card > button { justify-self: start; min-height: 44px; }
+.learning-teaching-detail { padding-top: 14px; border-top: 1px solid var(--ml-color-border,#dde3ed); min-width: 0; }
+.learning-teaching-detail-body { display: grid; gap: 12px; min-width: 0; }
+.learning-teaching-detail-switch { display: flex; flex-wrap: wrap; gap: 7px; }
+.learning-teaching-detail-switch button { border: 1px solid var(--ml-color-border,#dde3ed);
+  background: var(--ml-color-background,#f6f8fb); color: var(--ml-color-text,#162135);
+  padding: 9px 13px; border-radius: 10px; font: inherit; min-height: 44px; cursor: pointer; }
+.learning-teaching-detail-switch button[aria-selected="true"] { border-color: #267b74;
+  color: #17675d; background: #e5f5ef; font-weight: 750; }
+.learning-teaching-detail-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.learning-teaching-detail-controls label { min-width: min(100%,230px); }
+.learning-teaching-detail-controls button { min-height: 44px; }
+.learning-teaching-detail-list { display: grid; gap: 8px; }
+.learning-teaching-detail-list > div { display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--ml-color-border,#dde3ed);
+  border-radius: 11px; background: var(--ml-color-background,#f6f8fb); }
+.learning-teaching-detail-list > div > div { display: grid; gap: 4px; min-width: 0; }
+.learning-teaching-detail-list strong { font-size: 13px; overflow-wrap: anywhere; }
+.learning-teaching-detail-list small { font-size: 12px; color: var(--ml-color-text-muted,#667085); }
+.learning-teaching-detail-list span { font-size: 12px; font-weight: 750; }
+.learning-teaching-curriculum-link { justify-self: start; }
+@media (max-width: 1000px) {
+  .learning-teaching-overview { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .learning-teaching-counts { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 690px) {
+  .learning-teaching-filters, .learning-teaching-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .learning-teaching-counts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .learning-teaching-badges { justify-content: flex-start; }
+}
+@media (max-width: 460px) {
+  .learning-teaching-filters, .learning-teaching-overview { grid-template-columns: minmax(0,1fr); }
+  .learning-teaching-card { padding: 12px; }
+  .learning-teaching-card > button { width: 100%; }
+}
