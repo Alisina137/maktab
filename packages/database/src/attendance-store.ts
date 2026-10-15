@@ -68,7 +68,7 @@ export interface TeacherSupervisedClass {
   classId: string;
   className: string;
   classCode: string;
-  attendanceStatus: "PENDING" | "SUBMITTED";
+  attendanceStatus: "PENDING" | "SUBMITTED" | "CLOSED";
   attendanceId: string | null;
 }
 
@@ -494,7 +494,10 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     await getNegaran(schoolId, teacherUserId, classId, date);
     const today = await schoolToday(schoolId);
     if (date > today) throw new AttendanceValidationError("Future attendance cannot be recorded.");
-    return buildSheet(schoolId, classId, date, date === today);
+    const [closure] = await db.select({id:attendanceClosures.id})
+      .from(attendanceClosures).where(and(eq(attendanceClosures.schoolId,schoolId),
+        eq(attendanceClosures.date,date))).limit(1);
+    return buildSheet(schoolId, classId, date, date === today && !closure);
   }
 
   return {
@@ -573,12 +576,15 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
           )
       ]);
 
+      const [todayClosure] = await db.select({id:attendanceClosures.id})
+        .from(attendanceClosures).where(and(eq(attendanceClosures.schoolId,schoolId),
+          eq(attendanceClosures.date,date))).limit(1);
       const supervisedClasses: TeacherSupervisedClass[] = [];
       for (const row of negaranRows) {
         const attendance = await getAttendance(schoolId, row.classId, date);
         supervisedClasses.push({
           ...row,
-          attendanceStatus: attendance ? "SUBMITTED" : "PENDING",
+          attendanceStatus: attendance ? "SUBMITTED" : todayClosure ? "CLOSED" : "PENDING",
           attendanceId: attendance?.id ?? null
         });
       }
