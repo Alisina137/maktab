@@ -29,4 +29,29 @@ assert.ok(communication.includes('className="admin-section-header academic-headi
   "Communication screen should use the smaller section heading.");
 assert.ok(!css.includes(".admin-workspace { font-size:"),
   "Do not scale the entire admin workspace or affect controls/tabs.");
-console.log("Admin page titles at 70% and subtitles at 80% with mobile overrides and unchanged controls verified.");
+
+const rootLayout = readFileSync(new URL("../apps/web/app/layout.tsx", import.meta.url), "utf8");
+for(const fragment of [
+  'import { Inter, Vazirmatn } from "next/font/google";',
+  'const adminEnglishFont = Inter({',
+  'const adminPersianFont = Vazirmatn({',
+  'variable: "--ml-admin-font-english"',
+  'variable: "--ml-admin-font-persian"',
+  'preload: false',
+  'className={`${adminEnglishFont.variable} ${adminPersianFont.variable}`}'
+]) assert.ok(rootLayout.includes(fragment), "Missing self-hosted dual admin fonts: " + fragment);
+for (const fragment of [
+  'className="admin-shell admin-shell-premium admin-workspace" lang={locale} dir={adminDirection(locale)}'
+]) assert.ok(workspace.includes(fragment), "The admin language must track its locale.");
+for (const fragment of [
+  '.admin-workspace[lang="en"] {',
+  '.admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) {',
+  'html .admin-workspace[lang="en"] :is(h1, h2, h3, h4) {',
+  'html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {',
+  'font-family: var(--ml-admin-font-english),',
+  'font-family: var(--ml-admin-font-persian),'
+]) assert.ok(css.includes(fragment), "Missing scoped language font style: " + fragment);
+assert.ok(css.includes('body {\\n') || css.includes('body {'),
+  "Do not remove global non-admin font fallback.");
+
+console.log("Admin page titles at 70% and subtitles at 80% with mobile overrides and unchanged controls and language-specific fonts verified.");
