@@ -1681,3 +1681,13 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Only `DRAFT` invoices can change student, amount, description or due date: audited `PATCH /v1/admin/fees/invoices/:invoiceId` with row locks, expected updatedAt token, school identity checks and active student rule. Issues and cancellations now have confirmations.
 - Existing financial balances, tenant boundaries and parent/student invoice visibility are preserved. The full overview endpoint still aggregates authorized invoices on read; targeted server-side summary work is deferred.
 - Unit/integration tests and guard script added to `pnpm verify:admin-communication:phase3` and Linux/Windows CI. Exact deployed PostgreSQL migration, RTL small-screen browser checks, external payments and production Step 20 operator signoff remain **NOT RUN / NO-GO**. Phase 4 next: payment method selection, per-student balances and printable receipts.
+
+
+## Admin Communication & Fees — Phase 4 (2026-10-15)
+
+- Fees workspace now has **Invoices / Payment history / Student balances** subtabs. The invoice creation/list, payment and immutable reversal endpoints remain available.
+- Payment form now offers fixed Cash / Bank transfer / Mobile money / Other choices, positive whole-AFN validation against displayed outstanding, and an explicit student/invoice/amount/payment-method confirmation before POST. Server-side row locking, amount constraints, audit history and lost-response idempotency remain authoritative.
+- New admin-only `GET /v1/admin/fees/payments` lists 20 immutable ledger transactions/page with school-local date, kind, method, student and recorder-username filters. Receipt lookup is admin-only at `GET /v1/admin/fees/payments/:paymentId/receipt`; original receipts are marked void if reversed and show **current outstanding**; PDF output is through browser Print / Save as PDF, not server signing.
+- New school-scoped `GET /v1/admin/fees/students/:studentId/balance` computes billed, paid, outstanding, overdue and invoices directly from issued invoice/append-only payment data, excluding draft and cancelled invoices. A student with no issued invoices has a zero balance.
+- Tests exercise payments, reversals, payment filtering, receipt status, cross-school isolation, parent-role rejection and student ledger invariants, with `pnpm verify:admin-communication:phase4` source/localization guards in CI. **No Phase 4 schema migration**; Phase 3 migration `0022_fee_invoice_numbers.sql` is still a required prerequisite.
+- Manual receipt-print preview, all-language RTL, school timezone, concurrency/live-postgres and Step 20 production acceptance **NOT RUN / NO-GO**. Phase 5 next: notification delivery and reminders.
