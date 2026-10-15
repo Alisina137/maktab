@@ -22,7 +22,7 @@ for (const needle of ['"/v1/admin/notifications/delivery"', '"/v1/admin/notifica
   "requireSchoolAdmin(request, reply, accounts)", 'action: "notification.retry_requested"'])
   assert.ok(routes.includes(needle), needle);
 assert.ok(sql.includes('scheduler_last_success_at') && schema.includes("schedulerLastSuccessAt"));
-assert.equal(journal.entries.at(-1).tag,"0023_notification_scheduler_health");
+assert.ok(journal.entries.some(entry => entry.tag === "0023_notification_scheduler_health"), "Phase 5 scheduler migration must remain present even after later phases");
 for (const needle of ["AdminNotificationMonitor", "reminderDays", "Number.isSafeInteger(candidate)",
   "reminderDays.length >= 6", "Save reminder days", "Remove {days}-day reminder"])
   assert.ok(ui.includes(needle), needle);
