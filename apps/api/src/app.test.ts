@@ -7391,3 +7391,127 @@ test("Admin fee invoice Phase 3 school numbers, list filters, draft edits and im
     [schoolId,draft.id]);
   assert.equal(audits.rows.filter(x=>x.action==="fee_invoice.draft_updated").length,1);
 });
+
+
+test("Admin Fees Phase 4 records and reverses immutable payments with scoped receipts and student balances", async t => {
+  const {app,client} = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app,"FEE-PHASE4");
+  const otherSchool = await provisionSchool(app,"FEE-PHASE4-OTHER");
+  const token = await bootstrapAdmin(app,schoolId);
+  const otherToken = await bootstrapAdmin(app,otherSchool);
+  const admin = {authorization:`Bearer ${token}`};
+  const other = {authorization:`Bearer ${otherToken}`};
+  const year = await app.inject({method:"POST",url:"/v1/admin/academics/years",headers:admin,
+    payload:{name:"Phase4 year",startDate:"2026-03-21",endDate:"2027-03-20"}});
+  assert.equal(year.statusCode,201,year.body);
+  const yearId = year.json<{academicYear:{id:string}}>().academicYear.id;
+  const grade = await app.inject({method:"POST",url:"/v1/admin/academics/grades",headers:admin,
+    payload:{name:"Grade 8",code:"FEE4G8",sortOrder:8}});
+  assert.equal(grade.statusCode,201,grade.body);
+  const classroom = await app.inject({method:"POST",url:"/v1/admin/academics/classes",headers:admin,
+    payload:{name:"Fee Class",code:"FEE4CL",
+      gradeLevelId:grade.json<{grade:{id:string}}>().grade.id,academicYearId:yearId}});
+  assert.equal(classroom.statusCode,201,classroom.body);
+  const parent = await app.inject({method:"POST",url:"/v1/admin/families/parents",headers:admin,
+    payload:{username:"fee4parent",fullName:"Fee Fourth Parent"}});
+  assert.equal(parent.statusCode,201,parent.body);
+  const student = await app.inject({method:"POST",url:"/v1/admin/families/students",headers:admin,
+    payload:{studentCode:"FEE4-STUD-1",fullName:"Fee Fourth Student",
+      parentUserId:parent.json<{user:{id:string}}>().user.id,academicYearId:yearId,
+      classId:classroom.json<{class:{id:string}}>().class.id}});
+  assert.equal(student.statusCode,201,student.body);
+  const studentId = student.json<{student:{id:string}}>().student.id;
+  const makeInvoice = async (amount: number, issue = true) => {
+    const newInvoice = await app.inject({method:"POST",url:"/v1/admin/fees/invoices",headers:admin,
+      payload:{studentId,amount,dueDate:"2099-12-31",description:"Phase4 tuition"}});
+    assert.equal(newInvoice.statusCode,201,newInvoice.body);
+    const invoice = newInvoice.json<{invoice:{id:string;invoiceNumber:number}}>().invoice;
+    if(issue){
+      const issued=await app.inject({method:"POST",
+        url:`/v1/admin/fees/invoices/${invoice.id}/issue`,headers:admin});
+      assert.equal(issued.statusCode,200,issued.body);
+    }
+    return invoice;
+  };
+  const invoice=await makeInvoice(1200);
+  await makeInvoice(900,false);
+  const payment=await app.inject({method:"POST",url:`/v1/admin/fees/invoices/${invoice.id}/payments`,
+    headers:admin,payload:{amount:500,method:"CASH",transactionReference:"test-cash",idempotencyKey:"d021d5a7-71f5-4941-989e-23b4f2d0b71e"}});
+  assert.equal(payment.statusCode,201,payment.body);
+  const otherPayment=await app.inject({method:"POST",url:`/v1/admin/fees/invoices/${invoice.id}/payments`,
+    headers:admin,payload:{amount:200,method:"BANK_TRANSFER",transactionReference:"bank-01"}});
+  assert.equal(otherPayment.statusCode,201,otherPayment.body);
+
+  const rows=await app.inject({method:"GET",url:`/v1/admin/fees/payments?studentId=${studentId}&method=CASH&page=1`,
+    headers:admin});
+  assert.equal(rows.statusCode,200,rows.body);
+  const listing=rows.json<{total:number;payments:Array<{payment:{id:string;amount:number;kind:string};invoiceNumber:number;studentCode:string;recordedByUsername:string}>}>();
+  assert.equal(listing.total,1);
+  assert.equal(listing.payments[0]?.payment.amount,500);
+  assert.equal(listing.payments[0]?.invoiceNumber,invoice.invoiceNumber);
+  assert.equal(listing.payments[0]?.studentCode,"FEE4-STUD-1");
+  const paymentId=listing.payments[0]!.payment.id;
+  assert.equal((await app.inject({method:"GET",url:"/v1/admin/fees/payments?method=NOT_A_METHOD",
+    headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:"/v1/admin/fees/payments?from=2026-10-10&to=2026-10-01",
+    headers:admin})).statusCode,400);
+
+  const receiptUrl=`/v1/admin/fees/payments/${paymentId}/receipt`;
+  const originalReceipt=await app.inject({method:"GET",url:receiptUrl,headers:admin});
+  assert.equal(originalReceipt.statusCode,200,originalReceipt.body);
+  const receipt=originalReceipt.json<{receipt:{payment:{id:string;amount:number;method:string};
+    schoolName:string;invoiceNumber:number;currentOutstanding:number;reversed:boolean}}>().receipt;
+  assert.equal(receipt.payment.id,paymentId);
+  assert.equal(receipt.payment.method,"CASH");
+  assert.equal(receipt.currentOutstanding,500);
+  assert.equal(receipt.reversed,false);
+  assert.equal(receipt.schoolName,"School FEE-PHASE4");
+
+  const balanceUrl=`/v1/admin/fees/students/${studentId}/balance`;
+  const before=await app.inject({method:"GET",url:balanceUrl,headers:admin});
+  assert.equal(before.statusCode,200,before.body);
+  const financial=before.json<{billed:number;paid:number;outstanding:number;overdue:number;invoices:unknown[]}>();
+  assert.equal(financial.billed,1200,"Draft invoices must not count");
+  assert.equal(financial.paid,700);
+  assert.equal(financial.outstanding,500);
+  assert.equal(financial.invoices.length,1);
+
+  const reverse=await app.inject({method:"POST",url:`/v1/admin/fees/payments/${paymentId}/reverse`,
+    headers:admin,payload:{reason:"Cash counting correction"}});
+  assert.equal(reverse.statusCode,201,reverse.body);
+  const after=await app.inject({method:"GET",url:balanceUrl,headers:admin});
+  assert.equal(after.statusCode,200,after.body);
+  const newBalance=after.json<{billed:number;paid:number;outstanding:number}>();
+  assert.equal(newBalance.billed,1200);
+  assert.equal(newBalance.paid,200);
+  assert.equal(newBalance.outstanding,1000);
+  const voidReceipt=await app.inject({method:"GET",url:receiptUrl,headers:admin});
+  assert.equal(voidReceipt.statusCode,200,voidReceipt.body);
+  assert.equal(voidReceipt.json<{receipt:{reversed:boolean;currentOutstanding:number}}>().receipt.reversed,true);
+  assert.equal(voidReceipt.json<{receipt:{currentOutstanding:number}}>().receipt.currentOutstanding,1000);
+  const reversalRows=await app.inject({method:"GET",
+    url:`/v1/admin/fees/payments?studentId=${studentId}&kind=REVERSAL`,headers:admin});
+  assert.equal(reversalRows.statusCode,200,reversalRows.body);
+  assert.equal(reversalRows.json<{total:number}>().total,1);
+
+  for(const url of [
+    "/v1/admin/fees/payments",
+    balanceUrl,
+    receiptUrl
+  ]){
+    const otherResponse=await app.inject({method:"GET",url,headers:other});
+    assert.equal(otherResponse.statusCode,url==="/v1/admin/fees/payments" ? 200 : 404);
+    if(url==="/v1/admin/fees/payments") assert.equal(otherResponse.json<{total:number}>().total,0);
+  }
+  const familyToken=await activateRoleLogin(app,schoolId,"PARENT","fee4parent",
+    parent.json<{temporaryPassword:string}>().temporaryPassword,"SecureParent4!");
+  for(const url of ["/v1/admin/fees/payments",balanceUrl,receiptUrl]){
+    const result=await app.inject({method:"GET",url,headers:{authorization:`Bearer ${familyToken}`}});
+    assert.equal(result.statusCode,403,url);
+  }
+  const ledger=await client.query<{kind:string}>(
+    "SELECT kind FROM fee_payments WHERE school_id=$1 AND invoice_id=$2 ORDER BY recorded_at",
+    [schoolId,invoice.id]);
+  assert.deepEqual(ledger.rows.map(row=>row.kind).sort(),["PAYMENT","PAYMENT","REVERSAL"].sort());
+});
