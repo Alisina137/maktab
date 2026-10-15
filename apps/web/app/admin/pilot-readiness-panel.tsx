@@ -482,10 +482,11 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         ))}
       </nav>
 
-      {(loadError || error) ? <div className="admin-error pilot-retry-alert" role="alert">
-        <span>{loadError || error}</span>
+      {loadError ? <div className="admin-error pilot-retry-alert" role="alert">
+        <span>{loadError}</span>
         <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Retry")}</button>
       </div> : null}
+      {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {(coreMissing || auditMissing) && !loadError && !error ? (
         <div className="admin-panel admin-loading-card" role="status">
           <AdminLoader label={t("Loading pilot operations data…")} />
