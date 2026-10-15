@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useTransientAdminFeedback } from "./admin-feedback";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
@@ -209,8 +210,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const metrics = report ? ([
     ["Present", report.summary.present], ["Absent", report.summary.absent],
     ["Late", report.summary.late], ["Excused", report.summary.excused],
-    ["Submitted classes", report.summary.submittedClasses],
-    ["Unsubmitted classes (calendar not verified)", report.summary.pendingClasses]
+    ["Submitted class-day registers", report.summary.submittedClasses]
   ] as const) : [];
 
   return (
@@ -317,14 +317,28 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
               <article className="admin-panel attendance-dashboard-card">
                 <span>{t("Submission overview")}</span>
                 <strong>{report.summary.submittedClasses}</strong>
-                <p>{t("Submitted class-day registers. The unsubmitted count is provisional until school calendar rules are added.")}</p>
+                <p>{t("Submitted registers in the selected period. Daily eligibility is shown below.")}</p>
                 <button type="button" className="admin-secondary"
                   onClick={() => setActiveTab("REGISTERS")}>{t("Open daily registers")}</button>
               </article>
             </div>
+            <AdminAttendanceMonitoring
+              accessToken={accessToken} academicYearId={selectedAcademicYearId}
+              dateFrom={appliedFilters?.from??""} dateTo={appliedFilters?.to??""}
+              classId={appliedFilters?.classId??""} locale={locale}
+              mode="OVERVIEW" academicYearStatus={selectedAcademicYear?.status??""}
+              schoolToday={schoolToday}
+            />
           </> : null}
 
-          {activeTab === "REGISTERS" ? (
+          {activeTab === "REGISTERS" ? (<div className="attendance-register-layout">
+            <AdminAttendanceMonitoring
+              accessToken={accessToken} academicYearId={selectedAcademicYearId}
+              dateFrom={appliedFilters?.from??""} dateTo={appliedFilters?.to??""}
+              classId={appliedFilters?.classId??""} locale={locale}
+              mode="REGISTERS" academicYearStatus={selectedAcademicYear?.status??""}
+              schoolToday={schoolToday}
+            />
             <article className="admin-panel academic-list-panel">
               <div className="admin-section-header">
                 <div><h3>{t("Daily registers")}</h3>
@@ -344,7 +358,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                   {t("No attendance records match these filters.")}</p> : null}
               </div>
             </article>
-          ) : null}
+          </div>) : null}
 
           {activeTab === "STUDENTS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Students with recorded attendance")}</h3>
@@ -385,7 +399,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             <div className="academic-summary-grid attendance-summary-grid">
               {metrics.map(([label,value]) => <Summary key={label} label={t(label)} value={value} />)}
             </div>
-            <p className="admin-copy">{t("Unrecorded days are not absences. School-calendar-aware submission expectations are not available yet.")}</p>
+            <p className="admin-copy">{t("Unrecorded days are not absences. Daily submission monitoring follows the timetable and declared school closures.")}</p>
           </article> : null}
 
           {activeTab === "AUDIT" ? <article className="admin-panel attendance-preview-panel">
