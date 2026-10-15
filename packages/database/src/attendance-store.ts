@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createAttendanceMonitoringStore, type AttendanceMonitoringStore } from "./attendance-monitoring-store.js";
 import {
   and,
   asc,
@@ -17,6 +18,7 @@ import type {
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
+  attendanceClosures,
   auditLogs,
   classSections,
   dailyAttendances,
@@ -66,7 +68,7 @@ export interface TeacherSupervisedClass {
   classId: string;
   className: string;
   classCode: string;
-  attendanceStatus: "PENDING" | "SUBMITTED";
+  attendanceStatus: "PENDING" | "SUBMITTED" | "CLOSED";
   attendanceId: string | null;
 }
 
@@ -157,7 +159,7 @@ export interface AttendanceCorrection {
   previousStatus: AttendanceStatus;
 }
 
-export interface AttendanceStore {
+export interface AttendanceStore extends AttendanceMonitoringStore {
   getSchoolToday(schoolId: string): Promise<string>;
   getTeacherToday(schoolId: string, teacherUserId: string): Promise<TeacherToday>;
   getTeacherAttendanceSheet(
@@ -492,10 +494,14 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     await getNegaran(schoolId, teacherUserId, classId, date);
     const today = await schoolToday(schoolId);
     if (date > today) throw new AttendanceValidationError("Future attendance cannot be recorded.");
-    return buildSheet(schoolId, classId, date, date === today);
+    const [closure] = await db.select({id:attendanceClosures.id})
+      .from(attendanceClosures).where(and(eq(attendanceClosures.schoolId,schoolId),
+        eq(attendanceClosures.date,date))).limit(1);
+    return buildSheet(schoolId, classId, date, date === today && !closure);
   }
 
   return {
+    ...createAttendanceMonitoringStore(db,schoolToday),
     getSchoolToday: schoolToday,
 
     async getTeacherToday(schoolId, teacherUserId) {
@@ -570,12 +576,15 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
           )
       ]);
 
+      const [todayClosure] = await db.select({id:attendanceClosures.id})
+        .from(attendanceClosures).where(and(eq(attendanceClosures.schoolId,schoolId),
+          eq(attendanceClosures.date,date))).limit(1);
       const supervisedClasses: TeacherSupervisedClass[] = [];
       for (const row of negaranRows) {
         const attendance = await getAttendance(schoolId, row.classId, date);
         supervisedClasses.push({
           ...row,
-          attendanceStatus: attendance ? "SUBMITTED" : "PENDING",
+          attendanceStatus: attendance ? "SUBMITTED" : todayClosure ? "CLOSED" : "PENDING",
           attendanceId: attendance?.id ?? null
         });
       }
@@ -708,6 +717,10 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         throw new AttendanceConflictError("Negaran attendance is locked after the school-local day ends.");
       }
       await requireTeacher(schoolId, teacherUserId);
+      const [closure] = await db.select({ id: attendanceClosures.id }).from(attendanceClosures)
+        .where(and(eq(attendanceClosures.schoolId,schoolId),
+          eq(attendanceClosures.date,input.date))).limit(1);
+      if (closure) throw new AttendanceConflictError("Attendance is closed for this school day.");
       const negaran = await getNegaran(schoolId, teacherUserId, input.classId, input.date);
       const classSection = await getClass(schoolId, input.classId);
       if (classSection.academicYearId !== negaran.academicYearId) {

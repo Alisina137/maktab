@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { AttendanceCalendarConflictError, AttendanceCalendarValidationError } from "@maktablink/database";
 import {
   attendanceDateRangeSchema,
   correctAttendanceSchema,
@@ -18,6 +19,12 @@ import { requireSchoolAdmin } from "../users/routes.js";
 function sendAttendanceError(reply: FastifyReply, error: unknown) {
   if (error instanceof ZodError) {
     return reply.code(400).send({ error: "validation_error", issues: error.issues });
+  }
+  if (error instanceof AttendanceCalendarValidationError) {
+    return reply.code(400).send({ error: "attendance_calendar_validation", message: error.message });
+  }
+  if (error instanceof AttendanceCalendarConflictError) {
+    return reply.code(409).send({ error: "attendance_calendar_conflict", message: error.message });
   }
   if (error instanceof AttendanceValidationError) {
     return reply.code(400).send({ error: "attendance_validation", message: error.message });
@@ -82,6 +89,19 @@ const reportQuerySchema = attendanceDateRangeSchema.extend({
   classId: z.string().uuid().optional(),
   academicYearId: z.string().uuid().optional()
 });
+
+const attendanceMonitoringQuerySchema = z.object({
+  academicYearId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  classId: z.string().uuid().optional()
+}).strict();
+
+const attendanceClosureQuerySchema = z.object({ academicYearId: z.string().uuid() }).strict();
+const attendanceClosureCreateSchema = z.object({
+  academicYearId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  reason: z.string().trim().min(1).max(160)
+}).strict();
 
 export function registerAttendanceRoutes(
   app: FastifyInstance,
@@ -206,6 +226,56 @@ export function registerAttendanceRoutes(
       } catch (error) {
         return sendAttendanceError(reply, error);
       }
+    }
+  );
+
+  app.get("/v1/admin/attendance/monitor", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = attendanceMonitoringQuerySchema.parse(request.query);
+      const date = query.date ?? await attendance.getSchoolToday(context.user.schoolId);
+      return await attendance.getAdminDailyMonitoring(
+        context.user.schoolId, query.academicYearId, date, query.classId
+      );
+    } catch(error) { return sendAttendanceError(reply,error); }
+  });
+
+  app.get("/v1/admin/attendance/closures", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = attendanceClosureQuerySchema.parse(request.query);
+      return { closures: await attendance.getAdminAttendanceClosures(
+        context.user.schoolId, query.academicYearId
+      ) };
+    } catch(error) { return sendAttendanceError(reply,error); }
+  });
+
+  app.post("/v1/admin/attendance/closures", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const input = attendanceClosureCreateSchema.parse(request.body);
+      const closure = await attendance.addAdminAttendanceClosure(
+        context.user.schoolId, context.user.id, input
+      );
+      return reply.code(201).send({ closure });
+    } catch(error) { return sendAttendanceError(reply,error); }
+  });
+
+  app.delete<{Params:{closureId:string}}>("/v1/admin/attendance/closures/:closureId",
+    async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const closureId=z.string().uuid().parse(request.params.closureId);
+        const removed=await attendance.removeAdminAttendanceClosure(
+          context.user.schoolId,context.user.id,closureId
+        );
+        if(!removed)return reply.code(404).send({error:"not_found",message:"Closure not found."});
+        return {removed:true};
+      } catch(error) { return sendAttendanceError(reply,error); }
     }
   );
 

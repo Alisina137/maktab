@@ -474,6 +474,25 @@ export const timetablePeriods = pgTable(
   ]
 );
 
+export const attendanceClosures = pgTable(
+  "attendance_closures",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id").notNull()
+      .references(() => academicYears.id, { onDelete: "restrict" }),
+    date: date("date").notNull(),
+    reason: varchar("reason", { length: 160 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex("attendance_closures_school_year_date_unique")
+      .on(table.schoolId, table.academicYearId, table.date),
+    index("attendance_closures_school_date_idx").on(table.schoolId, table.date)
+  ]
+);
+
 export const dailyAttendances = pgTable(
   "daily_attendances",
   {
