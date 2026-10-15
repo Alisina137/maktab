@@ -4766,7 +4766,7 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(adminDelivery.statusCode, 200);
   const deliveryInfo = adminDelivery.json<{
     scheduler: { lastSuccessAt: string | null };
-    counts: { providerAccepted: number; read: number };
+    counts: { queued: number; providerAccepted: number; read: number };
     recent: Array<{ id: string; title: string }>;
   }>();
   assert.ok(deliveryInfo.scheduler.lastSuccessAt, "scheduler heartbeat must be persisted");
