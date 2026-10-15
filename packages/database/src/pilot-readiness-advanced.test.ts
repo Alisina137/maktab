@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { createPilotStore, databaseSchema, type FoundationDatabase } from "./index.js";
+import { createPilotStore, getPilotAdoptionReport, databaseSchema, type FoundationDatabase } from "./index.js";
 
 test("Pilot Phase 2 coverage checks current school/year relations and pages missing records", async (t) => {
   const client = new PGlite();
@@ -156,4 +156,56 @@ test("Pilot Phase 2 coverage checks current school/year relations and pages miss
   // Every query is scoped by school and active academic year.
   assert.deepEqual((await pilot.listOperationalIssues(b, "teacher_overlap", {limit: 10, offset: 0})).rows, []);
   assert.deepEqual((await pilot.listOperationalIssues(b, "invalid_period", {limit: 10, offset: 0})).rows, []);
+  // Pilot refinement Phase 4: authenticated aggregate sign-ins and educational records.
+  const now = new Date("2026-10-16T12:00:00Z");
+  await run("UPDATE users SET last_login_at=$1 WHERE id=$2 AND school_id=$3",
+    ["2026-10-15T08:00:00Z", teacher, a]);
+  await run("UPDATE users SET last_login_at=$1 WHERE id=$2 AND school_id=$3",
+    ["2026-09-30T08:00:00Z", parent, a]);
+
+  const homeworkId = randomUUID();
+  await run(`INSERT INTO homeworks(id,school_id,assignment_id,academic_year_id,class_id,subject_id,
+    teacher_user_id,title,content,due_at,status,published_at)
+    VALUES($1,$2,$3,$4,$5,$6,$7,'Test Homework','Assignments',
+      '2026-10-20T08:00:00Z','PUBLISHED','2026-10-15T09:00:00Z')`,
+    [homeworkId,a,teacherAssignment,year,classOne,subject,teacher]);
+  await run(`INSERT INTO homework_submissions(id,school_id,homework_id,student_id,answer,submitted_at)
+    VALUES($1,$2,$3,$4,'Submitted','2026-10-15T10:00:00Z')`,
+    [randomUUID(),a,homeworkId,firstStudent]);
+  const attendanceId = randomUUID();
+  await run(`INSERT INTO daily_attendances(id,school_id,academic_year_id,class_id,date,
+    submitted_by,submitted_at,updated_by) VALUES ($1,$2,$3,$4,'2026-10-15',
+    $5,'2026-10-15T08:00:00Z',$5)`, [attendanceId,a,year,classOne,admin]);
+  await run(`INSERT INTO student_attendances(id,school_id,attendance_id,student_id,status)
+    VALUES ($1,$2,$3,$4,'PRESENT')`, [randomUUID(),a,attendanceId,firstStudent]);
+  await run(`INSERT INTO announcements(id,school_id,title,content,audience_scope,publish_at,created_by)
+    VALUES($1,$2,'News','Test','SCHOOL','2026-10-15T11:00:00Z',$3)`,
+    [randomUUID(),a,admin]);
+
+  const sevenDays = await getPilotAdoptionReport(db, a, "7d", now);
+  assert.equal(sevenDays.window, "7d");
+  assert.equal(sevenDays.timeZone, "Asia/Kabul");
+  const teacherUse = sevenDays.roles.find((role) => role.role === "TEACHER")!;
+  const parentUse = sevenDays.roles.find((role) => role.role === "PARENT")!;
+  const studentUse = sevenDays.roles.find((role) => role.role === "STUDENT")!;
+  assert.deepEqual([teacherUse.eligible, teacherUse.signedIn, teacherUse.activated], [1,1,0]);
+  assert.deepEqual([parentUse.eligible, parentUse.signedIn, parentUse.activated], [1,0,1]);
+  assert.equal(studentUse.eligible, 0);
+  assert.equal(studentUse.signedInPercent, null);
+  assert.deepEqual(sevenDays.activities, {
+    homeworkPublished: 1, homeworkSubmissions: 1,
+    attendanceClassDays: 1, attendanceStudentMarks: 1,
+    announcementsPublished: 1
+  });
+  const todayReport = await getPilotAdoptionReport(db, a, "today", now);
+  assert.equal(todayReport.roles.find((role) => role.role === "TEACHER")?.signedIn, 0);
+  assert.equal(todayReport.activities.homeworkPublished, 0);
+  const thirtyDays = await getPilotAdoptionReport(db, a, "30d", now);
+  assert.equal(thirtyDays.roles.find((role) => role.role === "PARENT")?.signedIn, 1);
+
+  // A different school must not receive any of A's records or sign-in counts.
+  const otherAdoption = await getPilotAdoptionReport(db, b, "30d", now);
+  assert.equal(otherAdoption.roles.every((role) => role.signedIn === 0), true);
+  assert.equal(Object.values(otherAdoption.activities).every((value) => value === 0), true);
+
 });
