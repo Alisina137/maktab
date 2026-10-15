@@ -30,6 +30,7 @@ type Props = {
   dateFrom: string; dateTo: string; classId: string;
   locale: AdminLocale; mode: "OVERVIEW" | "REGISTERS";
   academicYearStatus: string; schoolToday: string;
+  onOpenClass?: (classId: string, date: string) => void;
 };
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -65,7 +66,7 @@ function closureUrl(yearId: string) {
 export function AdminAttendanceMonitoring(props: Props) {
   const {
     accessToken,academicYearId,dateFrom,dateTo,classId,locale,mode,
-    academicYearStatus,schoolToday
+    academicYearStatus,schoolToday,onOpenClass
   }=props;
   const t=(english:string)=>adminText(locale,english);
   const scope=`${accessToken}:${academicYearId}:${dateFrom}:${dateTo}:${classId}`;
@@ -241,6 +242,8 @@ export function AdminAttendanceMonitoring(props: Props) {
             <span className={`attendance-day-state attendance-day-state-${row.state.toLowerCase()}`}>
               {t(stateLabels[row.state])}</span>
           </div>
+          {onOpenClass?<button type="button" className="admin-secondary attendance-open-class"
+            onClick={()=>onOpenClass(row.classId,row.date)}>{t("Open class register")}</button>:null}
           <div className="attendance-monitor-class-meta">
             <span>{t("Active students")}: {row.activeStudents}</span>
             {row.submittedAt?<span>{t("Submitted at")}: {new Date(row.submittedAt).toLocaleString(locale)}</span>:null}
