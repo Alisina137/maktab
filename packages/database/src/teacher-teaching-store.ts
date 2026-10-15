@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gte, lte, inArray, or } from "drizzle-orm";
 import type { FoundationDatabase } from "./client.js";
+import { createAdminTeachingProgressStore, type AdminTeachingProgressStore } from "./admin-teaching-progress-store.js";
 import {
   academicYears, classSections, subjects, teacherAssignments, curriculumUnits,
   teacherUnitProgress, teacherLessonPlans, homeworks, continuousAssessments
@@ -47,7 +48,7 @@ export function summarizeTeaching(
   };
 }
 
-export interface TeacherTeachingStore {
+export interface TeacherTeachingStore extends AdminTeachingProgressStore {
   listCurriculum(schoolId: string, yearId: string, classId: string, subjectId: string): Promise<Array<typeof curriculumUnits.$inferSelect>>;
   addCurriculumUnit(schoolId: string, adminId: string, input: UnitInput): Promise<typeof curriculumUnits.$inferSelect>;
   updateCurriculumUnit(schoolId: string, unitId: string, input: { title?: string; sortOrder?: number }): Promise<typeof curriculumUnits.$inferSelect>;
@@ -130,6 +131,7 @@ export function createTeacherTeachingStore(db: FoundationDatabase): TeacherTeach
     return summarizeTeaching(lessons, units, homework, assessments.length);
   }
   return {
+    ...createAdminTeachingProgressStore(db),
     async listCurriculum(schoolId, yearId, classId, subjectId) {
       return db.select().from(curriculumUnits).where(and(
         eq(curriculumUnits.schoolId, schoolId),
