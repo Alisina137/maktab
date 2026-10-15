@@ -530,6 +530,7 @@ export type AdminFeeInvoiceQuery = z.infer<typeof adminFeeInvoiceQuerySchema>;
 export const adminFeePaymentsQuerySchema = z.object({
   studentId: z.string().uuid().optional(),
   recordedBy: z.string().uuid().optional(),
+  recordedByUsername: z.string().trim().max(64).default(""),
   method: z.enum(["ALL", "CASH", "BANK_TRANSFER", "MOBILE_MONEY", "OTHER"]).default("ALL"),
   kind: z.enum(["ALL", "PAYMENT", "REVERSAL"]).default("ALL"),
   from: isoDateSchema.optional(),
