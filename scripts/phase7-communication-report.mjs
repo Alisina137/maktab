@@ -2,6 +2,7 @@
 // Deliberately conservative communication/fees readiness artifact.
 // This report inventories unverified manual gates; it never grants production approval.
 import { existsSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 
 export const PHASE7_COMMUNICATION_GATES = Object.freeze([
@@ -38,7 +39,7 @@ export function communicationPhase7Report(sha = null) {
   };
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1].replaceAll("\\", "/")}`).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const outputIndex = process.argv.indexOf("--output");
   const output = outputIndex === -1 ? null : process.argv[outputIndex + 1];
   if (outputIndex !== -1 && (!output || output.startsWith("--"))) {
