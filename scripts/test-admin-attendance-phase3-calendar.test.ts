@@ -16,7 +16,7 @@ test("Gregorian monthly ranges start correctly and Saturday heads the week",()=>
   assert.equal(month.from,"2026-10-01");
   assert.equal(month.to,"2026-10-31");
   assert.equal(month.days.length,31);
-  assert.equal(month.leading,4); // Oct 1 2026 is Thursday, Sat-first offset 5? See below
+  assert.equal(month.leading,5); // Oct 1 2026 is Thursday: Saturday-first offset 5
   assert.equal(attendanceAdjacentMonth("2026-10-15","en",-1),"2026-09-30");
   assert.equal(attendanceAdjacentMonth("2026-10-15","en",1),"2026-11-01");
 });
