@@ -3016,6 +3016,24 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(today.supervisedClasses[0]?.classId, classId);
   assert.equal(today.supervisedClasses[0]?.attendanceStatus, "PENDING");
 
+  // Admin Attendance Phase 1: school-derived date defaults, not device-local
+  // dates, and retained school/year authorization on the existing endpoint.
+  const initialAdminAttendance = await app.inject({
+    method: "GET", url: "/v1/admin/attendance/report?academicYearId="+yearId,
+    headers: admin
+  });
+  assert.equal(initialAdminAttendance.statusCode,200,initialAdminAttendance.body);
+  const attendanceDefaults = initialAdminAttendance.json<{
+    from:string; to:string; summary:{ totalMarks:number };
+  }>();
+  assert.equal(attendanceDefaults.from,today.date);
+  assert.equal(attendanceDefaults.to,today.date);
+  assert.equal(attendanceDefaults.summary.totalMarks,0);
+  assert.equal((await app.inject({method:"GET",
+    url:"/v1/admin/attendance/report?academicYearId="+yearId})).statusCode,401);
+  assert.equal((await app.inject({method:"GET",
+    url:"/v1/admin/attendance/report?academicYearId="+yearId,
+    headers:teacherAuth})).statusCode,403);
   const payload = {
     classId,
     date: today.date,
