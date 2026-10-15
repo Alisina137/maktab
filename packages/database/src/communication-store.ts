@@ -59,6 +59,7 @@ export interface AdminFeePaymentRow {
 
 export interface AdminFeeReceipt extends AdminFeePaymentRow {
   schoolName: string;
+  schoolTimezone: string;
   invoiceAmount: number;
   description: string | null;
   dueDate: string;
@@ -112,7 +113,7 @@ export interface CommunicationStore {
     invoices: FeeInvoiceView[]; total: number; page: number; pageSize: number;
   }>;
   listAdminFeePayments(schoolId: string, query: AdminFeePaymentsQuery): Promise<{
-    payments: AdminFeePaymentRow[]; total: number; page: number; pageSize: number;
+    payments: AdminFeePaymentRow[]; total: number; page: number; pageSize: number; schoolTimezone: string;
   }>;
   getAdminFeePaymentReceipt(schoolId: string, paymentId: string): Promise<AdminFeeReceipt>;
   getAdminStudentFeeBalance(schoolId: string, studentId: string): Promise<AdminStudentFeeBalance>;
@@ -692,7 +693,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         base().where(where).orderBy(desc(feePayments.recordedAt), desc(feePayments.id))
           .limit(pageSize).offset((query.page - 1) * pageSize)
       ]);
-      return { payments: rows, total: count[0]?.total ?? 0, page: query.page, pageSize };
+      return { payments: rows, total: count[0]?.total ?? 0, page: query.page, pageSize, schoolTimezone: zone };
     },
 
     async getAdminFeePaymentReceipt(schoolId, paymentId) {
@@ -718,8 +719,11 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         .where(and(eq(feePayments.schoolId, schoolId),
           eq(feePayments.reversalOfPaymentId, paymentId))).limit(1);
       const snapshot = await paymentTotals(schoolId, row.invoiceId);
+      const [zoneSettings] = await db.select({ timezone: schoolSettings.timezone })
+        .from(schoolSettings).where(eq(schoolSettings.schoolId, schoolId)).limit(1);
       return {
         ...row,
+        schoolTimezone: zoneSettings?.timezone ?? "Asia/Kabul",
         currentOutstanding: Math.max(0, row.invoiceAmount - snapshot.paid),
         reversed: Boolean(reversal)
       };
