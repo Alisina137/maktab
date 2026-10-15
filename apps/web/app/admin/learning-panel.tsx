@@ -97,6 +97,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW");
   const tabRefs = useRef<Partial<Record<LearningTab, HTMLButtonElement | null>>>({});
   const generation = useRef(0);
@@ -376,9 +377,9 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
               item={item}
               accessToken={accessToken}
               locale={locale}
-              busy={false}
+              busy={busy}
               readOnly={historicalReadOnly}
-              onBusy={() => undefined}
+              onBusy={setBusy}
               onError={setError}
               onNotice={setNotice}
               onReload={load}
