@@ -91,6 +91,9 @@ jobs:
       - name: Admin Attendance Phase 1 navigation and school-date foundation
         run: pnpm verify:admin-attendance:phase1
 
+      - name: Admin Attendance Phase 2 day monitoring, closures and auditing
+        run: pnpm verify:admin-attendance:phase2
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -226,6 +229,7 @@ jobs:
           pnpm verify:admin-learning:phase6
           pnpm verify:admin-learning:phase7
           pnpm verify:admin-attendance:phase1
+          pnpm verify:admin-attendance:phase2
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
