@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import type { AdminFeeReportQuery, BulkFeePreviewInput, SetFeeReconciliationInput } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
@@ -29,6 +29,8 @@ export interface FeeFinancialReport {
       pendingCount: number; reconciledCount: number; pendingAmount: number; reconciledAmount: number }>;
   };
   rows: FeeReportRow[];
+  invoices: Array<{ invoiceNumber: number; studentCode: string; studentName: string; dueDate: string;
+    amount: number; paid: number; outstanding: number; daysOverdue: number }>;
 }
 
 export interface FeeBulkPreview {
@@ -101,6 +103,7 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
       }
       const aging = { notDue: 0, days1to30: 0, days31to60: 0, days61to90: 0, daysOver90: 0 };
       let billed = 0, paid = 0, outstanding = 0, overdue = 0;
+      const invoiceSnapshots: FeeFinancialReport["invoices"] = [];
       for (const invoice of invoiceRows) {
         const net = netByInvoice.get(invoice.id) ?? 0;
         const balance = Math.max(0, invoice.amount - net);
@@ -108,6 +111,9 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
         paid += net;
         outstanding += balance;
         const lateDays = daysBetween(invoice.dueDate, asOf);
+        invoiceSnapshots.push({ invoiceNumber: invoice.invoiceNumber, studentCode: "", studentName: "",
+          dueDate: invoice.dueDate, amount: invoice.amount, paid: net,
+          outstanding: balance, daysOverdue: Math.max(0, lateDays) });
         if (lateDays <= 0) aging.notDue += balance;
         else {
           overdue += balance;
@@ -131,6 +137,11 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
       ]);
       const studentById = new Map(studentRows.map(item => [item.id, item]));
       const recorderById = new Map(recorderRows.map(item => [item.id, item.username]));
+      for (let index = 0; index < invoiceSnapshots.length; index += 1) {
+        const student = studentById.get(invoiceRows[index]!.studentId);
+        invoiceSnapshots[index]!.studentName = student?.fullName ?? "";
+        invoiceSnapshots[index]!.studentCode = student?.studentCode ?? "";
+      }
       const filtered = paymentRows.filter(row => {
         const day = schoolDate(row.recordedAt, timezone);
         return invoiceById.has(row.invoiceId) && (!query.from || day >= query.from) && (!query.to || day <= query.to);
@@ -175,7 +186,7 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
         asOf, schoolTimezone: timezone, from: query.from ?? null, to: query.to ?? null,
         billed, paid, outstanding, overdue, aging,
         statement: { grossPayments, reversals, netCollections: grossPayments - reversals, methods },
-        rows
+        rows, invoices: invoiceSnapshots.sort((a,b) => a.invoiceNumber-b.invoiceNumber)
       };
     },
 
@@ -236,7 +247,7 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
       ]);
       const active = new Set(studentRows.filter(row => row.status === "ACTIVE").map(row => row.id));
       const matchKey = (studentId: string, dueDate: string, description: string | undefined) =>
-        `${studentId}|${dueDate}|${(description ?? "").trim().toLowerCase().replace(/\\s+/g, " ")}`;
+        `${studentId}|${dueDate}|${(description ?? "").trim().toLowerCase().replace(/\s+/g, " ")}`;
       const existingByKey = new Map(existing.map(row => [
         matchKey(row.studentId, row.dueDate, row.description ?? undefined), row.invoiceNumber
       ]));
