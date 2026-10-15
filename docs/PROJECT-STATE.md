@@ -1731,3 +1731,10 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - The Admin uses distinct self-hosted `next/font/google` typography: **Inter** for English, **Vazirmatn** for Dari/Persian (`fa-AF`) and Pashto (`ps-AF`). Each font is loaded under a dedicated CSS variable at the root and applied only inside the selected-language Admin workspace. `lang` and `dir` follow the Admin language selector, so family switching does not require a reload and improves assistive technology pronunciation hints.
 - Normal non-admin screens keep their existing design tokens and font families. Avoid external per-page CDN font requests at runtime; fonts are self-hosted by Next.js after build. A CSS fallback remains in case custom fonts cannot load.
 - Linux/Windows CI includes `pnpm verify:admin-headings` for CSS-scale, responsive overrides, localized font variables and scope; actual visual RTL/browser/Android and 200% zoom acceptance is still manual and must not be claimed from source guards.
+
+## Admin route and tab loading copy (2026-10-15)
+
+- Replaced user-facing implementation-phase loading messages ("Loading Phase 3/4/6/7...") with the current Admin section name: Accounts, Pilot operations, Communication & fees, Learning, Attendance, Families, Academics and Administrator profile.
+- Communication & Fees chooses **Loading overview data…**, **Loading communication data…** or **Loading fees data…** according to its selected subtab; initial session loading selects the outer navigation route, including Academics child routes.
+- Added equivalent Dari and Pashto strings and removed obsolete phase-number loading translation keys. This is copy-only: no changes to data fetching, caching, permissions, backend, database or spinner behavior.
+- `pnpm verify:admin-loading` checks all section loaders and both localization dictionaries in Linux and Windows CI. Manual browser/RTL and route-transition visual acceptance remain to be checked.
