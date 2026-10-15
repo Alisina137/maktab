@@ -2,6 +2,7 @@
 import { useTransientAdminFeedback } from "./admin-feedback";
 
 import { useEffect, useRef, useState } from "react";
+import { AdminLearningResults } from "./admin-learning-results";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext } from "./admin-learning-exams";
@@ -9,22 +10,6 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-
-type PublishedGrade = {
-  grade: {
-    id: string;
-    score: number;
-    remark: string | null;
-    updatedAt: string;
-  };
-  academicYearId: string;
-  examName: string;
-  subjectName: string;
-  className: string;
-  studentName: string;
-  studentCode: string;
-  maxScore: number;
-};
 
 type LearningOverview = {
   exams: Exam[];
@@ -34,7 +19,6 @@ type LearningOverview = {
     classCode: string;
     subjectName: string;
   }>;
-  publishedGrades: PublishedGrade[];
 };
 
 type LearningTab = "OVERVIEW" | "HOMEWORK" | "EXAMS" | "RESULTS" | "TEACHING" | "REPORTS";
@@ -97,7 +81,6 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW");
   const tabRefs = useRef<Partial<Record<LearningTab, HTMLButtonElement | null>>>({});
   const generation = useRef(0);
@@ -160,9 +143,6 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
   const yearExamIds = new Set(yearExams.map((exam) => exam.id));
   const yearExamSubjects =
     learning?.examSubjects.filter((item) => yearExamIds.has(item.examSubject.examId)) ?? [];
-  const yearPublishedGrades =
-    learning?.publishedGrades.filter((item) => item.academicYearId === selectedAcademicYearId) ?? [];
-  const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
   if (!learning || !academics || loadingStatus === "error") {
     return (
       <section className="admin-panel learning-section admin-loading-card">
@@ -362,106 +342,17 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
       {activeTab === "RESULTS" ? (
         <section id="learning-panel-results" role="tabpanel" aria-labelledby="learning-tab-results"
           className="learning-tab-panel">
-          <div className="learning-panel-heading">
-            <div><h3>{t("Gradebook & results")}</h3>
-              <p>{t("Published examination grades and audited corrections.")}</p>
-            </div>
-          </div>
-      <article className="admin-panel academic-list-panel">
-        <div className="admin-section-header">
-          <div><h2>{t("Published result corrections")}</h2><p>{t("Published marks cannot be deleted. Corrections require a reason and create audit history.")}</p></div>
-        </div>
-        <div className="learning-grade-list">
-          {yearPublishedGrades.map((item) => (
-            <PublishedGradeRow
-              key={item.grade.id}
-              item={item}
-              accessToken={accessToken}
-              locale={locale}
-              busy={busy}
-              readOnly={historicalReadOnly}
-              onBusy={setBusy}
-              onError={setError}
-              onNotice={setNotice}
-              onReload={load}
-            />
-          ))}
-          {yearPublishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades in the selected academic year.")}</p> : null}
-        </div>
-      </article>
+          <AdminLearningResults
+            accessToken={accessToken}
+            locale={locale}
+            yearId={selectedAcademicYearId}
+            exams={yearExams}
+            examSubjects={yearExamSubjects}
+            academics={academics}
+          />
         </section>
       ) : null}
     </section>
   );
 }
 
-function PublishedGradeRow({
-  item,
-  accessToken,
-  locale,
-  busy,
-  readOnly,
-  onBusy,
-  onError,
-  onNotice,
-  onReload
-}: {
-  item: PublishedGrade;
-  accessToken: string;
-  locale: AdminLocale;
-  busy: boolean;
-  readOnly: boolean;
-  onBusy: (value: boolean) => void;
-  onError: (value: string) => void;
-  onNotice: (value: string) => void;
-  onReload: () => Promise<void>;
-}) {
-  const t = (english: string) => adminText(locale, english);
-  const [score, setScore] = useState(String(item.grade.score));
-  const [remark, setRemark] = useState(item.grade.remark ?? "");
-  const [reason, setReason] = useState("");
-
-  useEffect(() => {
-    setScore(String(item.grade.score));
-    setRemark(item.grade.remark ?? "");
-  }, [item.grade.score, item.grade.remark]);
-
-  async function save() {
-    onBusy(true);
-    onError("");
-    onNotice("");
-    try {
-      await request(accessToken, `/v1/admin/grades/${item.grade.id}/correct`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          score: Number(score),
-          remark: remark.trim() || undefined,
-          reason: reason.trim(),
-          expectedUpdatedAt: item.grade.updatedAt
-        })
-      });
-      onNotice(adminFormat(locale, "Published mark corrected for {name}. The reason and previous value are in the audit log.", { name: item.studentName }));
-      setReason("");
-      await onReload();
-    } catch (cause) {
-      onError(adminErrorText(locale, cause, "Could not correct published grade."));
-    } finally {
-      onBusy(false);
-    }
-  }
-
-  return (
-    <div className="learning-grade-row">
-      <div>
-        <strong>{item.studentName}</strong>
-        <span>{item.studentCode} · {item.examName} · {item.className} · {item.subjectName}</span>
-      </div>
-      <label>{t("Score")}<input type="number" min={0} max={item.maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} disabled={readOnly} /></label>
-      <label>{t("Remark")}<input value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} disabled={readOnly} /></label>
-      <label>{t("Correction reason")}<input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} required disabled={readOnly} /></label>
-      <button className="admin-secondary" type="button" disabled={busy || readOnly || reason.trim().length < 2 || !/^\d+$/.test(score.trim()) || !Number.isSafeInteger(Number(score)) || Number(score) > item.maxScore} onClick={() => void save()}>
-        {t("Save correction")}
-      </button>
-    </div>
-  );
-}
