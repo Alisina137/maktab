@@ -8634,3 +8634,15 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-operational { padding: 15px; }
   .pilot-operational-card { padding: 13px; }
 }
+
+.pilot-operational-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-color: #dce5f2;
+}
+.pilot-operational-compact strong { font-size: 14px; }
+.pilot-operational-compact p { font-size: 13px; color: var(--ml-color-text-muted); margin: 5px 0 0; }
+.pilot-operational-compact a:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
