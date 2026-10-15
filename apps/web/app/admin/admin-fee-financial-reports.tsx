@@ -258,7 +258,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
             {t("Preview draft invoice batch")}</button>
         </form>
         {preview ? <div role="status" className="admin-financial-preview">
-          <strong>{adminFormat(locale,"{ready} ready / {duplicates} duplicates / {unavailable} unavailable",preview)}</strong>
+          <strong>{adminFormat(locale,"{ready} ready / {duplicates} duplicates / {unavailable} unavailable",{ready:preview.ready,duplicates:preview.duplicates,unavailable:preview.unavailable})}</strong>
           <p>{t("Preview only — review results before any individual draft creation.")}</p>
           <ul>{preview.rows.map(row=>(
             <li key={row.index}>{students.find(student=>student.id===row.studentId)?.fullName ?? t("Student")}:
