@@ -398,10 +398,6 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       eq(feeInvoices.studentId, studentId)
     )).limit(1);
     if (!invoice || invoice.status === "CANCELLED" || invoice.status === "DRAFT") return false;
-    const today = await schoolDateAt(row.schoolId);
-    // A due reminder must not be sent after it is overdue, or an overdue alert before the due date.
-    if (row.type === "FEE_DUE" && invoice.dueDate < today) return false;
-    if (row.type === "FEE_OVERDUE" && invoice.dueDate >= today) return false;
     const [student] = await db.select().from(students).where(and(
       eq(students.schoolId, row.schoolId), eq(students.id, studentId),
       eq(students.parentUserId, row.userId), eq(students.status, "ACTIVE")
@@ -409,6 +405,19 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
     if (!student) return false;
     const totals = await paymentTotals(row.schoolId, invoice.id);
     return totals.paid < invoice.amount;
+  }
+
+  async function feeAlertIsCurrentForPush(row: Notification): Promise<boolean> {
+    if (!(await feeAlertIsVisible(row))) return false;
+    if (row.type !== "FEE_DUE" && row.type !== "FEE_OVERDUE") return true;
+    const invoiceId = row.metadata.invoiceId;
+    if (typeof invoiceId !== "string") return false;
+    const [invoice] = await db.select({ dueDate: feeInvoices.dueDate })
+      .from(feeInvoices).where(and(eq(feeInvoices.schoolId, row.schoolId),
+        eq(feeInvoices.id, invoiceId))).limit(1);
+    if (!invoice) return false;
+    const today = await schoolDateAt(row.schoolId);
+    return row.type === "FEE_DUE" ? invoice.dueDate >= today : invoice.dueDate < today;
   }
 
   async function invoiceView(invoice: FeeInvoice): Promise<FeeInvoiceView> {
@@ -1058,7 +1067,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       if (row.deliveryStatus !== "FAILED") {
         throw new CommunicationConflictError("Only failed notifications can be requeued. Provider-accepted messages must not be resent.");
       }
-      if (!(await feeAlertIsVisible(row))) {
+      if (!(await feeAlertIsCurrentForPush(row))) {
         throw new CommunicationConflictError("This fee alert is no longer eligible for delivery.");
       }
       if (row.type === "ANNOUNCEMENT") {
@@ -1267,7 +1276,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let failed = 0;
       let skipped = 0;
       for (const notification of pending) {
-        if (!(await feeAlertIsVisible(notification))) {
+        if (!(await feeAlertIsCurrentForPush(notification))) {
           await db.update(notifications).set({ deliveryStatus: "CANCELLED", updatedAt: new Date() })
             .where(and(eq(notifications.schoolId, notification.schoolId), eq(notifications.id, notification.id)));
           skipped += 1;
