@@ -189,7 +189,7 @@ export function AdminAccountDirectory({
           <button type="button" className="admin-secondary" onClick={onRefresh}>{t("Retry")}</button>
         </div>
       ) : null}
-      {loading ? <p className="admin-copy" role="status">{t("Loading…")}</p> : null}
+      {loading ? <p className="admin-copy" role="status">{t("Loading accounts data…")}</p> : null}
 
       <div className="admin-user-list admin-user-list-premium" aria-busy={loading}>
         {!loading && !error && users.map((user) => {
