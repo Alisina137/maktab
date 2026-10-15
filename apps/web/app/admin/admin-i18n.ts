@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Import outcome": "نتیجه وارد کردن",
+  "Search by username": "جستجو بر اساس نام کاربری",
+  "Enter at least two characters for an actor and a valid chronological date range.": "برای نام مدیر حداقل دو حرف و یک بازه زمانی معتبر وارد کنید.",
   "Data quality": "کیفیت معلومات",
   "Enrollment and account quality": "کیفیت ثبت‌نام و حساب‌ها",
   "Actual active-year coverage checks reveal incomplete records after import. Open School Readiness to inspect affected records.": "بررسی سال تعلیمی فعال معلومات ناقص پس از وارد کردن را نشان می‌دهد. برای جزئیات به آمادگی مکتب بروید.",
@@ -2100,6 +2103,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Import outcome": "د واردولو پایله",
+  "Search by username": "د کارن نوم له مخې لټون",
+  "Enter at least two characters for an actor and a valid chronological date range.": "د مدیر لپاره لږ تر لږه دوه توري او سمې پرله پسې نېټې ولیکئ.",
   "Data quality": "د معلوماتو کیفیت",
   "Enrollment and account quality": "د نوم‌لیکنې او حسابونو کیفیت",
   "Actual active-year coverage checks reveal incomplete records after import. Open School Readiness to inspect affected records.": "د روان تعلیمي کال ارزونې له واردولو وروسته نیمګړي معلومات ښيي. د جزئیاتو لپاره د ښوونځي چمتووالی وګورئ.",
