@@ -159,6 +159,14 @@ function auditQuery(filters: AuditFilters, offset: number, limit = 20) {
   return params.toString();
 }
 
+function formatPilotImportTimestamp(locale: "fa-AF" | "ps-AF" | "en", date: string) {
+  if (locale !== "en") return formatAdminHijriDateTime(locale, date, "Asia/Kabul");
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime()) ? "" : new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium", timeStyle: "short", hour12: true, timeZone: "Asia/Kabul"
+  }).format(parsed);
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 async function request<T>(accessToken: string, path: string): Promise<T> {
@@ -906,7 +914,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                   <div className="pilot-import-row" key={item.id}>
                     <div className="pilot-import-meta">
                       <strong>{t(item.entityType === "PARENT" ? "Parents" : item.entityType === "TEACHER" ? "Teachers" : "Students")}</strong>
-                      <span>{formatAdminHijriDateTime(locale, item.createdAt)}</span>
+                      <span>{formatPilotImportTimestamp(locale, item.createdAt)}</span>
                       <span>{item.actorUsername ?? t("Unknown administrator")}</span>
                     </div>
                     <div className="pilot-import-summary">
