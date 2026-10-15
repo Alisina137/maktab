@@ -10,6 +10,16 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Checks current active-year timetable periods for conflicts, invalid hours and broken teacher assignments.": "تداخل ساعات، ساعت‌های نادرست و تعیینات ناقص معلم در تقسیم اوقات سال فعال بررسی می‌شود.",
+  "Checking timetable integrity…": "در حال بررسی تقسیم اوقات…",
+  "Operational checks could not be loaded.": "بررسی‌های عملیاتی دریافت نشد.",
+  "{count} timetable periods inspected in the active academic year.": "{count} ساعت درسی از سال تعلیمی فعال بررسی شد.",
+  "No active-year periods exist; readiness cannot be confirmed. Configure the timetable first.": "در سال فعال ساعت درسی وجود ندارد؛ آمادگی قابل تأیید نیست. نخست تقسیم اوقات را تنظیم کنید.",
+  "{count} affected periods of {total}": "{count} ساعت متأثر از {total}",
+  "Review {count} affected": "بررسی {count} مورد",
+  "Loading affected periods…": "در حال دریافت ساعات متأثر…",
+  "Could not load affected timetable periods.": "ساعات متأثر دریافت نشد.",
+  "Timetable validation is advisory configuration evidence, not verification of live teaching, attendance, backups or production release.": "بررسی تقسیم اوقات فقط تأیید تنظیمات است، نه تأیید تدریس واقعی، حاضری، نسخه پشتیبان یا نشر نهایی.",
   "Operational validation": "ارزیابی عملیاتی",
   "Timetable integrity": "بررسی تقسیم اوقات",
   "Timetable checks passed": "تقسیم اوقات تأیید شد",
@@ -2055,6 +2065,16 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Checks current active-year timetable periods for conflicts, invalid hours and broken teacher assignments.": "د روان تعلیمي کال مهالویش د وخت د ټکر، ناسمو ساعتونو او نیمګړو ښوونکو ټاکنو لپاره کتل کېږي.",
+  "Checking timetable integrity…": "د مهالویش ارزونه روانه ده…",
+  "Operational checks could not be loaded.": "عملیاتي ارزونه پورته نه شوه.",
+  "{count} timetable periods inspected in the active academic year.": "د روان تعلیمي کال {count} درسي وختونه وکتل شول.",
+  "No active-year periods exist; readiness cannot be confirmed. Configure the timetable first.": "په روان کال کې درسي وختونه نشته؛ چمتووالی نه تاییدېږي. لومړی مهالویش برابر کړئ.",
+  "{count} affected periods of {total}": "له {total} څخه {count} اغېزمن وختونه",
+  "Review {count} affected": "{count} ستونزې وګورئ",
+  "Loading affected periods…": "اغېزمن وختونه پورته کېږي…",
+  "Could not load affected timetable periods.": "اغېزمن وختونه پورته نه شول.",
+  "Timetable validation is advisory configuration evidence, not verification of live teaching, attendance, backups or production release.": "د مهالویش ارزونه یوازې د تنظیماتو لپاره ده؛ عملي تدریس، حاضري، خوندي کاپي او وروستۍ خپرونه نه تاییدوي.",
   "Operational validation": "عملیاتي ارزونه",
   "Timetable integrity": "د درسي مهالویش ارزونه",
   "Timetable checks passed": "مهالویش وکتل شو",
