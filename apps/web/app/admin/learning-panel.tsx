@@ -448,7 +448,10 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                     {dashboard.attention.map(item => (
                       <button type="button" key={`${item.category}:${item.id}`}
                         className="learning-attention-item"
-                        onClick={() => {setActiveTab(item.category); if (item.category === "EXAMS") setExamPane("LIFECYCLE");}}>
+                        onClick={() => {
+                          setActiveTab(item.category === "HOMEWORK" ? "HOMEWORK" : "EXAMS");
+                          if (item.category !== "HOMEWORK") setExamPane("LIFECYCLE");
+                        }}>
                         <span className="learning-attention-info">
                           <strong>{item.title}</strong>
                           <small>{t(item.detail)}</small>
@@ -476,8 +479,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           <h3>{t("Homework monitoring")}</h3>
           <p>{t("Homework creation and submission review remain with assigned teachers.")}</p>
           <div className="learning-summary-inline">
-            <div><span>{t("Published homework")}</span><strong>{formatCount(dashboard?.metrics.publishedHomework ?? 0)}</strong></div>
-            <div><span>{t("Submissions awaiting review")}</span><strong>{formatCount(dashboard?.metrics.submissionsAwaitingReview ?? 0)}</strong></div>
+            <div><span>{t("Published homework")}</span><strong>{dashboard ? formatCount(dashboard.metrics.publishedHomework) : "—"}</strong></div>
+            <div><span>{t("Submissions awaiting review")}</span><strong>{dashboard ? formatCount(dashboard.metrics.submissionsAwaitingReview) : "—"}</strong></div>
           </div>
           <p className="admin-copy">{t("Schoolwide homework records and submission filters are not yet available in this view.")}</p>
         </section>
@@ -507,9 +510,9 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           <p>{t("Detailed academic report exports and audit filters are not yet available in this workspace.")}</p>
           <div className="learning-summary-inline">
             <div><span>{t("Published examinations")}</span>
-              <strong>{formatCount(dashboard?.metrics.publishedExams ?? 0)}</strong></div>
+              <strong>{dashboard ? formatCount(dashboard.metrics.publishedExams) : "—"}</strong></div>
             <div><span>{t("Continuous assessments")}</span>
-              <strong>{formatCount(dashboard?.metrics.continuousAssessments ?? 0)}</strong></div>
+              <strong>{dashboard ? formatCount(dashboard.metrics.continuousAssessments) : "—"}</strong></div>
           </div>
         </section>
       ) : null}
