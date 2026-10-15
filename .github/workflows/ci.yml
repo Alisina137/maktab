@@ -88,6 +88,9 @@ jobs:
       - name: Admin Learning Phase 7 academic reports, audit and safe exports
         run: pnpm verify:admin-learning:phase7
 
+      - name: Admin Attendance Phase 1 navigation and school-date foundation
+        run: pnpm verify:admin-attendance:phase1
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -222,6 +225,7 @@ jobs:
           pnpm verify:admin-learning:phase5
           pnpm verify:admin-learning:phase6
           pnpm verify:admin-learning:phase7
+          pnpm verify:admin-attendance:phase1
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
