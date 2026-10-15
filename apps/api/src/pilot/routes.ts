@@ -48,6 +48,12 @@ const readinessIssueQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(1_000_000).default(0)
 }).strict();
 
+const operationalIssueQuerySchema = z.object({
+  metric: z.enum(["teacher_overlap", "class_overlap", "assignment_gap", "invalid_period"]),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  offset: z.coerce.number().int().min(0).max(1_000_000).default(0)
+}).strict();
+
 const templates: Record<BulkImportEntity, string> = {
   PARENT: "username,fullName,phone\nparent.001,Parent Full Name,0700000000\n",
   STUDENT: "studentCode,fullName,parentUsername,academicYear,classCode\nS-001,Student Full Name,parent.001,1405,7A\n",
@@ -93,6 +99,30 @@ export function registerPilotRoutes(
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({
         error: "validation_error", message: "Invalid readiness issue filter.", issues: error.issues
+      });
+      throw error;
+    }
+  });
+
+  // Operational checks are separate from the original configuration readiness.
+  // Neither response can grant pilot or production launch approval.
+  app.get("/v1/admin/pilot/readiness/operational", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    reply.header("cache-control", "no-store");
+    return pilot.getOperationalReadiness(context.user.schoolId);
+  });
+
+  app.get("/v1/admin/pilot/readiness/operational/issues", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const { metric, limit, offset } = operationalIssueQuerySchema.parse(request.query);
+      reply.header("cache-control", "no-store");
+      return pilot.listOperationalIssues(context.user.schoolId, metric, { limit, offset });
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({
+        error: "validation_error", message: "Invalid operational readiness filter.", issues: error.issues
       });
       throw error;
     }
