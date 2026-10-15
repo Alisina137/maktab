@@ -219,7 +219,14 @@ export function registerLearningRoutes(
   app.get("/v1/admin/learning", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
-    return learning.getAdminOverview(context.user.schoolId);
+    try {
+      const { includePublishedGrades } = z.object({
+        includePublishedGrades: z.enum(["true", "false"]).optional()
+      }).parse(request.query);
+      return await learning.getAdminOverview(context.user.schoolId, includePublishedGrades !== "false");
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
   });
 
   app.get("/v1/admin/learning/dashboard", async (request, reply) => {
