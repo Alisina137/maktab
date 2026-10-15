@@ -1152,7 +1152,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   if (!overview || !academics) {
     return (
       <section className="admin-panel family-section admin-loading-card">
-        <AdminLoader label={t("Loading Phase 4 data…")} />
+        <AdminLoader label={t("Loading families data…")} />
         <AdminSkeleton rows={5} />
         {error && toastPortalTarget
           ? createPortal(
