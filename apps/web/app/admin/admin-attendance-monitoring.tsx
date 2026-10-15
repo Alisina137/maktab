@@ -3,9 +3,27 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-import type {
-  AttendanceClosure, AttendanceMonitoringResponse, DayMonitorState
-} from "@maktablink/database";
+type DayMonitorState =
+  "SUBMITTED" | "PENDING" | "CLOSED" | "NOT_SCHEDULED" | "FUTURE" |
+  "OUTSIDE_YEAR" | "NO_STUDENTS" | "NO_NEGARAN" | "MULTIPLE_NEGARAN";
+type AttendanceClosure = { id: string; academicYearId: string; date: string; reason: string };
+type AttendanceMonitoringResponse = {
+  date: string; today: string; weekday: string; academicYearId: string;
+  yearStatus: string; closure: { id: string; reason: string } | null;
+  summary: {
+    totalClasses: number; scheduledClasses: number; expectedClasses: number;
+    submittedExpected: number; pendingClasses: number; configurationIssues: number;
+    submittedTotal: number; present: number; absent: number; late: number; excused: number;
+  };
+  classes: Array<{
+    classId: string; className: string; classCode: string; date: string;
+    scheduled: boolean; activeStudents: number; negaranName: string | null;
+    negaranCount: number; submittedAt: string | null;
+    recordStatus: "SUBMITTED" | "CORRECTED" | null;
+    state: DayMonitorState; expected: boolean;
+    present: number; absent: number; late: number; excused: number;
+  }>;
+};
 
 type Props = {
   accessToken: string; academicYearId: string;
