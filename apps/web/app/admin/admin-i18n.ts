@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Reason": "دلیل",
   "Original teacher note": "یادداشت اصلی نگران",
   "No note recorded": "یادداشتی ثبت نشده است",
   "Correction reason (required)": "دلیل اصلاح (ضروری)",
@@ -1965,7 +1966,6 @@ const ps: Record<string, string> = {
   "Select at most 366 days.": "تر ۳۶۶ ورځو پورې وټاکئ.",
   "correction events found": "د سمون پېښې وموندل شوې",
   "Student record unavailable": "د زده کوونکي ریکارډ نشته",
-  "Reason": "دلیل",
   "Reason not captured for older correction": "د پخواني سمون دلیل نه دی ثبت شوی",
   "Changed by": "سمون کوونکی",
   "No correction events match these filters.": "د دې چاڼ سره سم سمون ونه موندل شو.",
