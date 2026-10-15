@@ -7047,3 +7047,170 @@ html[dir="rtl"] body {
   .communication-invoice-filters,.communication-invoice-detail-fields { grid-template-columns:1fr; }
   .communication-invoice-pager { gap:8px; }
 }
+
+/* Admin Communication/Fees Phase 4 — ledger, balances, receipt */
+.admin-fee-module-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 7px;
+  overflow-x: auto;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 14px;
+  background: var(--ml-color-surface-muted, #f5f8fc);
+}
+.admin-fee-module-tabs button {
+  flex: 1 0 125px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ml-color-text-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-fee-module-tabs button.is-active {
+  background: var(--ml-color-surface);
+  color: var(--ml-color-brand-strong);
+  border-color: var(--ml-color-border);
+}
+.admin-fee-operations {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.admin-fee-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.admin-fee-filters label,
+.admin-fee-method-label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+.admin-fee-filters input,
+.admin-fee-filters select,
+.admin-fee-method-label select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 10px;
+  color: var(--ml-color-text);
+  background: var(--ml-color-surface);
+  font: inherit;
+}
+.admin-fee-ledger-rows { display: grid; gap: 12px; }
+.admin-fee-ledger-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 12px;
+}
+.admin-fee-ledger-row > div:first-child,
+.admin-fee-ledger-amount {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+.admin-fee-ledger-row small {
+  color: var(--ml-color-text-muted);
+  overflow-wrap: anywhere;
+}
+.admin-fee-ledger-amount { text-align: end; }
+.admin-fee-receipt-overlay {
+  position: fixed;
+  z-index: 100000;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(20px, 5vh) 14px 20px;
+  overflow: auto;
+  background: rgba(12,24,39,.72);
+}
+.admin-fee-receipt {
+  width: min(100%, 670px);
+  padding: clamp(20px, 4vw, 40px);
+  border-radius: 18px;
+  background: #fff;
+  color: #142336;
+  box-shadow: 0 20px 80px rgba(0,0,0,.2);
+}
+.admin-fee-receipt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.admin-fee-receipt-header {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  padding-block: 25px;
+  border-bottom: 2px solid #243c5a;
+}
+.admin-fee-receipt-header h2 { margin: 0; }
+.admin-fee-receipt-details {
+  display: grid;
+  gap: 0;
+  margin: 18px 0;
+}
+.admin-fee-receipt-details > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr);
+  gap: 10px;
+  border-bottom: 1px solid #e5e8ed;
+  padding: 10px 0;
+}
+.admin-fee-receipt-details dt { color: #4e5969; }
+.admin-fee-receipt-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 750;
+}
+.admin-fee-reversed {
+  color: #b42318;
+  padding: 15px;
+  border: 2px solid #b42318;
+  border-radius: 8px;
+  font-weight: 900;
+}
+@media (max-width: 600px) {
+  .admin-fee-module-tabs button { flex-basis: 110px; }
+  .admin-fee-receipt-details > div { grid-template-columns: 1fr; }
+  .admin-fee-ledger-amount { text-align: start; }
+}
+@media print {
+  @page { margin: 16mm; }
+  body:has(.admin-fee-receipt-overlay) * { visibility: hidden !important; }
+  body .admin-fee-receipt-overlay,
+  body .admin-fee-receipt-overlay * { visibility: visible !important; }
+  body .admin-fee-receipt-overlay {
+    position: absolute;
+    inset: 0;
+    display: block;
+    background: white;
+    overflow: visible;
+    padding: 0;
+    z-index: 999999;
+  }
+  body .admin-fee-receipt {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body .admin-fee-receipt-actions,
+  body .admin-fee-receipt button { display: none !important; }
+}
