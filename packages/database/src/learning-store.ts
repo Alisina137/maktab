@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
 import type {
   CorrectPublishedGradeInput,
   CreateExamInput,
@@ -110,6 +110,43 @@ export interface AdminLearningOverview {
   }>;
 }
 
+export interface AdminPublishedGradesQuery {
+  academicYearId: string;
+  examId?: string;
+  classId?: string;
+  subjectId?: string;
+  search?: string;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminPublishedGradeRow {
+  grade: GradeRecord;
+  academicYearId: string;
+  examId: string;
+  examName: string;
+  examStatus: ExamStatus;
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  studentName: string;
+  studentCode: string;
+  maxScore: number;
+  canCorrect: boolean;
+}
+
+export interface AdminGradeCorrectionEvent {
+  id: string;
+  createdAt: Date;
+  actorUsername: string | null;
+  previousScore: number | null;
+  score: number | null;
+  previousRemark: string | null;
+  remark: string | null;
+  reason: string;
+}
+
 export interface AdminLearningDashboard {
   academicYearId: string;
   metrics: {
@@ -199,6 +236,10 @@ export interface LearningStore {
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
+  listAdminPublishedGrades(schoolId: string, query: AdminPublishedGradesQuery):
+    Promise<{ rows: AdminPublishedGradeRow[]; total: number; limit: number; offset: number }>;
+  getAdminGradeCorrections(schoolId: string, gradeId: string, limit: number, offset: number):
+    Promise<{ events: AdminGradeCorrectionEvent[]; total: number; limit: number; offset: number }>;
   getAdminExamDetail(schoolId: string, examId: string): Promise<AdminExamDetail>;
   getAdminExamReadiness(schoolId: string, examId: string): Promise<AdminExamReadiness>;
   getAdminDashboard(schoolId: string, academicYearId: string): Promise<AdminLearningDashboard>;
@@ -1034,6 +1075,99 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       return { exam, subjects: configured, sameDayWarnings };
     },
 
+    async listAdminPublishedGrades(schoolId, query) {
+      // Apply every filter in SQL before pagination and always enforce school
+      // scope and publication status on the grade and its joined entities.
+      const conditions = [
+        eq(gradeRecords.schoolId, schoolId),
+        eq(gradeRecords.status, "PUBLISHED"),
+        eq(exams.academicYearId, query.academicYearId)
+      ];
+      if (query.examId) conditions.push(eq(exams.id, query.examId));
+      if (query.classId) conditions.push(eq(examSubjects.classId, query.classId));
+      if (query.subjectId) conditions.push(eq(examSubjects.subjectId, query.subjectId));
+      if (query.search) {
+        const term = "%" + query.search.trim().replace(/[\\%_]/g, "\\    async getAdminOverview(schoolId) {") + "%";
+        const matching = or(ilike(students.fullName, term),
+          ilike(students.studentCode, term), ilike(exams.name, term));
+        if (matching) conditions.push(matching);
+      }
+      const where = and(...conditions);
+      const [totals, found] = await Promise.all([
+        db.select({ value: count() }).from(gradeRecords)
+          .innerJoin(examSubjects, and(eq(examSubjects.id, gradeRecords.examSubjectId),
+            eq(examSubjects.schoolId, gradeRecords.schoolId)))
+          .innerJoin(exams, and(eq(exams.id, examSubjects.examId),
+            eq(exams.schoolId, gradeRecords.schoolId)))
+          .innerJoin(students, and(eq(students.id, gradeRecords.studentId),
+            eq(students.schoolId, gradeRecords.schoolId)))
+          .where(where),
+        db.select({
+          grade: gradeRecords,
+          academicYearId: exams.academicYearId,
+          examId: exams.id,
+          examName: exams.name,
+          examStatus: exams.status,
+          classId: classSections.id,
+          className: classSections.name,
+          subjectId: subjects.id,
+          subjectName: subjects.name,
+          studentName: students.fullName,
+          studentCode: students.studentCode,
+          maxScore: examSubjects.maxScore,
+          yearStatus: academicYears.status
+        }).from(gradeRecords)
+          .innerJoin(examSubjects, and(eq(examSubjects.id, gradeRecords.examSubjectId),
+            eq(examSubjects.schoolId, gradeRecords.schoolId)))
+          .innerJoin(exams, and(eq(exams.id, examSubjects.examId),
+            eq(exams.schoolId, gradeRecords.schoolId)))
+          .innerJoin(academicYears, and(eq(academicYears.id, exams.academicYearId),
+            eq(academicYears.schoolId, gradeRecords.schoolId)))
+          .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId),
+            eq(subjects.schoolId, gradeRecords.schoolId)))
+          .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId),
+            eq(classSections.schoolId, gradeRecords.schoolId)))
+          .innerJoin(students, and(eq(students.id, gradeRecords.studentId),
+            eq(students.schoolId, gradeRecords.schoolId)))
+          .where(where)
+          .orderBy(desc(exams.publishedAt), asc(students.fullName), asc(gradeRecords.id))
+          .limit(query.limit).offset(query.offset)
+      ]);
+      // Source is intentionally duplicated above: aggregates and projected
+      // rows use identical tenant/filter joins and cannot leak draft marks.
+      return { rows: found.map(({ yearStatus, ...row }) => ({
+        ...row, canCorrect: row.examStatus === "PUBLISHED" && yearStatus === "ACTIVE"
+      })), total: totals[0]?.value ?? 0, limit: query.limit, offset: query.offset };
+    },
+
+    async getAdminGradeCorrections(schoolId, gradeId, limit, offset) {
+      const [grade] = await db.select({ id: gradeRecords.id }).from(gradeRecords)
+        .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.id, gradeId),
+          eq(gradeRecords.status, "PUBLISHED"))).limit(1);
+      if (!grade) throw new LearningNotFoundError("Published grade not found.");
+      const conditions = and(eq(auditLogs.schoolId, schoolId),
+        eq(auditLogs.action, "grade.corrected"), eq(auditLogs.entityType, "grade_record"),
+        eq(auditLogs.entityId, gradeId));
+      const [totals, entries] = await Promise.all([
+        db.select({ value: count() }).from(auditLogs).where(conditions),
+        db.select({ id: auditLogs.id, createdAt: auditLogs.createdAt,
+          actorUsername: users.username, metadata: auditLogs.metadata })
+          .from(auditLogs).leftJoin(users, and(eq(users.id, auditLogs.actorUserId),
+            eq(users.schoolId, auditLogs.schoolId)))
+          .where(conditions).orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+          .limit(limit).offset(offset)
+      ]);
+      const events = entries.map(({ metadata, ...entry }) => ({
+        ...entry,
+        previousScore: typeof metadata.previousScore === "number" ? metadata.previousScore : null,
+        score: typeof metadata.score === "number" ? metadata.score : null,
+        previousRemark: typeof metadata.previousRemark === "string" ? metadata.previousRemark : null,
+        remark: typeof metadata.remark === "string" ? metadata.remark : null,
+        reason: typeof metadata.reason === "string" ? metadata.reason : ""
+      }));
+      return { events, total: totals[0]?.value ?? 0, limit, offset };
+    },
+
     async getAdminOverview(schoolId) {
       const [schoolExams, subjectRows, publishedGrades] = await Promise.all([
         db.select().from(exams).where(eq(exams.schoolId, schoolId)).orderBy(desc(exams.createdAt)),
@@ -1362,6 +1496,12 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
             eq(examSubjects.id, previous.examSubjectId))).limit(1);
         if (!context || context.exam.status !== "PUBLISHED" || previous.status !== "PUBLISHED") {
           throw new LearningConflictError("Only published grades use the administrator correction workflow.");
+        }
+        const [year] = await tx.select({ status: academicYears.status }).from(academicYears)
+          .where(and(eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, context.exam.academicYearId))).limit(1);
+        if (year?.status !== "ACTIVE") {
+          throw new LearningConflictError("Historical academic year results are read-only.");
         }
         if (input.score > context.examSubject.maxScore) {
           throw new LearningValidationError(`Score cannot exceed the maximum score of ${context.examSubject.maxScore}.`);
