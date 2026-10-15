@@ -7,6 +7,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
 import { PilotOverviewActivity } from "./pilot-overview-activity";
+import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
@@ -515,6 +516,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           </span>
           <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("Review coverage")}</Link>
         </div>
+      ) : null}
+      {section === "readiness" ? (
+        <PilotOperationalReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
       {section === "readiness" && advanced ? (
         <section className="pilot-coverage-section" aria-labelledby="pilot-coverage-title">
