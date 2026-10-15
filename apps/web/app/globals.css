@@ -8692,3 +8692,31 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-guide, .pilot-data-quality { padding: 15px; }
   .pilot-guide-step { padding: 11px; }
 }
+
+/* Pilot Operations Phase 4 refinement — Usage & Adoption dashboard */
+.pilot-adoption { display: grid; gap: 18px; min-width: 0; }
+.pilot-adoption > .admin-section-header { gap: 16px; align-items: flex-start; }
+.pilot-adoption-toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.pilot-adoption-toolbar button { font-size: 12px; padding: 8px 12px; white-space: nowrap; }
+.pilot-adoption-role-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pilot-adoption-role { min-width: 0; display: grid; align-content: start; gap: 10px; }
+.pilot-adoption-role h4 { margin: 0; font-size: 15px; }
+.pilot-adoption-role strong { color: #22548e; font-size: clamp(24px, 3vw, 34px); }
+.pilot-adoption-role p { margin: 0; font-size: 13px; color: var(--ml-color-text-muted); overflow-wrap: anywhere; }
+.pilot-adoption-role progress { width: 100%; height: 10px; accent-color: #3387c5; }
+.pilot-adoption-events { display: grid; gap: 14px; }
+.pilot-adoption-events .admin-section-header h3 { margin-block: 0 6px; }
+.pilot-adoption-event-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pilot-adoption-event { display: grid; gap: 8px; border: 1px solid #dce6f2;
+  border-radius: 12px; padding: 15px; min-width: 0; text-decoration: none; background: #fafdff; }
+.pilot-adoption-event:hover { border-color: #88aee3; }
+.pilot-adoption-event > span:first-child { font-weight: 700; font-size: 13px; color: var(--ml-color-text); }
+.pilot-adoption-event strong { font-size: 27px; color: #24548a; font-variant-numeric: tabular-nums; }
+.pilot-adoption-event > span:last-child { color: var(--ml-color-brand); font-size: 12px; font-weight: 700; }
+.pilot-adoption :is(a,button):focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+@media (max-width: 900px) { .pilot-adoption-event-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 760px) { .pilot-adoption-role-grid { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 500px) {
+  .pilot-adoption-event-grid { grid-template-columns: minmax(0,1fr); }
+  .pilot-adoption-toolbar { width: 100%; }
+}
