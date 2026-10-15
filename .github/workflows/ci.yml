@@ -73,6 +73,9 @@ jobs:
       - name: Admin Learning Phase 2 examination workspace and schedule safety
         run: pnpm verify:admin-learning:phase2
 
+      - name: Admin Learning Phase 3 readiness and publication protections
+        run: pnpm verify:admin-learning:phase3
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -202,6 +205,7 @@ jobs:
           pnpm verify:admin-loading
           pnpm verify:admin-learning:phase1
           pnpm verify:admin-learning:phase2
+          pnpm verify:admin-learning:phase3
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
