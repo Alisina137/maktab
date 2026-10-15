@@ -3499,19 +3499,6 @@ test("homework stays private as draft, then becomes visible to parent and linked
   assert.equal(editDraft.statusCode, 200);
   assert.equal(editDraft.json<{ homework: { content: string } }>().homework.content,
     "Revised questions for chapter 3.");
-  const correctionHistoryUrl = "/v1/admin/grades/" + gradeIdToCorrect + "/corrections";
-  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl })).statusCode, 401);
-  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
-    headers: assignedTeacher.auth })).statusCode, 403);
-  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
-    headers: otherAdmin })).statusCode, 404);
-  assert.equal((await app.inject({ method: "GET",
-    url: "/v1/admin/grades/not-a-uuid/corrections", headers: admin })).statusCode, 400);
-  const beforeCorrectionHistory = await app.inject({ method: "GET",
-    url: correctionHistoryUrl, headers: admin });
-  assert.equal(beforeCorrectionHistory.statusCode, 200);
-  assert.equal(beforeCorrectionHistory.json<{total:number}>().total, 0);
-
   for (const payload of [{}, { dueAt: "2001-01-01T00:00:00Z" },
     { attachmentUrl: "javascript:alert(1)" }]) {
     const result = await app.inject({
@@ -4501,6 +4488,19 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   // 15.10/15.12: post-publication edits are Admin-only and validated.
   const gradeIdToCorrect = results[0]!.grade.id;
   const initialGradeRevision = results[0]!.grade.updatedAt;
+  const correctionHistoryUrl = "/v1/admin/grades/" + gradeIdToCorrect + "/corrections";
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
+    headers: assignedTeacher.auth })).statusCode, 403);
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
+    headers: otherAdmin })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/grades/not-a-uuid/corrections", headers: admin })).statusCode, 400);
+  const beforeCorrectionHistory = await app.inject({ method: "GET",
+    url: correctionHistoryUrl, headers: admin });
+  assert.equal(beforeCorrectionHistory.statusCode, 200);
+  assert.equal(beforeCorrectionHistory.json<{total:number}>().total, 0);
+
   for (const payload of [
     { score: -1, reason: "Bad value" },
     { score: 101, reason: "Out of range" },
