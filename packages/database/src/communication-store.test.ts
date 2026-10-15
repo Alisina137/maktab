@@ -31,7 +31,8 @@ async function createPhase7Database() {
     "0019_fee_payment_idempotency.sql",
     "0022_fee_invoice_numbers.sql",
     "0023_notification_scheduler_health.sql",
-    "0024_fee_payment_reconciliation.sql"
+    "0024_fee_payment_reconciliation.sql",
+    "0025_notification_push_lease.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
@@ -171,6 +172,70 @@ test("Phase 7 reminder jobs are idempotent and push failure does not roll back s
   const unread = await communication.getUnreadNotificationCount(schoolId, parent.user.id);
   assert.equal(unread, finalInbox.filter(item => !item.readAt).length);
 
+  // Phase 7: overlap two workers while the provider is still accepting.
+  const another = await communication.createAnnouncement(schoolId, admin.id, {
+    title: "Worker overlap", content: "Single push handoff per lease",
+    audienceScope: "ROLE", audienceRole: "PARENT"
+  });
+  await communication.deliverPendingPush(failingProvider);
+  const pendingRow = (await communication.getUserNotifications(schoolId, parent.user.id))
+    .find(item => item.metadata.announcementId === another.id);
+  assert.ok(pendingRow);
+  assert.equal(pendingRow.deliveryStatus, "FAILED");
+  let unblock!: () => void;
+  let started!: () => void;
+  const gate = new Promise<void>(resolve => { unblock = resolve; });
+  const active = new Promise<void>(resolve => { started = resolve; });
+  const calls: string[] = [];
+  const blockedProvider: PushProvider = {
+    async send(message) {
+      calls.push(message.token);
+      started();
+      await gate;
+      return { ok: true, providerMessageId: "p7-provider-accepted" };
+    }
+  };
+  const workerA = communication.deliverPendingPush(blockedProvider);
+  await active;
+  await assert.rejects(
+    () => communication.retryAdminNotification(schoolId, pendingRow.id),
+    /state changed/i
+  );
+  const workerB = communication.deliverPendingPush(blockedProvider);
+  unblock();
+  await Promise.all([workerA, workerB]);
+  assert.equal(calls.length, 1, "Overlapping workers must not duplicate provider handoffs.");
+
+  await communication.registerDevice(schoolId, parent.user.id,
+    "ExponentPushToken[phase7-secondary]", "ANDROID");
+  await communication.createAnnouncement(schoolId, admin.id, {
+    title: "Partial device acceptance", content: "Failed devices remain retryable",
+    audienceScope: "ROLE", audienceRole: "PARENT"
+  });
+  const attempts: string[] = [];
+  const partiallyFailed = await communication.deliverPendingPush({
+    async send(message) {
+      attempts.push(message.token);
+      return message.token.includes("secondary")
+        ? { ok: false, error: "offline" }
+        : { ok: true, providerMessageId: "p7-first-device" };
+    }
+  });
+  assert.equal(partiallyFailed.sent, 1);
+  assert.equal(partiallyFailed.failed, 1);
+  const partialRow = (await communication.getUserNotifications(schoolId, parent.user.id))
+    .find(item => item.title === "Partial device acceptance");
+  assert.equal(partialRow?.deliveryStatus, "FAILED");
+  const recovered = await communication.deliverPendingPush({
+    async send(message) {
+      attempts.push(message.token);
+      return { ok: true, providerMessageId: "p7-recovered-device" };
+    }
+  });
+  assert.equal(recovered.sent, 1);
+  assert.equal(attempts.filter(token => token.includes("secondary")).length, 2);
+  assert.equal(attempts.filter(token => token === "ExponentPushToken[test-phase7]").length, 1);
+
 });
 
 // Step 17: a real PostgreSQL-compatible ledger, not mocked arithmetic.
@@ -296,4 +361,20 @@ test("Step 17 fees: tenant isolation, replay, exact balances, immutable reversal
   assert.equal((await fees.getParentFees(schoolId, parent.user.id, student.id))[0]?.invoice.status, "CANCELLED");
   assert.equal((await fees.getUserNotifications(schoolId, parent.user.id))
     .filter(x => x.type === "FEE_DUE" || x.type === "FEE_OVERDUE").length, 0);
+
+  // Phase 7: a final payment and an overdue scheduler run share the invoice lock.
+  const concurrent = await fees.createFeeInvoice(schoolId, admin.id, {
+    studentId: student.id, amount: 300, dueDate: "2026-09-01", description: "Race payment"
+  });
+  await fees.issueFeeInvoice(schoolId, concurrent.id, admin.id);
+  await Promise.all([
+    fees.recordFeePayment(schoolId, admin.id, concurrent.id, {
+      amount: 300, method: "CASH"
+    }),
+    fees.runScheduledNotifications(new Date("2026-10-15T06:00:00Z"))
+  ]);
+  const latest = await fees.getAdminStudentFeeBalance(schoolId, student.id);
+  const finished = latest.invoices.find(row => row.invoice.id === concurrent.id);
+  assert.equal(finished?.invoice.status, "PAID");
+  assert.equal(finished?.outstanding, 0);
 });

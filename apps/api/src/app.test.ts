@@ -51,7 +51,8 @@ async function createTestApp() {
     "0021_pilot_launch_support.sql",
     "0022_fee_invoice_numbers.sql",
     "0023_notification_scheduler_health.sql",
-    "0024_fee_payment_reconciliation.sql"
+    "0024_fee_payment_reconciliation.sql",
+    "0025_notification_push_lease.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -7545,6 +7546,35 @@ test("Admin Fees Phase 4 records and reverses immutable payments with scoped rec
   assert.deepEqual(ledger.rows.map(row=>row.kind).sort(),["PAYMENT","PAYMENT","REVERSAL"].sort());
 });
 
+
+
+test("Admin Communication/Fees Phase 7 requires platform key and scopes delivery monitor", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "C7-SCHOOL-A");
+  const schoolB = await provisionSchool(app, "C7-SCHOOL-B");
+  const tokenA = await bootstrapAdmin(app, schoolA, "c7.admin");
+  const tokenB = await bootstrapAdmin(app, schoolB, "c7.admin");
+  const adminA = { authorization: `Bearer ${tokenA}` };
+  const adminB = { authorization: `Bearer ${tokenB}` };
+  const job = "/v1/platform/jobs/communication/run";
+  assert.equal((await app.inject({ method: "POST", url: job })).statusCode, 401);
+  assert.equal((await app.inject({ method: "POST", url: job,
+    headers: { "x-platform-provisioning-key": "not-valid" } })).statusCode, 401);
+  assert.equal((await app.inject({ method: "POST", url: job,
+    headers: { "x-platform-provisioning-key": provisioningKey } })).statusCode, 200);
+  const monitor = "/v1/admin/notifications/delivery";
+  assert.equal((await app.inject({ method: "GET", url: monitor })).statusCode, 401);
+  for (const headers of [adminA, adminB]) {
+    const response = await app.inject({ method: "GET", url: monitor, headers });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.ok(response.json<{ scheduler: { lastSuccessAt: string | null } }>()
+      .scheduler.lastSuccessAt);
+  }
+  const invalid = await app.inject({ method: "POST",
+    url: "/v1/admin/notifications/invalid-id/retry", headers: adminA });
+  assert.equal(invalid.statusCode, 400);
+});
 
 test("Admin Fees Phase 6 reporting routes restrict schools, reject bad filters and preview without mutation", async (t) => {
   const { app, client } = await createTestApp();
