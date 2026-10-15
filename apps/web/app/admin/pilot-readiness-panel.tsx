@@ -293,9 +293,13 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     const version = ++importHistoryRequestVersion.current;
     setImportHistoryBusy(true);
     setImportHistoryError("");
-    if (filters.actor.trim().length === 1 ||
-        (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo)) {
-      setImportHistoryError(adminText(locale, "Enter at least two characters for an actor and a valid chronological date range."));
+    if (filters.actor.trim().length === 1) {
+      setImportHistoryError(t("Enter at least two characters to search by administrator."));
+      setImportHistoryBusy(false);
+      return;
+    }
+    if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
+      setImportHistoryError(t("Start date cannot be after end date."));
       setImportHistoryBusy(false);
       return;
     }
