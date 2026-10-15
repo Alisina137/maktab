@@ -235,6 +235,40 @@ export function registerLearningRoutes(
     }
   });
 
+  app.get("/v1/admin/learning/published-results", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = z.object({
+        academicYearId: z.string().uuid(),
+        examId: z.string().uuid().optional(),
+        classId: z.string().uuid().optional(),
+        subjectId: z.string().uuid().optional(),
+        search: z.string().trim().max(100).optional(),
+        limit: z.coerce.number().int().min(1).max(50).default(20),
+        offset: z.coerce.number().int().min(0).max(100000).default(0)
+      }).parse(request.query);
+      return await learning.listAdminPublishedGrades(context.user.schoolId, query);
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
+  });
+
+  app.get<{ Params: { gradeId: string } }>("/v1/admin/grades/:gradeId/corrections", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const gradeId = z.string().uuid().parse(request.params.gradeId);
+      const { limit, offset } = z.object({
+        limit: z.coerce.number().int().min(1).max(50).default(20),
+        offset: z.coerce.number().int().min(0).max(100000).default(0)
+      }).parse(request.query);
+      return await learning.getAdminGradeCorrections(context.user.schoolId, gradeId, limit, offset);
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
+  });
+
   app.get<{ Params: { examId: string } }>("/v1/admin/exams/:examId/detail", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
