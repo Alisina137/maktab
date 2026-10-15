@@ -59,7 +59,7 @@ export function PilotOnboardingGuide({ readiness, advanced, advancedLoading, loc
     { key: "parents", label: "Create or import parent accounts", href: "/admin/families",
       state: status(readiness.counts.parents > 0) },
     { key: "students", label: "Create or import student records", href: "/admin/families",
-      state: status(readiness.counts.students > 0) },
+      state: advanced ? status((coverage("student_logins")?.total ?? 0) > 0) : "unknown" },
     { key: "family_links", label: "Verify student and parent relationships", href: "/admin/families",
       state: stateFromCoverage("family_links") },
     { key: "timetable", label: "Configure class timetables", href: "/admin/academics/timetable",
@@ -69,7 +69,7 @@ export function PilotOnboardingGuide({ readiness, advanced, advancedLoading, loc
   ];
   const completed = steps.filter((step) => step.state === "complete").length;
   const unknown = steps.some((step) => step.state === "unknown");
-  const next = !unknown ? steps.find((step) => step.state === "pending") : null;
+  const next = steps.find((step) => step.state === "pending");
   const issues = qualityChecks.map((definition) => ({ ...definition, metric: coverage(definition.key) }));
   const knownIssues = issues.filter((issue) => (issue.metric?.missing ?? 0) > 0);
 
@@ -89,15 +89,16 @@ export function PilotOnboardingGuide({ readiness, advanced, advancedLoading, loc
         <progress value={completed} max={steps.length} aria-label={t("School onboarding checklist")} />
         {unknown || advancedLoading ? (
           <p className="pilot-security-note" role="status">{t("Coverage is still loading or unavailable; some setup steps cannot yet be verified.")}</p>
-        ) : next ? (
+        ) : null}
+        {next ? (
           <div className="pilot-guide-next">
             <span className="pilot-badge pilot-badge-warning">{t("Recommended next action")}</span>
             <strong>{t(next.label)}</strong>
             <Link className="admin-primary" href={next.href}>{t("Continue setup")}</Link>
           </div>
-        ) : (
+        ) : !unknown && !advancedLoading ? (
           <p className="pilot-security-note">{t("Configuration steps are complete. Production release still needs independent approval.")}</p>
-        )}
+        ) : null}
         <div className="pilot-guide-list">
           {steps.map((step, index) => (
             <div className="pilot-guide-step" key={step.key}>
