@@ -100,8 +100,9 @@ export function createAttendanceFollowupStore(db:FoundationDatabase):AttendanceF
     schoolId:string,actorId:string,caseId:string,kind:
       "OPENED"|"NOTE"|"CALL"|"MEETING"|"MESSAGE"|"STATUS_CHANGE"|"ASSIGNMENT",
     details:string) {
+    const activityId=randomUUID();
     await tx.insert(attendanceFollowupActivities).values({
-      id:randomUUID(),schoolId,caseId,actorUserId:actorId,kind,details
+      id:activityId,schoolId,caseId,actorUserId:actorId,kind,details
     });
     await tx.insert(auditLogs).values({
       id:randomUUID(),schoolId,actorUserId:actorId,
@@ -109,6 +110,7 @@ export function createAttendanceFollowupStore(db:FoundationDatabase):AttendanceF
       // Private family contact details and activity notes are not copied into general school audit.
       metadata:{caseId,kind}
     });
+    return activityId;
   }
 
   return {
@@ -183,16 +185,42 @@ export function createAttendanceFollowupStore(db:FoundationDatabase):AttendanceF
           eq(dailyAttendances.schoolId,schoolId)))
         .innerJoin(students,and(eq(students.id,studentAttendances.studentId),eq(students.schoolId,schoolId)))
         .innerJoin(classSections,and(eq(classSections.id,dailyAttendances.classId),eq(classSections.schoolId,schoolId)));
-      const all=await joined().where(and(...base));
+      // Count each status at the database; never materialize an entire
+      // school's private cases merely to show dashboard summaries.
+      const aggregation=()=>db.select({
+        state:attendanceFollowupCases.status,
+        total:count()
+      }).from(attendanceFollowupCases)
+        .innerJoin(studentAttendances,and(
+          eq(studentAttendances.id,attendanceFollowupCases.studentAttendanceId),
+          eq(studentAttendances.schoolId,schoolId)))
+        .innerJoin(dailyAttendances,and(
+          eq(dailyAttendances.id,studentAttendances.attendanceId),
+          eq(dailyAttendances.schoolId,schoolId)))
+        .innerJoin(students,and(
+          eq(students.id,studentAttendances.studentId),
+          eq(students.schoolId,schoolId)));
+      const statusWhere=options.status?eq(attendanceFollowupCases.status,options.status):undefined;
+      const [grouped,matching,rows]=await Promise.all([
+        aggregation().where(and(...base)).groupBy(attendanceFollowupCases.status),
+        db.select({total:count()}).from(attendanceFollowupCases)
+          .innerJoin(studentAttendances,and(
+            eq(studentAttendances.id,attendanceFollowupCases.studentAttendanceId),
+            eq(studentAttendances.schoolId,schoolId)))
+          .innerJoin(dailyAttendances,and(
+            eq(dailyAttendances.id,studentAttendances.attendanceId),
+            eq(dailyAttendances.schoolId,schoolId)))
+          .innerJoin(students,and(
+            eq(students.id,studentAttendances.studentId),eq(students.schoolId,schoolId)))
+          .where(and(...base,statusWhere)),
+        joined().where(and(...base,statusWhere))
+          .orderBy(desc(attendanceFollowupCases.createdAt),desc(attendanceFollowupCases.id))
+          .limit(options.limit).offset(options.offset)
+      ]);
       const summary:Record<FollowupState,number>={OPEN:0,IN_PROGRESS:0,RESOLVED:0,DISMISSED:0};
-      for(const item of all)summary[item.caseRow.status]++;
-      const filtered=options.status?all.filter(item=>item.caseRow.status===options.status):all;
-      // Stable server-side order before slicing; follow-up directories remain bounded by
-      // 50 rows returned to clients, even for schools with long-lived histories.
-      filtered.sort((a,b)=>b.caseRow.createdAt.getTime()-a.caseRow.createdAt.getTime()
-        ||b.caseRow.id.localeCompare(a.caseRow.id));
-      return {total:filtered.length,limit:options.limit,offset:options.offset,summary,
-        rows:filtered.slice(options.offset,options.offset+options.limit).map(({caseRow,studentId,
+      for(const item of grouped)summary[item.state]=Number(item.total);
+      return {total:Number(matching[0]?.total??0),limit:options.limit,offset:options.offset,summary,
+        rows:rows.map(({caseRow,studentId,
           studentName,studentCode,classId,className,attendanceId,date,currentStatus})=>({
           id:caseRow.id,academicYearId:caseRow.academicYearId,studentId,studentName,studentCode,
           classId,className,attendanceId,date,sourceStatus:caseRow.sourceStatus,currentStatus,
@@ -263,9 +291,8 @@ export function createAttendanceFollowupStore(db:FoundationDatabase):AttendanceF
       if(record.status==="RESOLVED"||record.status==="DISMISSED")
         throw new FollowupConflictError("Reopen a closed follow-up before recording further activity.");
       return db.transaction(async tx=>{
-        const id=randomUUID();
-        await log(tx,schoolId,actorId,caseId,input.kind,input.details);
-        return {id}; // Activity ID is not exposed; the persisted log is retrieved on refresh.
+        const id=await log(tx,schoolId,actorId,caseId,input.kind,input.details);
+        return {id};
       });
     },
     async listFollowupActivities(schoolId,caseId,limit,offset) {
