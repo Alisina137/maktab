@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:admin-communication:phase1 && pnpm verify:admin-communication:phase2 && pnpm verify:admin-communication:phase3 && pnpm verify:admin-communication:phase4 && pnpm verify:admin-communication:phase5 && pnpm verify:admin-communication:phase6 && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:parent:phase7 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:admin-communication:phase1 && pnpm verify:admin-communication:phase2 && pnpm verify:admin-communication:phase3 && pnpm verify:admin-communication:phase4 && pnpm verify:admin-communication:phase5 && pnpm verify:admin-communication:phase6 && pnpm verify:admin-communication:phase7 && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:parent:phase7 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -45,7 +45,8 @@
     "verify:admin-communication:phase3": "node scripts/verify-admin-communication-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-admin-communication-phase3-model.test.ts",
     "verify:admin-communication:phase4": "node scripts/verify-admin-communication-phase4.mjs",
     "verify:admin-communication:phase6": "node scripts/verify-admin-communication-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-admin-communication-phase6-csv.test.ts",
-    "verify:admin-communication:phase5": "node scripts/verify-admin-communication-phase5.mjs"
+    "verify:admin-communication:phase5": "node scripts/verify-admin-communication-phase5.mjs",
+    "verify:admin-communication:phase7": "node scripts/verify-admin-communication-phase7.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
