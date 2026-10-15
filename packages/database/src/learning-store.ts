@@ -11,6 +11,7 @@ import type {
   UpdateHomeworkInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
+import { createAdminLearningReportsStore, type AdminLearningReportsStore } from "./admin-learning-reports-store.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
 import {
   academicYears,
@@ -260,7 +261,7 @@ export interface AdminExamReadiness {
   canPublish: boolean;
 }
 
-export interface LearningStore {
+export interface LearningStore extends AdminLearningReportsStore {
   getTeacherLearning(schoolId: string, teacherUserId: string): Promise<TeacherLearningView>;
   createHomework(schoolId: string, teacherUserId: string, input: CreateHomeworkInput): Promise<Homework>;
   updateHomework(schoolId: string, teacherUserId: string, homeworkId: string, input: UpdateHomeworkInput): Promise<Homework>;
@@ -513,6 +514,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
   }
 
   return {
+    ...createAdminLearningReportsStore(db),
     async getTeacherLearning(schoolId, teacherUserId) {
       const assignments = await db
         .select({
