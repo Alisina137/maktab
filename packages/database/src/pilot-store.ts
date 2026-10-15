@@ -8,6 +8,7 @@ import {
   getOperationalReadiness, listOperationalIssues,
   type OperationalReadiness, type OperationalIssues, type OperationalReadinessKey
 } from "./pilot-readiness-operational.js";
+import { getPilotAdoptionReport, type AdoptionWindow, type AdoptionReport } from "./pilot-adoption-store.js";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
@@ -74,6 +75,7 @@ export interface PilotReadiness {
 
 export interface PilotStore {
   getReadiness(schoolId: string): Promise<PilotReadiness>;
+  getAdoptionReport(schoolId: string, window: AdoptionWindow): Promise<AdoptionReport>;
   getAdvancedReadiness(schoolId: string): Promise<AdvancedPilotReadiness>;
   listReadinessIssues(schoolId: string, metric: PilotCoverageKey, options: { limit: number; offset: number }): Promise<PilotCoverageIssues>;
   getOperationalReadiness(schoolId: string): Promise<OperationalReadiness>;
@@ -85,6 +87,9 @@ export interface PilotStore {
 
 export function createPilotStore(db: FoundationDatabase): PilotStore {
   return {
+    async getAdoptionReport(schoolId, window) {
+      return getPilotAdoptionReport(db, schoolId, window);
+    },
     async getReadiness(schoolId) {
       const [schoolContext] = await db.select({ school: schools, subscription: subscriptions })
         .from(schools).innerJoin(subscriptions, eq(subscriptions.schoolId, schools.id))
