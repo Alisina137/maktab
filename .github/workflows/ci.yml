@@ -130,6 +130,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Record Admin Communication/Fees Phase 7 independent manual acceptance as NO-GO
+        if: always()
+        run: node scripts/phase7-communication-report.mjs --output "$RUNNER_TEMP/maktablink-communication-fees-phase7-no-go.json"
+
+      - name: Preserve exact-build Communication and Fees Phase 7 manual matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: communication-fees-phase7-manual-no-go
+          path: ${{ runner.temp }}/maktablink-communication-fees-phase7-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Record Parent Phase 7 device acceptance as NO-GO
         if: always()
         run: node scripts/parent-phase7-acceptance.mjs --output "$RUNNER_TEMP/maktablink-parent-phase7-no-go.json"
