@@ -50,7 +50,8 @@ async function createTestApp() {
     "0020_pilot_import_history.sql",
     "0021_pilot_launch_support.sql",
     "0022_fee_invoice_numbers.sql",
-    "0023_notification_scheduler_health.sql"
+    "0023_notification_scheduler_health.sql",
+    "0024_fee_payment_reconciliation.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -7542,4 +7543,54 @@ test("Admin Fees Phase 4 records and reverses immutable payments with scoped rec
     "SELECT kind FROM fee_payments WHERE school_id=$1 AND invoice_id=$2 ORDER BY recorded_at",
     [schoolId,invoice.id]);
   assert.deepEqual(ledger.rows.map(row=>row.kind).sort(),["PAYMENT","PAYMENT","REVERSAL"].sort());
+});
+
+
+test("Admin Fees Phase 6 reporting routes restrict schools, reject bad filters and preview without mutation", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async()=>{ await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "FEE-REPORT-A");
+  const schoolB = await provisionSchool(app, "FEE-REPORT-B");
+  const tokenA = await bootstrapAdmin(app, schoolA, "reports.admin");
+  const tokenB = await bootstrapAdmin(app, schoolB, "reports.admin");
+  const adminA = { authorization: `Bearer ${tokenA}` };
+  const adminB = { authorization: `Bearer ${tokenB}` };
+
+  const reportA = await app.inject({ method: "GET", url:"/v1/admin/fees/reports", headers:adminA });
+  assert.equal(reportA.statusCode,200,reportA.body);
+  assert.equal(reportA.json<{report:{billed:number;statement:{grossPayments:number}}}>().report.billed,0);
+  const exportA = await app.inject({ method:"GET",
+    url:"/v1/admin/fees/reports/export?kind=outstanding", headers:adminA });
+  assert.equal(exportA.statusCode,200,exportA.body);
+  assert.ok(exportA.json<{csv:string}>().csv.includes("invoice_number"));
+  const reportB = await app.inject({ method:"GET", url:"/v1/admin/fees/reports", headers:adminB });
+  assert.equal(reportB.statusCode,200);
+  assert.equal(reportB.json<{report:{billed:number}}>().report.billed,0);
+
+  const invalidRange = await app.inject({ method:"GET",
+    url:"/v1/admin/fees/reports?from=2026-10-16&to=2026-10-14",headers:adminA });
+  assert.equal(invalidRange.statusCode,400);
+  const badKind = await app.inject({ method:"GET",
+    url:"/v1/admin/fees/reports/export?kind=private",headers:adminA });
+  assert.equal(badKind.statusCode,400);
+  const badPreview = await app.inject({ method:"POST",
+    url:"/v1/admin/fees/invoices/bulk-preview", headers:adminA,payload:{invoices:[]} });
+  assert.equal(badPreview.statusCode,400);
+
+  const otherStudentId="11111111-1111-4111-8111-111111111111";
+  const preview = await app.inject({ method:"POST",url:"/v1/admin/fees/invoices/bulk-preview",
+    headers:adminA,payload:{invoices:[{studentId:otherStudentId,amount:100,dueDate:"2026-10-30",description:"Test"}]} });
+  assert.equal(preview.statusCode,200,preview.body);
+  assert.equal(preview.json<{created:boolean;ready:number;unavailable:number}>().created,false);
+  assert.equal(preview.json<{unavailable:number}>().unavailable,1);
+  const noMutation = await app.inject({ method:"GET",url:"/v1/admin/fees/invoices",headers:adminA });
+  assert.equal(noMutation.statusCode,200);
+  assert.equal(noMutation.json<{total:number}>().total,0);
+
+  const foreignPayment = await app.inject({ method:"PATCH",headers:adminB,
+    url:"/v1/admin/fees/payments/11111111-1111-4111-8111-111111111111/reconciliation",
+    payload:{status:"RECONCILED",reference:"BANK-X"} });
+  assert.equal(foreignPayment.statusCode,404);
+  const unauth = await app.inject({method:"GET",url:"/v1/admin/fees/reports"});
+  assert.equal(unauth.statusCode,401);
 });

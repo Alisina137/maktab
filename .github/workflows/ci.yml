@@ -52,6 +52,9 @@ jobs:
       - name: Admin Communication and Fees Phase 5 scheduler health, delivery safety and reminders
         run: pnpm verify:admin-communication:phase5
 
+      - name: Admin Communication and Fees Phase 6 reports, CSV, reconciliation and bulk preview
+        run: pnpm verify:admin-communication:phase6
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -161,6 +164,7 @@ jobs:
           pnpm verify:admin-communication:phase3
           pnpm verify:admin-communication:phase4
           pnpm verify:admin-communication:phase5
+          pnpm verify:admin-communication:phase6
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3

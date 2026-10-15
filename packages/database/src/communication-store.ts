@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createFeeFinancialStore, type FeeFinancialStore } from "./fee-financial-store.js";
 import { and, asc, desc, eq, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type {
   CreateAnnouncementInput,
@@ -110,7 +111,7 @@ export interface PushProvider {
   send(message: PushMessage): Promise<PushResult>;
 }
 
-export interface CommunicationStore {
+export interface CommunicationStore extends FeeFinancialStore {
   createAnnouncement(schoolId: string, actorUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
   createNegaranAnnouncement(schoolId: string, teacherUserId: string, input: CreateAnnouncementInput): Promise<Announcement>;
   archiveAnnouncement(schoolId: string, actorUserId: string, announcementId: string): Promise<Announcement>;
@@ -451,6 +452,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
   }
 
   return {
+    ...createFeeFinancialStore(db),
     async previewAnnouncementAudience(schoolId, input) {
       if (input.classId) {
         const [targetClass] = await db.select({ id: classSections.id })

@@ -566,3 +566,27 @@ export const updateFeeReminderSettingsSchema = z.object({
     .transform((days) => Array.from(new Set(days)).sort((a, b) => b - a))
 });
 export type UpdateFeeReminderSettingsInput = z.infer<typeof updateFeeReminderSettingsSchema>;
+
+/** Financial snapshot: from/to only filters the transaction statement, not current invoice aging. */
+export const adminFeeReportQuerySchema = z.object({
+  from: isoDateSchema.optional(),
+  to: isoDateSchema.optional()
+}).strict().refine(value => !value.from || !value.to || value.from <= value.to, {
+  message: "Report date range must be chronological.", path: ["to"]
+});
+export type AdminFeeReportQuery = z.infer<typeof adminFeeReportQuerySchema>;
+
+export const feeReconciliationSchema = z.object({
+  status: z.enum(["PENDING", "RECONCILED"]),
+  reference: z.string().trim().max(120).optional()
+}).strict().superRefine((value,ctx) => {
+  if (value.status === "PENDING" && value.reference) ctx.addIssue({
+    code: "custom", path: ["reference"], message: "Clear the reconciliation reference before reopening."
+  });
+});
+export type SetFeeReconciliationInput = z.infer<typeof feeReconciliationSchema>;
+
+export const bulkFeePreviewSchema = z.object({
+  invoices: z.array(createFeeInvoiceSchema).min(1).max(100)
+}).strict();
+export type BulkFeePreviewInput = z.infer<typeof bulkFeePreviewSchema>;

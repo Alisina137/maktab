@@ -1,6 +1,9 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   createAnnouncementSchema,
+  adminFeeReportQuerySchema,
+  bulkFeePreviewSchema,
+  feeReconciliationSchema,
   updateScheduledAnnouncementSchema,
   createFeeInvoiceSchema,
   updateDraftFeeInvoiceSchema,
@@ -21,6 +24,7 @@ import {
 } from "@maktablink/database";
 import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
+import { feeReportCsv } from "./fee-report-csv.js";
 import { requireSchoolAdmin } from "../users/routes.js";
 
 function sendCommunicationError(reply: FastifyReply, error: unknown) {
@@ -335,6 +339,62 @@ export function registerCommunicationRoutes(
       return sendCommunicationError(reply, error);
     }
   });
+
+
+  app.get("/v1/admin/fees/reports", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = adminFeeReportQuerySchema.parse(request.query);
+      return { report: await communication.getFeeFinancialReport(context.user.schoolId, query) };
+    } catch (error) { return sendCommunicationError(reply, error); }
+  });
+
+  app.get("/v1/admin/fees/reports/export", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const raw = z.object({
+        kind: z.enum(["payments", "outstanding"]),
+        from: z.string().optional(), to: z.string().optional()
+      }).strict().parse(request.query);
+      const query = adminFeeReportQuerySchema.parse({ from: raw.from, to: raw.to });
+      const report = await communication.getFeeFinancialReport(context.user.schoolId, query);
+      const csv = feeReportCsv(report, raw.kind);
+      await accounts.writeAudit({
+        schoolId: context.user.schoolId, actorUserId: context.user.id,
+        action: "fee_report.exported", entityType: "school", entityId: context.user.schoolId,
+        metadata: { kind: raw.kind, from: query.from ?? null, to: query.to ?? null,
+          rows: raw.kind === "payments" ? report.rows.length : report.invoices.length }
+      });
+      reply.header("Cache-Control", "no-store");
+      // JSON transport preserves shared admin API auth and error handling. CSV is generated server-side.
+      return { filename: `maktab-fees-${raw.kind}-${report.asOf}.csv`, csv };
+    } catch (error) { return sendCommunicationError(reply, error); }
+  });
+
+  app.post("/v1/admin/fees/invoices/bulk-preview", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const input = bulkFeePreviewSchema.parse(request.body);
+      return await communication.previewBulkFeeInvoices(context.user.schoolId, context.user.id, input);
+    } catch (error) { return sendCommunicationError(reply, error); }
+  });
+
+  app.patch<{ Params: { paymentId: string } }>(
+    "/v1/admin/fees/payments/:paymentId/reconciliation", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const paymentId = z.string().uuid().parse(request.params.paymentId);
+        const input = feeReconciliationSchema.parse(request.body);
+        return await communication.setFeePaymentReconciliation(
+          context.user.schoolId, context.user.id, paymentId, input
+        );
+      } catch (error) { return sendCommunicationError(reply, error); }
+    }
+  );
 
   app.get("/v1/admin/fees/payments", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);

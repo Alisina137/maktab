@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { announcementDashboard, feeDashboard } from "./communication-overview-model";
 import { invoiceReference, invoiceQuery, INVOICE_STATUSES, type AdminInvoiceStatus } from "./communication-invoices-model";
 import { AdminFeeOperations, AdminFeeReceiptButton } from "./admin-fee-operations";
+import { AdminFeeFinancialReports } from "./admin-fee-financial-reports";
 import { AdminNotificationMonitor } from "./admin-notification-monitor";
 import { ANNOUNCEMENT_PAGE_SIZE, announcementStatus, findAnnouncements,
   pageAnnouncements, schoolLocalTimeToIso,
@@ -104,8 +105,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
   const [feesPane, setFeesPane] = useState<Pane>("LIST");
-  const [feesModule, setFeesModule] = useState<"INVOICES" | "PAYMENTS" | "BALANCES">("INVOICES");
-  const feeModuleRefs = useRef<Partial<Record<"INVOICES" | "PAYMENTS" | "BALANCES", HTMLButtonElement | null>>>({});
+  const [feesModule, setFeesModule] = useState<"INVOICES" | "PAYMENTS" | "BALANCES" | "REPORTS">("INVOICES");
+  const feeModuleRefs = useRef<Partial<Record<"INVOICES" | "PAYMENTS" | "BALANCES" | "REPORTS", HTMLButtonElement | null>>>({});
   const [feeSearch, setFeeSearch] = useState("");
   const [feeStatus, setFeeStatus] = useState<AdminInvoiceStatus>("ALL");
   const [feeClassId, setFeeClassId] = useState("");
@@ -1101,7 +1102,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             {([
               ["INVOICES", "Invoices"],
               ["PAYMENTS", "Payment history"],
-              ["BALANCES", "Student balances"]
+              ["BALANCES", "Student balances"],
+              ["REPORTS", "Reports & reconciliation"]
             ] as const).map(([key,label]) => (
               <button type="button" key={key} aria-current={feesModule === key ? "page" : undefined}
                 ref={element => { feeModuleRefs.current[key] = element; }}
@@ -1109,7 +1111,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 onClick={() => setFeesModule(key)}>{t(label)}</button>
             ))}
           </nav>
-          {feesModule !== "INVOICES" ? (
+          {(feesModule === "PAYMENTS" || feesModule === "BALANCES") ? (
             <AdminFeeOperations mode={feesModule} accessToken={accessToken}
               locale={locale}
               students={(visibleFamilies?.students ?? []).map(row => ({
@@ -1117,6 +1119,13 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 studentCode: row.student.studentCode
               }))}
               refreshVersion={feeReloadKey} />
+          ) : null}
+          {feesModule === "REPORTS" ? (
+            <AdminFeeFinancialReports accessToken={accessToken} locale={locale}
+              refreshVersion={feeReloadKey}
+              students={(visibleFamilies?.students ?? []).filter(row => row.student.status === "ACTIVE").map(row => ({
+                id: row.student.id, fullName: row.student.fullName, studentCode: row.student.studentCode
+              }))} />
           ) : null}
           {feesModule === "INVOICES" ? (
           <>
