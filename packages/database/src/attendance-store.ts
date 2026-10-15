@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createAttendanceMonitoringStore, type AttendanceMonitoringStore } from "./attendance-monitoring-store.js";
 import { createAttendanceHistoryStore, type AttendanceHistoryStore } from "./attendance-history-store.js";
+import { createAttendanceAuditStore, type AttendanceAuditStore } from "./attendance-audit-store.js";
 import {
   and,
   asc,
@@ -160,7 +161,7 @@ export interface AttendanceCorrection {
   previousStatus: AttendanceStatus;
 }
 
-export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore {
+export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore, AttendanceAuditStore {
   getSchoolToday(schoolId: string): Promise<string>;
   getTeacherToday(schoolId: string, teacherUserId: string): Promise<TeacherToday>;
   getTeacherAttendanceSheet(
@@ -504,6 +505,7 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
   return {
     ...createAttendanceMonitoringStore(db,schoolToday),
     ...createAttendanceHistoryStore(db,schoolToday),
+    ...createAttendanceAuditStore(db),
     getSchoolToday: schoolToday,
 
     async getTeacherToday(schoolId, teacherUserId) {
@@ -1080,13 +1082,33 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         throw new AttendanceConflictError("Historical attendance is read-only unless its academic year is active.");
       }
 
+      // Only status is corrected. The teacher's original note stays attached
+      // to the attendance mark; an administrator's reason lives in audit logs.
+      if (current.entry.updatedAt.toISOString() !== new Date(input.expectedUpdatedAt).toISOString()) {
+        throw new AttendanceConflictError("Attendance changed since you loaded it. Refresh the register before correcting.");
+      }
+      if (input.status === current.entry.status) {
+        throw new AttendanceValidationError("Choose a different attendance status to correct.");
+      }
+
       const { attendance, entry } = await db.transaction(async (tx) => {
+        // Compare-and-swap inside the write. Concurrent edits that arrive after
+        // our initial read must not overwrite a newer teacher/admin mark.
         const [entry] = await tx
           .update(studentAttendances)
-          .set({ status: input.status, note: input.note || null, updatedAt: new Date() })
-          .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.id, current.entry.id)))
+          .set({
+            status: input.status,
+            updatedAt: new Date(Math.max(Date.now(), current.entry.updatedAt.getTime() + 1))
+          })
+          .where(and(
+            eq(studentAttendances.schoolId, schoolId),
+            eq(studentAttendances.id, current.entry.id),
+            eq(studentAttendances.updatedAt, current.entry.updatedAt)
+          ))
           .returning();
-        if (!entry) throw new AttendanceNotFoundError("Attendance entry not found.");
+        if (!entry) {
+          throw new AttendanceConflictError("Attendance changed while saving. Refresh the register and try again.");
+        }
 
         const [attendance] = await tx
           .update(dailyAttendances)
@@ -1112,7 +1134,12 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
             studentId,
             previousStatus: current.entry.status,
             status: entry.status,
-            note: entry.note
+            reason: input.reason,
+            // Preserve what the Negaran originally wrote, separately from
+            // the administrator's explanation of why the mark was changed.
+            originalNote: current.entry.note,
+            previousUpdatedAt: current.entry.updatedAt.toISOString(),
+            updatedAt: entry.updatedAt.toISOString()
           }
         });
         return { attendance, entry };

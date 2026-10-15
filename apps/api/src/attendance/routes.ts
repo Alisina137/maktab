@@ -126,6 +126,16 @@ const adminClassRegisterQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 }).strict();
 
+const adminAttendanceAuditQuerySchema = z.object({
+  academicYearId: z.string().uuid(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  classId: z.string().uuid().optional(),
+  search: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).max(100000).default(0)
+}).strict();
+
 export function registerAttendanceRoutes(
   app: FastifyInstance,
   accounts: AccountStore,
@@ -251,6 +261,18 @@ export function registerAttendanceRoutes(
       }
     }
   );
+
+  app.get("/v1/admin/attendance/audit", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = adminAttendanceAuditQuerySchema.parse(request.query);
+      reply.header("cache-control", "no-store");
+      return await attendance.getAdminAttendanceAudit(context.user.schoolId, query);
+    } catch (error) {
+      return sendAttendanceError(reply, error);
+    }
+  });
 
   app.get("/v1/admin/attendance/students", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);

@@ -356,8 +356,10 @@ export type SubmitDailyAttendanceInput = z.infer<typeof submitDailyAttendanceSch
 
 export const correctAttendanceSchema = z.object({
   status: attendanceStatusSchema,
-  note: z.string().trim().max(240).optional()
-});
+  reason: z.string().trim().min(5).max(240),
+  // An exact version token is required to prevent stale administrator edits.
+  expectedUpdatedAt: z.string().datetime({ offset: true })
+}).strict();
 export type CorrectAttendanceInput = z.infer<typeof correctAttendanceSchema>;
 
 export const attendanceDateRangeSchema = z

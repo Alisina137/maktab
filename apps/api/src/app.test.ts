@@ -3319,9 +3319,16 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     method: "PATCH",
     url: `/v1/admin/attendance/${submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id}/students/${studentId}`,
     headers: admin,
-    payload: { status: "PRESENT", note: "Corrected by school admin" }
+    payload: {
+      status: "PRESENT", reason: "Teacher sheet had an incorrect status",
+      expectedUpdatedAt: (await app.inject({
+        method: "GET",
+        url: "/v1/admin/attendance/report?academicYearId=" + yearId +
+          "&from=" + today.date + "&to=" + today.date, headers: admin
+      })).json<{ rows: Array<{ updatedAt: string }> }>().rows[0]!.updatedAt
+    }
   });
-  assert.equal(corrected.statusCode, 200);
+  assert.equal(corrected.statusCode, 200, corrected.body);
   assert.equal(corrected.json<{ previousStatus: string; entry: { status: string } }>().previousStatus, "ABSENT");
   assert.equal(corrected.json<{ entry: { status: string } }>().entry.status, "PRESENT");
 
