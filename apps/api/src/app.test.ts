@@ -4863,12 +4863,12 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
   assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
-  const correctionAudit = await app.inject({method:"GET",
+  const phase7CorrectionAudit = await app.inject({method:"GET",
     url:gradesAuditPath+"&category=GRADES",headers:admin});
-  assert.equal(correctionAudit.statusCode,200,correctionAudit.body);
-  assert.ok(correctionAudit.json<{rows:Array<{action:string;metadata?:unknown;score?:number}>}>()
+  assert.equal(phase7CorrectionAudit.statusCode,200,phase7CorrectionAudit.body);
+  assert.ok(phase7CorrectionAudit.json<{rows:Array<{action:string;metadata?:unknown;score?:number}>}>()
     .rows.some(row=>row.action==="grade.corrected"));
-  assert.ok(correctionAudit.json<{rows:Array<{metadata?:unknown;score?:number}>}>()
+  assert.ok(phase7CorrectionAudit.json<{rows:Array<{metadata?:unknown;score?:number}>}>()
     .rows.every(row=>row.metadata===undefined&&row.score===undefined));
   const crossYearAudit = await app.inject({method:"GET",url:gradesAuditPath,headers:otherAdmin});
   assert.equal(crossYearAudit.statusCode,404);
