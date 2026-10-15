@@ -7890,3 +7890,45 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
 @media (prefers-reduced-motion: reduce) {
   .learning-exam-detail-tabs { scroll-behavior: auto; }
 }
+
+
+/* Admin Learning Phase 3: readable readiness, marks progress, and safe publication. */
+.learning-exam-workspace .learning-exam-stats {
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,170px),1fr));
+}
+.learning-exam-workspace .learning-exam-stats > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.learning-marks-filter { display: grid; gap: 6px; min-width: min(100%,190px);
+  font-size: 12px; font-weight: 750; color: var(--ml-color-text-muted); }
+.learning-marks-filter select { min-height: 44px; width: 100%; min-width: 0;
+  padding: 8px 11px; border: 1px solid var(--ml-color-border);
+  border-radius: 10px; background: var(--ml-color-surface);
+  color: var(--ml-color-text); }
+.learning-mark-counts { display: flex !important; align-items: center; justify-content: flex-end;
+  flex: 1 1 190px; gap: 7px !important; flex-wrap: wrap; }
+.learning-exam-warning-chip, .learning-exam-pass-chip {
+  display: inline-flex; align-items: center; padding: 5px 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 800;
+  line-height: 1.5; border: 1px solid #e6ceab; color: #8c521a;
+  background: #fff7e7; }
+.learning-exam-pass-chip { background: #ecf8f0; color: #216443; border-color: #b7dec4; }
+.learning-exam-checks { display: grid; grid-template-columns:
+  repeat(auto-fill,minmax(min(100%,280px),1fr)); gap: 11px; }
+.learning-exam-check { display: flex; align-items: flex-start; min-width: 0;
+  gap: 12px; padding: 16px; border: 1px solid var(--ml-color-border);
+  border-radius: 13px; background: var(--ml-color-surface); }
+.learning-exam-check > span { flex: 0 0 30px; display: inline-grid; place-items: center;
+  min-height: 30px; border: 1px solid #dec2aa; border-radius: 9px;
+  background: #fff6ea; color: #864b20; font-size: 15px; font-weight: 800; }
+.learning-exam-check[data-state="passed"] > span {
+  border-color: #b4dbc2; background: #eaf7ef; color: #226546; }
+.learning-exam-check > div { display: grid; min-width: 0; gap: 5px; }
+.learning-exam-check strong { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.learning-exam-check small { color: var(--ml-color-text-muted); font-size: 12px; }
+.learning-exam-details-panel > button.admin-secondary { width: fit-content; min-height: 44px; }
+@media (max-width: 540px) {
+  .learning-mark-counts { justify-content: flex-start; }
+  .learning-marks-filter { width: 100%; }
+}

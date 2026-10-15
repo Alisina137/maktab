@@ -31,7 +31,7 @@ for (const marker of [
   'statusFilter === "ALL" || exam.status === statusFilter',
   'Math.ceil(filtered.length / 10)',
   'formatAdminHijriDate(locale',
-  'window.confirm(t(exam.status === "RESULTS_READY"',
+  'window.confirm(adminFormat(locale,',
   'selected!.status === "DRAFT"',
   'availableSubjects', 'setDetailRevision',
   'const controller = new AbortController()',

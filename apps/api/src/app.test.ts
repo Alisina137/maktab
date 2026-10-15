@@ -4145,6 +4145,32 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(detailPayload.exam.academicYearId, yearId);
   assert.equal(detailPayload.subjects.length, 2);
   assert.deepEqual(detailPayload.sameDayWarnings, []);
+
+  // Admin Learning Phase 3: marks-readiness preview is school/role isolated.
+  const readinessUrl = `/v1/admin/exams/${examId}/readiness`;
+  assert.equal((await app.inject({ method: "GET", url: readinessUrl })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: readinessUrl,
+    headers: assignedTeacher.auth })).statusCode, 403);
+  assert.equal((await app.inject({ method: "GET", url: readinessUrl,
+    headers: otherAdmin })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/exams/not-a-uuid/readiness", headers: admin })).statusCode, 400);
+  const earlyReadiness = await app.inject({ method: "GET", url: readinessUrl, headers: admin });
+  assert.equal(earlyReadiness.statusCode, 200, earlyReadiness.body);
+  const earlyData = earlyReadiness.json<{
+    totals: { configuredSubjects: number; scheduledSubjects: number;
+      expectedMarks: number; missingMarks: number; validMarks: number; recipients: number };
+    canSchedule: boolean; canPublish: boolean;
+    checks: Array<{ code: string; passed: boolean }>
+  }>();
+  assert.equal(earlyData.totals.configuredSubjects, 2);
+  assert.equal(earlyData.totals.scheduledSubjects, 2);
+  assert.equal(earlyData.totals.expectedMarks, 2);
+  assert.equal(earlyData.totals.missingMarks, 2);
+  assert.equal(earlyData.totals.recipients, 2);
+  assert.equal(earlyData.canSchedule, true);
+  assert.equal(earlyData.canPublish, false);
+  assert.equal(earlyData.checks.find(row => row.code === "ALL_DRAFT_MARKS")?.passed, false);
   const collision = await app.inject({ method: "PATCH",
     url: `/v1/admin/exam-subjects/${secondExamSubjectId}/date`, headers: admin,
     payload: { examDate: "2028-09-15" } });
@@ -4260,6 +4286,15 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/admin/exams/${examId}/status`, headers: admin,
     payload: { status: "RESULTS_READY" } });
   assert.equal(firstReadyDenied.statusCode, 409, firstReadyDenied.body);
+  const partiallyGraded = await app.inject({ method: "GET", url: readinessUrl, headers: admin });
+  assert.equal(partiallyGraded.statusCode, 200, partiallyGraded.body);
+  const partialMarks = partiallyGraded.json<{
+    totals: { validMarks: number; missingMarks: number };
+    canMarkResultsReady: boolean
+  }>();
+  assert.equal(partialMarks.totals.validMarks, 1);
+  assert.equal(partialMarks.totals.missingMarks, 1);
+  assert.equal(partialMarks.canMarkResultsReady, false);
   const saveZoology = await app.inject({ method: "POST",
     url: `/v1/teacher/exam-subjects/${secondExamSubjectId}/grades`,
     headers: assignedTeacher.auth,
@@ -4293,6 +4328,19 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     payload: { status: "RESULTS_READY" }
   });
   assert.equal(ready.statusCode, 200);
+  const readyPreview = await app.inject({ method: "GET", url: readinessUrl, headers: admin });
+  assert.equal(readyPreview.statusCode, 200, readyPreview.body);
+  const readyData = readyPreview.json<{
+    totals: { missingMarks: number; invalidMarks: number; validMarks: number;
+      expectedMarks: number; recipients: number };
+    canPublish: boolean
+  }>();
+  assert.equal(readyData.canPublish, true);
+  assert.equal(readyData.totals.validMarks, 2);
+  assert.equal(readyData.totals.expectedMarks, 2);
+  assert.equal(readyData.totals.missingMarks, 0);
+  assert.equal(readyData.totals.invalidMarks, 0);
+  assert.equal(readyData.totals.recipients, 2);
 
   const beforePublish = await app.inject({
     method: "GET",
@@ -4334,6 +4382,13 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(publish.statusCode, 200);
   assert.equal(publish.json<{ notificationCount: number }>().notificationCount, 2);
+  const afterPublication = await app.inject({ method: "GET", url: readinessUrl, headers: admin });
+  assert.equal(afterPublication.statusCode, 200, afterPublication.body);
+  assert.equal(afterPublication.json<{canPublish:boolean;totals:{validMarks:number}}>().canPublish, false);
+  assert.equal(afterPublication.json<{totals:{validMarks:number}}>().totals.validMarks, 2);
+  const duplicatePublish = await app.inject({ method: "POST",
+    url: `/v1/admin/exams/${examId}/publish`, headers: admin });
+  assert.equal(duplicatePublish.statusCode, 409);
   for (const headers of [parentAuth, studentAuth]) {
     const inbox = await app.inject({ method: "GET", url: "/v1/notifications", headers });
     assert.equal(inbox.statusCode, 200);

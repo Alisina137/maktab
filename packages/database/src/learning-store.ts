@@ -148,6 +148,43 @@ export interface AdminExamDetail {
   }>;
 }
 
+export interface AdminExamReadiness {
+  examId: string;
+  examStatus: ExamStatus;
+  academicYearActive: boolean;
+  totals: {
+    configuredSubjects: number;
+    scheduledSubjects: number;
+    participatingClasses: number;
+    expectedMarks: number;
+    validMarks: number;
+    missingMarks: number;
+    invalidMarks: number;
+    recipients: number;
+  };
+  subjects: Array<{
+    examSubjectId: string;
+    classId: string;
+    className: string;
+    subjectName: string;
+    examDate: string | null;
+    maxScore: number;
+    expected: number;
+    valid: number;
+    missing: number;
+    invalid: number;
+  }>;
+  checks: Array<{
+    code: "SUBJECTS_CONFIGURED" | "DATES_CONFIGURED" | "ACTIVE_STUDENTS" |
+      "ALL_DRAFT_MARKS" | "ACTIVE_YEAR" | "STATUS_READY_FOR_PUBLISH";
+    passed: boolean;
+    affected: number;
+  }>;
+  canSchedule: boolean;
+  canMarkResultsReady: boolean;
+  canPublish: boolean;
+}
+
 export interface LearningStore {
   getTeacherLearning(schoolId: string, teacherUserId: string): Promise<TeacherLearningView>;
   createHomework(schoolId: string, teacherUserId: string, input: CreateHomeworkInput): Promise<Homework>;
@@ -163,6 +200,7 @@ export interface LearningStore {
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
   getAdminExamDetail(schoolId: string, examId: string): Promise<AdminExamDetail>;
+  getAdminExamReadiness(schoolId: string, examId: string): Promise<AdminExamReadiness>;
   getAdminDashboard(schoolId: string, academicYearId: string): Promise<AdminLearningDashboard>;
   createExam(schoolId: string, actorUserId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, actorUserId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
@@ -836,6 +874,121 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           curriculumCompletedUnits, curriculumAssignedUnits
         },
         attention: attention.slice(0, 8)
+      };
+    },
+
+    async getAdminExamReadiness(schoolId, examId) {
+      const [exam] = await db.select().from(exams).where(and(
+        eq(exams.schoolId, schoolId), eq(exams.id, examId)
+      )).limit(1);
+      if (!exam) throw new LearningNotFoundError("Exam not found.");
+      const [year] = await db.select({ status: academicYears.status }).from(academicYears)
+        .where(and(eq(academicYears.schoolId, schoolId),
+          eq(academicYears.id, exam.academicYearId))).limit(1);
+      if (!year) throw new LearningNotFoundError("Academic year not found.");
+
+      const subjectsForExam = await db.select({
+        examSubject: examSubjects,
+        className: classSections.name,
+        subjectName: subjects.name
+      }).from(examSubjects)
+        .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId),
+          eq(classSections.schoolId, examSubjects.schoolId)))
+        .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId),
+          eq(subjects.schoolId, examSubjects.schoolId)))
+        .where(and(eq(examSubjects.schoolId, schoolId), eq(examSubjects.examId, examId)))
+        .orderBy(asc(classSections.name), asc(subjects.name));
+
+      const classIds = [...new Set(subjectsForExam.map(row => row.examSubject.classId))];
+      const subjectIds = subjectsForExam.map(row => row.examSubject.id);
+      const [roster, marks] = await Promise.all([
+        classIds.length ? db.select({
+          id: students.id, classId: students.classId,
+          parentUserId: students.parentUserId, userId: students.userId
+        }).from(students).where(and(eq(students.schoolId, schoolId),
+          eq(students.academicYearId, exam.academicYearId),
+          eq(students.status, "ACTIVE"), inArray(students.classId, classIds))) : [],
+        subjectIds.length ? db.select({
+          examSubjectId: gradeRecords.examSubjectId,
+          studentId: gradeRecords.studentId,
+          score: gradeRecords.score,
+          status: gradeRecords.status
+        }).from(gradeRecords).where(and(eq(gradeRecords.schoolId, schoolId),
+          inArray(gradeRecords.examSubjectId, subjectIds))) : []
+      ]);
+      const byClass = new Map<string, typeof roster>();
+      const recipients = new Set<string>();
+      for (const student of roster) {
+        const rows = byClass.get(student.classId) ?? [];
+        rows.push(student);
+        byClass.set(student.classId, rows);
+        recipients.add(student.parentUserId);
+        if (student.userId) recipients.add(student.userId);
+      }
+      const bySubject = new Map<string, Map<string, (typeof marks)[number]>>();
+      for (const mark of marks) {
+        const rows = bySubject.get(mark.examSubjectId) ?? new Map();
+        rows.set(mark.studentId, mark);
+        bySubject.set(mark.examSubjectId, rows);
+      }
+      const requiredStatus = exam.status === "PUBLISHED" || exam.status === "ARCHIVED"
+        ? "PUBLISHED" : "DRAFT";
+      const perSubject: AdminExamReadiness["subjects"] = subjectsForExam.map(row => {
+        const active = byClass.get(row.examSubject.classId) ?? [];
+        const recorded = bySubject.get(row.examSubject.id) ?? new Map();
+        let valid = 0, missing = 0, invalid = 0;
+        for (const student of active) {
+          const mark = recorded.get(student.id);
+          if (!mark) missing++;
+          else if (mark.status !== requiredStatus ||
+            mark.score < 0 || mark.score > row.examSubject.maxScore) invalid++;
+          else valid++;
+        }
+        return {
+          examSubjectId: row.examSubject.id,
+          classId: row.examSubject.classId,
+          className: row.className, subjectName: row.subjectName,
+          examDate: row.examSubject.examDate, maxScore: row.examSubject.maxScore,
+          expected: active.length, valid, missing, invalid
+        };
+      });
+      const configuredSubjects = perSubject.length;
+      const scheduledSubjects = perSubject.filter(row => !!row.examDate).length;
+      const expectedMarks = perSubject.reduce((total, row) => total + row.expected, 0);
+      const validMarks = perSubject.reduce((total, row) => total + row.valid, 0);
+      const missingMarks = perSubject.reduce((total, row) => total + row.missing, 0);
+      const invalidMarks = perSubject.reduce((total, row) => total + row.invalid, 0);
+      const emptyClasses = perSubject.filter(row => row.expected === 0).length;
+      const academicYearActive = year.status === "ACTIVE";
+      const checks: AdminExamReadiness["checks"] = [
+        { code: "ACTIVE_YEAR", passed: academicYearActive, affected: academicYearActive ? 0 : 1 },
+        { code: "SUBJECTS_CONFIGURED", passed: configuredSubjects > 0,
+          affected: configuredSubjects > 0 ? 0 : 1 },
+        { code: "DATES_CONFIGURED", passed: scheduledSubjects === configuredSubjects,
+          affected: configuredSubjects - scheduledSubjects },
+        { code: "ACTIVE_STUDENTS", passed: configuredSubjects > 0 && emptyClasses === 0,
+          affected: emptyClasses },
+        { code: "ALL_DRAFT_MARKS", passed: configuredSubjects > 0 &&
+          missingMarks === 0 && invalidMarks === 0 && expectedMarks > 0,
+          affected: missingMarks + invalidMarks },
+        { code: "STATUS_READY_FOR_PUBLISH", passed: exam.status === "RESULTS_READY",
+          affected: exam.status === "RESULTS_READY" ? 0 : 1 }
+      ];
+      const checkPassed = (code: AdminExamReadiness["checks"][number]["code"]) =>
+        checks.find(item => item.code === code)?.passed ?? false;
+      return {
+        examId, examStatus: exam.status, academicYearActive,
+        totals: { configuredSubjects, scheduledSubjects, participatingClasses: classIds.length,
+          expectedMarks, validMarks, missingMarks, invalidMarks, recipients: recipients.size },
+        subjects: perSubject, checks,
+        canSchedule: exam.status === "DRAFT" && academicYearActive &&
+          checkPassed("SUBJECTS_CONFIGURED") && checkPassed("DATES_CONFIGURED"),
+        canMarkResultsReady: exam.status === "IN_PROGRESS" && academicYearActive &&
+          checkPassed("SUBJECTS_CONFIGURED") && checkPassed("ACTIVE_STUDENTS") &&
+          checkPassed("ALL_DRAFT_MARKS"),
+        canPublish: exam.status === "RESULTS_READY" && academicYearActive &&
+          checkPassed("SUBJECTS_CONFIGURED") && checkPassed("ACTIVE_STUDENTS") &&
+          checkPassed("ALL_DRAFT_MARKS")
       };
     },
 
