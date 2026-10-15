@@ -245,6 +245,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const [issuesBusy, setIssuesBusy] = useState(false);
   const [issuesError, setIssuesError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
 
   useEffect(() => {
@@ -300,6 +301,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     const version = ++requestVersion.current;
     setBusy(true);
     setError("");
+    setLoadError("");
     const wantsCoverage = section === "overview" || section === "readiness" || section === "onboarding" || section === "launch";
     setAdvancedBusy(wantsCoverage);
     if (wantsCoverage) {
@@ -334,7 +336,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           readinessResult.status === "rejected"
             ? adminErrorText(locale, readinessResult.reason, "School readiness could not be loaded.") : ""
         ].filter(Boolean);
-        if (failures.length) setError(failures.join(" "));
+        if (failures.length) setLoadError(failures.join(" "));
         if (wantsCoverage) {
           // A failed advisory coverage request must not hide working core setup data.
           void request<AdvancedReadiness>(accessToken, "/v1/admin/pilot/readiness/advanced")
@@ -354,7 +356,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       }
     } catch (cause) {
       if (version === requestVersion.current) {
-        setError(adminErrorText(locale, cause, "Could not load pilot readiness."));
+        setLoadError(adminErrorText(locale, cause, "Could not load pilot readiness."));
         setAdvancedBusy(false);
       }
     } finally {
@@ -480,11 +482,11 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         ))}
       </nav>
 
-      {error ? <div className="admin-error pilot-retry-alert" role="alert">
-        <span>{error}</span>
+      {(loadError || error) ? <div className="admin-error pilot-retry-alert" role="alert">
+        <span>{loadError || error}</span>
         <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Retry")}</button>
       </div> : null}
-      {(coreMissing || auditMissing) && !error ? (
+      {(coreMissing || auditMissing) && !loadError && !error ? (
         <div className="admin-panel admin-loading-card" role="status">
           <AdminLoader label={t("Loading pilot operations data…")} />
           <AdminSkeleton rows={5} />
