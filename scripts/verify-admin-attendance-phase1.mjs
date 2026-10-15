@@ -32,8 +32,8 @@ for(const fragment of [
   'AdminAttendanceStudents',
   'attendanceRate(report.summary)',
   'readOnly={historicalReadOnly} onCorrect={correct}',
-  'onClick={() => void onCorrect(row, status, note)}',
-  'href="/admin/pilot/audit"',
+  'onClick={() => void onCorrect(row, status, reason)}',
+  'AdminAttendanceAudit',
   'Daily submission monitoring follows the timetable and declared school closures.'
 ]) assert.ok(panel.includes(fragment),"Missing Attendance UI/state safeguard: "+fragment);
 assert.ok(!panel.includes("Phase 5 · Attendance"),"No implementation phase labels in admin Attendance.");

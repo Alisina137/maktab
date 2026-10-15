@@ -3090,7 +3090,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   const payload = {
     classId,
     date: today.date,
-    entries: [{ studentId, status: "ABSENT" }]
+    entries: [{ studentId, status: "ABSENT", note: "Original note from Negaran" }]
   };
   const submitted = await app.inject({
     method: "POST",
