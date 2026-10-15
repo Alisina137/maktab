@@ -3358,6 +3358,47 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   const parentToken = parentChanged.json<{ accessToken: string }>().accessToken;
   const parentAuth = { authorization: `Bearer ${parentToken}` };
 
+
+  // Admin Attendance Phase 7 — role matrix spanning all six administrator
+  // views. Parent/Negaran clients must never read admin follow-up notes,
+  // corrections, analytics, CSV or class/student histories through admin APIs.
+  const phase7AdminUrls=[
+    `/v1/admin/attendance/report?academicYearId=${yearId}&from=${today.date}&to=${today.date}`,
+    `/v1/admin/attendance/monitor?academicYearId=${yearId}&date=${today.date}`,
+    `/v1/admin/attendance/closures?academicYearId=${yearId}`,
+    `/v1/admin/attendance/students?academicYearId=${yearId}`,
+    `/v1/admin/attendance/students/${studentId}/history?academicYearId=${yearId}&from=${today.date}&to=${today.date}`,
+    `/v1/admin/attendance/classes/${classId}/register?academicYearId=${yearId}&date=${today.date}`,
+    `/v1/admin/attendance/followups/assignees`,
+    `/v1/admin/attendance/followups/candidates?academicYearId=${yearId}`,
+    `/v1/admin/attendance/followups?academicYearId=${yearId}`,
+    `/v1/admin/attendance/followups/${followupId}/activities`,
+    `/v1/admin/attendance/audit?academicYearId=${yearId}`,
+    `/v1/admin/attendance/analytics?academicYearId=${yearId}&from=${today.date}&to=${today.date}`,
+    `/v1/admin/attendance/analytics/students?academicYearId=${yearId}&from=${today.date}&to=${today.date}`,
+    `/v1/admin/attendance/analytics/export?academicYearId=${yearId}&from=${today.date}&to=${today.date}&kind=students`
+  ];
+  for(const url of phase7AdminUrls){
+    const unauthenticated=await app.inject({method:"GET",url});
+    assert.equal(unauthenticated.statusCode,401,`Expected anonymous 401: ${url}`);
+    for(const [role,headers] of [["teacher",teacherAuth],["parent",parentAuth]] as const){
+      const forbidden=await app.inject({method:"GET",url,headers});
+      assert.equal(forbidden.statusCode,403,`Expected ${role} 403: ${url}`);
+    }
+    const differentSchool=await app.inject({method:"GET",url,headers:anotherAdmin});
+    // Assignees intentionally is year-independent: another school may see
+    // its *own* administrators, never the student's school or private data.
+    assert.ok(!differentSchool.body.includes(studentId),`Leaked student ID across schools: ${url}`);
+    assert.ok(!differentSchool.body.includes("ATT-001"),`Leaked student code across schools: ${url}`);
+    assert.ok(!differentSchool.body.includes("Spoke to the parent"),`Leaked private notes across schools: ${url}`);
+  }
+  assert.equal(phase7AdminUrls.length,14);
+  // Reading any of these school datasets must not create parent alerts or
+  // automatically open a follow-up case for unsubmitted class-days.
+  const caseRows=await client.query<{total:string}>(
+    "SELECT count(*)::text AS total FROM attendance_followup_cases WHERE school_id=$1",[schoolId]);
+  assert.equal(Number(caseRows.rows[0]?.total),1);
+
   // Invalid calendar dates must return client validation errors, not
   // PostgreSQL date-cast failures/HTTP 500.
   const invalidTeacherDate = await app.inject({
@@ -3553,6 +3594,41 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
     .json<{rows:unknown[]}>().rows.length,0);
   assert.equal((await app.inject({method:"GET",url:auditUrl+"&from=2020-01-01&to=2020-01-01",headers:admin}))
     .json<{total:number}>().total,0);
+
+  // Phase 7 — one authoritative correction must propagate consistently
+  // to reports, student directory/history, teacher/parent read models,
+  // follow-up source/current status and CSV exports.
+  const postCorrectionViews=await Promise.all([
+    app.inject({method:"GET",url:directoryUrl,headers:admin}),
+    app.inject({method:"GET",url:classUrl,headers:admin}),
+    app.inject({method:"GET",url:phase3HistoryUrl,headers:admin}),
+    app.inject({method:"GET",url:followupQuery,headers:admin}),
+    app.inject({method:"GET",url:analyticsStudentsUrl,headers:admin}),
+    app.inject({method:"GET",url:analyticsExportUrl+"&kind=students",headers:admin})
+  ]);
+  for(const item of postCorrectionViews)assert.equal(item.statusCode,200,item.body);
+  assert.equal(postCorrectionViews[0]!.json<{rows:Array<{present:number;absent:number}>}>()
+    .rows[0]?.present,1);
+  assert.equal(postCorrectionViews[0]!.json<{rows:Array<{absent:number}>}>().rows[0]?.absent,0);
+  assert.equal(postCorrectionViews[1]!.json<{students:Array<{status:string}>}>()
+    .students[0]?.status,"PRESENT");
+  assert.equal(postCorrectionViews[2]!.json<{days:Array<{status:string}>}>()
+    .days[0]?.status,"PRESENT");
+  assert.equal(postCorrectionViews[3]!.json<{rows:Array<{sourceStatus:string;currentStatus:string;
+    status:string}>}>().rows[0]?.sourceStatus,"ABSENT");
+  assert.equal(postCorrectionViews[3]!.json<{rows:Array<{currentStatus:string;status:string}>}>()
+    .rows[0]?.currentStatus,"PRESENT");
+  assert.equal(postCorrectionViews[3]!.json<{rows:Array<{status:string}>}>().rows[0]?.status,"RESOLVED");
+  assert.equal(postCorrectionViews[4]!.json<{rows:Array<{present:number;absent:number;rate:number|null}>}>()
+    .rows[0]?.present,1);
+  assert.equal(postCorrectionViews[4]!.json<{rows:Array<{absent:number;rate:number|null}>}>()
+    .rows[0]?.absent,0);
+  assert.equal(postCorrectionViews[4]!.json<{rows:Array<{rate:number|null}>}>().rows[0]?.rate,100);
+  assert.ok(postCorrectionViews[5]!.body.includes('"100"'));
+  assert.ok(!postCorrectionViews[5]!.body.includes("Original note from Negaran"));
+  assert.ok(!postCorrectionViews[5]!.body.includes("Spoke to the parent"));
+  assert.equal(postCorrectionViews[5]!.headers["cache-control"],"private, no-store");
+
   // A stale second form cannot silently overwrite an already corrected mark.
   const conflict=await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:admin,
     payload:{status:"LATE",reason:"Later stale attempt",expectedUpdatedAt:beforeRow.updatedAt}});
