@@ -1405,5 +1405,6 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         }
       }
       return { sent, failed, skipped };
-    }  };
+    }
+  };
 }
