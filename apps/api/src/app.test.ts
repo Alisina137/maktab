@@ -3180,7 +3180,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   const closed=closedCase.json<{summary:{OPEN:number;RESOLVED:number};rows:Array<{status:string;resolutionNote:string}>}>();
   assert.equal(closed.summary.OPEN,0);assert.equal(closed.summary.RESOLVED,1);
   assert.equal(closed.rows[0]?.resolutionNote,"Family contacted and issue addressed.");
-  const anotherSchool=await provisionSchool(app,"FOLLOWUP_OTHER");
+  const anotherSchool=await provisionSchool(app,"FOLLOWUPOTHER");
   const anotherAdmin={authorization:`Bearer ${await bootstrapAdmin(app,anotherSchool)}`};
   assert.equal((await app.inject({method:"GET",url:followupQuery,headers:anotherAdmin})).statusCode,404);
   assert.equal((await app.inject({method:"GET",url:eventsUrl,headers:anotherAdmin})).statusCode,404);
