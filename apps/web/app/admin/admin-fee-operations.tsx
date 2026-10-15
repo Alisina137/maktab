@@ -27,6 +27,7 @@ type FeePaymentRow = {
 };
 type FeeReceipt = FeePaymentRow & {
   schoolName: string;
+  schoolTimezone: string;
   invoiceAmount: number;
   description: string | null;
   dueDate: string;
@@ -130,7 +131,7 @@ export function AdminFeeReceiptButton({
               <div><dt>{t("Invoice number")}</dt><dd>{invoiceReference(receipt.invoiceNumber)}</dd></div>
               <div><dt>{t("Student")}</dt><dd>{receipt.studentName} · {receipt.studentCode}</dd></div>
               <div><dt>{t("Description")}</dt><dd>{receipt.description || t("School fee")}</dd></div>
-              <div><dt>{t("Date")}</dt><dd>{formatAdminHijriDateTime(locale,receipt.payment.recordedAt)}</dd></div>
+              <div><dt>{t("Date")}</dt><dd>{formatAdminHijriDateTime(locale,receipt.payment.recordedAt,receipt.schoolTimezone)}</dd></div>
               <div><dt>{t("Amount")}</dt><dd>{money(receipt.payment.amount)}</dd></div>
               <div><dt>{t("Method")}</dt><dd>{t(labelMethod(receipt.payment.method))}</dd></div>
               <div><dt>{t("Reference")}</dt><dd>{receipt.payment.transactionReference || "—"}</dd></div>
@@ -165,7 +166,7 @@ export function AdminFeeOperations({
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
   const [listing, setListing] = useState<{
-    payments: FeePaymentRow[]; total: number; page: number; pageSize: number
+    payments: FeePaymentRow[]; total: number; page: number; pageSize: number; schoolTimezone: string
   } | null>(null);
   const [balance, setBalance] = useState<FeeBalance | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -289,7 +290,7 @@ export function AdminFeeOperations({
                 <div>
                   <strong>{row.studentName} · {invoiceReference(row.invoiceNumber)}</strong>
                   <small>{row.studentCode} · {t(row.payment.kind)} · {t(labelMethod(row.payment.method))}</small>
-                  <small>{formatAdminHijriDateTime(locale,row.payment.recordedAt)} · {t("Recorded by")}: {row.recordedByUsername}</small>
+                  <small>{formatAdminHijriDateTime(locale,row.payment.recordedAt,currentListing.schoolTimezone)} · {t("Recorded by")}: {row.recordedByUsername}</small>
                   {row.payment.transactionReference ? <small>{t("Reference")}: {row.payment.transactionReference}</small> : null}
                   {row.payment.reversalReason ? <small>{t("Reason")}: {row.payment.reversalReason}</small> : null}
                 </div>
