@@ -125,15 +125,6 @@ export function createAdminTeachingProgressStore(db: FoundationDatabase): AdminT
       if (query.focus === "NO_LESSONS") conditions.push(and(sql`${unitsTotal} > 0`,
         eq(lessonTotal, 0))!);
 
-      const scoped = () => db.select({ assignmentId: teacherAssignments.id })
-        .from(teacherAssignments)
-        .innerJoin(classSections, and(eq(classSections.id, teacherAssignments.classId),
-          eq(classSections.schoolId, schoolId)))
-        .innerJoin(subjects, and(eq(subjects.id, teacherAssignments.subjectId),
-          eq(subjects.schoolId, schoolId)))
-        .innerJoin(teacherProfiles, and(eq(teacherProfiles.userId, teacherAssignments.teacherUserId),
-          eq(teacherProfiles.schoolId, schoolId)))
-        .where(and(...conditions));
       const joins = () => db.select({
         assignmentId: teacherAssignments.id, classId: classSections.id,
         className: classSections.name, classCode: classSections.code,
