@@ -860,13 +860,25 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             </label>
             <div className="pilot-import-date">
               <span>{t("Start date")}</span>
-              <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateFrom}
-                onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateFrom: date }))} />
+              {locale === "en" ? (
+                <input type="date" value={importDraftFilters.dateFrom} disabled={importHistoryBusy}
+                  onChange={(event) => setImportDraftFilters((prev) => ({ ...prev, dateFrom: event.target.value }))} />
+              ) : (
+                <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateFrom}
+                  disabled={importHistoryBusy}
+                  onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateFrom: date }))} />
+              )}
             </div>
             <div className="pilot-import-date">
               <span>{t("End date")}</span>
-              <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateTo}
-                onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateTo: date }))} />
+              {locale === "en" ? (
+                <input type="date" value={importDraftFilters.dateTo} disabled={importHistoryBusy}
+                  onChange={(event) => setImportDraftFilters((prev) => ({ ...prev, dateTo: event.target.value }))} />
+              ) : (
+                <AdminHijriDatePicker locale={locale} value={importDraftFilters.dateTo}
+                  disabled={importHistoryBusy}
+                  onChange={(date) => setImportDraftFilters((prev) => ({ ...prev, dateTo: date }))} />
+              )}
             </div>
           </div>
           <div className="admin-actions pilot-import-filter-actions">
