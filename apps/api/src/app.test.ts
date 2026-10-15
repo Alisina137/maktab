@@ -7694,6 +7694,40 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
     });
     assert.equal(invalid.statusCode, 400, params + ": " + invalid.body);
   }
+  // Operational readiness is scoped to the authenticated school, and cannot
+  // be used by anonymous callers or queried with arbitrary school identifiers.
+  const operationalUrl = "/v1/admin/pilot/readiness/operational";
+  assert.equal((await app.inject({ method: "GET", url: operationalUrl })).statusCode, 401);
+  const operationalA = await app.inject({ method: "GET", url: operationalUrl, headers: a });
+  const operationalB = await app.inject({ method: "GET", url: operationalUrl, headers: b });
+  assert.equal(operationalA.statusCode, 200, operationalA.body);
+  assert.equal(operationalB.statusCode, 200, operationalB.body);
+  const opA = operationalA.json<{ evaluatedPeriods: number; ready: boolean; metrics: Array<{
+    key: string; total: number; status: string;
+  }> }>();
+  assert.equal(opA.evaluatedPeriods, 0);
+  assert.equal(opA.ready, false);
+  assert.equal(opA.metrics.find((m) => m.key === "teacher_overlap")?.status, "not_applicable");
+
+  const issuesUrl = "/v1/admin/pilot/readiness/operational/issues";
+  const accepted = await app.inject({
+    method: "GET", url: issuesUrl + "?metric=class_overlap&limit=10&offset=0", headers: a
+  });
+  assert.equal(accepted.statusCode, 200, accepted.body);
+  assert.deepEqual(accepted.json<{ rows: unknown[] }>().rows, []);
+  assert.equal((await app.inject({
+    method: "GET", url: issuesUrl + "?metric=class_overlap"
+  })).statusCode, 401);
+  for (const query of [
+    "metric=nope", "metric=class_overlap&limit=51", "metric=class_overlap&limit=0",
+    "metric=teacher_overlap&offset=-1", "metric=invalid_period&offset=1000001",
+    "metric=teacher_overlap&schoolId=" + schoolB, "metric=teacher_overlap&extra=1"
+  ]) {
+    const invalid = await app.inject({
+      method: "GET", url: issuesUrl + "?" + query, headers: a
+    });
+    assert.equal(invalid.statusCode, 400, query + ": " + invalid.body);
+  }
 });
 
 test("Pilot Phase 3 school import history, replay protection and rejected validation stay tenant-scoped", async (t) => {
