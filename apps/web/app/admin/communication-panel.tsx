@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { announcementDashboard, feeDashboard } from "./communication-overview-model";
 import { invoiceReference, invoiceQuery, INVOICE_STATUSES, type AdminInvoiceStatus } from "./communication-invoices-model";
 import { AdminFeeOperations, AdminFeeReceiptButton } from "./admin-fee-operations";
+import { AdminNotificationMonitor } from "./admin-notification-monitor";
 import { ANNOUNCEMENT_PAGE_SIZE, announcementStatus, findAnnouncements,
   pageAnnouncements, schoolLocalTimeToIso,
   type AnnouncementAudienceFilter, type AnnouncementStatusFilter
@@ -163,7 +164,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [editTitle, setEditTitle] = useState("");
   const [editMessage, setEditMessage] = useState("");
   const [editPublishAt, setEditPublishAt] = useState("");
-  const [reminderText, setReminderText] = useState("7, 1");
+  const [reminderDays, setReminderDays] = useState<number[]>([7, 1]);
+  const [reminderCandidate, setReminderCandidate] = useState("14");
   const [paymentDraft, setPaymentDraft] = useState<Record<string, { amount: string; method: string; reference: string }>>({});
   // Keep the same key across a network timeout; changing the payment fields creates a new attempt.
   const paymentAttempts = useRef<Record<string, { signature: string; key: string }>>({});
@@ -273,7 +275,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         const data = await request<CommunicationOverview>(token, "/v1/admin/communication");
         if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
         setOverview(data);
-        setReminderText(data.feeReminderDays.join(", "));
+        setReminderDays(data.feeReminderDays);
       } else if (key === "families") {
         const data = await request<FamilyOverview>(token, "/v1/admin/families");
         if (accessRef.current !== token || requestGeneration.current[key] !== generation) return;
@@ -598,14 +600,30 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  function addReminderDay() {
+    const candidate = Number(reminderCandidate);
+    if (!reminderCandidate.trim() || !Number.isSafeInteger(candidate) || candidate < 1 || candidate > 90) {
+      setError(t("Enter a whole number from 1 to 90 days."));
+      return;
+    }
+    if (reminderDays.includes(candidate)) {
+      setError(t("That reminder day is already selected."));
+      return;
+    }
+    if (reminderDays.length >= 6) {
+      setError(t("You can select up to six reminder days."));
+      return;
+    }
+    setReminderDays(current => [...current, candidate].sort((a, b) => b - a));
+    setReminderCandidate("");
+    setError("");
+  }
+
   async function saveReminderSettings(event: FormEvent) {
     event.preventDefault();
-    const days = reminderText
-      .split(",")
-      .map((value) => Number(value.trim()))
-      .filter((value) => Number.isInteger(value) && value > 0);
-    if (days.length === 0) {
-      setError(t("Enter one or more reminder days, for example 7, 1."));
+    if (reminderDays.length < 1 || reminderDays.length > 6 ||
+        reminderDays.some(day => !Number.isSafeInteger(day) || day < 1 || day > 90)) {
+      setError(t("Select between one and six valid reminder days."));
       return;
     }
     setBusy(true);
@@ -614,10 +632,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     try {
       const result = await request<{ daysBeforeDue: number[] }>(accessToken, "/v1/admin/fees/reminder-settings", {
         method: "PATCH",
-        body: JSON.stringify({ daysBeforeDue: days })
+        body: JSON.stringify({ daysBeforeDue: reminderDays })
       });
       if (accessRef.current !== accessToken) return;
-      setReminderText(result.daysBeforeDue.join(", "));
+      setReminderDays(result.daysBeforeDue);
       setNotice(t("Fee reminder days updated."));
       await loadResource("communication");
     } catch (cause) {
@@ -806,6 +824,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               {t("Refresh announcements")}
             </button>
           </div>
+          <AdminNotificationMonitor accessToken={accessToken} locale={locale} />
           <div className="communication-mobile-toggle" role="group" aria-label={t("Choose announcement workspace")}>
             <button type="button" className={communicationPane === "LIST" ? "is-active" : ""}
               aria-pressed={communicationPane === "LIST"}
@@ -1136,11 +1155,28 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           </form>
 
           <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
-            <label>
-              {t("Fee reminders · days before due")}
-              <input value={reminderText} onChange={(event) => setReminderText(event.target.value)} placeholder="7, 1" />
+            <strong>{t("Fee reminders · days before due")}</strong>
+            <p>{t("Parents receive one reminder per selected day while the invoice remains unpaid and the student is active.")}</p>
+            <div className="admin-reminder-chips" role="list" aria-label={t("Configured reminder days")}>
+              {reminderDays.map(day => (
+                <span role="listitem" className="admin-reminder-chip" key={day}>
+                  {adminFormat(locale, "{days} days", { days: day })}
+                  <button type="button" disabled={busy || reminderDays.length === 1}
+                    aria-label={adminFormat(locale, "Remove {days}-day reminder", { days: day })}
+                    onClick={() => setReminderDays(current => current.filter(value => value !== day))}>×</button>
+                </span>
+              ))}
+            </div>
+            <label>{t("New reminder day (1–90)")}
+              <input type="number" min={1} max={90} step={1} inputMode="numeric"
+                value={reminderCandidate} onChange={event => setReminderCandidate(event.target.value)} />
             </label>
-            <button className="admin-secondary" disabled={busy}>{t("Save reminder days")}</button>
+            <div className="admin-reminder-actions">
+              <button type="button" className="admin-secondary" disabled={busy || reminderDays.length >= 6}
+                onClick={addReminderDay}>{t("Add reminder day")}</button>
+              <button className="admin-secondary" disabled={busy || !reminderDays.length}
+                type="submit">{t("Save reminder days")}</button>
+            </div>
           </form>
         </article>
                 </>

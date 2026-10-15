@@ -29,7 +29,8 @@ async function createPhase7Database() {
     "0009_school_image.sql",
     "0014_student_phone.sql",
     "0019_fee_payment_idempotency.sql",
-    "0022_fee_invoice_numbers.sql"
+    "0022_fee_invoice_numbers.sql",
+    "0023_notification_scheduler_health.sql"
   ]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
@@ -138,6 +139,22 @@ test("Phase 7 reminder jobs are idempotent and push failure does not roll back s
   const afterFailure = await communication.getUserNotifications(schoolId, parent.user.id);
   assert.ok(afterFailure.some((item) => item.type === "ANNOUNCEMENT"));
   assert.ok(afterFailure.some((item) => item.deliveryStatus === "FAILED"));
+  const deliveryOverview = await communication.getAdminNotificationDelivery(schoolId);
+  assert.ok(deliveryOverview.counts.failed >= 1);
+  assert.ok(deliveryOverview.scheduler.lastSuccessAt);
+  assert.equal(deliveryOverview.schoolTimezone, "Asia/Kabul");
+  const failedAnnouncement = afterFailure.find(item =>
+    item.type === "ANNOUNCEMENT" && item.deliveryStatus === "FAILED");
+  assert.ok(failedAnnouncement, "At least one announcement should have a failed push attempt");
+  await assert.rejects(
+    communication.retryAdminNotification("00000000-0000-4000-8000-000000000000", failedAnnouncement.id),
+    /Notification not found/
+  );
+  assert.equal(await communication.retryAdminNotification(schoolId, failedAnnouncement.id), true);
+  await assert.rejects(communication.retryAdminNotification(schoolId, failedAnnouncement.id),
+    /Only failed notifications/);
+  assert.ok((await communication.getAdminNotificationDelivery(schoolId)).counts.queued >= 1);
+
   // Test 16.9/16.12: inbox remains durable during a provider failure;
   // the next run retries, and a successfully sent device is not sent twice.
   const successfulProvider: PushProvider = {

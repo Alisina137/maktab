@@ -1691,3 +1691,12 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - New school-scoped `GET /v1/admin/fees/students/:studentId/balance` computes billed, paid, outstanding, overdue and invoices directly from issued invoice/append-only payment data, excluding draft and cancelled invoices. A student with no issued invoices has a zero balance.
 - Tests exercise payments, reversals, payment filtering, receipt status, cross-school isolation, parent-role rejection and student ledger invariants, with `pnpm verify:admin-communication:phase4` source/localization guards in CI. **No Phase 4 schema migration**; Phase 3 migration `0022_fee_invoice_numbers.sql` is still a required prerequisite.
 - Manual receipt-print preview, all-language RTL, school timezone, concurrency/live-postgres and Step 20 production acceptance **NOT RUN / NO-GO**. Phase 5 next: notification delivery and reminders.
+
+
+## Admin Communication & Fees — Phase 5 (2026-10-15)
+
+- Admin Communication includes a disclosure-based school-only notification monitor with queue/provider-acceptance vs recipient-read separation, a latest-20 notification health directory and retry of FAILED messages only (audited, scheduled requeue rather than direct push). It does not call provider acceptance "delivered".
+- School-specific scheduler materialization last attempt, success and failure status are persisted in communication settings, surfaced with school-timezone timestamps and a stale/never-run warning. Real cron invocation remains an external deployment prerequisite.
+- The fee reminder editor now selects 1–6 unique whole-day offsets from 1–90, with localized chips. Backend keeps school-civil-date and de-duplication semantics. Worker suppresses overdue/stale due push and rejects inactive/withdrawn recipient, settled/cancelled invoice or archived announcement; historical in-app reminders stay available while otherwise valid.
+- Migration **0023_notification_scheduler_health.sql** (after **0022_fee_invoice_numbers.sql**) is required before deploying the new API. Automated store/API/source guards cover tenant and role isolation, retries, scheduler status, and localized UI in `pnpm verify:admin-communication:phase5` and Linux/Windows CI.
+- **Not proved:** actual Expo push handoff/device receipt, cron setup, concurrency-safe distributed job locking, device/browser RTL acceptance, exact production PostgreSQL migration/backups and Step 20 operator evidence. Production remains **NO-GO**. Phase 6 next: finance reports and reconciliation.

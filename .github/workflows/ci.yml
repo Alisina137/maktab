@@ -49,6 +49,9 @@ jobs:
       - name: Admin Communication and Fees Phase 4 ledgers, receipts and student balances
         run: pnpm verify:admin-communication:phase4
 
+      - name: Admin Communication and Fees Phase 5 scheduler health, delivery safety and reminders
+        run: pnpm verify:admin-communication:phase5
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -157,6 +160,7 @@ jobs:
           pnpm verify:admin-communication:phase2
           pnpm verify:admin-communication:phase3
           pnpm verify:admin-communication:phase4
+          pnpm verify:admin-communication:phase5
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3

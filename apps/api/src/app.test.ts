@@ -49,7 +49,8 @@ async function createTestApp() {
     "0019_fee_payment_idempotency.sql",
     "0020_pilot_import_history.sql",
     "0021_pilot_launch_support.sql",
-    "0022_fee_invoice_numbers.sql"
+    "0022_fee_invoice_numbers.sql",
+    "0023_notification_scheduler_health.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -4759,6 +4760,33 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(firstScheduledJob.statusCode, 200);
   const secondScheduledJob = await runJob();
   assert.equal(secondScheduledJob.statusCode, 200);
+  const adminDelivery = await app.inject({
+    method: "GET", url: "/v1/admin/notifications/delivery", headers: admin
+  });
+  assert.equal(adminDelivery.statusCode, 200);
+  const deliveryInfo = adminDelivery.json<{
+    scheduler: { lastSuccessAt: string | null };
+    counts: { queued: number; providerAccepted: number; read: number };
+    recent: Array<{ id: string; title: string }>;
+  }>();
+  assert.ok(deliveryInfo.scheduler.lastSuccessAt, "scheduler heartbeat must be persisted");
+  assert.ok(deliveryInfo.counts.queued > 0, "in-app queue exists even without push registration");
+  assert.equal(deliveryInfo.counts.providerAccepted, 0, "no registered devices means no provider acceptance");
+  assert.ok(deliveryInfo.recent.length > 0);
+  assert.equal((await app.inject({
+    method: "GET", url: "/v1/admin/notifications/delivery",
+    headers: { authorization: `Bearer ${parentBToken}` }
+  })).statusCode, 403);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/v1/admin/notifications/${deliveryInfo.recent[0]!.id}/retry`,
+    headers: admin
+  })).statusCode, 409);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/v1/admin/notifications/${deliveryInfo.recent[0]!.id}/retry`,
+    headers: { authorization: `Bearer ${parentBToken}` }
+  })).statusCode, 403);
   for (const [token, expected] of [
     [parentAToken, false], [parentBToken, true],
     [studentAToken, false], [studentBToken, false]
