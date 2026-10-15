@@ -1924,11 +1924,10 @@ footer {
 
 .communication-reminder-form {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: end;
-  padding-top: 14px;
-  border-top: 1px solid var(--ml-color-border);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .communication-reminder-form label {
@@ -7257,4 +7256,282 @@ html[dir="rtl"] body {
   .admin-financial-reports { padding-inline: .75rem; }
   .admin-financial-reports .admin-delivery-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-financial-reports .admin-reminder-actions > button { flex: 1 1 100%; min-height: 44px; }
+}
+
+
+/* Fees design refresh: card hierarchy, RTL-friendly form composition and clear ledgers.
+   Scoped to Fees so the announcements, shared admin forms and receipts stay unchanged. */
+.communication-fees-page .communication-workflow-layout {
+  gap: clamp(14px, 1.6vw, 24px);
+}
+.communication-fees-page .communication-workflow-form {
+  align-content: start;
+  gap: 18px;
+}
+.communication-fees-page .communication-workflow-form > .admin-panel,
+.communication-fees-page .communication-workflow-list > .admin-panel {
+  border-radius: 18px;
+  overflow-wrap: anywhere;
+}
+.communication-invoice-create-card > div:first-child h2,
+.communication-reminder-heading h2 {
+  margin: 0;
+  font-size: clamp(18px, 1.65vw, 22px);
+  color: var(--ml-color-text);
+  line-height: 1.35;
+}
+.communication-invoice-create-card > div:first-child p,
+.communication-reminder-heading p {
+  margin: 8px 0 0;
+  color: var(--ml-color-text-muted);
+  line-height: 1.7;
+  font-size: 13px;
+}
+.communication-invoice-create-card > .admin-form .admin-primary {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+}
+.communication-invoice-create-card > .admin-form label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.communication-invoice-create-card > .admin-form :where(input, select) {
+  min-width: 0;
+}
+.communication-reminder-card {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 16px;
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--ml-color-brand) 3%, white),
+    var(--ml-color-surface) 64%);
+  border-color: color-mix(in srgb, var(--ml-color-brand) 16%, var(--ml-color-border));
+}
+.communication-reminder-heading {
+  padding-block-end: 14px;
+  border-bottom: 1px solid var(--ml-color-border);
+}
+.communication-fees-page .communication-reminder-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+.communication-fees-page .admin-reminder-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ml-color-text);
+}
+.communication-fees-page .admin-reminder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+}
+.communication-fees-page .admin-reminder-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 4px 7px 4px 13px;
+  gap: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ml-color-brand) 9%, white);
+  color: var(--ml-color-brand-strong);
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 22%, var(--ml-color-border));
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.communication-fees-page .admin-reminder-chip button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+}
+.communication-fees-page .admin-reminder-chip button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--ml-color-brand) 13%, white);
+}
+.communication-fees-page .admin-reminder-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+}
+.communication-fees-page .admin-reminder-editor label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.communication-fees-page .admin-reminder-editor input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border-radius: 11px;
+  color: var(--ml-color-text);
+  background: var(--ml-color-surface);
+}
+.communication-fees-page .admin-reminder-editor > .admin-secondary {
+  min-width: 0;
+  min-height: 46px;
+  height: auto;
+  padding: 9px 14px;
+  white-space: normal;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.communication-fees-page .admin-reminder-actions {
+  display: flex;
+  min-width: 0;
+  margin-block-start: 3px;
+  gap: 10px;
+}
+.communication-fees-page .admin-reminder-actions > .admin-primary {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 12px;
+}
+.communication-fees-page .communication-invoice-filters {
+  padding: 14px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 14px;
+  background: var(--ml-color-surface-muted, #f6f8fc);
+}
+.communication-fees-page .communication-invoice-filters label {
+  line-height: 1.5;
+}
+.communication-fees-page .communication-invoice {
+  gap: 13px;
+  min-width: 0;
+  padding: clamp(14px, 1.4vw, 19px);
+  border: 1px solid color-mix(in srgb, var(--ml-color-brand) 15%, var(--ml-color-border));
+  border-radius: 15px;
+  background: var(--ml-color-surface);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--ml-color-text) 4%, transparent);
+}
+.communication-fees-page .communication-invoice-header {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+.communication-fees-page .communication-invoice-header > div {
+  flex: 1 1 185px;
+  min-width: 0;
+  line-height: 1.5;
+}
+.communication-fees-page .communication-invoice-header > div > strong {
+  font-size: 15px;
+  color: var(--ml-color-text);
+}
+.communication-fees-page .communication-invoice-header span {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.communication-fees-page .communication-invoice-status {
+  display: inline-flex;
+  align-items: center;
+  align-self: start;
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  color: #285278;
+  background: #eef5fc;
+  border: 1px solid #cfe2f2;
+}
+.communication-fees-page .communication-invoice-status[data-status="OVERDUE"] {
+  background: #fff0ed;
+  border-color: #f3c7bf;
+  color: #a13d30;
+}
+.communication-fees-page .communication-invoice-status[data-status="PAID"] {
+  background: #ecf8f1;
+  border-color: #b5dec5;
+  color: #216443;
+}
+.communication-fees-page .communication-invoice-status[data-status="CANCELLED"] {
+  background: #f1f3f6;
+  border-color: #d9dfe6;
+  color: #586579;
+}
+.communication-fees-page .communication-invoice-status[data-status="PARTIALLY_PAID"] {
+  background: #fff7e7;
+  border-color: #ecd8ad;
+  color: #835914;
+}
+.communication-fees-page .communication-invoice-snapshot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 125px), 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+.communication-fees-page .communication-invoice-snapshot > div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ml-color-border);
+  border-radius: 11px;
+  background: var(--ml-color-surface-muted, #f5f8fc);
+}
+.communication-fees-page .communication-invoice-snapshot dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ml-color-text-muted);
+}
+.communication-fees-page .communication-invoice-snapshot dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  color: var(--ml-color-text);
+  overflow-wrap: anywhere;
+}
+.communication-fees-page .communication-invoice-snapshot > div:last-child dd {
+  color: var(--ml-color-brand-strong);
+}
+.communication-fees-page .communication-invoice-topline .admin-secondary {
+  min-width: 0;
+  padding-inline: 12px;
+}
+.communication-fees-page .communication-invoice-pager {
+  margin-block-start: 14px;
+  border-top: 1px solid var(--ml-color-border);
+}
+@media (max-width: 620px) {
+  .communication-fees-page .admin-reminder-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .communication-fees-page .admin-reminder-editor > .admin-secondary {
+    width: 100%;
+  }
+  .communication-fees-page .communication-invoice-filters {
+    padding: 12px;
+  }
+  .communication-fees-page .communication-invoice-snapshot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 390px) {
+  .communication-fees-page .communication-invoice-snapshot {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
