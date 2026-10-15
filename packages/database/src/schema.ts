@@ -21,6 +21,10 @@ export const academicYearStatusEnum = pgEnum("academic_year_status", ["DRAFT", "
 export const studentStatusEnum = pgEnum("student_status", ["ACTIVE", "WITHDRAWN"]);
 export const attendanceStatusEnum = pgEnum("attendance_status", ["PRESENT", "ABSENT", "LATE", "EXCUSED"]);
 export const attendanceRecordStatusEnum = pgEnum("attendance_record_status", ["SUBMITTED", "CORRECTED"]);
+export const followupStatusEnum = pgEnum("attendance_followup_status", ["OPEN", "IN_PROGRESS", "RESOLVED", "DISMISSED"]);
+export const followupActivityEnum = pgEnum("attendance_followup_activity", [
+  "OPENED", "NOTE", "CALL", "MEETING", "MESSAGE", "STATUS_CHANGE", "ASSIGNMENT"
+]);
 export const notificationDeliveryStatusEnum = pgEnum("notification_delivery_status", ["PENDING", "SENT", "FAILED", "CANCELLED"]);
 export const homeworkStatusEnum = pgEnum("homework_status", ["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]);
 export const examStatusEnum = pgEnum("exam_status", ["DRAFT", "SCHEDULED", "IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"]);
@@ -548,6 +552,48 @@ export const studentAttendances = pgTable(
   ]
 );
 
+
+/** One follow-up per submitted student mark, never one per unsubmitted day. */
+export const attendanceFollowupCases = pgTable(
+  "attendance_followup_cases",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id").notNull().references(() => academicYears.id, { onDelete: "restrict" }),
+    studentAttendanceId: uuid("student_attendance_id").notNull()
+      .references(() => studentAttendances.id, { onDelete: "restrict" }),
+    sourceStatus: attendanceStatusEnum("source_status").notNull(),
+    status: followupStatusEnum("status").notNull().default("OPEN"),
+    assignedToUserId: uuid("assigned_to_user_id").references(() => users.id, { onDelete: "set null" }),
+    dueOn: date("due_on"),
+    openingNote: varchar("opening_note", { length: 500 }).notNull(),
+    resolutionNote: varchar("resolution_note", { length: 500 }),
+    createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    updatedBy: uuid("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  table => [
+    uniqueIndex("attendance_followup_mark_unique").on(table.studentAttendanceId),
+    index("attendance_followup_school_year_status_idx").on(table.schoolId, table.academicYearId, table.status),
+    index("attendance_followup_school_due_idx").on(table.schoolId, table.dueOn)
+  ]
+);
+
+export const attendanceFollowupActivities = pgTable(
+  "attendance_followup_activities",
+  {
+    id: uuid("id").primaryKey(),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    caseId: uuid("case_id").notNull().references(() => attendanceFollowupCases.id, { onDelete: "restrict" }),
+    actorUserId: uuid("actor_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    kind: followupActivityEnum("kind").notNull(),
+    details: varchar("details", { length: 500 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  table => [index("attendance_followup_activity_case_date_idx").on(table.schoolId, table.caseId, table.createdAt)]
+);
+
 export const notifications = pgTable(
   "notifications",
   {
@@ -1073,6 +1119,8 @@ export const databaseSchema = {
   timetablePeriods,
   dailyAttendances,
   studentAttendances,
+  attendanceFollowupCases,
+  attendanceFollowupActivities,
   notifications,
   homeworks,
   learningFiles,
@@ -1117,6 +1165,8 @@ export type TimetablePeriod = typeof timetablePeriods.$inferSelect;
 
 export type DailyAttendance = typeof dailyAttendances.$inferSelect;
 export type StudentAttendance = typeof studentAttendances.$inferSelect;
+export type AttendanceFollowupCase = typeof attendanceFollowupCases.$inferSelect;
+export type AttendanceFollowupActivity = typeof attendanceFollowupActivities.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 
 export type Homework = typeof homeworks.$inferSelect;
