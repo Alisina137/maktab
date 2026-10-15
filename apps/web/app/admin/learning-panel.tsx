@@ -359,6 +359,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     );
   }
 
+  const formatCount = (value: number) => new Intl.NumberFormat(locale).format(value);
+
   return (
     <section className="learning-section admin-page-enter">
       <div className="admin-section-header academic-heading">
@@ -373,6 +375,160 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
+      <nav className="learning-main-tabs" role="tablist" aria-label={t("Learning sections")}
+        dir={locale === "en" ? "ltr" : "rtl"}>
+        {learningTabs.map(({ id, title }, index) => (
+          <button key={id} id={`learning-tab-${id.toLowerCase()}`}
+            type="button" role="tab" aria-selected={activeTab === id}
+            aria-controls={`learning-panel-${id.toLowerCase()}`}
+            tabIndex={activeTab === id ? 0 : -1}
+            ref={element => { tabRefs.current[id] = element; }}
+            className={activeTab === id ? "is-active" : ""}
+            onClick={() => setActiveTab(id)}
+            onKeyDown={event => {
+              const forward = locale === "en" ? "ArrowRight" : "ArrowLeft";
+              const backward = locale === "en" ? "ArrowLeft" : "ArrowRight";
+              let next = -1;
+              if (event.key === "Home") next = 0;
+              if (event.key === "End") next = learningTabs.length - 1;
+              if (event.key === forward) next = (index + 1) % learningTabs.length;
+              if (event.key === backward) next = (index - 1 + learningTabs.length) % learningTabs.length;
+              if (next !== -1) {
+                event.preventDefault();
+                const destination = learningTabs[next]!.id;
+                setActiveTab(destination);
+                tabRefs.current[destination]?.focus();
+              }
+            }}>{t(title)}</button>
+        ))}
+      </nav>
+
+      {activeTab === "OVERVIEW" ? (
+        <section id="learning-panel-overview" role="tabpanel" aria-labelledby="learning-tab-overview"
+          className="learning-tab-panel">
+          {!selectedAcademicYearId ? (
+            <div className="admin-panel learning-empty"><strong>{t("Select an academic year")}</strong>
+              <p>{t("Select an academic year above to review learning activity.")}</p></div>
+          ) : dashboard ? (
+            <>
+              <header className="learning-panel-heading">
+                <div><h3>{t("Learning overview")}</h3>
+                  <p>{t("Live school records for the selected academic year.")}</p></div>
+              </header>
+              <div className="learning-metric-grid">
+                {([
+                  ["Active examinations", dashboard.metrics.activeExams, "EXAMS"],
+                  ["Awaiting publication", dashboard.metrics.examsAwaitingPublication, "RESULTS"],
+                  ["Published examinations", dashboard.metrics.publishedExams, "RESULTS"],
+                  ["Published homework", dashboard.metrics.publishedHomework, "HOMEWORK"],
+                  ["Submissions awaiting review", dashboard.metrics.submissionsAwaitingReview, "HOMEWORK"],
+                  ["Classes with missing marks", dashboard.metrics.classesWithMissingMarks, "EXAMS"],
+                  ["Continuous assessments", dashboard.metrics.continuousAssessments, "RESULTS"]
+                ] as const).map(([title, count, tab]) => (
+                  <button type="button" className="learning-metric-card" key={title}
+                    onClick={() => setActiveTab(tab)}>
+                    <span>{t(title)}</span>
+                    <strong>{formatCount(count)}</strong>
+                    <small>{t("View section")} →</small>
+                  </button>
+                ))}
+                <button type="button" className="learning-metric-card"
+                  onClick={() => setActiveTab("TEACHING")}>
+                  <span>{t("Assigned curriculum units completed")}</span>
+                  <strong>{dashboard.metrics.curriculumAssignedUnits === 0 ? "—" :
+                    `${formatCount(dashboard.metrics.curriculumCompletedUnits)}/${formatCount(dashboard.metrics.curriculumAssignedUnits)}`}</strong>
+                  <small>{t("View section")} →</small>
+                </button>
+              </div>
+              <article className="admin-panel learning-attention-card">
+                <div className="learning-panel-heading"><h3>{t("Needs attention")}</h3>
+                  <p>{t("Academic items that may require administrator follow-up.")}</p></div>
+                {dashboard.attention.length ? (
+                  <div className="learning-attention-list">
+                    {dashboard.attention.map(item => (
+                      <button type="button" key={`${item.category}:${item.id}`}
+                        className="learning-attention-item"
+                        onClick={() => {setActiveTab(item.category); if (item.category === "EXAMS") setExamPane("LIFECYCLE");}}>
+                        <span className="learning-attention-info">
+                          <strong>{item.title}</strong>
+                          <small>{t(item.detail)}</small>
+                        </span>
+                        <span className="learning-attention-count">{formatCount(item.count)}</span>
+                        <span className="learning-attention-action">{t("View section")} →</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="learning-empty">
+                    <strong>{t("No current learning exceptions")}</strong>
+                    <p>{t("No missing marks, pending result publications, or outstanding homework reviews were found in this academic year.")}</p>
+                  </div>
+                )}
+              </article>
+            </>
+          ) : <div className="admin-panel learning-empty">{t("Learning dashboard unavailable.")}</div>}
+        </section>
+      ) : null}
+
+      {activeTab === "HOMEWORK" ? (
+        <section id="learning-panel-homework" role="tabpanel" aria-labelledby="learning-tab-homework"
+          className="learning-tab-panel admin-panel learning-module-summary">
+          <h3>{t("Homework monitoring")}</h3>
+          <p>{t("Homework creation and submission review remain with assigned teachers.")}</p>
+          <div className="learning-summary-inline">
+            <div><span>{t("Published homework")}</span><strong>{formatCount(dashboard?.metrics.publishedHomework ?? 0)}</strong></div>
+            <div><span>{t("Submissions awaiting review")}</span><strong>{formatCount(dashboard?.metrics.submissionsAwaitingReview ?? 0)}</strong></div>
+          </div>
+          <p className="admin-copy">{t("Schoolwide homework records and submission filters are not yet available in this view.")}</p>
+        </section>
+      ) : null}
+
+      {activeTab === "TEACHING" ? (
+        <section id="learning-panel-teaching" role="tabpanel" aria-labelledby="learning-tab-teaching"
+          className="learning-tab-panel admin-panel learning-module-summary">
+          <h3>{t("Teaching progress")}</h3>
+          <p>{t("Curriculum definitions are managed in Academics. Teachers record chapter progress in their own workspace.")}</p>
+          <div className="learning-summary-inline">
+            <div><span>{t("Assigned curriculum units completed")}</span>
+              <strong>{dashboard?.metrics.curriculumAssignedUnits
+                ? `${formatCount(dashboard.metrics.curriculumCompletedUnits)}/${formatCount(dashboard.metrics.curriculumAssignedUnits)}`
+                : "—"}</strong></div>
+          </div>
+          <Link className="admin-secondary learning-module-link" href="/admin/academics/curriculum">
+            {t("Open curriculum management")}
+          </Link>
+        </section>
+      ) : null}
+
+      {activeTab === "REPORTS" ? (
+        <section id="learning-panel-reports" role="tabpanel" aria-labelledby="learning-tab-reports"
+          className="learning-tab-panel admin-panel learning-module-summary">
+          <h3>{t("Academic reports & audit")}</h3>
+          <p>{t("Detailed academic report exports and audit filters are not yet available in this workspace.")}</p>
+          <div className="learning-summary-inline">
+            <div><span>{t("Published examinations")}</span>
+              <strong>{formatCount(dashboard?.metrics.publishedExams ?? 0)}</strong></div>
+            <div><span>{t("Continuous assessments")}</span>
+              <strong>{formatCount(dashboard?.metrics.continuousAssessments ?? 0)}</strong></div>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "EXAMS" ? (
+        <section id="learning-panel-exams" role="tabpanel" aria-labelledby="learning-tab-exams"
+          className="learning-tab-panel">
+          <div className="learning-panel-heading">
+            <div><h3>{t("Examinations")}</h3><p>{t("Configure exam cycles and manage their lifecycle.")}</p></div>
+          </div>
+          <div className="learning-subtabs" role="group" aria-label={t("Exam views")}>
+            {(["SETUP", "LIFECYCLE"] as const).map(pane => (
+              <button type="button" key={pane} className={examPane === pane ? "is-active" : ""}
+                aria-pressed={examPane === pane} onClick={() => setExamPane(pane)}>
+                {t(pane === "SETUP" ? "Exam setup" : "Exam lifecycle")}
+              </button>
+            ))}
+          </div>
+          {examPane === "SETUP" ? (
       <div className="academic-form-grid">
         <article className="admin-panel academic-form-card">
           <div><h2>{t("Create exam")}</h2><p>{t("Exam cycles begin as drafts. Set a separate exam date for each assigned class and subject.")}</p></div>
@@ -455,6 +611,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
         </article>
       </div>
 
+          ) : null}
+          {examPane === "LIFECYCLE" ? (
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div><h2>{t("Exam lifecycle")}</h2><p>{t("Draft → Scheduled → In progress → Results ready → Published → Archived")}</p></div>
@@ -489,6 +647,18 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
         </div>
       </article>
 
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeTab === "RESULTS" ? (
+        <section id="learning-panel-results" role="tabpanel" aria-labelledby="learning-tab-results"
+          className="learning-tab-panel">
+          <div className="learning-panel-heading">
+            <div><h3>{t("Gradebook & results")}</h3>
+              <p>{t("Published examination grades and audited corrections.")}</p>
+            </div>
+          </div>
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div><h2>{t("Published result corrections")}</h2><p>{t("Published marks cannot be deleted. Corrections require a reason and create audit history.")}</p></div>
@@ -511,6 +681,8 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           {yearPublishedGrades.length === 0 ? <p className="admin-copy">{t("No published grades in the selected academic year.")}</p> : null}
         </div>
       </article>
+        </section>
+      ) : null}
     </section>
   );
 }
