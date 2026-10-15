@@ -8596,3 +8596,41 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
 @media (prefers-reduced-motion: reduce) {
   .pilot-dashboard-stat { transition: none; }
 }
+
+/* Pilot Operations refinement Phase 2: active-year operational validation. */
+.pilot-operational { min-width: 0; display: grid; gap: 16px; }
+.pilot-operational .admin-section-header { align-items: flex-start; gap: 12px; }
+.pilot-operational .admin-section-header h3 { margin-block: 5px 8px; }
+.pilot-operational-count { margin: 0; font-size: 13px; color: var(--ml-color-text-muted); }
+.pilot-operational-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.pilot-operational-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid #dce5f2;
+  border-radius: 14px;
+  padding: 17px;
+  background: #fbfcff;
+}
+.pilot-operational-card > p { margin: 0; font-size: 13px; color: var(--ml-color-text-muted); }
+.pilot-operational-card progress { width: 100%; height: 9px; accent-color: #367bc9; }
+.pilot-operational-card button:focus-visible,
+.pilot-operational-card a:focus-visible {
+  outline: 3px solid var(--ml-color-brand);
+  outline-offset: 3px;
+}
+.pilot-operational-card .pilot-coverage-top { flex-wrap: wrap; }
+.pilot-operational-card .pilot-coverage-top strong { flex: 1; min-width: 150px; }
+.pilot-operational-card .pilot-coverage-issues { overflow-wrap: anywhere; }
+@media (max-width: 780px) {
+  .pilot-operational-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .pilot-operational { padding: 15px; }
+  .pilot-operational-card { padding: 13px; }
+}
