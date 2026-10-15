@@ -56,7 +56,7 @@
     "verify:admin-learning:phase4": "node scripts/verify-admin-learning-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"draft grades are hidden until admin publishes\" src/app.test.ts",
     "verify:admin-learning:phase5": "node scripts/verify-admin-learning-phase5.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"homework stays private as draft\" src/app.test.ts",
     "verify:admin-learning:phase6": "node scripts/verify-admin-learning-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"school admin can model teacher assignments\" src/app.test.ts",
-    "verify:admin-learning:phase7": "node scripts/verify-admin-learning-phase7.mjs && pnpm exec tsx --test scripts/test-admin-learning-phase7-csv.test.ts && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"school admin can model teacher assignments|draft grades are hidden until admin publishes\" src/app.test.ts"
+    "verify:admin-learning:phase7": "node scripts/verify-admin-learning-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-admin-learning-phase7-csv.test.ts && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"school admin can model teacher assignments|draft grades are hidden until admin publishes\" src/app.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
