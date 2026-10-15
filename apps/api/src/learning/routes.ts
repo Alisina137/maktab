@@ -242,6 +242,47 @@ export function registerLearningRoutes(
     }
   });
 
+  // Phase 5 is intentionally read-only: assigned teachers remain the
+  // authoritative actors for creation, student feedback and publication.
+  app.get("/v1/admin/learning/homework", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = z.object({
+        academicYearId: z.string().uuid(),
+        status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
+        classId: z.string().uuid().optional(),
+        subjectId: z.string().uuid().optional(),
+        teacherUserId: z.string().uuid().optional(),
+        search: z.string().trim().max(100).optional(),
+        attention: z.enum(["ALL", "PAST_DUE", "AWAITING_REVIEW", "MISSING", "REVISION_REQUESTED"]).default("ALL"),
+        limit: z.coerce.number().int().min(1).max(50).default(20),
+        offset: z.coerce.number().int().min(0).max(100000).default(0)
+      }).parse(request.query);
+      return await learning.listAdminHomework(context.user.schoolId, query);
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
+  });
+
+  app.get<{ Params: { homeworkId: string } }>(
+    "/v1/admin/learning/homework/:homeworkId/roster", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const homeworkId = z.string().uuid().parse(request.params.homeworkId);
+        const { filter, limit, offset } = z.object({
+          filter: z.enum(["ALL", "MISSING", "SUBMITTED", "REVIEWED", "REVISION_REQUESTED"]).default("ALL"),
+          limit: z.coerce.number().int().min(1).max(50).default(20),
+          offset: z.coerce.number().int().min(0).max(100000).default(0)
+        }).parse(request.query);
+        return await learning.getAdminHomeworkRoster(context.user.schoolId, homeworkId, filter, limit, offset);
+      } catch (error) {
+        return sendLearningError(reply, error);
+      }
+    }
+  );
+
   app.get("/v1/admin/learning/published-results", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
