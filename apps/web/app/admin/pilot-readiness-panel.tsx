@@ -8,6 +8,7 @@ import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
 import { PilotOverviewActivity } from "./pilot-overview-activity";
 import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
+import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -210,6 +211,7 @@ export const PILOT_TABS = [
   { section: "overview", label: "Overview", href: "/admin/pilot" },
   { section: "readiness", label: "School readiness", href: "/admin/pilot/readiness" },
   { section: "onboarding", label: "Data onboarding", href: "/admin/pilot/onboarding" },
+  { section: "adoption", label: "Usage & adoption", href: "/admin/pilot/adoption" },
   { section: "subscription", label: "Subscription", href: "/admin/pilot/subscription" },
   { section: "audit", label: "Audit & exports", href: "/admin/pilot/audit" },
   { section: "launch", label: "Launch & support", href: "/admin/pilot/launch" },
@@ -828,6 +830,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             ))}
           </div>
         </>
+      ) : null}
+
+      {section === "adoption" ? (
+        <PilotAdoptionPanel key={accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
 
       {section === "onboarding" && readiness ? (
