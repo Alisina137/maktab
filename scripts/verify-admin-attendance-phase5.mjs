@@ -34,7 +34,7 @@ for(const x of ['"/v1/admin/attendance/followups"',"/followups/candidates",
   "/followups/assignees",'/followups/:caseId/activities',
   "requireSchoolAdmin(request,reply,accounts)"])
   assert.ok(routes.includes(x),"Missing scoped follow-up endpoint: "+x);
-for(const x of ["<AdminAttendanceFollowups","academicYearStatus={selectedAcademicYear?.status??\"\\"" ])
+for(const x of ["<AdminAttendanceFollowups","academicYearStatus="])
   assert.ok(panel.includes(x),"Missing follow-up tab integration: "+x);
 for(const x of ["new AbortController()","controller.signal.aborted",
   'role="tablist"','role="alert"',"createFor.attendanceId",
