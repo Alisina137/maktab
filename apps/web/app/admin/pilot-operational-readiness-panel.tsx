@@ -99,7 +99,7 @@ export function PilotOperationalReadinessPanel({ accessToken, locale, compact = 
               summary.ready ? t("Timetable checks passed") :
               adminFormat(locale, "{critical} critical checks and {warnings} warnings.", {
                 critical: summary.critical, warnings: summary.warnings
-              })</p>
+              })}</p>
           ) : null}
         </div>
         <Link className="pilot-inline-link" href="/admin/pilot/readiness">
