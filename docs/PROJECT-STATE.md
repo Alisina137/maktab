@@ -1700,3 +1700,12 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - The fee reminder editor now selects 1–6 unique whole-day offsets from 1–90, with localized chips. Backend keeps school-civil-date and de-duplication semantics. Worker suppresses overdue/stale due push and rejects inactive/withdrawn recipient, settled/cancelled invoice or archived announcement; historical in-app reminders stay available while otherwise valid.
 - Migration **0023_notification_scheduler_health.sql** (after **0022_fee_invoice_numbers.sql**) is required before deploying the new API. Automated store/API/source guards cover tenant and role isolation, retries, scheduler status, and localized UI in `pnpm verify:admin-communication:phase5` and Linux/Windows CI.
 - **Not proved:** actual Expo push handoff/device receipt, cron setup, concurrency-safe distributed job locking, device/browser RTL acceptance, exact production PostgreSQL migration/backups and Step 20 operator evidence. Production remains **NO-GO**. Phase 6 next: finance reports and reconciliation.
+
+
+## Admin Communication & Fees — Phase 6 (2026-10-15)
+
+- Fees → Reports & reconciliation now shows school-scoped issued-only balances, school-day aging and date-filtered gross/reversal/net collections. Period filters affect transactions only; current outstanding is deliberately today’s position.
+- Server-authoritative audited CSV exports escape formulas and fail when a school exceeds the safe 5000-record bound rather than silently truncating. Manual CASH/BANK_TRANSFER reconciliation is stored separately from immutable payments with audit, invoice locking and reversed-payment restrictions.
+- Audited 1–100 row bulk invoice preview detects existing and within-request duplicates plus unavailable students; this creates no invoices. Parent/student API scopes are unchanged.
+- Migration required: `0024_fee_payment_reconciliation.sql` after `0023_notification_scheduler_health.sql`. Admin UI is localized and responsive; Phase 6 store tests, CSV safety tests and CI guard are added.
+- External bank evidence, pilot school ledger reconciliation, live PostgreSQL migration, browsers/devices and independent Step 20 release signoff **NOT RUN**. Production remains **NO-GO**; Phase 7 integrated verification next.
