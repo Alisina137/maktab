@@ -1161,7 +1161,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (query.subjectId) conditions.push(eq(homeworks.subjectId, query.subjectId));
       if (query.teacherUserId) conditions.push(eq(homeworks.teacherUserId, query.teacherUserId));
       if (query.search) {
-        const searchTerm = "%" + query.search.trim().replace(/[\\%_]/g, "\\    async listAdminPublishedGrades(schoolId, query) {") + "%";
+        const searchTerm = "%" + query.search.trim().replace(/[\\%_]/g, match => "\\" + match) + "%";
         conditions.push(ilike(homeworks.title, searchTerm));
       }
       if (query.attention === "PAST_DUE") conditions.push(and(
