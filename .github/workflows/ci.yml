@@ -55,6 +55,9 @@ jobs:
       - name: Admin Communication and Fees Phase 6 reports, CSV, reconciliation and bulk preview
         run: pnpm verify:admin-communication:phase6
 
+      - name: Admin Communication and Fees Phase 7 scheduler race and push claim safety
+        run: pnpm verify:admin-communication:phase7
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -165,6 +168,7 @@ jobs:
           pnpm verify:admin-communication:phase4
           pnpm verify:admin-communication:phase5
           pnpm verify:admin-communication:phase6
+          pnpm verify:admin-communication:phase7
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
