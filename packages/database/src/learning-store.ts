@@ -20,6 +20,10 @@ import {
   exams,
   gradeRecords,
   homeworks,
+  homeworkSubmissions,
+  curriculumUnits,
+  teacherUnitProgress,
+  continuousAssessments,
   notifications,
   students,
   subjects,
@@ -106,6 +110,28 @@ export interface AdminLearningOverview {
   }>;
 }
 
+export interface AdminLearningDashboard {
+  academicYearId: string;
+  metrics: {
+    activeExams: number;
+    examsAwaitingPublication: number;
+    publishedExams: number;
+    publishedHomework: number;
+    submissionsAwaitingReview: number;
+    classesWithMissingMarks: number;
+    continuousAssessments: number;
+    curriculumCompletedUnits: number;
+    curriculumAssignedUnits: number;
+  };
+  attention: Array<{
+    id: string;
+    category: "EXAMS" | "RESULTS" | "HOMEWORK";
+    title: string;
+    detail: string;
+    count: number;
+  }>;
+}
+
 export interface LearningStore {
   getTeacherLearning(schoolId: string, teacherUserId: string): Promise<TeacherLearningView>;
   createHomework(schoolId: string, teacherUserId: string, input: CreateHomeworkInput): Promise<Homework>;
@@ -120,6 +146,7 @@ export interface LearningStore {
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
   getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
+  getAdminDashboard(schoolId: string, academicYearId: string): Promise<AdminLearningDashboard>;
   createExam(schoolId: string, actorUserId: string, input: CreateExamInput): Promise<Exam>;
   createExamSubject(schoolId: string, actorUserId: string, input: CreateExamSubjectInput): Promise<ExamSubject>;
   updateExamSubjectDate(schoolId: string, actorUserId: string, examSubjectId: string, examDate: string): Promise<ExamSubject>;
@@ -680,6 +707,119 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         throw new LearningNotFoundError("No active student record is linked to this student account.");
       }
       return visibleView(schoolId, student);
+    },
+
+    async getAdminDashboard(schoolId, academicYearId) {
+      const [year] = await db.select({ id: academicYears.id }).from(academicYears).where(and(
+        eq(academicYears.schoolId, schoolId), eq(academicYears.id, academicYearId)
+      )).limit(1);
+      if (!year) throw new LearningNotFoundError("Academic year not found.");
+
+      const [schoolExams, rosters, homework, units, assignments] = await Promise.all([
+        db.select().from(exams).where(and(eq(exams.schoolId, schoolId),
+          eq(exams.academicYearId, academicYearId))),
+        db.select({ id: students.id, classId: students.classId }).from(students).where(and(
+          eq(students.schoolId, schoolId), eq(students.academicYearId, academicYearId),
+          eq(students.status, "ACTIVE"))),
+        db.select().from(homeworks).where(and(
+          eq(homeworks.schoolId, schoolId), eq(homeworks.academicYearId, academicYearId))),
+        db.select().from(curriculumUnits).where(and(
+          eq(curriculumUnits.schoolId, schoolId), eq(curriculumUnits.academicYearId, academicYearId))),
+        db.select().from(teacherAssignments).where(and(
+          eq(teacherAssignments.schoolId, schoolId),
+          eq(teacherAssignments.academicYearId, academicYearId)))
+      ]);
+      const examIds = schoolExams.map(item => item.id);
+      const homeworkIds = homework.map(item => item.id);
+      const unitIds = units.map(item => item.id);
+      const assignmentIds = assignments.map(item => item.id);
+      const [subjects, submissions, progress, assessments] = await Promise.all([
+        examIds.length ? db.select().from(examSubjects).where(and(
+          eq(examSubjects.schoolId, schoolId), inArray(examSubjects.examId, examIds))) : [],
+        homeworkIds.length ? db.select().from(homeworkSubmissions).where(and(
+          eq(homeworkSubmissions.schoolId, schoolId),
+          inArray(homeworkSubmissions.homeworkId, homeworkIds))) : [],
+        unitIds.length ? db.select().from(teacherUnitProgress).where(and(
+          eq(teacherUnitProgress.schoolId, schoolId),
+          inArray(teacherUnitProgress.unitId, unitIds))) : [],
+        assignmentIds.length ? db.select({ id: continuousAssessments.id })
+          .from(continuousAssessments).where(and(eq(continuousAssessments.schoolId, schoolId),
+            inArray(continuousAssessments.assignmentId, assignmentIds))) : []
+      ]);
+      const subjectIds = subjects.map(item => item.id);
+      const grades = subjectIds.length ? await db.select({
+        examSubjectId: gradeRecords.examSubjectId, studentId: gradeRecords.studentId
+      }).from(gradeRecords).where(and(eq(gradeRecords.schoolId, schoolId),
+        inArray(gradeRecords.examSubjectId, subjectIds))) : [];
+
+      const studentsByClass = new Map<string, Set<string>>();
+      for (const student of rosters) {
+        const ids = studentsByClass.get(student.classId) ?? new Set<string>();
+        ids.add(student.id);
+        studentsByClass.set(student.classId, ids);
+      }
+      const recordedBySubject = new Map<string, Set<string>>();
+      for (const grade of grades) {
+        const ids = recordedBySubject.get(grade.examSubjectId) ?? new Set<string>();
+        ids.add(grade.studentId);
+        recordedBySubject.set(grade.examSubjectId, ids);
+      }
+      const missingClasses = new Set<string>();
+      const attention: AdminLearningDashboard["attention"] = [];
+      for (const exam of schoolExams) {
+        if (exam.status === "RESULTS_READY") {
+          attention.push({ id: exam.id, category: "RESULTS",
+            title: exam.name, detail: "Results ready for publication", count: 1 });
+        }
+        if (exam.status !== "IN_PROGRESS" && exam.status !== "RESULTS_READY") continue;
+        let missing = 0;
+        for (const subject of subjects.filter(row => row.examId === exam.id)) {
+          const roster = studentsByClass.get(subject.classId) ?? new Set<string>();
+          const marked = recordedBySubject.get(subject.id) ?? new Set<string>();
+          for (const id of roster) if (!marked.has(id)) {
+            missing += 1;
+            missingClasses.add(subject.classId);
+          }
+        }
+        if (missing > 0) attention.push({ id: exam.id, category: "EXAMS",
+          title: exam.name, detail: "Required examination marks not entered", count: missing });
+      }
+      const eligibleHomework = new Set(homework.filter(item =>
+        item.status === "PUBLISHED" || item.status === "CLOSED").map(item => item.id));
+      const pendingReviews = submissions.filter(item =>
+        item.status === "SUBMITTED" && eligibleHomework.has(item.homeworkId));
+      if (pendingReviews.length) attention.push({
+        id: "homework-reviews", category: "HOMEWORK", title: "Homework submissions awaiting review",
+        detail: "Teacher review pending", count: pendingReviews.length
+      });
+      const completedProgress = new Set(progress.filter(item => item.status === "COMPLETED")
+        .map(item => `${item.assignmentId}:${item.unitId}`));
+      let curriculumAssignedUnits = 0;
+      let curriculumCompletedUnits = 0;
+      for (const assignment of assignments) {
+        for (const unit of units) {
+          if (assignment.classId !== unit.classId || assignment.subjectId !== unit.subjectId) continue;
+          curriculumAssignedUnits++;
+          if (completedProgress.has(`${assignment.id}:${unit.id}`)) curriculumCompletedUnits++;
+        }
+      }
+      attention.sort((a,b) => b.count - a.count || a.title.localeCompare(b.title));
+      return {
+        academicYearId,
+        metrics: {
+          activeExams: schoolExams.filter(item =>
+            ["SCHEDULED", "IN_PROGRESS", "RESULTS_READY"].includes(item.status)).length,
+          examsAwaitingPublication: schoolExams.filter(item => item.status === "RESULTS_READY").length,
+          publishedExams: schoolExams.filter(item =>
+            item.status === "PUBLISHED" || item.status === "ARCHIVED").length,
+          publishedHomework: eligibleHomework.size,
+          submissionsAwaitingReview: pendingReviews.length,
+          classesWithMissingMarks: missingClasses.size,
+          continuousAssessments: assessments.length,
+          curriculumCompletedUnits, curriculumAssignedUnits
+        },
+        attention: attention.slice(0, 8)
+      };
     },
 
     async getAdminOverview(schoolId) {

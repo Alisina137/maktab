@@ -3805,6 +3805,58 @@ test("homework stays private as draft, then becomes visible to parent and linked
 
 });
 
+test("Admin Learning Phase 1 dashboard is year-scoped, role-protected and has empty metrics", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+
+  const schoolA = await provisionSchool(app, "LEARN-P1-A");
+  const schoolB = await provisionSchool(app, "LEARN-P1-B");
+  const adminA = { authorization: `Bearer ${await bootstrapAdmin(app, schoolA)}` };
+  const adminB = { authorization: `Bearer ${await bootstrapAdmin(app, schoolB)}` };
+
+  const year = await app.inject({ method: "POST", url: "/v1/admin/academics/years",
+    headers: adminA,
+    payload: { name: "1408", startDate: "2029-03-21", endDate: "2030-03-20" } });
+  assert.equal(year.statusCode, 201, year.body);
+  const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  const url = `/v1/admin/learning/dashboard?academicYearId=${yearId}`;
+
+  assert.equal((await app.inject({ method: "GET", url })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url, headers: adminB })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/learning/dashboard?academicYearId=bad", headers: adminA })).statusCode, 400);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/learning/dashboard", headers: adminA })).statusCode, 400);
+
+  const empty = await app.inject({ method: "GET", url, headers: adminA });
+  assert.equal(empty.statusCode, 200, empty.body);
+  const dashboard = empty.json<{ academicYearId: string; metrics: {
+    activeExams: number; examsAwaitingPublication: number;
+    publishedHomework: number; submissionsAwaitingReview: number;
+    classesWithMissingMarks: number; curriculumAssignedUnits: number;
+  }; attention: unknown[] }>();
+  assert.equal(dashboard.academicYearId, yearId);
+  assert.deepEqual(dashboard.attention, []);
+  assert.equal(dashboard.metrics.activeExams, 0);
+  assert.equal(dashboard.metrics.publishedHomework, 0);
+  assert.equal(dashboard.metrics.submissionsAwaitingReview, 0);
+  assert.equal(dashboard.metrics.classesWithMissingMarks, 0);
+  assert.equal(dashboard.metrics.curriculumAssignedUnits, 0);
+  const draft = await app.inject({ method: "POST", url: "/v1/admin/exams",
+    headers: adminA, payload: { academicYearId: yearId, name: "Year end", type: "FINAL" } });
+  assert.equal(draft.statusCode, 409, "Year must be active before creating exam.");
+  await app.inject({ method: "POST",
+    url: `/v1/admin/academics/years/${yearId}/activate`, headers: adminA });
+  const created = await app.inject({ method: "POST", url: "/v1/admin/exams",
+    headers: adminA, payload: { academicYearId: yearId, name: "Year end", type: "FINAL" } });
+  assert.equal(created.statusCode, 201, created.body);
+  const after = await app.inject({ method: "GET", url, headers: adminA });
+  assert.equal(after.statusCode, 200, after.body);
+  assert.equal(after.json<{metrics:{activeExams:number}}>().metrics.activeExams, 0,
+    "Draft exam is not yet active.");
+  assert.equal((await app.inject({ method: "GET", url, headers: adminB })).statusCode, 404);
+});
+
 test("draft grades are hidden until admin publishes the complete exam, and unrelated teachers cannot grade", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => {

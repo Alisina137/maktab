@@ -16,7 +16,7 @@ import {
   type AccountStore,
   type LearningStore
 } from "@maktablink/database";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
 
@@ -220,6 +220,19 @@ export function registerLearningRoutes(
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
     return learning.getAdminOverview(context.user.schoolId);
+  });
+
+  app.get("/v1/admin/learning/dashboard", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const { academicYearId } = z.object({
+        academicYearId: z.string().uuid()
+      }).parse(request.query);
+      return await learning.getAdminDashboard(context.user.schoolId, academicYearId);
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
   });
 
   app.post("/v1/admin/exams", async (request, reply) => {
