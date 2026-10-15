@@ -86,7 +86,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     loadController.current = controller;
     setReport(null); setAcademics(null); setSchoolToday("");
     setDraftFilters(EMPTY_FILTERS); setAppliedFilters(null);
-    setBusy(false); setStatus(selectedAcademicYearId ? "loading" : "empty");
+    setBusy(false); setActionBusy(false); setStatus(selectedAcademicYearId ? "loading" : "empty");
     setError(""); setNotice("");
     if (selectedAcademicYearId) {
       const year = selectedAcademicYearId;
@@ -348,7 +348,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
           {activeTab === "STUDENTS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Students with recorded attendance")}</h3>
-            <p>{t("This is a summary of students with marks in the selected period, not the full student directory. Detailed profiles and calendars are planned for a later phase.")}</p>
+            <p>{t("This summary includes only students with recorded marks in the selected period, not the full directory. Detailed profiles and calendars are not available yet.")}</p>
             <div className="attendance-preview-list">
               {students.map(item => <div className="attendance-preview-item" key={item.studentId}>
                 <div><strong>{item.studentName}</strong><small>{item.studentCode} · {item.className}</small></div>
@@ -362,7 +362,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
           {activeTab === "FOLLOWUPS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Absence and lateness review")}</h3>
-            <p>{t("These are recorded absences and late marks, not automatically opened intervention cases. Case tracking will be introduced later.")}</p>
+            <p>{t("These are recorded absences and late marks, not opened intervention cases. Follow-up case tracking is not available yet.")}</p>
             <div className="attendance-preview-list">
               {attentionRows.map(row => <div className="attendance-preview-item"
                 key={`${row.attendanceId}-${row.studentId}`}>
@@ -381,16 +381,16 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
           {activeTab === "REPORTS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Attendance reporting summary")}</h3>
-            <p>{t("This is a live summary of existing submitted attendance marks. Trends and CSV exports will be introduced in the reporting phase.")}</p>
+            <p>{t("This summary uses existing submitted attendance marks. Trends and CSV exports are not available yet.")}</p>
             <div className="academic-summary-grid attendance-summary-grid">
               {metrics.map(([label,value]) => <Summary key={label} label={t(label)} value={value} />)}
             </div>
-            <p className="admin-copy">{t("Unrecorded days are not absences. Submission expectations will follow the school calendar in a later phase.")}</p>
+            <p className="admin-copy">{t("Unrecorded days are not absences. School-calendar-aware submission expectations are not available yet.")}</p>
           </article> : null}
 
           {activeTab === "AUDIT" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Attendance audit trail")}</h3>
-            <p>{t("Attendance corrections are already audited. A dedicated searchable attendance correction history is planned for a later phase.")}</p>
+            <p>{t("Attendance corrections are already audited. Dedicated searchable attendance correction history is not available yet.")}</p>
             <Link className="admin-secondary attendance-audit-link" href="/admin/pilot/audit">
               {t("View school audit history")}
             </Link>
