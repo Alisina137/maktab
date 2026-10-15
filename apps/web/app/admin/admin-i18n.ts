@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Subscription data unavailable.": "معلومات اشتراک در دسترس نیست.",
   "Recent school activity": "فعالیت‌های اخیر مکتب",
   "Latest recorded administrative events for this school.": "آخرین فعالیت‌های اداری ثبت‌شده برای این مکتب.",
   "View audit history": "مشاهده تاریخچه فعالیت‌ها",
@@ -2046,6 +2047,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Subscription data unavailable.": "د ګډون معلومات نشته.",
   "Recent school activity": "د ښوونځي وروستي فعالیتونه",
   "Latest recorded administrative events for this school.": "د دې ښوونځي وروستي ثبت شوي اداري فعالیتونه.",
   "View audit history": "د فعالیتونو تاریخچه وګورئ",
