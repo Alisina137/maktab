@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AdminAttendanceAudit } from "./admin-attendance-audit";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
 import { AdminAttendanceStudents } from "./admin-attendance-students";
 import { AdminAttendanceClassRegister } from "./admin-attendance-class-register";
@@ -154,7 +154,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     void loadReport(draftFilters);
   }
 
-  async function correct(row: AttendanceReportRow, nextStatus: AttendanceStatus, note: string) {
+  async function correct(row: AttendanceReportRow, nextStatus: AttendanceStatus, reason: string) {
     if (actionBusy || busy || selectedAcademicYear?.status !== "ACTIVE") return;
     const expectedScope = scope;
     setActionBusy(true); setError(""); setNotice("");
@@ -163,7 +163,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
         accessToken,
         `/v1/admin/attendance/${row.attendanceId}/students/${row.studentId}`,
         undefined, { method: "PATCH", body: JSON.stringify({
-          status: nextStatus, note: note.trim() || undefined
+          status: nextStatus, reason: reason.trim(), expectedUpdatedAt: row.updatedAt
         }) }
       );
       if (scopeRef.current !== expectedScope) return;
@@ -404,13 +404,9 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             <p className="admin-copy">{t("Unrecorded days are not absences. Daily submission monitoring follows the timetable and declared school closures.")}</p>
           </article> : null}
 
-          {activeTab === "AUDIT" ? <article className="admin-panel attendance-preview-panel">
-            <h3>{t("Attendance audit trail")}</h3>
-            <p>{t("Attendance corrections are already audited. Dedicated searchable attendance correction history is not available yet.")}</p>
-            <Link className="admin-secondary attendance-audit-link" href="/admin/pilot/audit">
-              {t("View school audit history")}
-            </Link>
-          </article> : null}
+          {activeTab === "AUDIT" ? <AdminAttendanceAudit
+            accessToken={accessToken} academicYearId={selectedAcademicYearId}
+            classes={classes} locale={locale} /> : null}
         </div>
       </> : null}
     </section>
@@ -419,15 +415,15 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
 function AttendanceReportItem({ row, locale, busy, readOnly, onCorrect }: {
   row: AttendanceReportRow; locale: AdminLocale; busy: boolean; readOnly: boolean;
-  onCorrect: (row: AttendanceReportRow, status: AttendanceStatus, note: string) => Promise<void>;
+  onCorrect: (row: AttendanceReportRow, status: AttendanceStatus, reason: string) => Promise<void>;
 }) {
   const t = (english: string) => adminText(locale, english);
   const [status, setStatus] = useState<AttendanceStatus>(row.status);
-  const [note, setNote] = useState(row.note ?? "");
+  const [reason, setReason] = useState("");
   useEffect(() => {
-    setStatus(row.status); setNote(row.note ?? "");
-  }, [row.status, row.note]);
-  const changed = status !== row.status || note.trim() !== (row.note ?? "");
+    setStatus(row.status); setReason("");
+  }, [row.status, row.note, row.updatedAt]);
+  const canSave = status !== row.status && reason.trim().length >= 5;
   return <div className="attendance-report-row">
     <div className="attendance-record-main">
       <strong>{row.studentName}</strong>
@@ -439,13 +435,19 @@ function AttendanceReportItem({ row, locale, busy, readOnly, onCorrect }: {
         {statuses.map(item => <option key={item} value={item}>{t(item)}</option>)}
       </select>
     </label>
-    <label>{t("Correction note")}
-      <input value={note} onChange={event => setNote(event.target.value)}
-        maxLength={240} placeholder={t("Optional reason")} disabled={busy || readOnly} />
+    <div className="attendance-original-note">
+      <span>{t("Original teacher note")}</span>
+      <p>{row.note || t("No note recorded")}</p>
+    </div>
+    <label>{t("Correction reason (required)")}
+      <input value={reason} onChange={event => setReason(event.target.value)}
+        required minLength={5} maxLength={240}
+        placeholder={t("Explain why this mark must change")}
+        disabled={busy || readOnly} />
     </label>
     <button type="button" className="admin-secondary"
-      disabled={busy || readOnly || !changed}
-      onClick={() => void onCorrect(row, status, note)}>{t("Save correction")}</button>
+      disabled={busy || readOnly || !canSave}
+      onClick={() => void onCorrect(row, status, reason)}>{t("Save correction")}</button>
   </div>;
 }
 

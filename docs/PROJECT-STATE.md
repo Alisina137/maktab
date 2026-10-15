@@ -1868,3 +1868,13 @@ Daily Registers now provides per-class roster drilldown, submitted status, searc
 
 Added admin-only student directory, student history, and class register endpoints to the attendance API; no additional migration is needed beyond Phase 2. Local verification is `pnpm verify:admin-attendance:phase3` with model tests, API checks, and both-platform CI. Remaining scope: Phase 4 correction reasons, concurrency guards, dedicated attendance audit history; later server paging of the legacy report.
 
+
+## Admin Attendance Phase 4 — Corrections & Audit Trail (2026-10-15)
+
+- Administrators must supply a meaningful (5–240 character) correction reason and an exact student-mark `updatedAt` revision token when changing an attendance status. Absent reasons or revision tokens return validation errors; stale concurrent changes return HTTP 409. Status-only corrections that do not actually change a mark are rejected.
+- A conditional database update implements optimistic concurrency. The original Negaran/student attendance note is **not overwritten** with the administrative correction reason. Existing parent attendance alerts are synchronized inside the same transaction as the status, register update and audit record.
+- The school-scoped audit log records previous/current status, student ID, actor, reason, original note and revision timestamps. Existing entries from earlier versions remain readable but may lack reasons or original note snapshots.
+- New `GET /v1/admin/attendance/audit` is SCHOOL_ADMIN only, restricted to a known academic year and joined to real attendance/class records of the requesting school; it supports calendar-day/date range, class, student name/code, bounded pagination (max 50/page) and newest-first ordering. It never relies on user-supplied audit metadata for school/year isolation.
+- Replaced the Attendance Audit placeholder with a dedicated responsive searchable audit history, status transitions and event details, contextual original notes, form validation and accessible loading/retry/pagination. Dari/Pashto translations provided.
+- No schema migration. Apply normal verification including `pnpm verify:admin-attendance:phase4` and API integration tests; all previously submitted attendance data remains intact.
+- Remaining scope: Phase 5 Absence Follow-ups, Phase 6 Analytics/Reports, Phase 7 regression/acceptance.

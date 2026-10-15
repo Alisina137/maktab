@@ -97,6 +97,9 @@ jobs:
       - name: Admin Attendance Phase 3 student history and class registers
         run: pnpm verify:admin-attendance:phase3
 
+      - name: Admin Attendance Phase 4 corrections, version protection and audit history
+        run: pnpm verify:admin-attendance:phase4
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -234,6 +237,7 @@ jobs:
           pnpm verify:admin-attendance:phase1
           pnpm verify:admin-attendance:phase2
           pnpm verify:admin-attendance:phase3
+          pnpm verify:admin-attendance:phase4
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
