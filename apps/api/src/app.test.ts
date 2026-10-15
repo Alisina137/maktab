@@ -3315,6 +3315,36 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   });
   assert.equal(rereadAlert.statusCode, 200);
 
+  // Phase 4 requires a reason and the exact mark revision, and rejects
+  // stale writes before mutating the mark, notifications or audit history.
+  const phase4CorrectionUrl = `/v1/admin/attendance/${submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id}/students/${studentId}`;
+  const beforeCorrection = await app.inject({ method:"GET",
+    url:"/v1/admin/attendance/report?academicYearId="+yearId+
+      "&from="+today.date+"&to="+today.date,headers:admin });
+  assert.equal(beforeCorrection.statusCode,200);
+  const beforeRow=beforeCorrection.json<{ rows:Array<{updatedAt:string;note:string|null;status:string}> }>().rows[0]!;
+  const noReason=await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:admin,
+    payload:{status:"PRESENT",expectedUpdatedAt:beforeRow.updatedAt}});
+  assert.equal(noReason.statusCode,400);
+  const noRevision=await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:admin,
+    payload:{status:"PRESENT",reason:"Fix recorded mark"}});
+  assert.equal(noRevision.statusCode,400);
+  const staleRevision=await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:admin,
+    payload:{status:"PRESENT",reason:"Fix recorded mark",expectedUpdatedAt:"2025-01-01T00:00:00.000Z"}});
+  assert.equal(staleRevision.statusCode,409);
+  assert.equal((await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:teacherAuth,
+    payload:{status:"PRESENT",reason:"Fix recorded mark",expectedUpdatedAt:beforeRow.updatedAt}})).statusCode,403);
+  const auditUrl="/v1/admin/attendance/audit?academicYearId="+yearId;
+  assert.equal((await app.inject({method:"GET",url:auditUrl})).statusCode,401);
+  assert.equal((await app.inject({method:"GET",url:auditUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&limit=100",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&from=2026-02-30",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&from=2024-01-01&to=2026-10-15",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:
+    "/v1/admin/attendance/audit?academicYearId=00000000-0000-4000-8000-000000000001",headers:admin})).statusCode,404);
+  assert.equal((await app.inject({method:"GET",url:auditUrl,headers:admin}))
+    .json<{total:number}>().total,0);
+
   const corrected = await app.inject({
     method: "PATCH",
     url: `/v1/admin/attendance/${submitted.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id}/students/${studentId}`,
@@ -3331,6 +3361,35 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(corrected.statusCode, 200, corrected.body);
   assert.equal(corrected.json<{ previousStatus: string; entry: { status: string } }>().previousStatus, "ABSENT");
   assert.equal(corrected.json<{ entry: { status: string } }>().entry.status, "PRESENT");
+  assert.equal(corrected.json<{ entry: { note: string | null } }>().entry.note,beforeRow.note);
+  const afterCorrection=await app.inject({method:"GET",
+    url:"/v1/admin/attendance/report?academicYearId="+yearId+
+      "&from="+today.date+"&to="+today.date,headers:admin});
+  assert.equal(afterCorrection.json<{rows:Array<{note:string|null}>}>().rows[0]?.note,beforeRow.note);
+  const auditResponse=await app.inject({method:"GET",url:auditUrl,headers:admin});
+  assert.equal(auditResponse.statusCode,200,auditResponse.body);
+  const auditData=auditResponse.json<{total:number;rows:Array<{
+    studentId:string;date:string;previousStatus:string;status:string;
+    reason:string;originalNote:string|null;actorName:string;
+  }>}>();
+  assert.equal(auditData.total,1);
+  assert.equal(auditData.rows[0]?.studentId,studentId);
+  assert.equal(auditData.rows[0]?.date,today.date);
+  assert.equal(auditData.rows[0]?.previousStatus,"ABSENT");
+  assert.equal(auditData.rows[0]?.status,"PRESENT");
+  assert.equal(auditData.rows[0]?.reason,"Teacher sheet had an incorrect status");
+  assert.equal(auditData.rows[0]?.originalNote,beforeRow.note);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&search=missing-student",headers:admin}))
+    .json<{total:number}>().total,0);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&limit=1&offset=1",headers:admin}))
+    .json<{rows:unknown[]}>().rows.length,0);
+  assert.equal((await app.inject({method:"GET",url:auditUrl+"&from=2020-01-01&to=2020-01-01",headers:admin}))
+    .json<{total:number}>().total,0);
+  // A stale second form cannot silently overwrite an already corrected mark.
+  const conflict=await app.inject({method:"PATCH",url:phase4CorrectionUrl,headers:admin,
+    payload:{status:"LATE",reason:"Later stale attempt",expectedUpdatedAt:beforeRow.updatedAt}});
+  assert.equal(conflict.statusCode,409);
+
 
   const correctedHistory = await app.inject({
     method: "GET", url: historyUrl, headers: teacherAuth
