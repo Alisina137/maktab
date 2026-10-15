@@ -197,12 +197,12 @@ export function AdminFeeOperations({
             ...(studentId ? { studentId } : {}),
             ...(from ? { from } : {}), ...(to ? { to } : {})
           }).toString()}`;
-      void feeRequest<FeeBalance | { payments: FeePaymentRow[]; total: number; page: number; pageSize: number }>(
+      void feeRequest<FeeBalance | { payments: FeePaymentRow[]; total: number; page: number; pageSize: number; schoolTimezone: string }>(
         token, url
       ).then(result => {
         if (tokenRef.current !== token || generation.current !== id) return;
         if (mode === "BALANCES") setBalance(result as FeeBalance);
-        else setListing(result as { payments: FeePaymentRow[]; total: number; page: number; pageSize: number });
+        else setListing(result as { payments: FeePaymentRow[]; total: number; page: number; pageSize: number; schoolTimezone: string });
         setOwner(token);
         setStatus("ready");
       }).catch(cause => {
