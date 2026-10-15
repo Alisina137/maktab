@@ -1087,7 +1087,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (query.classId) conditions.push(eq(examSubjects.classId, query.classId));
       if (query.subjectId) conditions.push(eq(examSubjects.subjectId, query.subjectId));
       if (query.search) {
-        const term = "%" + query.search.trim().replace(/[\\%_]/g, "\\    async getAdminOverview(schoolId) {") + "%";
+        const term = "%" + query.search.trim().replace(/[\\%_]/g, "\\$&") + "%";
         const matching = or(ilike(students.fullName, term),
           ilike(students.studentCode, term), ilike(exams.name, term));
         if (matching) conditions.push(matching);
