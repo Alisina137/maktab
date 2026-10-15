@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { adminApi } from "./admin-client";
-import { AdminHijriDatePicker, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { invoiceReference } from "./communication-invoices-model";
 
@@ -163,7 +163,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
       {reportStatus === "loading" ? <p role="status">{t("Loading fee records…")}</p> : null}
       {reportStatus === "ready" && report ? (
         <>
-          <small>{t("School-local as of")}: {report.asOf} · {report.schoolTimezone}</small>
+          <small>{t("School-local as of")}: {formatAdminHijriDate(locale, report.asOf)} · {report.schoolTimezone}</small>
           <div className="admin-delivery-metrics">
             {([
               ["Issued billed",report.billed],["Net paid",report.paid],
