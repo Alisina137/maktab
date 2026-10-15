@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminAttendanceAudit } from "./admin-attendance-audit";
+import { AdminAttendanceFollowups } from "./admin-attendance-followups";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
 import { AdminAttendanceStudents } from "./admin-attendance-students";
 import { AdminAttendanceClassRegister } from "./admin-attendance-class-register";
@@ -185,9 +186,6 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const classes = useMemo(() => (academics?.classes ?? [])
     .filter(item => item.academicYearId === selectedAcademicYearId)
     .sort((a,b) => a.name.localeCompare(b.name)), [academics, selectedAcademicYearId]);
-  const attentionRows = useMemo(() => (report?.rows ?? [])
-    .filter(row => row.status === "ABSENT" || row.status === "LATE")
-    .slice(0, 30), [report]);
   const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
   const rate = report ? attendanceRate(report.summary) : null;
   const appliedDescription = appliedFilters
@@ -376,24 +374,10 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             classId={appliedFilters?.classId??""}
           /> : null}
 
-          {activeTab === "FOLLOWUPS" ? <article className="admin-panel attendance-preview-panel">
-            <h3>{t("Absence and lateness review")}</h3>
-            <p>{t("These are recorded absences and late marks, not opened intervention cases. Follow-up case tracking is not available yet.")}</p>
-            <div className="attendance-preview-list">
-              {attentionRows.map(row => <div className="attendance-preview-item"
-                key={`${row.attendanceId}-${row.studentId}`}>
-                <div><strong>{row.studentName}</strong>
-                  <small>{row.className} · {formatAdminHijriDate(locale, row.date)}</small></div>
-                <span className={`attendance-mark attendance-mark-${row.status.toLowerCase()}`}>
-                  {t(row.status)}</span>
-              </div>)}
-              {!attentionRows.length ? <p className="admin-copy">
-                {t("No absent or late marks in this period.")}</p> : null}
-            </div>
-            {report.summary.absent + report.summary.late > attentionRows.length ? (
-              <p className="admin-copy">{t("Showing the first 30 absent or late marks. Narrow the date range to review more.")}</p>
-            ) : null}
-          </article> : null}
+          {activeTab === "FOLLOWUPS" ? <AdminAttendanceFollowups
+            accessToken={accessToken} academicYearId={selectedAcademicYearId}
+            academicYearStatus={selectedAcademicYear?.status??""}
+            schoolToday={schoolToday} locale={locale} classes={classes} /> : null}
 
           {activeTab === "REPORTS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Attendance reporting summary")}</h3>
