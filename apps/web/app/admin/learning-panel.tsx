@@ -119,7 +119,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
     setError("");
     try {
       const [learningData, academicData, dashboardData] = await Promise.all([
-        request<LearningOverview>(token, "/v1/admin/learning", { signal: controller.signal }),
+        request<LearningOverview>(token, "/v1/admin/learning?includePublishedGrades=false", { signal: controller.signal }),
         request<AcademicOverview>(token, "/v1/admin/academics", { signal: controller.signal }),
         selectedAcademicYearId ? request<LearningDashboard>(
           token, `/v1/admin/learning/dashboard?academicYearId=${encodeURIComponent(selectedAcademicYearId)}`,
