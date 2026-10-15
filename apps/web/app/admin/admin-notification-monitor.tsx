@@ -108,7 +108,7 @@ export function AdminNotificationMonitor({ accessToken, locale }: { accessToken:
                   <li key={row.id}>
                     <div><strong>{row.title}</strong><small>{t("Notification type")}: {row.type}</small>
                       <small>{formatDate(row.createdAt)}</small>
-                      <small>{t("Push queue state")}: {row.deliveryStatus}</small>
+                      <small>{t("Push queue state")}: {t(row.deliveryStatus === "PENDING" ? "Queued in-app" : row.deliveryStatus === "SENT" ? "Provider accepted" : row.deliveryStatus === "FAILED" ? "Failed push" : "Cancelled")}</small>
                       <small>{t("Provider accepted devices")}: {row.providerAcceptedDevices} · {t("Failed devices")}: {row.failedDevices}</small>
                     </div>
                     {row.deliveryStatus === "FAILED" ? (

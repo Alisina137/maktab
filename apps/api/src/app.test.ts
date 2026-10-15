@@ -4770,7 +4770,8 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
     recent: Array<{ id: string; title: string }>;
   }>();
   assert.ok(deliveryInfo.scheduler.lastSuccessAt, "scheduler heartbeat must be persisted");
-  assert.ok(deliveryInfo.counts.providerAccepted > 0, "provider accepted is separate from recipient read");
+  assert.ok(deliveryInfo.counts.queued > 0, "in-app queue exists even without push registration");
+  assert.equal(deliveryInfo.counts.providerAccepted, 0, "no registered devices means no provider acceptance");
   assert.ok(deliveryInfo.recent.length > 0);
   assert.equal((await app.inject({
     method: "GET", url: "/v1/admin/notifications/delivery",
