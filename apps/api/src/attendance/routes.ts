@@ -7,6 +7,7 @@ import {
 } from "@maktablink/contracts";
 import {
   AttendanceConflictError,
+  AttendanceHistoryNotFoundError,
   AttendanceNotFoundError,
   AttendanceValidationError,
   type AccountStore,
@@ -28,6 +29,9 @@ function sendAttendanceError(reply: FastifyReply, error: unknown) {
   }
   if (error instanceof AttendanceValidationError) {
     return reply.code(400).send({ error: "attendance_validation", message: error.message });
+  }
+  if (error instanceof AttendanceHistoryNotFoundError) {
+    return reply.code(404).send({ error: "not_found", message: error.message });
   }
   if (error instanceof AttendanceNotFoundError) {
     return reply.code(404).send({ error: "not_found", message: error.message });
@@ -101,6 +105,25 @@ const attendanceClosureCreateSchema = z.object({
   academicYearId: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   reason: z.string().trim().min(1).max(160)
+}).strict();
+
+const adminStudentDirectoryQuerySchema = z.object({
+  academicYearId: z.string().uuid(),
+  classId: z.string().uuid().optional(),
+  search: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).default(0)
+}).strict();
+
+const adminStudentHistoryQuerySchema = z.object({
+  academicYearId: z.string().uuid(),
+  from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/)
+}).strict();
+
+const adminClassRegisterQuerySchema = z.object({
+  academicYearId: z.string().uuid(),
+  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional()
 }).strict();
 
 export function registerAttendanceRoutes(
@@ -228,6 +251,42 @@ export function registerAttendanceRoutes(
       }
     }
   );
+
+  app.get("/v1/admin/attendance/students", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = adminStudentDirectoryQuerySchema.parse(request.query);
+      return await attendance.getAdminStudentAttendanceDirectory(context.user.schoolId, query);
+    } catch(error) { return sendAttendanceError(reply,error); }
+  });
+
+  app.get<{Params:{studentId:string}}>("/v1/admin/attendance/students/:studentId/history",
+    async (request,reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const studentId = z.string().uuid().parse(request.params.studentId);
+        const query = adminStudentHistoryQuerySchema.parse(request.query);
+        return await attendance.getAdminStudentAttendanceHistory(context.user.schoolId, {
+          ...query,studentId
+        });
+      } catch(error) { return sendAttendanceError(reply,error); }
+    });
+
+  app.get<{Params:{classId:string}}>("/v1/admin/attendance/classes/:classId/register",
+    async (request,reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const classId = z.string().uuid().parse(request.params.classId);
+        const query = adminClassRegisterQuerySchema.parse(request.query);
+        const date = query.date ?? await attendance.getSchoolToday(context.user.schoolId);
+        return await attendance.getAdminClassAttendanceRegister(context.user.schoolId, {
+          ...query,date,classId
+        });
+      } catch(error) { return sendAttendanceError(reply,error); }
+    });
 
   app.get("/v1/admin/attendance/monitor", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
