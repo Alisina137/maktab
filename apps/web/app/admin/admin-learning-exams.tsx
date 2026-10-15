@@ -34,11 +34,32 @@ export type AcademicContext = {
   }>;
 };
 
-type DetailTab = "OVERVIEW" | "SCHEDULE" | "SUBJECTS" | "LIFECYCLE";
+type ExamReadiness = {
+  examId: string;
+  examStatus: ExamStatus;
+  academicYearActive: boolean;
+  totals: {
+    configuredSubjects: number; scheduledSubjects: number; participatingClasses: number;
+    expectedMarks: number; validMarks: number; missingMarks: number; invalidMarks: number;
+    recipients: number;
+  };
+  subjects: Array<{
+    examSubjectId: string; classId: string; className: string;
+    subjectName: string; examDate: string | null; maxScore: number;
+    expected: number; valid: number; missing: number; invalid: number;
+  }>;
+  checks: Array<{ code: "SUBJECTS_CONFIGURED" | "DATES_CONFIGURED" | "ACTIVE_STUDENTS" |
+    "ALL_DRAFT_MARKS" | "ACTIVE_YEAR" | "STATUS_READY_FOR_PUBLISH";
+    passed: boolean; affected: number }>;
+  canSchedule: boolean; canMarkResultsReady: boolean; canPublish: boolean;
+};
+type DetailTab = "OVERVIEW" | "SCHEDULE" | "SUBJECTS" | "MARKS" | "READINESS" | "LIFECYCLE";
 const detailTabs: Array<{ id: DetailTab; title: string }> = [
   { id: "OVERVIEW", title: "Overview" },
   { id: "SCHEDULE", title: "Exam schedule" },
   { id: "SUBJECTS", title: "Exam subjects" },
+  { id: "MARKS", title: "Marks progress" },
+  { id: "READINESS", title: "Exam readiness" },
   { id: "LIFECYCLE", title: "Exam lifecycle" }
 ];
 const statuses: ExamStatus[] = ["DRAFT","SCHEDULED","IN_PROGRESS","RESULTS_READY","PUBLISHED","ARCHIVED"];
@@ -71,6 +92,8 @@ export function AdminLearningExams({
   const [detailTab, setDetailTab] = useState<DetailTab>("OVERVIEW");
   const tabRefs = useRef<Partial<Record<DetailTab, HTMLButtonElement | null>>>({});
   const [detail, setDetail] = useState<ExamDetail | null>(null);
+  const [readiness, setReadiness] = useState<ExamReadiness | null>(null);
+  const [marksFilter, setMarksFilter] = useState<"ALL" | "INCOMPLETE">("ALL");
   const [detailLoading, setDetailLoading] = useState(Boolean(initialExamId));
   const [detailError, setDetailError] = useState("");
   const [detailRevision, setDetailRevision] = useState(0);
@@ -93,20 +116,30 @@ export function AdminLearningExams({
     setDetailLoading(true);
     setDetailError("");
     setDetail(null);
-    void request<ExamDetail>(token,
-      `/v1/admin/exams/${encodeURIComponent(initialExamId)}/detail`,
-      { signal: controller.signal }).then(result => {
-        if (controller.signal.aborted || activeToken.current !== token) return;
-        setDetail(result);
+    setReadiness(null);
+    void Promise.all([
+      request<ExamDetail>(token, `/v1/admin/exams/${encodeURIComponent(initialExamId)}/detail`,
+        { signal: controller.signal }),
+      request<ExamReadiness>(token, `/v1/admin/exams/${encodeURIComponent(initialExamId)}/readiness`,
+        { signal: controller.signal })
+    ]).then(([result, readinessData]) => {
+      if (controller.signal.aborted || activeToken.current !== token) return;
+      if (result.exam.id !== readinessData.examId) {
+        setDetailError(t("Exam readiness does not match the selected examination."));
         setDetailLoading(false);
-        if (result.exam.academicYearId !== yearId) {
-          setSelectedAcademicYearId(result.exam.academicYearId);
-        }
-      }).catch(cause => {
-        if (controller.signal.aborted || activeToken.current !== token) return;
-        setDetailError(adminErrorText(locale, cause, "Could not load examination details."));
-        setDetailLoading(false);
-      });
+        return;
+      }
+      setDetail(result);
+      setReadiness(readinessData);
+      setDetailLoading(false);
+      if (result.exam.academicYearId !== yearId) {
+        setSelectedAcademicYearId(result.exam.academicYearId);
+      }
+    }).catch(cause => {
+      if (controller.signal.aborted || activeToken.current !== token) return;
+      setDetailError(adminErrorText(locale, cause, "Could not load examination details."));
+      setDetailLoading(false);
+    });
     return () => controller.abort();
   }, [accessToken, initialExamId, detailRevision, locale]);
 
@@ -136,6 +169,9 @@ export function AdminLearningExams({
     .filter(item => !yearSubjects.some(row => row.examSubject.classId === classId && row.examSubject.subjectId === item.id));
   const uniqueSubjects = Array.from(new Map(availableSubjects.map(item => [item.id, item])).values());
   const sortedDates = yearSubjects.map(row => row.examSubject.examDate).filter((date): date is string => !!date).sort();
+  const formatCount = (n: number) => new Intl.NumberFormat(locale).format(n);
+  const incompleteSubjects = readiness?.subjects.filter(row => row.missing > 0 ||
+    row.invalid > 0 || row.expected === 0) ?? [];
 
   async function createExam(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,17 +238,41 @@ export function AdminLearningExams({
   }
 
   async function changeStatus(exam: Exam) {
+    if (busy || !yearActive) return;
     const next: Partial<Record<ExamStatus, ExamStatus>> = {
       DRAFT: "SCHEDULED", SCHEDULED: "IN_PROGRESS",
       IN_PROGRESS: "RESULTS_READY", PUBLISHED: "ARCHIVED"
     };
     const status = next[exam.status];
-    if ((exam.status === "RESULTS_READY" || status === "ARCHIVED") &&
-      !window.confirm(t(exam.status === "RESULTS_READY"
-        ? "Publish examination results to families? This action cannot be undone."
-        : "Archive this examination? It will become read-only."))) return;
+    const needsPreflight = exam.status === "RESULTS_READY" ||
+      exam.status === "IN_PROGRESS" || exam.status === "DRAFT";
     setBusy(true); setError(""); setNotice("");
     try {
+      // Fetch fresh eligibility immediately before any consequential transition;
+      // actual writes revalidate under a database transaction on the server.
+      if (needsPreflight) {
+        const latest = await request<ExamReadiness>(
+          accessToken, `/v1/admin/exams/${exam.id}/readiness`);
+        if (activeToken.current !== accessToken) return;
+        setReadiness(latest);
+        if (latest.examStatus !== exam.status || !latest.academicYearActive) {
+          throw new Error(t("Examination status changed. Refresh and review readiness."));
+        }
+        const permitted = exam.status === "DRAFT" ? latest.canSchedule :
+          exam.status === "IN_PROGRESS" ? latest.canMarkResultsReady : latest.canPublish;
+        if (!permitted) {
+          setDetailTab("READINESS");
+          throw new Error(t("Examination has unresolved readiness checks. Review them before proceeding."));
+        }
+        if (exam.status === "RESULTS_READY" &&
+          !window.confirm(adminFormat(locale,
+            "Publish {name} to eligible families and students? {marks} marks across {subjects} subjects are ready. Up to {accounts} recipient account(s) may be notified. This cannot be undone.", {
+              name: exam.name, marks: latest.totals.validMarks,
+              subjects: latest.totals.configuredSubjects, accounts: latest.totals.recipients
+            }))) return;
+      }
+      if (status === "ARCHIVED" && !window.confirm(
+        t("Archive this examination? It will become read-only."))) return;
       if (exam.status === "RESULTS_READY") {
         const result = await request<{notificationCount:number}>(
           accessToken, `/v1/admin/exams/${exam.id}/publish`, { method: "POST" });
@@ -473,6 +533,108 @@ export function AdminLearningExams({
                 ) : null}
               </section>
             ) : null}
+            {detailTab === "MARKS" ? (
+              <section role="tabpanel" id="exam-detail-panel-marks" aria-labelledby="exam-detail-tab-marks"
+                className="learning-exam-details-panel">
+                <div className="learning-panel-heading">
+                  <div><h3>{t("Marks progress")}</h3>
+                    <p>{t("Only the assigned teachers can enter draft marks. These totals reflect active students.")}</p></div>
+                  <label className="learning-marks-filter">{t("Marks filter")}
+                    <select value={marksFilter} onChange={event =>
+                      setMarksFilter(event.target.value as "ALL" | "INCOMPLETE")}>
+                      <option value="ALL">{t("All exam subjects")}</option>
+                      <option value="INCOMPLETE">{t("Incomplete marks only")}</option>
+                    </select>
+                  </label>
+                </div>
+                {readiness ? <>
+                  <div className="learning-exam-stats">
+                    <div><span>{t("Expected marks")}</span>
+                      <strong>{formatCount(readiness.totals.expectedMarks)}</strong></div>
+                    <div><span>{t("Valid marks entered")}</span>
+                      <strong>{formatCount(readiness.totals.validMarks)}</strong></div>
+                    <div><span>{t("Missing marks")}</span>
+                      <strong>{formatCount(readiness.totals.missingMarks)}</strong></div>
+                    <div><span>{t("Invalid or wrong-status marks")}</span>
+                      <strong>{formatCount(readiness.totals.invalidMarks)}</strong></div>
+                  </div>
+                  <div className="learning-exam-rows">
+                    {readiness.subjects.filter(row => marksFilter === "ALL" ||
+                      row.missing > 0 || row.invalid > 0 || row.expected === 0).map(row => (
+                      <article className="learning-exam-subject-row" key={row.examSubjectId}>
+                        <div><strong>{row.className} · {row.subjectName}</strong>
+                          <small>{t("Marks entered")}: {formatCount(row.valid)}/{formatCount(row.expected)}</small>
+                        </div>
+                        <div className="learning-mark-counts">
+                          {row.expected === 0 ? <span className="learning-exam-warning-chip">
+                            {t("No active students")}</span> : null}
+                          {row.missing > 0 ? <span className="learning-exam-warning-chip">
+                            {t("Missing marks")}: {formatCount(row.missing)}</span> : null}
+                          {row.invalid > 0 ? <span className="learning-exam-warning-chip">
+                            {t("Invalid or wrong-status marks")}: {formatCount(row.invalid)}</span> : null}
+                          {row.expected > 0 && row.missing === 0 && row.invalid === 0 ?
+                            <span className="learning-exam-pass-chip">{t("Complete")}</span> : null}
+                        </div>
+                      </article>
+                    ))}
+                    {(marksFilter === "INCOMPLETE" ? incompleteSubjects.length === 0 :
+                      readiness.subjects.length === 0) ?
+                      <p className="admin-panel learning-empty">
+                        {t(marksFilter === "INCOMPLETE" ? "No incomplete exam subjects found." :
+                          "No exam subjects configured yet.")}</p> : null}
+                  </div>
+                </> : <p role="status">{t("Loading examination readiness…")}</p>}
+              </section>
+            ) : null}
+            {detailTab === "READINESS" ? (
+              <section role="tabpanel" id="exam-detail-panel-readiness" aria-labelledby="exam-detail-tab-readiness"
+                className="learning-exam-details-panel">
+                <div className="learning-panel-heading">
+                  <div><h3>{t("Exam readiness")}</h3>
+                    <p>{t("Review requirements before scheduling, finalizing marks or publishing results.")}</p></div>
+                  <button type="button" className="admin-secondary" disabled={detailLoading || busy}
+                    onClick={() => setDetailRevision(value => value + 1)}>{t("Refresh readiness")}</button>
+                </div>
+                {readiness ? <>
+                  <div className="learning-exam-stats">
+                    <div><span>{t("Configured exam subjects")}</span>
+                      <strong>{formatCount(readiness.totals.configuredSubjects)}</strong></div>
+                    <div><span>{t("Dates configured")}</span>
+                      <strong>{formatCount(readiness.totals.scheduledSubjects)}/{formatCount(readiness.totals.configuredSubjects)}</strong></div>
+                    <div><span>{t("Expected marks")}</span>
+                      <strong>{formatCount(readiness.totals.expectedMarks)}</strong></div>
+                    <div><span>{t("Eligible recipient accounts")}</span>
+                      <strong>{formatCount(readiness.totals.recipients)}</strong></div>
+                  </div>
+                  <div className="learning-exam-checks">
+                    {readiness.checks.map(check => (
+                      <div className="learning-exam-check" key={check.code}
+                        data-state={check.passed ? "passed" : "blocked"}>
+                        <span aria-label={t(check.passed ? "Passed" : "Requires attention")}>
+                          {check.passed ? "✓" : "!"}</span>
+                        <div><strong>{t({
+                          ACTIVE_YEAR: "Academic year is active",
+                          SUBJECTS_CONFIGURED: "Exam subjects configured",
+                          DATES_CONFIGURED: "All exam subjects have dates",
+                          ACTIVE_STUDENTS: "Each exam subject has active students",
+                          ALL_DRAFT_MARKS: "All active students have valid marks",
+                          STATUS_READY_FOR_PUBLISH: "Exam status allows publication"
+                        }[check.code])}</strong>
+                          {!check.passed && check.affected > 0 && check.code !== "STATUS_READY_FOR_PUBLISH" &&
+                            <small>{adminFormat(locale, "{count} item(s) require attention.",
+                              { count: check.affected })}</small>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="admin-copy">{t("Readiness is a snapshot. The server checks records again when the action is submitted.")}</p>
+                  {readiness.totals.missingMarks > 0 || readiness.totals.invalidMarks > 0 ? (
+                    <button type="button" className="admin-secondary" onClick={() => setDetailTab("MARKS")}>
+                      {t("Review missing marks")}</button>
+                  ) : null}
+                </> : <p role="status">{t("Loading examination readiness…")}</p>}
+              </section>
+            ) : null}
             {detailTab === "LIFECYCLE" ? (
               <section role="tabpanel" id="exam-detail-panel-lifecycle" aria-labelledby="exam-detail-tab-lifecycle"
                 className="learning-exam-details-panel">
@@ -487,8 +649,9 @@ export function AdminLearningExams({
                   {yearActive && selected!.status !== "ARCHIVED" ? (
                     <div className="admin-actions">
                       <button type="button" className="admin-primary" disabled={busy ||
-                        (selected!.status === "DRAFT" && (!yearSubjects.length ||
-                          yearSubjects.some(row => !row.examSubject.examDate)))}
+                        (selected!.status === "DRAFT" && !readiness?.canSchedule) ||
+                        (selected!.status === "IN_PROGRESS" && !readiness?.canMarkResultsReady) ||
+                        (selected!.status === "RESULTS_READY" && !readiness?.canPublish)}
                         onClick={() => void changeStatus(selected!)}>
                         {t(selected!.status === "DRAFT" ? "Schedule" :
                           selected!.status === "SCHEDULED" ? "Start exam" :
@@ -498,6 +661,8 @@ export function AdminLearningExams({
                       </button>
                     </div>
                   ) : null}
+                  <button type="button" className="admin-secondary"
+                    onClick={() => setDetailTab("READINESS")}>{t("Review readiness checklist")}</button>
                   {selected!.status === "IN_PROGRESS" ? (
                     <p className="admin-copy">{t("Results readiness is validated by the server before changing status.")}</p>
                   ) : null}
