@@ -162,6 +162,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
     learning?.examSubjects.filter((item) => yearExamIds.has(item.examSubject.examId)) ?? [];
   const yearPublishedGrades =
     learning?.publishedGrades.filter((item) => item.academicYearId === selectedAcademicYearId) ?? [];
+  const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
   if (!learning || !academics || loadingStatus === "error") {
     return (
       <section className="admin-panel learning-section admin-loading-card">
