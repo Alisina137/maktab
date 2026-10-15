@@ -176,9 +176,9 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
           kind: payment.kind, amount: payment.amount, method: payment.method,
           recordedAt: payment.recordedAt, transactionReference: payment.transactionReference,
           recordedBy: recorderById.get(payment.recordedBy) ?? "",
-          reconciliation: payment.kind === "REVERSAL" ? "NOT_APPLICABLE"
+          reconciliation: (payment.kind === "REVERSAL" ? "NOT_APPLICABLE"
             : reversed.has(payment.id) ? "REVERSED"
-            : reconciliation.has(payment.id) ? "RECONCILED" : "PENDING"
+            : reconciliation.has(payment.id) ? "RECONCILED" : "PENDING") as FeeReportRow["reconciliation"]
         };
       }).sort((a,b) => b.recordedAt.getTime()-a.recordedAt.getTime() || b.paymentId.localeCompare(a.paymentId));
       for (const bucket of methods) bucket.net = bucket.gross - bucket.reversals;
