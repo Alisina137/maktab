@@ -58,7 +58,7 @@ assert.ok(contract.includes('adminFeePaymentsQuerySchema') &&
   "Payment filter contracts must enforce valid school-local date windows");
 for(const marker of [
   'Admin Fees Phase 4 records and reverses immutable payments',
-  'schoolId=await provisionSchool', 'kind=REVERSAL',
+  'const schoolId = await provisionSchool', 'kind=REVERSAL',
   'receipt.reversed,false', 'receipt.reversed,true',
   'financial.billed,1200', 'newBalance.outstanding,1000',
   'statusCode,403'
