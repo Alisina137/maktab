@@ -235,7 +235,7 @@ export interface LearningStore {
     studentUserId: string
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
-  getAdminOverview(schoolId: string): Promise<AdminLearningOverview>;
+  getAdminOverview(schoolId: string, includePublishedGrades?: boolean): Promise<AdminLearningOverview>;
   listAdminPublishedGrades(schoolId: string, query: AdminPublishedGradesQuery):
     Promise<{ rows: AdminPublishedGradeRow[]; total: number; limit: number; offset: number }>;
   getAdminGradeCorrections(schoolId: string, gradeId: string, limit: number, offset: number):
@@ -1168,7 +1168,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       return { events, total: totals[0]?.value ?? 0, limit, offset };
     },
 
-    async getAdminOverview(schoolId) {
+    async getAdminOverview(schoolId, includePublishedGrades = true) {
       const [schoolExams, subjectRows, publishedGrades] = await Promise.all([
         db.select().from(exams).where(eq(exams.schoolId, schoolId)).orderBy(desc(exams.createdAt)),
         db
@@ -1183,7 +1183,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           .innerJoin(subjects, and(eq(subjects.id, examSubjects.subjectId), eq(subjects.schoolId, examSubjects.schoolId)))
           .where(eq(examSubjects.schoolId, schoolId))
           .orderBy(asc(classSections.name), asc(subjects.name)),
-        db
+        includePublishedGrades ? db
           .select({
             grade: gradeRecords,
             academicYearId: exams.academicYearId,
@@ -1201,7 +1201,7 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           .innerJoin(classSections, and(eq(classSections.id, examSubjects.classId), eq(classSections.schoolId, gradeRecords.schoolId)))
           .innerJoin(students, and(eq(students.id, gradeRecords.studentId), eq(students.schoolId, gradeRecords.schoolId)))
           .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.status, "PUBLISHED")))
-          .orderBy(desc(exams.publishedAt), asc(classSections.name), asc(subjects.name), asc(students.fullName))
+          .orderBy(desc(exams.publishedAt), asc(classSections.name), asc(subjects.name), asc(students.fullName)) : Promise.resolve([])
       ]);
       return { exams: schoolExams, examSubjects: subjectRows, publishedGrades };
     },
