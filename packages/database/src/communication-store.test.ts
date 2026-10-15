@@ -361,4 +361,20 @@ test("Step 17 fees: tenant isolation, replay, exact balances, immutable reversal
   assert.equal((await fees.getParentFees(schoolId, parent.user.id, student.id))[0]?.invoice.status, "CANCELLED");
   assert.equal((await fees.getUserNotifications(schoolId, parent.user.id))
     .filter(x => x.type === "FEE_DUE" || x.type === "FEE_OVERDUE").length, 0);
+
+  // Phase 7: a final payment and an overdue scheduler run share the invoice lock.
+  const concurrent = await fees.createFeeInvoice(schoolId, admin.id, {
+    studentId: student.id, amount: 300, dueDate: "2026-09-01", description: "Race payment"
+  });
+  await fees.issueFeeInvoice(schoolId, concurrent.id, admin.id);
+  await Promise.all([
+    fees.recordFeePayment(schoolId, admin.id, concurrent.id, {
+      amount: 300, method: "CASH"
+    }),
+    fees.runScheduledNotifications(new Date("2026-10-15T06:00:00Z"))
+  ]);
+  const latest = await fees.getAdminStudentFeeBalance(schoolId, student.id);
+  const finished = latest.invoices.find(row => row.invoice.id === concurrent.id);
+  assert.equal(finished?.invoice.status, "PAID");
+  assert.equal(finished?.outstanding, 0);
 });
