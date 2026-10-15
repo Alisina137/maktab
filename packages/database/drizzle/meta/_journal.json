@@ -169,6 +169,13 @@
       "when": 1790783600000,
       "tag": "0023_notification_scheduler_health",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790792000000,
+      "tag": "0024_fee_payment_reconciliation",
+      "breakpoints": true
     }
   ]
 }
