@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
+import { PilotOverviewActivity } from "./pilot-overview-activity";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
@@ -318,13 +319,22 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         setAuditHasMore(auditResult.hasMore);
         setAuditLoaded(true);
       } else {
-        const [subscriptionResult, readinessResult] = await Promise.all([
+        // Keep subscription, configuration and advanced coverage independent.
+        // One failed endpoint must not hide otherwise usable pilot operations.
+        const [subscriptionResult, readinessResult] = await Promise.allSettled([
           request<{ subscription: Subscription }>(accessToken, "/v1/admin/subscription"),
           request<Readiness>(accessToken, "/v1/admin/pilot/readiness")
         ]);
         if (version !== requestVersion.current) return;
-        setSubscription(subscriptionResult.subscription);
-        setReadiness(readinessResult);
+        if (subscriptionResult.status === "fulfilled") setSubscription(subscriptionResult.value.subscription);
+        if (readinessResult.status === "fulfilled") setReadiness(readinessResult.value);
+        const failures = [
+          subscriptionResult.status === "rejected"
+            ? adminErrorText(locale, subscriptionResult.reason, "Subscription data could not be loaded.") : "",
+          readinessResult.status === "rejected"
+            ? adminErrorText(locale, readinessResult.reason, "School readiness could not be loaded.") : ""
+        ].filter(Boolean);
+        if (failures.length) setError(failures.join(" "));
         if (wantsCoverage) {
           // A failed advisory coverage request must not hide working core setup data.
           void request<AdvancedReadiness>(accessToken, "/v1/admin/pilot/readiness/advanced")
@@ -414,27 +424,12 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     }
   }
 
-  const coreMissing = section !== "audit" && (!subscription || !readiness);
+  // Render navigation even when a section is unavailable. Launch/support is
+  // independently accessible during subscription or readiness outages.
+  const coreMissing = (
+    (section === "overview" || section === "readiness" || section === "onboarding") && !readiness
+  ) || (section === "subscription" && !subscription);
   const auditMissing = section === "audit" && !auditLoaded;
-  if ((coreMissing || auditMissing) && !error) {
-    return (
-      <section className="admin-panel pilot-section admin-loading-card">
-        <AdminLoader label={t("Loading pilot operations data…")} />
-        <AdminSkeleton rows={5} />
-      </section>
-    );
-  }
-
-  if (coreMissing || auditMissing) {
-    return (
-      <section className="admin-panel pilot-section admin-loading-card">
-        <div className="admin-error" role="alert">{error}</div>
-        <button className="admin-secondary" type="button" onClick={() => void load()}>
-          {t("Retry")}
-        </button>
-      </section>
-    );
-  }
 
   // Audit-only render does not require the two core responses.
   const fallbackSubscription: Subscription = { planCode: "", status: "TRIAL", billingCycle: "ANNUAL",
@@ -452,7 +447,17 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const totalChecks = currentReadiness.checks.length;
   const pendingChecks = currentReadiness.checks.filter((check) => !check.passed);
   const progressPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
-  const billingAttention = currentSubscription.status === "PAST_DUE" || currentSubscription.status === "GRACE";
+  const billingAttention = subscription?.status === "PAST_DUE" || subscription?.status === "GRACE";
+  const overviewStats = [
+    { label: "Students", value: currentReadiness.counts.students, href: "/admin/accounts" },
+    { label: "Teachers", value: currentReadiness.counts.teachers, href: "/admin/academics/teachers" },
+    { label: "Parents", value: currentReadiness.counts.parents, href: "/admin/accounts" },
+    { label: "Classes", value: currentReadiness.counts.classes, href: "/admin/academics/classes" },
+    { label: "Subjects", value: currentReadiness.counts.subjects, href: "/admin/academics/subjects" },
+    { label: "Assignments", value: currentReadiness.counts.teacherAssignments, href: "/admin/academics/assignments" },
+    { label: "Academic years", value: currentReadiness.counts.activeAcademicYears, href: "/admin/academics/years" },
+    { label: "Core setup checks", value: totalChecks ? `${progressPercent}%` : "—", href: "/admin/pilot/readiness" }
+  ];
 
   return (
     <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
@@ -478,7 +483,16 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         ))}
       </nav>
 
-      {error ? <div className="admin-error" role="alert">{error}</div> : null}
+      {error ? <div className="admin-error pilot-retry-alert" role="alert">
+        <span>{error}</span>
+        <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Retry")}</button>
+      </div> : null}
+      {(coreMissing || auditMissing) && !error ? (
+        <div className="admin-panel admin-loading-card" role="status">
+          <AdminLoader label={t("Loading pilot operations data…")} />
+          <AdminSkeleton rows={5} />
+        </div>
+      ) : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
 
       {(section === "overview" || section === "readiness") && advancedBusy ? (
@@ -580,6 +594,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           <div className="pilot-overview-copy">
             <span className="eyebrow">{t("Automated school setup")}</span>
             <h3>{t(advancedBusy ? "Checking configuration coverage…" :
+              advancedError ? "Setup status unavailable" :
               effectiveSetupReady ? "Core setup ready" : "Setup in progress")}</h3>
             <p>{t("These checks confirm basic school configuration, not approval for a live launch.")}</p>
             <div className="pilot-overview-pills">
@@ -626,14 +641,26 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
 
       {readiness && (section === "overview" || section === "readiness") ? (
         <>
-          <div className="academic-summary-grid pilot-summary-grid" aria-label={t("Pilot data summary")}>
-            <Summary label={t("Students")} value={readiness.counts.students} />
-            <Summary label={t("Parents")} value={readiness.counts.parents} />
-            <Summary label={t("Teachers")} value={readiness.counts.teachers} />
-            <Summary label={t("Classes")} value={readiness.counts.classes} />
-            <Summary label={t("Subjects")} value={readiness.counts.subjects} />
-            <Summary label={t("Assignments")} value={readiness.counts.teacherAssignments} />
-          </div>
+          {section === "overview" ? (
+            <div className="pilot-dashboard-stats" aria-label={t("Pilot data summary")}>
+              {overviewStats.map((card) => (
+                <Link key={card.label} href={card.href} className="pilot-dashboard-stat">
+                  <span>{t(card.label)}</span>
+                  <strong>{card.value}</strong>
+                  <span className="pilot-dashboard-stat-action">{t("View details")} <span aria-hidden="true">↗</span></span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="academic-summary-grid pilot-summary-grid" aria-label={t("Pilot data summary")}>
+              <Summary label={t("Students")} value={readiness.counts.students} />
+              <Summary label={t("Parents")} value={readiness.counts.parents} />
+              <Summary label={t("Teachers")} value={readiness.counts.teachers} />
+              <Summary label={t("Classes")} value={readiness.counts.classes} />
+              <Summary label={t("Subjects")} value={readiness.counts.subjects} />
+              <Summary label={t("Assignments")} value={readiness.counts.teacherAssignments} />
+            </div>
+          )}
 
           {section === "readiness" ? (
           <article className="admin-panel pilot-onboarding-card" aria-labelledby="pilot-onboarding-title">
@@ -685,19 +712,42 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           <div className="pilot-overview-bottom">
             <article className="admin-panel">
               <h3>{t("Needs attention")}</h3>
-              <p className="admin-copy">{t("Resolve incomplete core checks in their existing modules.")}</p>
-              {pendingChecks.length ? (
-                <div className="pilot-issue-list">
-                  {pendingChecks.slice(0, 4).map((check) => (
-                    <div className="pilot-issue-row" key={check.key}>
-                      <span className="pilot-issue-dot" aria-hidden="true">!</span>
-                      <strong>{pilotCheckLabel(check.key, t)}</strong>
-                      <Link href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Review")}</Link>
+              <p className="admin-copy">{t("Actionable configuration and subscription issues for your school.")}</p>
+              <div className="pilot-issue-list">
+                {subscription && (billingAttention || writeBlocked) ? (
+                  <div className="pilot-issue-row" key="billing">
+                    <span className="pilot-badge pilot-badge-danger">{t(writeBlocked ? "Critical" : "Warning")}</span>
+                    <strong>{t(writeBlocked ? "Operational writes disabled" : "Billing attention needed")}</strong>
+                    <Link href="/admin/pilot/subscription">{t("Review")}</Link>
+                  </div>
+                ) : null}
+                {advanced?.metrics.filter((metric) => metric.missing > 0)
+                  .sort((a, b) => (a.severity === "critical" ? 0 : 1) - (b.severity === "critical" ? 0 : 1))
+                  .slice(0, 6).map((metric) => (
+                    <div className="pilot-issue-row" key={metric.key}>
+                      <span className={"pilot-badge " + (metric.severity === "critical" ? "pilot-badge-danger" : "pilot-badge-warning")}>
+                        {t(metric.severity === "critical" ? "Critical" : "Warning")}
+                      </span>
+                      <strong>{adminFormat(locale, "{count} missing: {area}", {
+                        count: metric.missing, area: t(coverageLabels[metric.key])
+                      })}</strong>
+                      <Link href={coverageDestinations[metric.key]}>{t("Resolve")}</Link>
                     </div>
                   ))}
-                </div>
-              ) : <p className="admin-copy">{t("No missing core setup checks.")}</p>}
-              {pendingChecks.length > 4 ? <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View all checks")}</Link> : null}
+                {pendingChecks.slice(0, 4).map((check) => (
+                  <div className="pilot-issue-row" key={check.key}>
+                    <span className="pilot-issue-dot" aria-hidden="true">!</span>
+                    <strong>{pilotCheckLabel(check.key, t)}</strong>
+                    <Link href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Resolve")}</Link>
+                  </div>
+                ))}
+              </div>
+              {!advanced && !advancedBusy ? <p className="admin-copy">{t("Advanced coverage unavailable; no all-clear can be confirmed.")}</p> : null}
+              {advanced && !pendingChecks.length && !advanced.metrics.some((metric) => metric.missing > 0)
+                && !billingAttention && !writeBlocked && subscription ? (
+                <p className="admin-copy">{t("No current configuration or subscription warnings.")}</p>
+              ) : null}
+              <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View all checks")}</Link>
             </article>
             <article className="admin-panel pilot-launch-note">
               <h3>{t("Launch approval")}</h3>
@@ -706,6 +756,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
               <Link className="pilot-inline-link" href="/admin/pilot/launch">{t("View launch requirements")}</Link>
             </article>
           </div>
+          <PilotOverviewActivity key={accessToken} accessToken={accessToken} locale={locale} />
           <h3 className="pilot-section-heading">{t("Quick actions")}</h3>
           <div className="pilot-quick-grid">
             {([
@@ -848,7 +899,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </article>
       ) : null}
 
-      {section === "launch" && readiness ? (
+      {section === "launch" ? (
         <PilotLaunchSupportPanel key={accessToken} accessToken={accessToken} locale={locale}
           setupReady={Boolean(advanced?.ready)} />
       ) : null}
