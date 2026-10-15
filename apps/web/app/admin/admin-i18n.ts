@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Reverse this recorded payment? Reason: {reason}. The original payment remains in the ledger and the balance will be recalculated.": "این پرداخت ثبت‌شده برگشت داده شود؟ دلیل: {reason}. پرداخت اصلی در تاریخچه باقی می‌ماند و مانده دوباره محاسبه می‌شود.",
   "View receipt": "مشاهده رسید",
   "Payment receipt": "رسید پرداخت",
   "Print / Save as PDF": "چاپ / ذخیره به PDF",
@@ -1433,6 +1434,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Reverse this recorded payment? Reason: {reason}. The original payment remains in the ledger and the balance will be recalculated.": "دا ثبت شوې تادیه بېرته وګرځول شي؟ دلیل: {reason}. اصلي تادیه په حساب کې پاتې کېږي او پاتې پور بیا حسابېږي.",
   "View receipt": "رسید وګورئ",
   "Payment receipt": "د تادیې رسید",
   "Print / Save as PDF": "چاپ / د PDF په توګه خوندي کول",
