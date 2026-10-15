@@ -531,7 +531,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       setSelectedAcademicYearId,
       refreshAcademicYears
     }}>
-      <main className="admin-shell admin-shell-premium admin-workspace" dir={adminDirection(locale)}>
+      <main className="admin-shell admin-shell-premium admin-workspace" lang={locale} dir={adminDirection(locale)}>
         <header className="admin-premium-header">
           <div className="admin-premium-brand-row">
             <div className="admin-auth-brand admin-auth-brand-dark">

@@ -61,6 +61,9 @@ jobs:
       - name: Admin Fees responsive RTL reminder and invoice layout
         run: pnpm verify:admin-fees:layout
 
+      - name: Admin 70% titles and 80% subtitles layout
+        run: pnpm verify:admin-headings
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -186,6 +189,7 @@ jobs:
           pnpm verify:admin-communication:phase6
           pnpm verify:admin-communication:phase7
           pnpm verify:admin-fees:layout
+          pnpm verify:admin-headings
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
