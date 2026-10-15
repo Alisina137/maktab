@@ -10,6 +10,14 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Operational validation": "ارزیابی عملیاتی",
+  "Timetable integrity": "بررسی تقسیم اوقات",
+  "Timetable checks passed": "تقسیم اوقات تأیید شد",
+  "Timetable needs review": "تقسیم اوقات نیاز به بررسی دارد",
+  "Teacher double-bookings": "تداخل ساعات معلم",
+  "Overlapping class periods": "تداخل ساعات صنوف",
+  "Periods without matching active teacher assignments": "ساعات بدون تعیین معلم فعال",
+  "Invalid times or Friday periods": "ساعات نادرست یا جمعه",
   "Subscription data unavailable.": "معلومات اشتراک در دسترس نیست.",
   "Recent school activity": "فعالیت‌های اخیر مکتب",
   "Latest recorded administrative events for this school.": "آخرین فعالیت‌های اداری ثبت‌شده برای این مکتب.",
@@ -2047,6 +2055,14 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Operational validation": "عملیاتي ارزونه",
+  "Timetable integrity": "د درسي مهالویش ارزونه",
+  "Timetable checks passed": "مهالویش وکتل شو",
+  "Timetable needs review": "مهالویش بیاکتنه غواړي",
+  "Teacher double-bookings": "د ښوونکي د وخت ټکر",
+  "Overlapping class periods": "د ټولګیو د وخت ټکر",
+  "Periods without matching active teacher assignments": "د فعال ښوونکي له ټاکنې پرته وختونه",
+  "Invalid times or Friday periods": "ناسم وختونه یا جمعه",
   "Subscription data unavailable.": "د ګډون معلومات نشته.",
   "Recent school activity": "د ښوونځي وروستي فعالیتونه",
   "Latest recorded administrative events for this school.": "د دې ښوونځي وروستي ثبت شوي اداري فعالیتونه.",
