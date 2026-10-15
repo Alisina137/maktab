@@ -3491,6 +3491,42 @@ test("homework stays private as draft, then becomes visible to parent and linked
   const homeworkId = created.json<{ homework: { id: string; status: string } }>().homework.id;
   assert.equal(created.json<{ homework: { status: string } }>().homework.status, "DRAFT");
 
+  // Admin Learning Phase 5: schoolwide directory permits school admins only;
+  // draft status is visible for management but no submissions are expected.
+  const homeworkDirectory = "/v1/admin/learning/homework?academicYearId=" + yearId;
+  const homeworkRoster = "/v1/admin/learning/homework/" + homeworkId + "/roster";
+  const adminOtherSchool = { authorization: `Bearer ${await bootstrapAdmin(app,
+    await provisionSchool(app, "LEARN-HW-PHASE5-OTHER"))}` };
+  assert.equal((await app.inject({ method: "GET", url: homeworkDirectory })).statusCode, 401);
+  for (const headers of [teacherAuth, studentAuth, parentAuth]) {
+    assert.equal((await app.inject({ method: "GET", url: homeworkDirectory, headers })).statusCode, 403);
+    assert.equal((await app.inject({ method: "GET", url: homeworkRoster, headers })).statusCode, 403);
+  }
+  assert.equal((await app.inject({ method: "GET", url: homeworkDirectory, headers: adminOtherSchool }))
+    .json<{total:number}>().total, 0);
+  assert.equal((await app.inject({ method: "GET", url: homeworkRoster, headers: adminOtherSchool })).statusCode, 404);
+  const directoryDraft = await app.inject({ method: "GET", url: homeworkDirectory, headers: admin });
+  assert.equal(directoryDraft.statusCode, 200, directoryDraft.body);
+  const draftItems = directoryDraft.json<{rows:Array<{
+    homework:{id:string;status:string}; expected:number; submitted:number; missing:number
+  }> }>().rows;
+  assert.equal(draftItems.length, 1);
+  assert.equal(draftItems[0]?.homework.status, "DRAFT");
+  assert.equal(draftItems[0]?.expected, 0);
+  assert.equal(draftItems[0]?.submitted, 0);
+  assert.equal(draftItems[0]?.missing, 0);
+  const rosterDraft = await app.inject({ method: "GET", url: homeworkRoster, headers: admin });
+  assert.equal(rosterDraft.statusCode, 200);
+  assert.equal(rosterDraft.json<{total:number}>().total, 0);
+  for (const suffix of ["&academicYearId=invalid", "&limit=51", "&offset=-1",
+    "&attention=WRONG", "&classId=invalid"]) {
+    const url = suffix.startsWith("&academicYearId")
+      ? "/v1/admin/learning/homework?" + suffix.slice(1) : homeworkDirectory + suffix;
+    assert.equal((await app.inject({ method: "GET", url, headers: admin })).statusCode, 400);
+  }
+  assert.equal((await app.inject({ method: "GET", url: homeworkRoster + "?limit=0",
+    headers: admin })).statusCode, 400);
+
   // Test 14.4: only a draft can be edited. The stored content is the new draft.
   const editDraft = await app.inject({
     method: "PATCH", url: `/v1/teacher/homework/${homeworkId}`,
@@ -3614,6 +3650,29 @@ test("homework stays private as draft, then becomes visible to parent and linked
     payload: { fileId: null } });
   assert.equal(publishedFileEdit.statusCode, 409);
 
+  const publishedHomeworkDirectory = await app.inject({
+    method: "GET", url: homeworkDirectory + "&status=PUBLISHED", headers: admin
+  });
+  assert.equal(publishedHomeworkDirectory.statusCode, 200, publishedHomeworkDirectory.body);
+  const publishedItem = publishedHomeworkDirectory.json<{total:number; rows:Array<{
+    homework:{id:string}; expected:number; submitted:number; missing:number; teacherName:string
+  }> }>();
+  assert.equal(publishedItem.total, 1);
+  assert.equal(publishedItem.rows[0]?.homework.id, homeworkId);
+  assert.equal(publishedItem.rows[0]?.expected, 1);
+  assert.equal(publishedItem.rows[0]?.submitted, 0);
+  assert.equal(publishedItem.rows[0]?.missing, 1);
+  assert.equal(publishedItem.rows[0]?.teacherName, "Homework Teacher");
+  const missingOnly = await app.inject({ method: "GET", url: homeworkDirectory +
+    "&attention=MISSING&classId=" + classId + "&subjectId=" + subjectId,
+    headers: admin });
+  assert.equal(missingOnly.statusCode, 200);
+  assert.equal(missingOnly.json<{total:number}>().total, 1);
+  const beforeSubmissionRoster = await app.inject({ method: "GET",
+    url: homeworkRoster + "?filter=MISSING", headers: admin });
+  assert.equal(beforeSubmissionRoster.statusCode, 200);
+  assert.equal(beforeSubmissionRoster.json<{total:number}>().total, 1);
+
   const parentPublished = await app.inject({
     method: "GET",
     url: `/v1/parent/children/${studentId}/learning`,
@@ -3669,6 +3728,23 @@ test("homework stays private as draft, then becomes visible to parent and linked
   });
   assert.equal(submission.statusCode,200);
   const submissionId=submission.json<{submission:{id:string}}>().submission.id;
+  const pendingHomeworkDirectory = await app.inject({
+    method: "GET", url: homeworkDirectory + "&attention=AWAITING_REVIEW",
+    headers: admin
+  });
+  assert.equal(pendingHomeworkDirectory.statusCode, 200);
+  assert.equal(pendingHomeworkDirectory.json<{total:number;rows:Array<{awaitingReview:number;submitted:number}>}>()
+    .rows[0]?.awaitingReview, 1);
+  const studentSubmittedPage = await app.inject({ method: "GET",
+    url: homeworkRoster + "?filter=SUBMITTED&limit=1&offset=0", headers: admin });
+  assert.equal(studentSubmittedPage.statusCode, 200);
+  assert.equal(studentSubmittedPage.json<{total:number}>().total, 1);
+  assert.equal(studentSubmittedPage.json<{students:Array<{
+    submission:{status:string}|null
+  }>} >().students[0]?.submission?.status, "SUBMITTED");
+  assert.equal((await app.inject({ method:"GET",url:homeworkDirectory+
+    "&attention=MISSING",headers:admin })).json<{total:number}>().total,0);
+
   const duplicate=await app.inject({
     method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
     headers:studentAuth,payload:{answer:"Duplicate"}
@@ -3684,6 +3760,15 @@ test("homework stays private as draft, then becomes visible to parent and linked
     headers:teacherAuth,payload:{status:"REVISION_REQUESTED",feedback:"Add page numbers."}
   });
   assert.equal(review.statusCode,200);
+  const revisionsDirectory = await app.inject({ method: "GET",
+    url: homeworkDirectory + "&attention=REVISION_REQUESTED", headers: admin });
+  assert.equal(revisionsDirectory.statusCode, 200);
+  assert.equal(revisionsDirectory.json<{total:number}>().total, 1);
+  const revisionsRoster = await app.inject({ method: "GET",
+    url: homeworkRoster + "?filter=REVISION_REQUESTED", headers: admin });
+  assert.equal(revisionsRoster.statusCode, 200);
+  assert.equal(revisionsRoster.json<{total:number}>().total, 1);
+
   const revised=await app.inject({
     method:"POST",url:`/v1/student/homework/${homeworkId}/submission`,
     headers:studentAuth,payload:{answer:"Updated answers with pages."}
@@ -3694,6 +3779,27 @@ test("homework stays private as draft, then becomes visible to parent and linked
     headers:teacherAuth,payload:{status:"REVIEWED",feedback:"Good work."}
   });
   assert.equal(reviewComplete.statusCode,200);
+  const reviewedDirectory = await app.inject({ method: "GET",
+    url: homeworkDirectory + "&search=chapter%203&limit=1&offset=0", headers: admin });
+  assert.equal(reviewedDirectory.statusCode, 200);
+  const reviewedItem = reviewedDirectory.json<{rows:Array<{
+    expected:number;submitted:number;reviewed:number;awaitingReview:number;
+  }> }>().rows[0];
+  assert.equal(reviewedItem?.expected, 1);
+  assert.equal(reviewedItem?.submitted, 1);
+  assert.equal(reviewedItem?.reviewed, 1);
+  assert.equal(reviewedItem?.awaitingReview, 0);
+  assert.equal((await app.inject({ method:"GET",url:homeworkDirectory+
+    "&attention=AWAITING_REVIEW",headers:admin })).json<{total:number}>().total,0);
+  const reviewedRoster = await app.inject({method:"GET",
+    url:homeworkRoster+"?filter=REVIEWED",headers:admin});
+  assert.equal(reviewedRoster.statusCode,200);
+  assert.equal(reviewedRoster.json<{students:Array<{
+    submission:{status:string;feedback:string}|null
+  }>} >().students[0]?.submission?.feedback,"Good work.");
+  assert.equal((await app.inject({method:"GET",url:homeworkRoster+
+    "?filter=MISSING",headers:admin})).json<{total:number}>().total,0);
+
   const ownSubmission=await app.inject({
     method:"GET",url:"/v1/student/homework/submissions",headers:studentAuth
   });
@@ -3754,6 +3860,15 @@ test("homework stays private as draft, then becomes visible to parent and linked
     url: `/v1/teacher/homework/${homeworkId}/archive`, headers: teacherAuth });
   assert.equal(archived.statusCode, 200);
   assert.equal(archived.json<{ homework: { status: string } }>().homework.status, "ARCHIVED");
+  const archivedDirectory = await app.inject({ method: "GET",
+    url: homeworkDirectory + "&status=ARCHIVED", headers: admin });
+  assert.equal(archivedDirectory.statusCode, 200);
+  assert.equal(archivedDirectory.json<{total:number}>().total, 1);
+  const archivedRoster = await app.inject({ method: "GET",
+    url: homeworkRoster + "?filter=REVIEWED", headers: admin });
+  assert.equal(archivedRoster.statusCode, 200);
+  assert.equal(archivedRoster.json<{total:number}>().total, 1);
+
   const repeatArchive = await app.inject({ method: "POST",
     url: `/v1/teacher/homework/${homeworkId}/archive`, headers: teacherAuth });
   assert.equal(repeatArchive.statusCode, 409);
