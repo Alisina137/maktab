@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, ilike, inArray, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
   CorrectPublishedGradeInput,
   CreateExamInput,
@@ -147,6 +147,44 @@ export interface AdminGradeCorrectionEvent {
   reason: string;
 }
 
+export type AdminHomeworkAttention = "ALL" | "PAST_DUE" | "AWAITING_REVIEW" | "MISSING" | "REVISION_REQUESTED";
+export type AdminHomeworkSubmissionFilter = "ALL" | "MISSING" | "SUBMITTED" | "REVIEWED" | "REVISION_REQUESTED";
+
+export interface AdminHomeworkQuery {
+  academicYearId: string;
+  status?: HomeworkStatus;
+  classId?: string;
+  subjectId?: string;
+  teacherUserId?: string;
+  search?: string;
+  attention?: AdminHomeworkAttention;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminHomeworkItem {
+  homework: Pick<Homework, "id" | "title" | "status" | "dueAt" | "scheduledAt" | "publishedAt" | "createdAt" | "updatedAt">;
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  teacherUserId: string;
+  teacherName: string;
+  expected: number;
+  submitted: number;
+  awaitingReview: number;
+  reviewed: number;
+  revisionRequested: number;
+  missing: number;
+  pastDueWithMissing: boolean;
+}
+
+export interface AdminHomeworkRosterEntry {
+  student: { id: string; fullName: string; studentCode: string };
+  submission: { id: string; status: string; submittedAt: Date; reviewedAt: Date | null;
+    feedback: string | null } | null;
+}
+
 export interface AdminLearningDashboard {
   academicYearId: string;
   metrics: {
@@ -235,6 +273,13 @@ export interface LearningStore {
     studentUserId: string
   ): Promise<{ studentId: string; status: Student["status"] }>;
   getStudentAcademicView(schoolId: string, studentUserId: string): Promise<LearnerAcademicView>;
+  listAdminHomework(schoolId: string, query: AdminHomeworkQuery):
+    Promise<{ rows: AdminHomeworkItem[]; total: number; limit: number; offset: number }>;
+  getAdminHomeworkRoster(schoolId: string, homeworkId: string,
+    filter: AdminHomeworkSubmissionFilter, limit: number, offset: number):
+    Promise<{ homework: { id: string; title: string; status: HomeworkStatus };
+      students: AdminHomeworkRosterEntry[]; total: number; limit: number; offset: number;
+      rosterBasis: "CURRENT_ACTIVE_ENROLLMENT" }>;
   getAdminOverview(schoolId: string, includePublishedGrades?: boolean): Promise<AdminLearningOverview>;
   listAdminPublishedGrades(schoolId: string, query: AdminPublishedGradesQuery):
     Promise<{ rows: AdminPublishedGradeRow[]; total: number; limit: number; offset: number }>;
@@ -1073,6 +1118,147 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         });
       }
       return { exam, subjects: configured, sameDayWarnings };
+    },
+
+    async listAdminHomework(schoolId, query) {
+      // Counts are based on students *currently actively enrolled* in the
+      // homework's year/class. Historical enrollment is not reconstructed.
+      // The correlated subqueries are bounded by the filtered, paged list.
+      const roster = sql<number>`(select count(*)::int from students hw_student
+        where hw_student.school_id = ${homeworks.schoolId}
+          and hw_student.academic_year_id = ${homeworks.academicYearId}
+          and hw_student.class_id = ${homeworks.classId}
+          and hw_student.status = 'ACTIVE')`;
+      const submitted = sql<number>`(select count(*)::int from homework_submissions hw_sub
+        join students hw_student on hw_student.id = hw_sub.student_id
+          and hw_student.school_id = hw_sub.school_id
+          and hw_student.academic_year_id = ${homeworks.academicYearId}
+          and hw_student.class_id = ${homeworks.classId}
+          and hw_student.status = 'ACTIVE'
+        where hw_sub.school_id = ${homeworks.schoolId}
+          and hw_sub.homework_id = ${homeworks.id})`;
+      function byStatus(status: "SUBMITTED" | "REVIEWED" | "REVISION_REQUESTED") {
+        return sql<number>`(select count(*)::int from homework_submissions hw_sub
+          join students hw_student on hw_student.id = hw_sub.student_id
+            and hw_student.school_id = hw_sub.school_id
+            and hw_student.academic_year_id = ${homeworks.academicYearId}
+            and hw_student.class_id = ${homeworks.classId}
+            and hw_student.status = 'ACTIVE'
+          where hw_sub.school_id = ${homeworks.schoolId}
+            and hw_sub.homework_id = ${homeworks.id}
+            and hw_sub.status = ${status})`;
+      }
+      const pending = byStatus("SUBMITTED");
+      const reviewed = byStatus("REVIEWED");
+      const revisions = byStatus("REVISION_REQUESTED");
+      const visible = inArray(homeworks.status, ["PUBLISHED", "CLOSED", "ARCHIVED"]);
+      const conditions = [
+        eq(homeworks.schoolId, schoolId),
+        eq(homeworks.academicYearId, query.academicYearId)
+      ];
+      if (query.status) conditions.push(eq(homeworks.status, query.status));
+      if (query.classId) conditions.push(eq(homeworks.classId, query.classId));
+      if (query.subjectId) conditions.push(eq(homeworks.subjectId, query.subjectId));
+      if (query.teacherUserId) conditions.push(eq(homeworks.teacherUserId, query.teacherUserId));
+      if (query.search) {
+        const searchTerm = "%" + query.search.trim().replace(/[\\%_]/g, "\\    async listAdminPublishedGrades(schoolId, query) {") + "%";
+        conditions.push(ilike(homeworks.title, searchTerm));
+      }
+      if (query.attention === "PAST_DUE") conditions.push(and(
+        eq(homeworks.status, "PUBLISHED"), lt(homeworks.dueAt, new Date()), gt(roster, submitted))!);
+      if (query.attention === "AWAITING_REVIEW") conditions.push(and(visible, gt(pending, 0))!);
+      if (query.attention === "MISSING") conditions.push(and(visible, gt(roster, submitted))!);
+      if (query.attention === "REVISION_REQUESTED") conditions.push(and(visible, gt(revisions, 0))!);
+      const where = and(...conditions);
+      const [totals, rows] = await Promise.all([
+        db.select({ total: count() }).from(homeworks).where(where),
+        db.select({
+          homework: {
+            id: homeworks.id, title: homeworks.title, status: homeworks.status,
+            dueAt: homeworks.dueAt, scheduledAt: homeworks.scheduledAt,
+            publishedAt: homeworks.publishedAt, createdAt: homeworks.createdAt,
+            updatedAt: homeworks.updatedAt
+          },
+          classId: homeworks.classId, className: classSections.name,
+          subjectId: homeworks.subjectId, subjectName: subjects.name,
+          teacherUserId: homeworks.teacherUserId, teacherName: teacherProfiles.fullName,
+          expected: roster, submitted, awaitingReview: pending, reviewed,
+          revisionRequested: revisions
+        }).from(homeworks)
+          .innerJoin(classSections, and(eq(classSections.id, homeworks.classId),
+            eq(classSections.schoolId, homeworks.schoolId)))
+          .innerJoin(subjects, and(eq(subjects.id, homeworks.subjectId),
+            eq(subjects.schoolId, homeworks.schoolId)))
+          .innerJoin(teacherProfiles, and(eq(teacherProfiles.userId, homeworks.teacherUserId),
+            eq(teacherProfiles.schoolId, homeworks.schoolId)))
+          .where(where).orderBy(desc(homeworks.createdAt), asc(homeworks.id))
+          .limit(query.limit).offset(query.offset)
+      ]);
+      return {
+        rows: rows.map(row => {
+          const assigned = row.homework.status !== "DRAFT";
+          const expected = assigned ? Number(row.expected) : 0;
+          const submittedCount = assigned ? Number(row.submitted) : 0;
+          return {
+            ...row, expected, submitted: submittedCount,
+            awaitingReview: assigned ? Number(row.awaitingReview) : 0,
+            reviewed: assigned ? Number(row.reviewed) : 0,
+            revisionRequested: assigned ? Number(row.revisionRequested) : 0,
+            missing: Math.max(0, expected - submittedCount),
+            pastDueWithMissing: row.homework.status === "PUBLISHED"
+              && row.homework.dueAt < new Date() && expected > submittedCount
+          };
+        }), total: totals[0]?.total ?? 0, limit: query.limit, offset: query.offset
+      };
+    },
+
+    async getAdminHomeworkRoster(schoolId, homeworkId, filter, limit, offset) {
+      const [homework] = await db.select({
+        id: homeworks.id, title: homeworks.title, status: homeworks.status,
+        classId: homeworks.classId, academicYearId: homeworks.academicYearId
+      }).from(homeworks).where(and(eq(homeworks.schoolId, schoolId),
+        eq(homeworks.id, homeworkId))).limit(1);
+      if (!homework) throw new LearningNotFoundError("Homework not found.");
+      // Draft homework never generated a legitimate recipient roster.
+      if (homework.status === "DRAFT") {
+        return { homework: { id: homework.id, title: homework.title, status: homework.status },
+          students: [], total: 0, limit, offset, rosterBasis: "CURRENT_ACTIVE_ENROLLMENT" as const };
+      }
+      const conditions = [
+        eq(students.schoolId, schoolId), eq(students.academicYearId, homework.academicYearId),
+        eq(students.classId, homework.classId), eq(students.status, "ACTIVE")
+      ];
+      if (filter === "MISSING") conditions.push(isNull(homeworkSubmissions.id));
+      if (filter !== "ALL" && filter !== "MISSING") conditions.push(eq(homeworkSubmissions.status, filter));
+      const where = and(...conditions);
+      const [totals, rows] = await Promise.all([
+        db.select({ total: count() }).from(students)
+          .leftJoin(homeworkSubmissions, and(eq(homeworkSubmissions.studentId, students.id),
+            eq(homeworkSubmissions.schoolId, schoolId),
+            eq(homeworkSubmissions.homeworkId, homeworkId))).where(where),
+        db.select({
+          id: students.id, fullName: students.fullName, studentCode: students.studentCode,
+          submissionId: homeworkSubmissions.id, submissionStatus: homeworkSubmissions.status,
+          submittedAt: homeworkSubmissions.submittedAt, reviewedAt: homeworkSubmissions.reviewedAt,
+          feedback: homeworkSubmissions.feedback
+        }).from(students)
+          .leftJoin(homeworkSubmissions, and(eq(homeworkSubmissions.studentId, students.id),
+            eq(homeworkSubmissions.schoolId, schoolId),
+            eq(homeworkSubmissions.homeworkId, homeworkId)))
+          .where(where).orderBy(asc(students.fullName), asc(students.id))
+          .limit(limit).offset(offset)
+      ]);
+      return {
+        homework: { id: homework.id, title: homework.title, status: homework.status },
+        students: rows.map(row => ({
+          student: { id: row.id, fullName: row.fullName, studentCode: row.studentCode },
+          submission: row.submissionId && row.submissionStatus && row.submittedAt
+            ? { id: row.submissionId, status: row.submissionStatus,
+                submittedAt: row.submittedAt, reviewedAt: row.reviewedAt, feedback: row.feedback }
+            : null
+        })), total: totals[0]?.total ?? 0, limit, offset,
+        rosterBasis: "CURRENT_ACTIVE_ENROLLMENT" as const
+      };
     },
 
     async listAdminPublishedGrades(schoolId, query) {
