@@ -669,6 +669,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         eq(users.schoolId, schoolId),
         query.studentId ? eq(feeInvoices.studentId, query.studentId) : undefined,
         query.recordedBy ? eq(feePayments.recordedBy, query.recordedBy) : undefined,
+        query.recordedByUsername ? ilike(users.username, `%${query.recordedByUsername}%`) : undefined,
         query.method !== "ALL" ? eq(feePayments.method, query.method) : undefined,
         query.kind !== "ALL" ? eq(feePayments.kind, query.kind) : undefined,
         query.from ? sql`(${feePayments.recordedAt} AT TIME ZONE ${zone})::date >= ${query.from}::date` : undefined,
