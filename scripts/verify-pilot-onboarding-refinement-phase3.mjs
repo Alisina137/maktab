@@ -26,7 +26,7 @@ assert.ok(guide.includes('coverage("student_logins")?.total'),
   "Student onboarding population must be scoped to the current active academic year");
 assert.ok(guide.includes('metric.total > 0 && metric.missing === 0'),
   "Zero-denominator checks cannot count as completed");
-assert.ok(guide.includes('state: "unknown"') &&
+assert.ok(guide.includes(' : "unknown"') &&
   guide.includes('Data quality is unavailable; no all-clear can be confirmed.'),
   "Unknown coverage must not be represented as complete");
 assert.ok(guide.includes('No outstanding issues in these seven data-quality checks.') &&
@@ -64,7 +64,7 @@ assert.ok(pilot.includes('onChange={(date) => setImportDraftFilters') &&
   "Localized date pickers must be used for history filters");
 assert.ok(tests.includes("Pilot Operations Data Onboarding refinement") &&
   tests.includes("&status=COMPLETED") && tests.includes("&actor=") &&
-  tests.includes("&dateFrom=2000-01-01") && tests.includes("invalid.statusCode, 400"),
+  tests.includes("&dateFrom=2000-01-01") && tests.includes("statusCode, 400, invalid"),
   "API tests must cover status, actor, dates and invalid query input");
 assert.ok(css.includes(".pilot-guide-list") && css.includes(".pilot-quality-grid") &&
   css.includes(".pilot-import-filters-expanded") && css.includes("@media (max-width: 510px)"),
