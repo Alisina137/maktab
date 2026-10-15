@@ -150,8 +150,8 @@ const adminAttendanceAuditQuerySchema = z.object({
 const followupStateSchema = z.enum(["OPEN","IN_PROGRESS","RESOLVED","DISMISSED"]);
 const followupPageSchema = z.object({
   academicYearId: z.string().uuid(),
-  from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
-  to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   classId: z.string().uuid().optional(),
   search: z.string().trim().max(100).optional(),
   status: followupStateSchema.optional(),
@@ -163,14 +163,14 @@ const followupCreateSchema = z.object({
   attendanceId: z.string().uuid(),
   studentId: z.string().uuid(),
   assignedToUserId: z.string().uuid().nullable().optional(),
-  dueOn: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   openingNote: z.string().trim().min(5).max(500)
 }).strict();
 const followupUpdateSchema = z.object({
   expectedUpdatedAt: z.string().datetime({offset:true}),
   status: followupStateSchema.optional(),
   assignedToUserId: z.string().uuid().nullable().optional(),
-  dueOn: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   note: z.string().trim().min(5).max(500)
 }).strict().refine(v=>v.status!==undefined || v.assignedToUserId!==undefined || v.dueOn!==undefined,{
   message:"Specify a status, assignee or due date."
