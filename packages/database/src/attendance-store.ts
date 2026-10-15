@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createAttendanceMonitoringStore, type AttendanceMonitoringStore } from "./attendance-monitoring-store.js";
 import { createAttendanceHistoryStore, type AttendanceHistoryStore } from "./attendance-history-store.js";
 import { createAttendanceAuditStore, type AttendanceAuditStore } from "./attendance-audit-store.js";
+import { createAttendanceFollowupStore, type AttendanceFollowupStore } from "./attendance-followup-store.js";
 import {
   and,
   asc,
@@ -161,7 +162,7 @@ export interface AttendanceCorrection {
   previousStatus: AttendanceStatus;
 }
 
-export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore, AttendanceAuditStore {
+export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHistoryStore, AttendanceAuditStore, AttendanceFollowupStore {
   getSchoolToday(schoolId: string): Promise<string>;
   getTeacherToday(schoolId: string, teacherUserId: string): Promise<TeacherToday>;
   getTeacherAttendanceSheet(
@@ -506,6 +507,7 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
     ...createAttendanceMonitoringStore(db,schoolToday),
     ...createAttendanceHistoryStore(db,schoolToday),
     ...createAttendanceAuditStore(db),
+    ...createAttendanceFollowupStore(db),
     getSchoolToday: schoolToday,
 
     async getTeacherToday(schoolId, teacherUserId) {

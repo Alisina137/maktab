@@ -100,6 +100,9 @@ jobs:
       - name: Admin Attendance Phase 4 corrections, version protection and audit history
         run: pnpm verify:admin-attendance:phase4
 
+      - name: Admin Attendance Phase 5 follow-up workflow and tenant safety
+        run: pnpm verify:admin-attendance:phase5
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -238,6 +241,7 @@ jobs:
           pnpm verify:admin-attendance:phase2
           pnpm verify:admin-attendance:phase3
           pnpm verify:admin-attendance:phase4
+          pnpm verify:admin-attendance:phase5
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3

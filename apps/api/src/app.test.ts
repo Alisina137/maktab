@@ -53,7 +53,8 @@ async function createTestApp() {
     "0023_notification_scheduler_health.sql",
     "0024_fee_payment_reconciliation.sql",
     "0025_notification_push_lease.sql",
-    "0026_admin_attendance_calendar.sql"
+    "0026_admin_attendance_calendar.sql",
+    "0027_admin_attendance_followups.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -3101,6 +3102,100 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(submitted.statusCode, 201);
   assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().changed, true);
   assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().notificationCount, 1);
+
+  // Admin Attendance Phase 5: follow-up candidates are real marks, never
+  // missing days or automatic cases. Only a school administrator can act.
+  const followupQuery="/v1/admin/attendance/followups?academicYearId="+yearId;
+  const candidateUrl="/v1/admin/attendance/followups/candidates?academicYearId="+yearId;
+  const candidates=await app.inject({method:"GET",url:candidateUrl,headers:admin});
+  assert.equal(candidates.statusCode,200,candidates.body);
+  assert.equal(candidates.json<{total:number}>().total,1);
+  assert.equal(candidates.json<{rows:Array<{status:string;existingCaseId:string|null}>}>().rows[0]?.status,"ABSENT");
+  assert.equal(candidates.json<{rows:Array<{existingCaseId:string|null}>}>().rows[0]?.existingCaseId,null);
+  assert.equal((await app.inject({method:"GET",url:candidateUrl})).statusCode,401);
+  assert.equal((await app.inject({method:"GET",url:candidateUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:candidateUrl+"&limit=100",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:candidateUrl+"&from=2026-02-30",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:candidateUrl+"&from=2020-01-01&to=2026-10-15",headers:admin})).statusCode,400);
+  assert.equal((await app.inject({method:"GET",url:followupQuery,headers:admin})).json<{total:number}>().total,0);
+  const inputFollowup={
+    academicYearId:yearId,attendanceId:submitted.json<{sheet:{attendance:{id:string}}}>().sheet.attendance.id,
+    studentId,openingNote:"Contact family to discuss the recorded absence."
+  };
+  assert.equal((await app.inject({method:"POST",url:"/v1/admin/attendance/followups",
+    headers:teacherAuth,payload:inputFollowup})).statusCode,403);
+  assert.equal((await app.inject({method:"POST",url:"/v1/admin/attendance/followups",
+    headers:admin,payload:{...inputFollowup,openingNote:"No"}})).statusCode,400);
+  assert.equal((await app.inject({method:"POST",url:"/v1/admin/attendance/followups",
+    headers:admin,payload:{...inputFollowup,assignedToUserId:teacherId}})).statusCode,400);
+  const openedCase=await app.inject({method:"POST",url:"/v1/admin/attendance/followups",
+    headers:admin,payload:inputFollowup});
+  assert.equal(openedCase.statusCode,201,openedCase.body);
+  const followupId=openedCase.json<{id:string}>().id;
+  assert.equal((await app.inject({method:"POST",url:"/v1/admin/attendance/followups",
+    headers:admin,payload:inputFollowup})).statusCode,409);
+  const existingCandidate=await app.inject({method:"GET",url:candidateUrl,headers:admin});
+  assert.equal(existingCandidate.json<{rows:Array<{existingCaseId:string|null}>}>().rows[0]?.existingCaseId,followupId);
+  const initialCases=await app.inject({method:"GET",url:followupQuery,headers:admin});
+  assert.equal(initialCases.statusCode,200,initialCases.body);
+  const initialCase=initialCases.json<{total:number;summary:{OPEN:number};rows:Array<{updatedAt:string;status:string}>}>();
+  assert.equal(initialCase.total,1);
+  assert.equal(initialCase.summary.OPEN,1);
+  assert.equal(initialCase.rows[0]?.status,"OPEN");
+  assert.equal((await app.inject({method:"GET",url:followupQuery,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:followupQuery+"&status=RESOLVED",headers:admin}))
+    .json<{total:number}>().total,0);
+  assert.equal((await app.inject({method:"GET",url:followupQuery+"&search=not-a-real-student",headers:admin}))
+    .json<{total:number}>().total,0);
+  const eventsUrl=`/v1/admin/attendance/followups/${followupId}/activities`;
+  assert.equal((await app.inject({method:"GET",url:eventsUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:eventsUrl,headers:admin}))
+    .json<{total:number}>().total,1);
+  const recordedCall=await app.inject({method:"POST",url:eventsUrl,headers:admin,payload:{
+    kind:"CALL",details:"Spoke to the parent about the recorded absence."
+  }});
+  assert.equal(recordedCall.statusCode,201,recordedCall.body);
+  assert.equal((await app.inject({method:"GET",url:eventsUrl,headers:admin}))
+    .json<{total:number}>().total,2);
+  assert.equal((await app.inject({method:"POST",url:eventsUrl,headers:admin,payload:{
+    kind:"CALL",details:"x"
+  }})).statusCode,400);
+  const updateUrl=`/v1/admin/attendance/followups/${followupId}`;
+  const invalidUpdate=await app.inject({method:"PATCH",url:updateUrl,headers:admin,payload:{
+    status:"RESOLVED",note:"Family contacted and issue addressed."
+  }});
+  assert.equal(invalidUpdate.statusCode,400);
+  const updatedFollowup=await app.inject({method:"PATCH",url:updateUrl,headers:admin,payload:{
+    status:"RESOLVED",note:"Family contacted and issue addressed.",
+    expectedUpdatedAt:initialCase.rows[0]!.updatedAt
+  }});
+  assert.equal(updatedFollowup.statusCode,200,updatedFollowup.body);
+  assert.equal((await app.inject({method:"PATCH",url:updateUrl,headers:admin,payload:{
+    status:"OPEN",note:"Stale attempt",expectedUpdatedAt:initialCase.rows[0]!.updatedAt
+  }})).statusCode,409);
+  assert.equal((await app.inject({method:"POST",url:eventsUrl,headers:admin,payload:{
+    kind:"NOTE",details:"Attempt after resolution should not be allowed."
+  }})).statusCode,409);
+  const closedCase=await app.inject({method:"GET",url:followupQuery,headers:admin});
+  const closed=closedCase.json<{summary:{OPEN:number;RESOLVED:number};rows:Array<{status:string;resolutionNote:string}>}>();
+  assert.equal(closed.summary.OPEN,0);assert.equal(closed.summary.RESOLVED,1);
+  assert.equal(closed.rows[0]?.resolutionNote,"Family contacted and issue addressed.");
+  const anotherSchool=await provisionSchool(app,"FOLLOWUPOTHER");
+  const anotherAdmin={authorization:`Bearer ${await bootstrapAdmin(app,anotherSchool)}`};
+  assert.equal((await app.inject({method:"GET",url:followupQuery,headers:anotherAdmin})).statusCode,404);
+  assert.equal((await app.inject({method:"GET",url:eventsUrl,headers:anotherAdmin})).statusCode,404);
+  assert.equal((await app.inject({method:"POST",url:eventsUrl,headers:anotherAdmin,
+    payload:{kind:"NOTE",details:"Try to read another school's case."}})).statusCode,404);
+  assert.equal((await app.inject({method:"PATCH",url:updateUrl,headers:anotherAdmin,
+    payload:{status:"OPEN",note:"Attempt to change another school.",expectedUpdatedAt:initialCase.rows[0]!.updatedAt}
+  })).statusCode,404);
+  const followupAudits=await client.query<{action:string}>(
+    "SELECT action FROM audit_logs WHERE school_id=$1 AND action LIKE 'attendance.followup_%'",
+    [schoolId]
+  );
+  assert.equal(followupAudits.rows.length,3);
+  // No push messages or parent notifications are generated by case activity.
+  // The existing attendance notification count remains governed by marks.
 
   // Admin Attendance Phase 3 integration: school-scoped directory and register.
   const directoryUrl = `/v1/admin/attendance/students?academicYearId=${yearId}&limit=10`;

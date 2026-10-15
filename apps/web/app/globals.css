@@ -8431,3 +8431,33 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
 .attendance-audit-pagination { display:flex; justify-content:center; align-items:center; gap:16px; flex-wrap:wrap; }
 @media (max-width:1150px){ .attendance-report-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .attendance-audit-filter { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:620px){ .attendance-report-row,.attendance-audit-filter,.attendance-audit-detail { grid-template-columns:minmax(0,1fr); } .attendance-audit-buttons { grid-column:auto; } }
+
+/* Admin attendance Phase 5: private school-scoped case management. */
+.attendance-followups { display:grid; gap:18px; }
+.attendance-followup-tabs { display:flex; gap:8px; overflow-x:auto; padding:3px 1px 6px; }
+.attendance-followup-tabs button { border:1px solid var(--ml-color-border); border-radius:10px; padding:11px 16px; background:white; color:var(--ml-color-text); min-height:44px; cursor:pointer; }
+.attendance-followup-tabs button.is-active { background:var(--ml-color-primary,#1d4ed8); color:white; border-color:transparent; }
+.attendance-followup-filter { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:12px; }
+.attendance-followup-filter label,.attendance-followup-detail label { display:grid; gap:7px; font-size:13px; font-weight:700; color:var(--ml-color-text-muted); min-width:0; }
+.attendance-followup-filter input,.attendance-followup-filter select,.attendance-followup-detail input,.attendance-followup-detail select,.attendance-followup-detail textarea { min-height:44px; width:100%; min-width:0; border:1px solid var(--ml-color-border); border-radius:10px; padding:9px 11px; font:inherit; background:white; color:var(--ml-color-text); }
+.attendance-followup-detail textarea { min-height:95px; resize:vertical; }
+.attendance-followup-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.attendance-followup-summary>div { display:grid; gap:3px; border:1px solid var(--ml-color-border); border-radius:12px; padding:14px; background:var(--ml-color-surface,#fff); }
+.attendance-followup-summary strong { font-size:23px; color:var(--ml-color-text); }
+.attendance-followup-summary span { font-size:12px; color:var(--ml-color-text-muted); }
+.attendance-followup-body { display:grid; grid-template-columns:minmax(280px,1fr) minmax(320px,1fr); align-items:start; gap:16px; }
+.attendance-followup-list,.attendance-followup-detail { display:grid; gap:14px; min-width:0; }
+.attendance-followup-detail-group { display:grid; gap:16px; min-width:0; }
+.attendance-followup-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; min-width:0; padding:13px; border:1px solid var(--ml-color-border); border-radius:12px; background:white; }
+.attendance-followup-row>div { min-width:150px; flex:1; display:grid; gap:4px; text-align:start; }
+.attendance-followup-row small { color:var(--ml-color-text-muted); overflow-wrap:anywhere; }
+.attendance-followup-select { width:100%; text-align:initial; cursor:pointer; font:inherit; color:inherit; }
+.attendance-followup-select[aria-pressed="true"] { outline:2px solid var(--ml-color-primary,#1d4ed8); }
+.attendance-followup-tag { border-radius:8px; padding:5px 10px; background:#eff6ff; color:#1e40af; font-size:12px; font-weight:700; }
+.attendance-followup-pagination,.attendance-followup-actions { display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; }
+.attendance-followup-activity-form { display:grid; gap:12px; }
+.attendance-followup-activity { border-top:1px solid var(--ml-color-border); padding:12px 0; display:grid; gap:5px; }
+.attendance-followup-activity span { font-size:12px; color:var(--ml-color-text-muted); }
+.attendance-followup-activity p { margin:0; overflow-wrap:anywhere; }
+@media (max-width:1050px) { .attendance-followup-body { grid-template-columns:1fr; } }
+@media (max-width:690px) { .attendance-followup-filter { grid-template-columns:minmax(0,1fr); } .attendance-followup-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -10,6 +10,7 @@ import {
   AttendanceHistoryNotFoundError,
   AttendanceNotFoundError,
   AttendanceValidationError,
+  FollowupConflictError, FollowupNotFoundError, FollowupValidationError,
   type AccountStore,
   type AttendanceStore
 } from "@maktablink/database";
@@ -35,6 +36,15 @@ function sendAttendanceError(reply: FastifyReply, error: unknown) {
   }
   if (error instanceof AttendanceNotFoundError) {
     return reply.code(404).send({ error: "not_found", message: error.message });
+  }
+  if (error instanceof FollowupNotFoundError) {
+    return reply.code(404).send({ error: "not_found", message: error.message });
+  }
+  if (error instanceof FollowupConflictError) {
+    return reply.code(409).send({ error: "followup_conflict", message: error.message });
+  }
+  if (error instanceof FollowupValidationError) {
+    return reply.code(400).send({ error: "followup_validation", message: error.message });
   }
   if (error instanceof AttendanceConflictError) {
     return reply.code(409).send({ error: "attendance_conflict", message: error.message });
@@ -132,6 +142,44 @@ const adminAttendanceAuditQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   classId: z.string().uuid().optional(),
   search: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).max(100000).default(0)
+}).strict();
+
+
+const followupStateSchema = z.enum(["OPEN","IN_PROGRESS","RESOLVED","DISMISSED"]);
+const followupPageSchema = z.object({
+  academicYearId: z.string().uuid(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  classId: z.string().uuid().optional(),
+  search: z.string().trim().max(100).optional(),
+  status: followupStateSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).max(100000).default(0)
+}).strict();
+const followupCreateSchema = z.object({
+  academicYearId: z.string().uuid(),
+  attendanceId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  assignedToUserId: z.string().uuid().nullable().optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  openingNote: z.string().trim().min(5).max(500)
+}).strict();
+const followupUpdateSchema = z.object({
+  expectedUpdatedAt: z.string().datetime({offset:true}),
+  status: followupStateSchema.optional(),
+  assignedToUserId: z.string().uuid().nullable().optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  note: z.string().trim().min(5).max(500)
+}).strict().refine(v=>v.status!==undefined || v.assignedToUserId!==undefined || v.dueOn!==undefined,{
+  message:"Specify a status, assignee or due date."
+});
+const followupActivitySchema = z.object({
+  kind: z.enum(["NOTE","CALL","MEETING","MESSAGE"]),
+  details: z.string().trim().min(5).max(500)
+}).strict();
+const followupActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   offset: z.coerce.number().int().min(0).max(100000).default(0)
 }).strict();
@@ -261,6 +309,76 @@ export function registerAttendanceRoutes(
       }
     }
   );
+
+
+  // Only submitted ABSENT/LATE marks can be promoted to a human-managed case.
+  // These endpoints never contact families or fabricate absences from empty registers.
+  app.get("/v1/admin/attendance/followups/assignees", async (request, reply) => {
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try { return {assignees:await attendance.getFollowupAssignees(context.user.schoolId)}; }
+    catch(error){ return sendAttendanceError(reply,error); }
+  });
+
+  app.get("/v1/admin/attendance/followups/candidates", async (request,reply) => {
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const query=followupPageSchema.omit({status:true}).parse(request.query);
+      return await attendance.getFollowupCandidates(context.user.schoolId,query);
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.get("/v1/admin/attendance/followups", async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const query=followupPageSchema.parse(request.query);
+      return await attendance.listFollowupCases(context.user.schoolId,query);
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.post("/v1/admin/attendance/followups",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const input=followupCreateSchema.parse(request.body);
+      const result=await attendance.createFollowupCase(context.user.schoolId,context.user.id,input);
+      return reply.code(201).send(result);
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.patch<{Params:{caseId:string}}>("/v1/admin/attendance/followups/:caseId",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const caseId=z.string().uuid().parse(request.params.caseId);
+      const input=followupUpdateSchema.parse(request.body);
+      return await attendance.updateFollowupCase(context.user.schoolId,context.user.id,caseId,input);
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.get<{Params:{caseId:string}}>("/v1/admin/attendance/followups/:caseId/activities",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const caseId=z.string().uuid().parse(request.params.caseId);
+      const page=followupActivityQuerySchema.parse(request.query);
+      return await attendance.listFollowupActivities(context.user.schoolId,caseId,page.limit,page.offset);
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
+
+  app.post<{Params:{caseId:string}}>("/v1/admin/attendance/followups/:caseId/activities",async(request,reply)=>{
+    const context=await requireSchoolAdmin(request,reply,accounts);
+    if(!context)return;
+    try {
+      const caseId=z.string().uuid().parse(request.params.caseId);
+      const input=followupActivitySchema.parse(request.body);
+      return reply.code(201).send(
+        await attendance.recordFollowupActivity(context.user.schoolId,context.user.id,caseId,input)
+      );
+    } catch(error){return sendAttendanceError(reply,error);}
+  });
 
   app.get("/v1/admin/attendance/audit", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
