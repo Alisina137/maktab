@@ -320,6 +320,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <span>{t("Submission overview")}</span>
                 <strong>{report.summary.submittedClasses}</strong>
                 <p>{t("Submitted registers in the selected period. Daily eligibility is shown below.")}</p>
+                <p>{t("Daily submission monitoring follows the timetable and declared school closures.")}</p>
                 <button type="button" className="admin-secondary"
                   onClick={() => setActiveTab("REGISTERS")}>{t("Open daily registers")}</button>
               </article>
