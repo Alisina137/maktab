@@ -103,4 +103,57 @@ test("Pilot Phase 2 coverage checks current school/year relations and pages miss
   const otherIssues = await pilot.listReadinessIssues(b, "teaching", { limit: 5, offset: 0 });
   assert.ok(otherIssues.rows[0]?.label.includes("Private school B"));
   assert.equal(otherIssues.rows.some((row) => row.label.includes("Class Two")), false);
+
+  // Pilot Operations refinement Phase 2: validate real period-level conflict checks.
+  const clean = await pilot.getOperationalReadiness(a);
+  assert.equal(clean.evaluatedPeriods, 1);
+  assert.equal(clean.ready, true);
+  assert.equal(clean.metrics.every((row) => row.missing === 0), true);
+  const noPeriods = await pilot.getOperationalReadiness(b);
+  assert.equal(noPeriods.evaluatedPeriods, 0);
+  assert.equal(noPeriods.ready, false, "No timetable cannot be treated as verified operational readiness");
+  assert.equal(noPeriods.metrics[0]?.status, "not_applicable");
+
+  // Two active-year classes with the SAME active teacher on overlapping times.
+  await run(`INSERT INTO teacher_assignments(id,school_id,academic_year_id,teacher_user_id,subject_id,class_id)
+    VALUES ($1,$2,$3,$4,$5,$6)`, [randomUUID(),a,year,teacher,subject,classTwo]);
+  await run(`INSERT INTO timetable_periods(id,school_id,academic_year_id,class_id,subject_id,teacher_user_id,weekday,starts_at,ends_at)
+    VALUES ($1,$2,$3,$4,$5,$6,'SATURDAY','08:15','09:00')`,
+    [randomUUID(),a,year,classTwo,subject,teacher]);
+  let operational = await pilot.getOperationalReadiness(a);
+  assert.equal(operational.metrics.find((m) => m.key === "teacher_overlap")?.missing, 2);
+  assert.equal(operational.metrics.find((m) => m.key === "class_overlap")?.missing, 0);
+  assert.equal(operational.ready, false);
+  let collisions = await pilot.listOperationalIssues(a, "teacher_overlap", { limit: 1, offset: 0 });
+  assert.equal(collisions.rows.length, 1);
+  assert.equal(collisions.hasMore, true);
+  const nextCollision = await pilot.listOperationalIssues(a, "teacher_overlap", { limit: 1, offset: 1 });
+  assert.equal(nextCollision.rows.length, 1);
+  assert.notEqual(collisions.rows[0]?.id, nextCollision.rows[0]?.id);
+
+  // A second simultaneous period in class one is also a class collision.
+  await run(`INSERT INTO timetable_periods(id,school_id,academic_year_id,class_id,subject_id,teacher_user_id,weekday,starts_at,ends_at)
+    VALUES ($1,$2,$3,$4,$5,$6,'SATURDAY','08:20','08:40')`,
+    [randomUUID(),a,year,classOne,subject,teacher]);
+  operational = await pilot.getOperationalReadiness(a);
+  assert.equal(operational.metrics.find((m) => m.key === "class_overlap")?.missing, 2);
+  assert.equal(operational.metrics.find((m) => m.key === "teacher_overlap")?.missing, 3);
+
+  // Invalid period plus unmatched subject assignment must be visible, not hidden.
+  const extraSubject = randomUUID();
+  await run("INSERT INTO subjects(id,school_id,code,name) VALUES ($1,$2,'SCI','Science')", [extraSubject,a]);
+  await run(`INSERT INTO timetable_periods(id,school_id,academic_year_id,class_id,subject_id,teacher_user_id,weekday,starts_at,ends_at)
+    VALUES ($1,$2,$3,$4,$5,$6,'FRIDAY','10:00','09:00')`,
+    [randomUUID(),a,year,classOne,extraSubject,teacher]);
+  operational = await pilot.getOperationalReadiness(a);
+  assert.equal(operational.metrics.find((m) => m.key === "invalid_period")?.missing, 1);
+  assert.equal(operational.metrics.find((m) => m.key === "assignment_gap")?.missing, 1);
+  const badPeriods = await pilot.listOperationalIssues(a, "invalid_period", { limit: 10, offset: 0 });
+  assert.equal(badPeriods.rows.length, 1);
+  assert.ok(badPeriods.rows[0]?.label.includes("FRIDAY"));
+  const gaps = await pilot.listOperationalIssues(a, "assignment_gap", { limit: 10, offset: 0 });
+  assert.equal(gaps.rows.length, 1);
+  // Every query is scoped by school and active academic year.
+  assert.deepEqual((await pilot.listOperationalIssues(b, "teacher_overlap", {limit: 10, offset: 0})).rows, []);
+  assert.deepEqual((await pilot.listOperationalIssues(b, "invalid_period", {limit: 10, offset: 0})).rows, []);
 });
