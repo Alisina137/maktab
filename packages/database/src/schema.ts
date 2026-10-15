@@ -882,6 +882,19 @@ export const feePayments = pgTable(
   ]
 );
 
+/** Reconciliation is separate from the immutable ledger. Unmarking is audited; the payment is never modified. */
+export const feePaymentReconciliations = pgTable(
+  "fee_payment_reconciliations",
+  {
+    paymentId: uuid("payment_id").primaryKey().references(() => feePayments.id, { onDelete: "restrict" }),
+    schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+    reference: varchar("reference", { length: 120 }),
+    reconciledBy: uuid("reconciled_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  table => [index("fee_payment_reconciliations_school_idx").on(table.schoolId)]
+);
+
 export const devices = pgTable(
   "devices",
   {
