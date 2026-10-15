@@ -526,7 +526,9 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const copy = pageCopy[pathname] ?? pageCopy["/admin/accounts"]!;
+  const copy = pageCopy[pathname] ??
+    (pathname.startsWith("/admin/learning/exams/") ? pageCopy["/admin/learning"] : undefined) ??
+    pageCopy["/admin/accounts"]!;
   const selectedAcademicYear =
     academicYears.find((year) => year.id === selectedAcademicYearId) ?? null;
 
@@ -628,7 +630,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
             <h2>{t(copy.title)}</h2>
             <p>{t(copy.description)}</p>
           </div>
-          {yearScopedRoutes.has(pathname) && academicYears.length > 0 ? (
+          {(yearScopedRoutes.has(pathname) || pathname.startsWith("/admin/learning/exams/")) && academicYears.length > 0 ? (
             <label className="admin-language-control admin-year-context-control">
               <span>{t("Academic year context")}</span>
               <select
