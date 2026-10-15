@@ -3102,6 +3102,25 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().changed, true);
   assert.equal(submitted.json<{ changed: boolean; notificationCount: number }>().notificationCount, 1);
 
+  // Admin Attendance Phase 3 integration: school-scoped directory and register.
+  const directoryUrl = `/v1/admin/attendance/students?academicYearId=${yearId}&limit=10`;
+  const directory = await app.inject({ method:"GET",url:directoryUrl,headers:admin });
+  assert.equal(directory.statusCode,200,directory.body);
+  assert.equal(directory.json<{total:number;rows:Array<{recorded:number;absent:number}>}>().total,1);
+  assert.equal(directory.json<{rows:Array<{recorded:number;absent:number}>}>().rows[0]?.absent,1);
+  assert.equal((await app.inject({method:"GET",url:directoryUrl,headers:teacherAuth})).statusCode,403);
+  assert.equal((await app.inject({method:"GET",url:directoryUrl+"&limit=80",headers:admin})).statusCode,400);
+  const classUrl=`/v1/admin/attendance/classes/${classId}/register?academicYearId=${yearId}&date=${today.date}`;
+  const register=await app.inject({method:"GET",url:classUrl,headers:admin});
+  assert.equal(register.statusCode,200,register.body);
+  assert.equal(register.json<{students:Array<{status:string}>}>().students[0]?.status,"ABSENT");
+  assert.equal((await app.inject({method:"GET",url:classUrl,headers:teacherAuth})).statusCode,403);
+  const historyUrl=`/v1/admin/attendance/students/${studentId}/history?academicYearId=${yearId}&from=${today.date}&to=${today.date}`;
+  const studentHistory=await app.inject({method:"GET",url:historyUrl,headers:admin});
+  assert.equal(studentHistory.statusCode,200,studentHistory.body);
+  assert.equal(studentHistory.json<{days:Array<{status:string}>}>().days[0]?.status,"ABSENT");
+  assert.equal((await app.inject({method:"GET",url:historyUrl,headers:teacherAuth})).statusCode,403);
+
   const retried = await app.inject({
     method: "POST",
     url: "/v1/teacher/negaran/attendance",
