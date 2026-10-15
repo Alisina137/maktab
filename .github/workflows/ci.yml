@@ -46,6 +46,9 @@ jobs:
       - name: Admin Communication and Fees Phase 3 invoice numbering, pagination, draft safety and RTL
         run: pnpm verify:admin-communication:phase3
 
+      - name: Admin Communication and Fees Phase 4 ledgers, receipts and student balances
+        run: pnpm verify:admin-communication:phase4
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -153,6 +156,7 @@ jobs:
           pnpm verify:admin-communication:phase1
           pnpm verify:admin-communication:phase2
           pnpm verify:admin-communication:phase3
+          pnpm verify:admin-communication:phase4
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
