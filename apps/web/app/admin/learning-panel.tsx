@@ -1,32 +1,14 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext } from "./admin-learning-exams";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
-import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
+
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-
-type ExamStatus = "DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "RESULTS_READY" | "PUBLISHED" | "ARCHIVED";
-
-type Exam = {
-  id: string;
-  academicYearId: string;
-  name: string;
-  type: string;
-  status: ExamStatus;
-  publishedAt: string | null;
-};
-
-type ExamSubject = {
-  id: string;
-  examId: string;
-  subjectId: string;
-  classId: string;
-  maxScore: number;
-  examDate: string | null;
-};
 
 type PublishedGrade = {
   grade: {
@@ -56,7 +38,6 @@ type LearningOverview = {
 };
 
 type LearningTab = "OVERVIEW" | "HOMEWORK" | "EXAMS" | "RESULTS" | "TEACHING" | "REPORTS";
-type ExamPane = "SETUP" | "LIFECYCLE";
 type LearningDashboard = {
   academicYearId: string;
   metrics: {
@@ -84,7 +65,7 @@ const learningTabs: Array<{ id: LearningTab; title: string }> = [
   { id: "REPORTS", title: "Reports & audit" }
 ];
 
-type AcademicOverview = {
+type AcademicOverview = AcademicContext & {
   academicYears: Array<{ id: string; name: string; status: string }>;
   classes: Array<{ id: string; name: string; code: string; academicYearId: string }>;
   subjects: Array<{ id: string; name: string; code: string }>;
@@ -108,27 +89,21 @@ async function request<T>(accessToken: string, path: string, init?: RequestInit)
   return body as T;
 }
 
-export function LearningPanel({ accessToken }: { accessToken: string }) {
+export function LearningPanel({ accessToken, initialExamId }: { accessToken: string; initialExamId?: string }) {
+  const router = useRouter();
   const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const [learning, setLearning] = useState<LearningOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [activeTab, setActiveTab] = useState<LearningTab>("OVERVIEW");
-  const [examPane, setExamPane] = useState<ExamPane>("SETUP");
+  const [activeTab, setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW");
   const tabRefs = useRef<Partial<Record<LearningTab, HTMLButtonElement | null>>>({});
   const generation = useRef(0);
   const pending = useRef<AbortController | null>(null);
   const currentToken = useRef(accessToken);
   currentToken.current = accessToken;
-  const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
-  const [examId, setExamId] = useState("");
-  const [examClassId, setExamClassId] = useState("");
-  const [examDate, setExamDate] = useState("");
-  const [dateEditSubjectId, setDateEditSubjectId] = useState("");
-  const [revisedExamDate, setRevisedExamDate] = useState("");
 
 
   useEffect(() => {
@@ -172,132 +147,10 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
       setAcademics(academicData);
       setDashboard(dashboardData);
       setLoadingStatus("ready");
-      setExamId(current => learningData.exams.some(exam =>
-        exam.id === current && exam.academicYearId === selectedAcademicYearId)
-        ? current : learningData.exams.find(exam => exam.academicYearId === selectedAcademicYearId &&
-          ["DRAFT", "SCHEDULED"].includes(exam.status))?.id ?? "");
     } catch (cause) {
       if (controller.signal.aborted || generation.current !== id || currentToken.current !== token) return;
       setLoadingStatus("error");
       setError(adminErrorText(locale, cause, "Could not load learning data."));
-    }
-  }
-
-  async function createExam(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setNotice("");
-    const form = new FormData(event.currentTarget);
-    try {
-      await request(accessToken, "/v1/admin/exams", {
-        method: "POST",
-        body: JSON.stringify({
-          academicYearId: String(form.get("academicYearId") ?? ""),
-          name: String(form.get("name") ?? "").trim(),
-          type: String(form.get("type") ?? "").trim()
-        })
-      });
-      setNotice(t("Exam cycle created in DRAFT state."));
-      event.currentTarget.reset();
-      await load();
-    } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not create exam."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addExamSubject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setNotice("");
-    const form = new FormData(event.currentTarget);
-    try {
-      if (!examDate || !selectedAcademicYear ||
-        examDate < selectedAcademicYear.startDate || examDate > selectedAcademicYear.endDate) {
-        throw new Error(t("Choose an exam date within the academic year."));
-      }
-      await request(accessToken, "/v1/admin/exam-subjects", {
-        method: "POST",
-        body: JSON.stringify({
-          examId: String(form.get("examId") ?? ""),
-          classId: String(form.get("classId") ?? ""),
-          subjectId: String(form.get("subjectId") ?? ""),
-          maxScore: Number(form.get("maxScore")),
-          examDate
-        })
-      });
-      setNotice(t("Exam subject added."));
-      setExamDate("");
-      await load();
-    } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not add exam subject."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function changeExamDate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!dateEditSubjectId || !revisedExamDate || !selectedAcademicYear ||
-      revisedExamDate < selectedAcademicYear.startDate ||
-      revisedExamDate > selectedAcademicYear.endDate) {
-      setError(t("Choose an exam date within the academic year."));
-      return;
-    }
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await request(accessToken,
-        `/v1/admin/exam-subjects/${encodeURIComponent(dateEditSubjectId)}/date`, {
-          method: "PATCH", body: JSON.stringify({ examDate: revisedExamDate })
-        });
-      setNotice(t("Exam date updated and recorded in the audit history."));
-      setDateEditSubjectId("");
-      setRevisedExamDate("");
-      await load();
-    } catch (cause) {
-      setError(adminErrorText(locale, cause, "Could not update the exam date."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function examAction(exam: Exam) {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      if (exam.status === "RESULTS_READY") {
-        const result = await request<{ notificationCount: number }>(
-          accessToken,
-          `/v1/admin/exams/${exam.id}/publish`,
-          { method: "POST" }
-        );
-        setNotice(adminFormat(locale, "Results published. {count} in-app notification(s) queued.", { count: result.notificationCount }));
-      } else {
-        const next: Partial<Record<ExamStatus, ExamStatus>> = {
-          DRAFT: "SCHEDULED",
-          SCHEDULED: "IN_PROGRESS",
-          IN_PROGRESS: "RESULTS_READY",
-          PUBLISHED: "ARCHIVED"
-        };
-        const status = next[exam.status];
-        if (!status) return;
-        await request(accessToken, `/v1/admin/exams/${exam.id}/status`, {
-          method: "POST",
-          body: JSON.stringify({ status })
-        });
-        setNotice(adminFormat(locale, "Exam moved to {status}.", { status: t(status) }));
-      }
-      await load();
-    } catch (cause) {
-      setError(adminErrorText(locale, cause, "Exam action failed."));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -308,38 +161,6 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
     learning?.examSubjects.filter((item) => yearExamIds.has(item.examSubject.examId)) ?? [];
   const yearPublishedGrades =
     learning?.publishedGrades.filter((item) => item.academicYearId === selectedAcademicYearId) ?? [];
-  const selectedExam = yearExams.find((exam) => exam.id === examId) ?? null;
-  const activeYears =
-    selectedAcademicYear?.status === "ACTIVE" ? [selectedAcademicYear] : [];
-  const historicalReadOnly = selectedAcademicYear?.status !== "ACTIVE";
-  const examClasses = selectedExam
-    ? academics?.classes.filter((item) => item.academicYearId === selectedExam.academicYearId) ?? []
-    : [];
-  const assignedSubjectIds = useMemo(() => {
-    if (!selectedExam || !examClassId || !academics) return new Set<string>();
-    return new Set(
-      academics.assignments
-        .filter((item) => item.academicYearId === selectedExam.academicYearId && item.classId === examClassId)
-        .map((item) => item.subjectId)
-    );
-  }, [selectedExam, examClassId, academics]);
-  const examSubjects = academics?.subjects.filter((subject) => assignedSubjectIds.has(subject.id)) ?? [];
-
-  useEffect(() => {
-    if (!learning) return;
-    setExamClassId("");
-    setExamDate("");
-    setDateEditSubjectId("");
-    setRevisedExamDate("");
-    setExamId(
-      learning.exams.find(
-        (exam) =>
-          exam.academicYearId === selectedAcademicYearId &&
-          (exam.status === "DRAFT" || exam.status === "SCHEDULED")
-      )?.id ?? ""
-    );
-  }, [selectedAcademicYearId, learning]);
-
   if (!learning || !academics || loadingStatus === "error") {
     return (
       <section className="admin-panel learning-section admin-loading-card">
@@ -369,7 +190,7 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
           <h2>{t("Learning management")}</h2>
           <p>{t("Review academic activity, manage examinations, and monitor results across the selected academic year.")}</p>
         </div>
-        <button className="admin-secondary" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
+        <button type="button" className="admin-secondary" onClick={() => void load()} disabled={loadingStatus === "loading"}>{t("Refresh")}</button>
       </div>
 
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
@@ -449,8 +270,11 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
                       <button type="button" key={`${item.category}:${item.id}`}
                         className="learning-attention-item"
                         onClick={() => {
-                          setActiveTab(item.category === "HOMEWORK" ? "HOMEWORK" : "EXAMS");
-                          if (item.category !== "HOMEWORK") setExamPane("LIFECYCLE");
+                          if (item.category === "HOMEWORK") {
+                            setActiveTab("HOMEWORK");
+                          } else {
+                            router.push(`/admin/learning/exams/${item.id}`);
+                          }
                         }}>
                         <span className="learning-attention-info">
                           <strong>{item.title}</strong>
@@ -520,137 +344,16 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
       {activeTab === "EXAMS" ? (
         <section id="learning-panel-exams" role="tabpanel" aria-labelledby="learning-tab-exams"
           className="learning-tab-panel">
-          <div className="learning-panel-heading">
-            <div><h3>{t("Examinations")}</h3><p>{t("Configure exam cycles and manage their lifecycle.")}</p></div>
-          </div>
-          <div className="learning-subtabs" role="group" aria-label={t("Exam views")}>
-            {(["SETUP", "LIFECYCLE"] as const).map(pane => (
-              <button type="button" key={pane} className={examPane === pane ? "is-active" : ""}
-                aria-pressed={examPane === pane} onClick={() => setExamPane(pane)}>
-                {t(pane === "SETUP" ? "Exam setup" : "Exam lifecycle")}
-              </button>
-            ))}
-          </div>
-          {examPane === "SETUP" ? (
-      <div className="academic-form-grid">
-        <article className="admin-panel academic-form-card">
-          <div><h2>{t("Create exam")}</h2><p>{t("Exam cycles begin as drafts. Set a separate exam date for each assigned class and subject.")}</p></div>
-          <form className="admin-form" onSubmit={createExam}>
-            <label>
-              {t("Active academic year")}
-              <select name="academicYearId" required defaultValue="">
-                <option value="">{t("Select year")}</option>
-                {activeYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
-              </select>
-            </label>
-            <label>{t("Exam name")}<input name="name" placeholder={t("Midyear exam")} required /></label>
-            <label>{t("Exam type")}<input name="type" placeholder="MIDYEAR" required /></label>
-            <button className="admin-primary" disabled={busy || activeYears.length === 0}>{t("Create draft exam")}</button>
-          </form>
-        </article>
-
-        <article className="admin-panel academic-form-card">
-          <div><h2>{t("Add exam subject")}</h2><p>{t("A class/subject can be added only when a teacher assignment already exists for it.")}</p></div>
-          <form className="admin-form" onSubmit={addExamSubject}>
-            <label>
-              {t("Exam")}
-              <select name="examId" required value={examId} onChange={(event) => { setExamId(event.target.value); setExamClassId(""); }}>
-                <option value="">{t("Select exam")}</option>
-                {yearExams.filter((exam) => exam.status === "DRAFT" || exam.status === "SCHEDULED").map((exam) => (
-                  <option key={exam.id} value={exam.id}>{exam.name} · {t(exam.status)}</option>
-                ))}
-              </select>
-            </label>
-            <label>{t("Class")}<select name="classId" required value={examClassId} onChange={(event) => setExamClassId(event.target.value)}>
-                <option value="">{t("Select class")}</option>
-                {examClasses.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}
-              </select>
-            </label>
-            <label>{t("Subject")}<select name="subjectId" required defaultValue="" key={examClassId}>
-                <option value="">{t("Select assigned subject")}</option>
-                {examSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
-              </select>
-            </label>
-            <label>{t("Exam date")}<AdminHijriDatePicker locale={locale} value={examDate} onChange={setExamDate} required disabled={busy} /></label>
-            <label>{t("Maximum score")}<input name="maxScore" type="number" min={1} max={10000} step={1} defaultValue={100} required /></label>
-            <button className="admin-primary" disabled={busy || !examId || !examClassId || !examDate || examSubjects.length === 0}>{t("Add subject")}</button>
-          </form>
-        </article>
-        <article className="admin-panel academic-form-card">
-          <div>
-            <h2>{t("Update exam date")}</h2>
-            <p>{t("Update dates of drafted or scheduled subjects, including older records created before exam scheduling was introduced.")}</p>
-          </div>
-          <form className="admin-form" onSubmit={changeExamDate}>
-            <label>{t("Exam subject")}
-              <select value={dateEditSubjectId} required
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setDateEditSubjectId(id);
-                  setRevisedExamDate(yearExamSubjects.find(item =>
-                    item.examSubject.id === id)?.examSubject.examDate ?? "");
-                }}>
-                <option value="">{t("Select exam subject")}</option>
-                {yearExamSubjects.filter(item =>
-                  yearExams.some(exam => exam.id === item.examSubject.examId &&
-                    ["DRAFT", "SCHEDULED"].includes(exam.status))
-                ).map(item => (
-                  <option key={item.examSubject.id} value={item.examSubject.id}>
-                    {item.className} · {item.subjectName} · {yearExams.find(exam =>
-                      exam.id === item.examSubject.examId)?.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>{t("Exam date")}
-              <AdminHijriDatePicker locale={locale} value={revisedExamDate}
-                onChange={setRevisedExamDate} required disabled={busy} />
-            </label>
-            <button className="admin-secondary"
-              disabled={busy || historicalReadOnly || !dateEditSubjectId || !revisedExamDate}>
-              {t("Save exam date")}
-            </button>
-          </form>
-        </article>
-      </div>
-
-          ) : null}
-          {examPane === "LIFECYCLE" ? (
-      <article className="admin-panel academic-list-panel">
-        <div className="admin-section-header">
-          <div><h2>{t("Exam lifecycle")}</h2><p>{t("Draft → Scheduled → In progress → Results ready → Published → Archived")}</p></div>
-        </div>
-        <div className="academic-rows">
-          {yearExams.map((exam) => {
-            const subjectCount = yearExamSubjects.filter((item) => item.examSubject.examId === exam.id).length;
-            const action =
-              exam.status === "DRAFT" ? "Schedule" :
-              exam.status === "SCHEDULED" ? "Start exam" :
-              exam.status === "IN_PROGRESS" ? "Mark results ready" :
-              exam.status === "RESULTS_READY" ? "Publish results" :
-              exam.status === "PUBLISHED" ? "Archive" : null;
-            return (
-              <div className="academic-row" key={exam.id}>
-                <div>
-                  <strong>{exam.name}</strong>
-                  <span>{exam.type} · {t(exam.status)} · {subjectCount} {t("subject setup(s)")}</span>
-                  {yearExamSubjects.filter((item) => item.examSubject.examId === exam.id).map((item) => (
-                    <span key={item.examSubject.id}>{item.className} · {item.subjectName} · {item.examSubject.examDate ? formatAdminHijriDate(locale, item.examSubject.examDate) + " · " : ""}{t("Maximum")} {item.examSubject.maxScore}</span>
-                  ))}
-                </div>
-                {action ? (
-                  <div className="admin-actions">
-                    <button disabled={busy || historicalReadOnly} onClick={() => void examAction(exam)}>{t(action)}</button>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-          {yearExams.length === 0 ? <p className="admin-copy">{t("No exams in the selected academic year.")}</p> : null}
-        </div>
-      </article>
-
-          ) : null}
+          <AdminLearningExams
+            accessToken={accessToken}
+            locale={locale}
+            yearId={selectedAcademicYearId}
+            yearActive={selectedAcademicYear?.status === "ACTIVE"}
+            exams={yearExams}
+            examSubjects={yearExamSubjects}
+            academics={academics}
+            initialExamId={initialExamId}
+          />
         </section>
       ) : null}
 
@@ -673,9 +376,9 @@ export function LearningPanel({ accessToken }: { accessToken: string }) {
               item={item}
               accessToken={accessToken}
               locale={locale}
-              busy={busy}
+              busy={false}
               readOnly={historicalReadOnly}
-              onBusy={setBusy}
+              onBusy={() => undefined}
               onError={setError}
               onNotice={setNotice}
               onReload={load}
