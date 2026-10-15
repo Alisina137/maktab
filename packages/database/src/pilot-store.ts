@@ -4,6 +4,10 @@ import {
   getAdvancedPilotReadiness, listPilotReadinessIssues,
   type AdvancedPilotReadiness, type PilotCoverageIssues, type PilotCoverageKey
 } from "./pilot-readiness-advanced.js";
+import {
+  getOperationalReadiness, listOperationalIssues,
+  type OperationalReadiness, type OperationalIssues, type OperationalReadinessKey
+} from "./pilot-readiness-operational.js";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
@@ -72,6 +76,10 @@ export interface PilotStore {
   getReadiness(schoolId: string): Promise<PilotReadiness>;
   getAdvancedReadiness(schoolId: string): Promise<AdvancedPilotReadiness>;
   listReadinessIssues(schoolId: string, metric: PilotCoverageKey, options: { limit: number; offset: number }): Promise<PilotCoverageIssues>;
+  getOperationalReadiness(schoolId: string): Promise<OperationalReadiness>;
+  listOperationalIssues(schoolId: string, metric: OperationalReadinessKey, options: {
+    limit: number; offset: number;
+  }): Promise<OperationalIssues>;
   exportCoreSchoolData(schoolId: string): Promise<Record<string, unknown> | null>;
 }
 
@@ -165,6 +173,14 @@ export function createPilotStore(db: FoundationDatabase): PilotStore {
 
     async listReadinessIssues(schoolId, metric, options) {
       return listPilotReadinessIssues(db, schoolId, metric, options);
+    },
+
+    async getOperationalReadiness(schoolId) {
+      return getOperationalReadiness(db, schoolId);
+    },
+
+    async listOperationalIssues(schoolId, metric, options) {
+      return listOperationalIssues(db, schoolId, metric, options);
     },
 
     async exportCoreSchoolData(schoolId) {
