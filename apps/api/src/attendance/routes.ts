@@ -117,13 +117,13 @@ const adminStudentDirectoryQuerySchema = z.object({
 
 const adminStudentHistoryQuerySchema = z.object({
   academicYearId: z.string().uuid(),
-  from: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
-  to: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/)
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 }).strict();
 
 const adminClassRegisterQuerySchema = z.object({
   academicYearId: z.string().uuid(),
-  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional()
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 }).strict();
 
 export function registerAttendanceRoutes(
