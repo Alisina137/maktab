@@ -7819,6 +7819,56 @@ test("Pilot Phase 3 school import history, replay protection and rejected valida
   });
   assert.deepEqual(filtered.json<{ rows: unknown[] }>().rows, []);
 
+  // Pilot Operations Data Onboarding refinement: server-side filters must work
+  // BEFORE pagination, be school-scoped and disclose no password material.
+  const completedOnly = await app.inject({
+    method: "GET", url: historyUrl + "&status=COMPLETED", headers: firstAuth
+  });
+  assert.equal(completedOnly.statusCode, 200, completedOnly.body);
+  assert.equal(completedOnly.json<{ rows: Array<{ status: string }> }>().rows.length, 1);
+  assert.equal(completedOnly.json<{ rows: Array<{ status: string }> }>().rows[0]?.status, "COMPLETED");
+  const failedOnly = await app.inject({
+    method: "GET", url: historyUrl + "&status=FAILED", headers: firstAuth
+  });
+  assert.deepEqual(failedOnly.json<{ rows: unknown[] }>().rows, []);
+
+  const createdBy = history.json<{ rows: Array<{ actorUsername: string | null }> }>()
+    .rows.find((row) => row.actorUsername)?.actorUsername;
+  assert.ok(createdBy, "Expected an actor for a school-admin import");
+  const actorOnly = await app.inject({
+    method: "GET", url: historyUrl + "&actor=" + encodeURIComponent(createdBy),
+    headers: firstAuth
+  });
+  assert.equal(actorOnly.statusCode, 200, actorOnly.body);
+  assert.equal(actorOnly.json<{ rows: unknown[] }>().rows.length, 2);
+  const mismatchedActor = await app.inject({
+    method: "GET", url: historyUrl + "&actor=nobody_matches_this_actor",
+    headers: firstAuth
+  });
+  assert.deepEqual(mismatchedActor.json<{ rows: unknown[] }>().rows, []);
+  const historicalDates = await app.inject({
+    method: "GET", url: historyUrl + "&dateFrom=2000-01-01&dateTo=2000-12-31",
+    headers: firstAuth
+  });
+  assert.deepEqual(historicalDates.json<{ rows: unknown[] }>().rows, []);
+  const inclusiveRange = await app.inject({
+    method: "GET", url: historyUrl + "&dateFrom=2000-01-01&dateTo=2099-12-31",
+    headers: firstAuth
+  });
+  assert.equal(inclusiveRange.json<{ rows: unknown[] }>().rows.length, 2);
+  assert.equal(inclusiveRange.headers["cache-control"], "no-store");
+
+  for (const invalid of [
+    "status=OTHER", "actor=x", "actor=" + "a".repeat(65),
+    "dateFrom=2026-02-30", "dateTo=2026-13-01",
+    "dateFrom=2026-10-20&dateTo=2026-10-01"
+  ]) {
+    const response = await app.inject({
+      method: "GET", url: historyUrl + "&" + invalid, headers: firstAuth
+    });
+    assert.equal(response.statusCode, 400, invalid + ": " + response.body);
+  }
+
   const otherSchool = await app.inject({ method: "GET", url: historyUrl, headers: secondAuth });
   assert.equal(otherSchool.statusCode, 200);
   assert.deepEqual(otherSchool.json<{ rows: unknown[] }>().rows, []);
