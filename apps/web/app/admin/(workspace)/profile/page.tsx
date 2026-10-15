@@ -405,7 +405,7 @@ export default function AdminProfilePage() {
 
           {!loaded && busy ? (
             <div className="admin-profile-loading">
-              <AdminLoader label={t("Loading…")} />
+              <AdminLoader label={t("Loading administrator profile data…")} />
               <AdminSkeleton rows={5} />
             </div>
           ) : (
