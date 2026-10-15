@@ -73,7 +73,7 @@ export function AdminNotificationMonitor({ accessToken, locale }: { accessToken:
         <div><button type="button" className="admin-secondary" onClick={() => setRefresh(value => value + 1)}>
           {t("Refresh delivery status")}
         </button></div>
-        {status === "loading" ? <p role="status">{t("Loading…")}</p> : null}
+        {status === "loading" ? <p role="status">{t("Loading communication data…")}</p> : null}
         {error ? <p className="admin-error" role="alert">{error}</p> : null}
         {feedback ? <p className="admin-success" role="status">{feedback}</p> : null}
         {status === "ready" && data ? (
