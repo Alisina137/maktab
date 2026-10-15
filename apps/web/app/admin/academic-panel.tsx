@@ -196,7 +196,7 @@ export function AcademicPanel({
   if (!overview) {
     return (
       <section className="admin-panel academic-section admin-loading-card">
-        <AdminLoader label={t("Loading Phase 3 data…")} />
+        <AdminLoader label={t("Loading academics data…")} />
         <AdminSkeleton rows={5} />
         {loadError ? (
           <>

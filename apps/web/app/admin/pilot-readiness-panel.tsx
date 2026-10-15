@@ -419,7 +419,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   if ((coreMissing || auditMissing) && !error) {
     return (
       <section className="admin-panel pilot-section admin-loading-card">
-        <AdminLoader label={t("Loading…")} />
+        <AdminLoader label={t("Loading pilot operations data…")} />
         <AdminSkeleton rows={5} />
       </section>
     );

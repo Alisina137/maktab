@@ -75,6 +75,25 @@ const navItems = [
   { href: "/admin/academics", label: "Academics" }
 ] as const;
 
+// Loading states describe the current workspace, not implementation phases.
+const adminLoadingTextByRoute: Record<string, string> = {
+  "/admin/accounts": "Loading accounts data…",
+  "/admin/pilot": "Loading pilot operations data…",
+  "/admin/communication": "Loading communication & fees data…",
+  "/admin/learning": "Loading learning data…",
+  "/admin/attendance": "Loading attendance data…",
+  "/admin/families": "Loading families data…",
+  "/admin/academics": "Loading academics data…",
+  "/admin/profile": "Loading administrator profile data…"
+};
+
+function loadingTextForAdminRoute(pathname: string): string {
+  const section = Object.keys(adminLoadingTextByRoute).find(
+    route => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  return section ? adminLoadingTextByRoute[section]! : "Loading accounts data…";
+}
+
 const yearScopedRoutes = new Set([
   "/admin/academics",
   "/admin/families",
@@ -501,7 +520,7 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
     return (
       <main className="admin-shell admin-shell-premium admin-route-loading" dir={adminDirection(locale)}>
         <section className="admin-panel admin-route-loading-panel">
-          <AdminLoader label={t("Loading…")} />
+          <AdminLoader label={t(loadingTextForAdminRoute(pathname))} />
         </section>
       </main>
     );

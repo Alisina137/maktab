@@ -139,7 +139,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   if ((!academics || !report) && !error) {
     return (
       <section className="admin-panel attendance-section admin-loading-card">
-        <AdminLoader label={t("Loading…")} />
+        <AdminLoader label={t("Loading attendance data…")} />
         <AdminSkeleton rows={5} />
       </section>
     );

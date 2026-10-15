@@ -431,7 +431,7 @@ export default function AccountsPage() {
   if (initialLoading || directoryToken !== sessionToken) {
     return (
       <section className="admin-panel admin-loading-card">
-        <AdminLoader label={t("Loading…")} />
+        <AdminLoader label={t("Loading accounts data…")} />
         <AdminSkeleton rows={5} />
       </section>
     );
