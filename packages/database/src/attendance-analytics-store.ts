@@ -97,8 +97,14 @@ export function createAttendanceAnalyticsStore(db:FoundationDatabase):Attendance
   }
   function groupedStudents(schoolId:string,filters:AttendanceAnalyticsFilters){
     return db.select({
-      studentId:students.id,studentName:students.fullName,studentCode:students.studentCode,
-      classId:classSections.id,className:classSections.name,classCode:classSections.code,
+      // All physical columns in a derived aggregate need distinct aliases.
+      // "students.id" and "class_sections.id" otherwise collide as "id".
+      studentId:sql<string>`${students.id}`.as("student_id"),
+      studentName:sql<string>`${students.fullName}`.as("student_name"),
+      studentCode:sql<string>`${students.studentCode}`.as("student_code"),
+      classId:sql<string>`${classSections.id}`.as("class_id"),
+      className:sql<string>`${classSections.name}`.as("class_name"),
+      classCode:sql<string>`${classSections.code}`.as("class_code"),
       ...counts
     }).from(studentAttendances)
       .innerJoin(dailyAttendances,and(

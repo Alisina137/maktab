@@ -348,10 +348,7 @@ export function registerAttendanceRoutes(
       reply.header("cache-control","no-store");
       return await attendance.getAdminAttendanceAnalyticsStudents(
         context.user.schoolId,filters,limit,offset);
-    }catch(error){
-      console.error("[phase6-debug-students]",error);
-      return sendAttendanceError(reply,error);
-    }
+    }catch(error){return sendAttendanceError(reply,error);}
   });
 
   app.get("/v1/admin/attendance/analytics/export",async(request,reply)=>{
