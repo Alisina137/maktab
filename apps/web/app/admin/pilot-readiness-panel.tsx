@@ -432,13 +432,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const auditMissing = section === "audit" && !auditLoaded;
 
   // Audit-only render does not require the two core responses.
-  const fallbackSubscription: Subscription = { planCode: "", status: "TRIAL", billingCycle: "ANNUAL",
-    priceAfn: 0, setupFeeAfn: 0, startsOn: null, expiresOn: null, graceEndsOn: null };
   const fallbackReadiness: Readiness = { ready: false,
     counts: { admins: 0, teachers: 0, parents: 0, students: 0,
       activeAcademicYears: 0, classes: 0, subjects: 0, teacherAssignments: 0 },
     checks: [] };
-  const currentSubscription = subscription ?? fallbackSubscription;
   const currentReadiness = readiness ?? fallbackReadiness;
   const effectiveSetupReady = Boolean(advanced?.ready);
   const writeBlocked =
@@ -692,7 +689,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                   <span className="pilot-check-icon" aria-hidden="true">{check.passed ? "✓" : "!"}</span>
                   <div className="pilot-check-copy">
                     <strong>{pilotCheckLabel(check.key, t)}</strong>
-                    <p>{pilotCheckDetail(check.key, currentReadiness, currentSubscription, locale, t)}</p>
+                    <p>{pilotCheckDetail(check.key, currentReadiness, subscription, locale, t)}</p>
                     {!check.passed && CHECK_DESTINATIONS[check.key] ? (
                       <Link className="pilot-inline-link" href={CHECK_DESTINATIONS[check.key] ?? "/admin/pilot/readiness"}>{t("Open section")}</Link>
                     ) : null}
@@ -1095,7 +1092,7 @@ function pilotCheckLabel(key: string, t: (english: string) => string) {
 function pilotCheckDetail(
   key: string,
   readiness: Readiness,
-  subscription: Subscription,
+  subscription: Subscription | null,
   locale: "fa-AF" | "ps-AF" | "en",
   t: (english: string) => string
 ) {
@@ -1103,7 +1100,9 @@ function pilotCheckDetail(
     case "school-active":
       return t("School is active.");
     case "subscription":
-      return adminFormat(locale, "Subscription status: {status}.", { status: t(subscription.status) });
+      return subscription
+        ? adminFormat(locale, "Subscription status: {status}.", { status: t(subscription.status) })
+        : t("Subscription data unavailable.");
     case "admin":
       return adminFormat(locale, "{count} school administrator account(s).", { count: readiness.counts.admins });
     case "academic-year":
