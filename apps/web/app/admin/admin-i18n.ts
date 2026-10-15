@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Enter at least two characters to search by administrator.": "برای جستجوی مدیر حداقل دو حرف وارد کنید.",
+  "Start date cannot be after end date.": "تاریخ شروع نباید پس از تاریخ پایان باشد.",
   "Import outcome": "نتیجه وارد کردن",
   "Search by username": "جستجو بر اساس نام کاربری",
   "Enter at least two characters for an actor and a valid chronological date range.": "برای نام مدیر حداقل دو حرف و یک بازه زمانی معتبر وارد کنید.",
@@ -2103,6 +2105,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Enter at least two characters to search by administrator.": "د مدیر د لټون لپاره لږ تر لږه دوه توري ولیکئ.",
+  "Start date cannot be after end date.": "د پیل نېټه د پای نېټې څخه وروسته نه شي کېدای.",
   "Import outcome": "د واردولو پایله",
   "Search by username": "د کارن نوم له مخې لټون",
   "Enter at least two characters for an actor and a valid chronological date range.": "د مدیر لپاره لږ تر لږه دوه توري او سمې پرله پسې نېټې ولیکئ.",
