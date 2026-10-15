@@ -506,6 +506,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           <button className="admin-secondary" type="button" onClick={() => void load()}>{t("Retry")}</button>
         </div>
       ) : null}
+      {section === "overview" ? (
+        <PilotOperationalReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} compact />
+      ) : null}
       {section === "overview" && advanced ? (
         <div className="pilot-coverage-mini" aria-label={t("Coverage results")}>
           <span className="pilot-badge pilot-badge-danger">
