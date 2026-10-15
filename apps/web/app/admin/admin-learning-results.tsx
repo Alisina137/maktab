@@ -53,12 +53,14 @@ export function AdminLearningResults({
   const [filters, setFilters] = useState<Filters>({ search: "", examId: "", classId: "", subjectId: "" });
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<ResultPage | null>(null);
+  const [loadedRequestKey, setLoadedRequestKey] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loadSequence = useRef(0);
+  const requestKey = JSON.stringify([accessToken, yearId, filters, offset, revision, locale]);
   const uniqueClasses = useMemo(() => academics.classes
     .filter(item => item.academicYearId === yearId)
     .sort((a, b) => a.name.localeCompare(b.name)), [academics.classes, yearId]);
@@ -96,7 +98,7 @@ export function AdminLearningResults({
     void request<ResultPage>(accessToken, "/v1/admin/learning/published-results?" + params.toString(),
       { signal: controller.signal })
       .then(data => { if (!controller.signal.aborted && seq === loadSequence.current) {
-        setPage(data); setStatus("ready");
+        setPage(data); setLoadedRequestKey(requestKey); setStatus("ready");
       } })
       .catch(cause => { if (!controller.signal.aborted && seq === loadSequence.current) {
         setError(adminErrorText(locale, cause, "Could not load published results."));
@@ -163,7 +165,7 @@ export function AdminLearningResults({
       {status === "error" ? <button type="button" className="admin-secondary" onClick={refresh}>
         {t("Retry")}
       </button> : null}
-      {status === "ready" && page ? <>
+      {status === "ready" && page && loadedRequestKey === requestKey ? <>
         <p className="admin-copy" role="status">{adminFormat(locale, "{count} published grade(s) found", {
           count: new Intl.NumberFormat(locale).format(page.total)
         })}</p>
