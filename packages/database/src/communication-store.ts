@@ -76,6 +76,17 @@ export interface AdminStudentFeeBalance {
   invoices: FeeInvoiceView[];
 }
 
+export interface AdminNotificationDeliveryOverview {
+  counts: { queued: number; providerAccepted: number; failed: number; cancelled: number; read: number; unread: number };
+  recent: Array<{
+    id: string; title: string; type: string; createdAt: Date; deliveryStatus: Notification["deliveryStatus"];
+    readAt: Date | null; providerAcceptedDevices: number; failedDevices: number;
+    lastAttemptAt: Date | null;
+  }>;
+  scheduler: { lastAttemptAt: Date | null; lastSuccessAt: Date | null; lastError: string | null };
+  schoolTimezone: string;
+}
+
 export interface CommunicationOverview {
   announcements: Announcement[];
   invoices: FeeInvoiceView[];
@@ -127,6 +138,8 @@ export interface CommunicationStore {
   getParentFees(schoolId: string, parentUserId: string, studentId: string): Promise<FeeInvoiceView[]>;
   getStudentFees(schoolId: string, studentUserId: string): Promise<FeeInvoiceView[]>;
   updateFeeReminderDays(schoolId: string, days: number[]): Promise<number[]>;
+  getAdminNotificationDelivery(schoolId: string): Promise<AdminNotificationDeliveryOverview>;
+  retryAdminNotification(schoolId: string, notificationId: string): Promise<boolean>;
   runScheduledNotifications(now?: Date): Promise<{ announcementNotifications: number; feeReminders: number; overdueInvoices: number }>;
   registerDevice(schoolId: string, userId: string, pushToken: string, platform: DevicePlatform): Promise<Device>;
   deactivateDevice(schoolId: string, userId: string, pushToken: string): Promise<void>;
@@ -385,6 +398,10 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       eq(feeInvoices.studentId, studentId)
     )).limit(1);
     if (!invoice || invoice.status === "CANCELLED" || invoice.status === "DRAFT") return false;
+    const today = await schoolDateAt(row.schoolId);
+    // A due reminder must not be sent after it is overdue, or an overdue alert before the due date.
+    if (row.type === "FEE_DUE" && invoice.dueDate < today) return false;
+    if (row.type === "FEE_OVERDUE" && invoice.dueDate >= today) return false;
     const [student] = await db.select().from(students).where(and(
       eq(students.schoolId, row.schoolId), eq(students.id, studentId),
       eq(students.parentUserId, row.userId), eq(students.status, "ACTIVE")
@@ -975,6 +992,103 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return this.getParentFees(schoolId, student.parentUserId, student.id);
     },
 
+    async getAdminNotificationDelivery(schoolId) {
+      const [config] = await db.select().from(communicationSettings)
+        .where(eq(communicationSettings.schoolId, schoolId)).limit(1);
+      const [settings] = await db.select({ timezone: schoolSettings.timezone }).from(schoolSettings)
+        .where(eq(schoolSettings.schoolId, schoolId)).limit(1);
+      if (!settings) throw new CommunicationNotFoundError("School settings not found.");
+      const groups = await db.select({
+        status: notifications.deliveryStatus,
+        quantity: sql<number>`count(*)::integer`
+      }).from(notifications).where(eq(notifications.schoolId, schoolId))
+        .groupBy(notifications.deliveryStatus);
+      const counts = { queued: 0, providerAccepted: 0, failed: 0, cancelled: 0, read: 0, unread: 0 };
+      for (const row of groups) {
+        if (row.status === "PENDING") counts.queued = row.quantity;
+        if (row.status === "SENT") counts.providerAccepted = row.quantity;
+        if (row.status === "FAILED") counts.failed = row.quantity;
+        if (row.status === "CANCELLED") counts.cancelled = row.quantity;
+      }
+      const [reads] = await db.select({
+        read: sql<number>`count(*) FILTER (WHERE ${notifications.readAt} IS NOT NULL)::integer`,
+        unread: sql<number>`count(*) FILTER (WHERE ${notifications.readAt} IS NULL)::integer`
+      }).from(notifications).where(and(
+        eq(notifications.schoolId, schoolId), ne(notifications.deliveryStatus, "CANCELLED")
+      ));
+      counts.read = reads?.read ?? 0;
+      counts.unread = reads?.unread ?? 0;
+      const rows = await db.select().from(notifications)
+        .where(eq(notifications.schoolId, schoolId))
+        .orderBy(desc(notifications.createdAt), desc(notifications.id)).limit(20);
+      const recent = await Promise.all(rows.map(async row => {
+        const deliveryRows = await db.select({
+          status: notificationPushDeliveries.status,
+          lastAttemptAt: notificationPushDeliveries.lastAttemptAt
+        }).from(notificationPushDeliveries).where(and(
+          eq(notificationPushDeliveries.schoolId, schoolId),
+          eq(notificationPushDeliveries.notificationId, row.id)
+        ));
+        const lastAttemptAt = deliveryRows.reduce<Date | null>((latest, delivery) =>
+          delivery.lastAttemptAt && (!latest || delivery.lastAttemptAt > latest)
+            ? delivery.lastAttemptAt : latest, null);
+        return {
+          id: row.id, title: row.title, type: row.type,
+          createdAt: row.createdAt, deliveryStatus: row.deliveryStatus, readAt: row.readAt,
+          providerAcceptedDevices: deliveryRows.filter(item => item.status === "SENT").length,
+          failedDevices: deliveryRows.filter(item => item.status === "FAILED").length,
+          lastAttemptAt
+        };
+      }));
+      return {
+        counts, recent, schoolTimezone: settings.timezone,
+        scheduler: {
+          lastAttemptAt: config?.schedulerLastAttemptAt ?? null,
+          lastSuccessAt: config?.schedulerLastSuccessAt ?? null,
+          lastError: config?.schedulerLastError ?? null
+        }
+      };
+    },
+
+    async retryAdminNotification(schoolId, notificationId) {
+      const [row] = await db.select().from(notifications).where(and(
+        eq(notifications.schoolId, schoolId), eq(notifications.id, notificationId)
+      )).limit(1);
+      if (!row) throw new CommunicationNotFoundError("Notification not found.");
+      if (row.deliveryStatus !== "FAILED") {
+        throw new CommunicationConflictError("Only failed notifications can be requeued. Provider-accepted messages must not be resent.");
+      }
+      if (!(await feeAlertIsVisible(row))) {
+        throw new CommunicationConflictError("This fee alert is no longer eligible for delivery.");
+      }
+      if (row.type === "ANNOUNCEMENT") {
+        const announcementId = row.metadata.announcementId;
+        const [announcement] = typeof announcementId === "string"
+          ? await db.select().from(announcements).where(and(
+              eq(announcements.schoolId, schoolId), eq(announcements.id, announcementId),
+              isNull(announcements.archivedAt), lte(announcements.publishAt, new Date())
+            )).limit(1) : [];
+        if (!announcement || !(await announcementRecipients(announcement)).includes(row.userId)) {
+          throw new CommunicationConflictError("The announcement recipient is no longer eligible.");
+        }
+      }
+      const [recipient] = await db.select().from(users).where(and(
+        eq(users.schoolId, schoolId), eq(users.id, row.userId),
+        ne(users.status, "SUSPENDED"), ne(users.status, "ARCHIVED")
+      )).limit(1);
+      if (!recipient || (recipient.role === "STUDENT" &&
+          !(await this.hasActiveStudentEnrollment(schoolId, row.userId)))) {
+        throw new CommunicationConflictError("The recipient account is no longer eligible.");
+      }
+      const [updated] = await db.update(notifications).set({
+        deliveryStatus: "PENDING", updatedAt: new Date()
+      }).where(and(eq(notifications.schoolId, schoolId), eq(notifications.id, notificationId),
+        eq(notifications.deliveryStatus, "FAILED"))).returning({ id: notifications.id });
+      if (!updated) throw new CommunicationConflictError("Notification state changed; refresh before retrying.");
+      // The scheduler retries FAILED device rows; accepted device rows remain SENT and are never reset.
+      return true;
+    },
+
     async updateFeeReminderDays(schoolId, days) {
       const clean = Array.from(new Set(days)).sort((a,b) => b-a);
       const [updated] = await db
@@ -995,6 +1109,7 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       let overdueInvoices = 0;
       const schoolRows = await db.select().from(schoolSettings);
       for (const settings of schoolRows) {
+        try {
         const [communicationConfig] = await db
           .select()
           .from(communicationSettings)
@@ -1042,6 +1157,26 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
               metadata: { invoiceId: invoice.id, studentId: student.id, dueDate: invoice.dueDate, outstanding }
             })) feeReminders += 1;
           }
+        }
+        // This is a materialization heartbeat. Provider acceptance/read are tracked separately.
+        await db.insert(communicationSettings).values({
+          schoolId: settings.schoolId, schedulerLastAttemptAt: now,
+          schedulerLastSuccessAt: now, schedulerLastError: null
+        }).onConflictDoUpdate({
+          target: communicationSettings.schoolId,
+          set: { schedulerLastAttemptAt: now, schedulerLastSuccessAt: now,
+            schedulerLastError: null, updatedAt: new Date() }
+        });
+        } catch {
+          await db.insert(communicationSettings).values({
+            schoolId: settings.schoolId, schedulerLastAttemptAt: now,
+            schedulerLastError: "School notification materialization failed."
+          }).onConflictDoUpdate({
+            target: communicationSettings.schoolId,
+            set: { schedulerLastAttemptAt: now,
+              schedulerLastError: "School notification materialization failed.", updatedAt: new Date() }
+          });
+          throw new Error("Communication notification materialization failed.");
         }
       }
       return { announcementNotifications, feeReminders, overdueInvoices };

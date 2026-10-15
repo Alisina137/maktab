@@ -798,6 +798,9 @@ export const communicationSettings = pgTable(
       .primaryKey()
       .references(() => schools.id, { onDelete: "cascade" }),
     feeReminderDays: jsonb("fee_reminder_days").$type<number[]>().notNull().default([7, 1]),
+    schedulerLastAttemptAt: timestamp("scheduler_last_attempt_at", { withTimezone: true }),
+    schedulerLastSuccessAt: timestamp("scheduler_last_success_at", { withTimezone: true }),
+    schedulerLastError: varchar("scheduler_last_error", { length: 240 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   }

@@ -19,7 +19,7 @@ import {
   type CommunicationStore,
   type PushProvider
 } from "@maktablink/database";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
 
@@ -450,6 +450,35 @@ export function registerCommunicationRoutes(
           context.user.schoolId, context.user.id, request.params.paymentId, input
         );
         return reply.code(201).send(invoice);
+      } catch (error) {
+        return sendCommunicationError(reply, error);
+      }
+    }
+  );
+
+  app.get("/v1/admin/notifications/delivery", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      return await communication.getAdminNotificationDelivery(context.user.schoolId);
+    } catch (error) {
+      return sendCommunicationError(reply, error);
+    }
+  });
+
+  app.post<{ Params: { notificationId: string } }>(
+    "/v1/admin/notifications/:notificationId/retry", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const notificationId = z.string().uuid().parse(request.params.notificationId);
+        await communication.retryAdminNotification(context.user.schoolId, notificationId);
+        await accounts.writeAudit({
+          schoolId: context.user.schoolId, actorUserId: context.user.id,
+          action: "notification.retry_requested", entityType: "notification",
+          entityId: notificationId, metadata: { mode: "scheduler_queue" }
+        });
+        return reply.code(202).send({ queued: true });
       } catch (error) {
         return sendCommunicationError(reply, error);
       }
