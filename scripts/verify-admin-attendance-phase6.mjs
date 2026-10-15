@@ -39,7 +39,7 @@ for(const x of ["new AbortController()","controller.signal.aborted",
   "Authorization:","URL.createObjectURL","URL.revokeObjectURL",
   "role=\"tablist\"","role=\"alert\"","aria-label",
   "periodValid(draft)","Select a valid report range of at most 62 days.",
-  "No submitted registers in the selected period.","rate===null",
+  "No submitted registers in the selected period.","value===null",
   "Submitted registers","formatAdminHijriDate"])
   assert.ok(ui.includes(x),"Reports locale, safety or UX missing: "+x);
 for(const x of [".attendance-analytics-metrics",".attendance-analytics-bar",
