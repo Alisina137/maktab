@@ -48,3 +48,7 @@ For any gate above still NOT_RUN, FAILED or unverified, the phase-specific verdi
 ### Known residual risk
 
 A push provider might accept a message and then time out before the API can store the acknowledgment; no client can safely guarantee exactly-once provider acceptance without provider reconciliation and idempotency support. A worker crash leaves a bounded lease that can be picked up after 30 minutes; it does not prove the previous provider handoff was absent. A live lease prevents ordinary simultaneous workers from sending twice, but this is not an end-to-end exactly-once guarantee.
+
+## Machine-readable unverified matrix
+
+Run `node scripts/phase7-communication-report.mjs --output <new-file.json>` to create a non-overwriting exact-SHA report of all 15 gates as NOT_RUN and PRODUCTION NO-GO. CI attaches this report as an artifact on each push. The JSON deliberately cannot issue production GO and must not replace independent evidence review.
