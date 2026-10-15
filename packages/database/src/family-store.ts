@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lt } from "drizzle-orm";
 import type {
   CreateParentAccountInput,
   CreateStudentInput,
@@ -90,7 +90,11 @@ export type ImportBatchPage = { rows: ImportBatchPublic[]; offset: number; limit
 export interface FamilyStore {
   getOverview(schoolId: string): Promise<FamilyOverview>;
   getImportBatch(schoolId: string, key: string): Promise<FamilyImportBatch | null>;
-  listImportBatches(schoolId: string, options: { limit: number; offset: number; entityType?: ImportBatchMeta["entityType"] }): Promise<ImportBatchPage>;
+  listImportBatches(schoolId: string, options: {
+    limit: number; offset: number; entityType?: ImportBatchMeta["entityType"];
+    status?: "COMPLETED" | "REJECTED" | "FAILED";
+    dateFrom?: Date; dateToExclusive?: Date; actor?: string;
+  }): Promise<ImportBatchPage>;
   recordImportAttempt(schoolId: string, actorUserId: string, input: {
     entityType: ImportBatchMeta["entityType"]; rowCount: number;
     rejectedCount: number; status: "REJECTED" | "FAILED"; reason: string;
@@ -289,6 +293,15 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     async listImportBatches(schoolId, options) {
       const conditions = [eq(familyImportBatches.schoolId, schoolId)];
       if (options.entityType) conditions.push(eq(familyImportBatches.entityType, options.entityType));
+      if (options.status) conditions.push(eq(familyImportBatches.status, options.status));
+      if (options.dateFrom) conditions.push(gte(familyImportBatches.createdAt, options.dateFrom));
+      if (options.dateToExclusive) conditions.push(lt(familyImportBatches.createdAt, options.dateToExclusive));
+      if (options.actor) {
+        // Escape LIKE wildcards to make the search literal, not an arbitrary pattern.
+        const escaped = options.actor.replace(/[\\%_]/g, "\\      if (options.entityType) conditions.push(eq(familyImportBatches.entityType, options.entityType));
+      const rows = await db.select({");
+        conditions.push(ilike(users.username, `%${escaped}%`));
+      }
       const rows = await db.select({
         id: familyImportBatches.id, entityType: familyImportBatches.entityType,
         rowCount: familyImportBatches.rowCount,
