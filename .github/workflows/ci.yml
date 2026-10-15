@@ -103,6 +103,9 @@ jobs:
       - name: Admin Attendance Phase 5 follow-up workflow and tenant safety
         run: pnpm verify:admin-attendance:phase5
 
+      - name: Admin Attendance Phase 6 analytics, school boundary and safe CSV
+        run: pnpm verify:admin-attendance:phase6
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -242,6 +245,7 @@ jobs:
           pnpm verify:admin-attendance:phase3
           pnpm verify:admin-attendance:phase4
           pnpm verify:admin-attendance:phase5
+          pnpm verify:admin-attendance:phase6
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3

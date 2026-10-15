@@ -3253,7 +3253,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   for(const kind of ["classes","days","students"]) {
     const csvResult=await app.inject({method:"GET",url:analyticsExportUrl+"&kind="+kind,headers:admin});
     assert.equal(csvResult.statusCode,200,csvResult.body);
-    assert.match(csvResult.headers["content-type"] as string,/text\\/csv/);
+    assert.ok(String(csvResult.headers["content-type"]).includes("text/csv"));
     assert.match(csvResult.headers["content-disposition"] as string,/attachment/);
     assert.ok(csvResult.body.startsWith("\uFEFF"));
     assert.ok(csvResult.body.includes('"1"'));
