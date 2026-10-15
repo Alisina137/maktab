@@ -3,8 +3,9 @@ import type { FeeFinancialReport } from "@maktablink/database";
 /** Neutralize spreadsheet formula injection even with leading whitespace/newlines. */
 export function csvCell(value: string | number | null | undefined): string {
   const original = String(value ?? "");
-  const sanitized = /^[\\s\\uFEFF\\u200B]*[=+\\-@]/u.test(original) || /^[\\s\\uFEFF\\u200B]*[\\t\\r]/u.test(original)
-    ? "'" + original : original;
+  const leading = original.trimStart();
+  const dangerous = ["=", "+", "-", "@", "\t", "\r"].some(prefix => leading.startsWith(prefix));
+  const sanitized = dangerous ? "'" + original : original;
   return '"' + sanitized.replaceAll('"', '""') + '"';
 }
 
