@@ -570,6 +570,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       setError(t("Enter a reversal reason first."));
       return;
     }
+    if (!window.confirm(adminFormat(locale,
+      "Reverse this recorded payment? Reason: {reason}. The original payment remains in the ledger and the balance will be recalculated.", {
+        reason
+      }))) return;
     setBusy(true);
     setError("");
     setNotice("");
