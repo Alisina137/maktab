@@ -49,10 +49,10 @@ function totals(row:Four):AttendanceAnalyticsCounts {
     rate:attendanceAnalyticsRate(present,late,absent)};
 }
 const counts = {
-  present: sql<number>`cast(sum(case when ${studentAttendances.status} = 'PRESENT' then 1 else 0 end) as integer)`,
-  absent: sql<number>`cast(sum(case when ${studentAttendances.status} = 'ABSENT' then 1 else 0 end) as integer)`,
-  late: sql<number>`cast(sum(case when ${studentAttendances.status} = 'LATE' then 1 else 0 end) as integer)`,
-  excused: sql<number>`cast(sum(case when ${studentAttendances.status} = 'EXCUSED' then 1 else 0 end) as integer)`
+  present: sql<number>`cast(sum(case when ${studentAttendances.status} = 'PRESENT' then 1 else 0 end) as integer)`.as("present"),
+  absent: sql<number>`cast(sum(case when ${studentAttendances.status} = 'ABSENT' then 1 else 0 end) as integer)`.as("absent"),
+  late: sql<number>`cast(sum(case when ${studentAttendances.status} = 'LATE' then 1 else 0 end) as integer)`.as("late"),
+  excused: sql<number>`cast(sum(case when ${studentAttendances.status} = 'EXCUSED' then 1 else 0 end) as integer)`.as("excused")
 };
 export function createAttendanceAnalyticsStore(db:FoundationDatabase):AttendanceAnalyticsStore {
   async function validateScope(schoolId:string, filters:AttendanceAnalyticsFilters){
