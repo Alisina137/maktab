@@ -3367,7 +3367,7 @@ test("Negaran submits daily attendance once, duplicate retry is idempotent, and 
   const auditRows = await client.query<{
     action: string; actor_user_id: string; entity_id: string
   }>(
-    "SELECT action, actor_user_id, entity_id FROM audit_logs WHERE school_id = $1 AND action LIKE 'attendance.%' ORDER BY created_at, id",
+    "SELECT action, actor_user_id, entity_id FROM audit_logs WHERE school_id = $1 AND action IN ('attendance.submitted','attendance.corrected_by_negaran','attendance.corrected_by_admin') ORDER BY created_at, id",
     [schoolId]
   );
   assert.equal(auditRows.rows.filter((item) => item.action === "attendance.submitted").length, 1);
