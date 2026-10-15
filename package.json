@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:admin-communication:phase1 && pnpm verify:admin-communication:phase2 && pnpm verify:admin-communication:phase3 && pnpm verify:admin-communication:phase4 && pnpm verify:admin-communication:phase5 && pnpm verify:admin-communication:phase6 && pnpm verify:admin-communication:phase7 && pnpm verify:admin-fees:layout && pnpm verify:admin-headings && pnpm verify:admin-loading && pnpm verify:admin-learning:phase1 && pnpm verify:admin-learning:phase2 && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:parent:phase7 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm verify:release && pnpm verify:accounts && pnpm verify:admin-communication:phase1 && pnpm verify:admin-communication:phase2 && pnpm verify:admin-communication:phase3 && pnpm verify:admin-communication:phase4 && pnpm verify:admin-communication:phase5 && pnpm verify:admin-communication:phase6 && pnpm verify:admin-communication:phase7 && pnpm verify:admin-fees:layout && pnpm verify:admin-headings && pnpm verify:admin-loading && pnpm verify:admin-learning:phase1 && pnpm verify:admin-learning:phase2 && pnpm verify:admin-learning:phase3 && pnpm verify:pilot && pnpm verify:pilot:phase2 && pnpm verify:pilot:phase3 && pnpm verify:pilot:phase4 && pnpm verify:pilot:phase5 && pnpm verify:pilot:phase6 && pnpm verify:pilot:phase7 && pnpm verify:parent-localization && pnpm verify:parent-resilience && pnpm verify:parent:phase1 && pnpm verify:parent:phase2 && pnpm verify:parent:phase3 && pnpm verify:parent:phase4 && pnpm verify:parent:phase5 && pnpm verify:parent:phase6 && pnpm verify:parent:phase7 && pnpm verify:dev-api && pnpm typecheck && pnpm test && pnpm build",
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
@@ -51,7 +51,8 @@
     "verify:admin-headings": "node scripts/verify-admin-heading-scale.mjs",
     "verify:admin-loading": "node scripts/verify-admin-loading-labels.mjs",
     "verify:admin-learning:phase1": "node scripts/verify-admin-learning-phase1.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Admin Learning Phase 1\" src/app.test.ts",
-    "verify:admin-learning:phase2": "node scripts/verify-admin-learning-phase2.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"draft grades are hidden until admin publishes\" src/app.test.ts"
+    "verify:admin-learning:phase2": "node scripts/verify-admin-learning-phase2.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"draft grades are hidden until admin publishes\" src/app.test.ts",
+    "verify:admin-learning:phase3": "node scripts/verify-admin-learning-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"draft grades are hidden until admin publishes\" src/app.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
