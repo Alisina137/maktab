@@ -67,6 +67,9 @@ jobs:
       - name: Admin localized section-specific loading states
         run: pnpm verify:admin-loading
 
+      - name: Admin Learning Phase 1 dashboard, responsive tabs and school scope
+        run: pnpm verify:admin-learning:phase1
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -194,6 +197,7 @@ jobs:
           pnpm verify:admin-fees:layout
           pnpm verify:admin-headings
           pnpm verify:admin-loading
+          pnpm verify:admin-learning:phase1
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
