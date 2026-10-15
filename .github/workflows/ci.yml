@@ -82,6 +82,9 @@ jobs:
       - name: Admin Learning Phase 5 homework monitoring and review privacy
         run: pnpm verify:admin-learning:phase5
 
+      - name: Admin Learning Phase 6 curriculum and teaching progress
+        run: pnpm verify:admin-learning:phase6
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -214,6 +217,7 @@ jobs:
           pnpm verify:admin-learning:phase3
           pnpm verify:admin-learning:phase4
           pnpm verify:admin-learning:phase5
+          pnpm verify:admin-learning:phase6
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
