@@ -526,6 +526,20 @@ export const adminFeeInvoiceQuerySchema = z.object({
 export type AdminFeeInvoiceQuery = z.infer<typeof adminFeeInvoiceQuerySchema>;
 
 
+/** School-admin payment ledger filters. Date bounds are school-local calendar days. */
+export const adminFeePaymentsQuerySchema = z.object({
+  studentId: z.string().uuid().optional(),
+  recordedBy: z.string().uuid().optional(),
+  method: z.enum(["ALL", "CASH", "BANK_TRANSFER", "MOBILE_MONEY", "OTHER"]).default("ALL"),
+  kind: z.enum(["ALL", "PAYMENT", "REVERSAL"]).default("ALL"),
+  from: isoDateSchema.optional(),
+  to: isoDateSchema.optional(),
+  page: z.coerce.number().int().min(1).max(100000).default(1)
+}).refine(value => !value.from || !value.to || value.from <= value.to, {
+  message: "Payment date range must be in chronological order.", path: ["to"]
+});
+export type AdminFeePaymentsQuery = z.infer<typeof adminFeePaymentsQuerySchema>;
+
 export const recordFeePaymentSchema = z.object({
   amount: z.number().int().min(1).max(100000000),
   method: z.string().trim().min(2).max(50),
