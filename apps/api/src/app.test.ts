@@ -1246,6 +1246,49 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     "&focus=NO_CURRICULUM",headers:auth})).json<{total:number}>().total,1);
   assert.equal((await app.inject({method:"GET",url:chaptersUrl,headers:auth})).json<{total:number}>().total,0);
 
+  // Admin Learning Phase 7: reports, year-scoped audit and export authority.
+  const reportPath = "/v1/admin/learning/reports?academicYearId=" + yearId;
+  const auditPath = "/v1/admin/learning/audit?academicYearId=" + yearId;
+  const otherReportAdmin = { authorization: `Bearer ${await bootstrapAdmin(app,
+    await provisionSchool(app, "LEARN-REPORTS-P7-OTHER"))}` };
+  for (const url of [reportPath, auditPath,
+    "/v1/admin/learning/reports/export?academicYearId="+yearId,
+    "/v1/admin/learning/audit/export?academicYearId="+yearId]) {
+    assert.equal((await app.inject({method:"GET",url})).statusCode,401);
+    assert.equal((await app.inject({method:"GET",url,headers:teacherHeaders})).statusCode,403);
+    assert.equal((await app.inject({method:"GET",url,headers:otherReportAdmin})).statusCode,404);
+  }
+  for (const suffix of ["&limit=0","&limit=51","&offset=-1","&classId=invalid"]) {
+    assert.equal((await app.inject({method:"GET",url:reportPath+suffix,headers:auth})).statusCode,400);
+  }
+  for (const suffix of ["&category=WRONG","&from=2026-02-30",
+    "&from=2026-11-15&to=2026-11-14","&limit=99","&offset=-1",
+    "&from=2025-01-01&to=2027-01-01"]) {
+    assert.equal((await app.inject({method:"GET",url:auditPath+suffix,headers:auth})).statusCode,400);
+  }
+  const baselineReport = await app.inject({method:"GET",url:reportPath,headers:auth});
+  assert.equal(baselineReport.statusCode,200,baselineReport.body);
+  const baseReport = baselineReport.json<{total:number;coverage:string;summary:{
+    assignments:number;publishedGrades:number;curriculumUnits:number;
+  };rows:Array<{className:string;subjectName:string}>}>();
+  assert.equal(baseReport.total,1);
+  assert.equal(baseReport.summary.assignments,1);
+  assert.equal(baseReport.summary.publishedGrades,0);
+  assert.equal(baseReport.summary.curriculumUnits,0);
+  assert.equal(baseReport.coverage,"ASSIGNED_CLASS_SUBJECTS_ONLY");
+  for (const suffix of ["&classId="+classId,"&subjectId="+subjectId,
+    "&search=Academic%20Teacher","&limit=1&offset=0"]) {
+    assert.equal((await app.inject({method:"GET",url:reportPath+suffix,headers:auth}))
+      .json<{total:number}>().total,1);
+  }
+  assert.equal((await app.inject({method:"GET",url:reportPath+"&search=Nobody",headers:auth}))
+    .json<{total:number}>().total,0);
+  assert.equal((await app.inject({method:"GET",url:reportPath+"&limit=1&offset=1",headers:auth}))
+    .json<{rows:unknown[]}>().rows.length,0);
+  const emptyYearAudit = await app.inject({method:"GET",url:auditPath,headers:auth});
+  assert.equal(emptyYearAudit.statusCode,200,emptyYearAudit.body);
+  assert.equal(emptyYearAudit.json<{total:number}>().total,0);
+
   // Phase 5: only school administration defines official curriculum units.
   const curriculumUnitCreate = await app.inject({
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
@@ -1273,6 +1316,44 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
     "&search=Nobody",headers:auth})).json<{total:number}>().total,0);
   assert.equal((await app.inject({method:"GET",url:progressUrl+
     "&limit=1&offset=1",headers:auth})).json<{rows:unknown[];total:number}>().rows.length,0);
+
+  const curriculumAudit = await app.inject({method:"GET",url:auditPath+
+    "&category=CURRICULUM",headers:auth});
+  assert.equal(curriculumAudit.statusCode,200,curriculumAudit.body);
+  const curriculumEvents = curriculumAudit.json<{total:number;rows:Array<{
+    action:string;entityType:string;metadata?:unknown
+  }> }>();
+  assert.equal(curriculumEvents.total,1);
+  assert.equal(curriculumEvents.rows[0]?.action,"curriculum.unit_created");
+  assert.equal(curriculumEvents.rows[0]?.entityType,"curriculum_unit");
+  assert.equal("metadata" in curriculumEvents.rows[0]!,false);
+  assert.equal((await app.inject({method:"GET",url:auditPath+
+    "&category=EXAMS",headers:auth})).json<{total:number}>().total,0);
+  const reportExport = await app.inject({method:"GET",
+    url:"/v1/admin/learning/reports/export?academicYearId="+yearId,headers:auth});
+  assert.equal(reportExport.statusCode,200,reportExport.body);
+  assert.match(reportExport.headers["cache-control"] as string,/no-store/);
+  const exportedReport = reportExport.json<{total:number;exportedRows:number;
+    truncated:boolean;csv:string;filename:string}>();
+  assert.equal(exportedReport.total,1);
+  assert.equal(exportedReport.exportedRows,1);
+  assert.equal(exportedReport.truncated,false);
+  assert.match(exportedReport.csv,/published_grades/);
+  assert.ok(exportedReport.csv.startsWith("\uFEFF"));
+  assert.ok(exportedReport.filename.endsWith(".csv"));
+  const auditExport = await app.inject({method:"GET",
+    url:"/v1/admin/learning/audit/export?academicYearId="+yearId+
+    "&category=CURRICULUM",headers:auth});
+  assert.equal(auditExport.statusCode,200,auditExport.body);
+  assert.equal(auditExport.json<{total:number;exportedRows:number}>().total,1);
+  assert.equal(auditExport.json<{total:number;exportedRows:number}>().exportedRows,1);
+  const exportEvents = await client.query<{action:string}>(`SELECT action FROM audit_logs
+    WHERE school_id=$1 AND action IN ('learning.report_exported','learning.audit_exported')`,
+    [schoolId]);
+  assert.equal(exportEvents.rows.length,2);
+  // Unscoped export actions are not shown in the academic entity audit feed.
+  assert.equal((await app.inject({method:"GET",url:auditPath,headers:auth}))
+    .json<{total:number}>().total,1);
 
   const duplicateUnit = await app.inject({
     method: "POST", url: "/v1/admin/teaching/curriculum", headers: auth,
@@ -1406,6 +1487,15 @@ test("school admin can model teacher assignments, Negaran responsibility, and ti
   assert.equal(completedLessons.json<{rows:Array<{topic:string;status:string;chapterTitle:string}>}>()
     .rows[0]?.chapterTitle,"Adding fractions");
   assert.equal(completedLessons.json<{rows:Array<{status:string}>}>().rows[0]?.status,"COMPLETED");
+
+  const completedAcademicReport = await app.inject({method:"GET",url:reportPath,headers:auth});
+  assert.equal(completedAcademicReport.statusCode,200,completedAcademicReport.body);
+  const academicSummary = completedAcademicReport.json<{summary:{
+    curriculumUnits:number;completedUnits:number;completedLessons:number;
+  }}>().summary;
+  assert.equal(academicSummary.curriculumUnits,1);
+  assert.equal(academicSummary.completedUnits,1);
+  assert.equal(academicSummary.completedLessons,1);
 
   const invalidReport = await app.inject({
     method: "GET", url: `/v1/teacher/teaching/${ownAssignmentId}/report?from=2026-10-31&to=2026-10-01`,
@@ -4602,6 +4692,14 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
 
   // Admin Learning Phase 4: draft grades never enter the published directory.
   const directoryPath = "/v1/admin/learning/published-results?academicYearId=" + yearId;
+  // Draft grades must not leak into Phase 7 published-grade summaries.
+  const academicPath = "/v1/admin/learning/reports?academicYearId="+yearId;
+  const gradesAuditPath = "/v1/admin/learning/audit?academicYearId="+yearId;
+  const beforePublicationReport = await app.inject({method:"GET",url:academicPath,headers:admin});
+  assert.equal(beforePublicationReport.statusCode,200,beforePublicationReport.body);
+  assert.equal(beforePublicationReport.json<{summary:{publishedGrades:number}}>()
+    .summary.publishedGrades,0);
+
   const draftDirectory = await app.inject({ method: "GET", url: directoryPath, headers: admin });
   assert.equal(draftDirectory.statusCode, 200, draftDirectory.body);
   assert.equal(draftDirectory.json<{total:number;rows:unknown[]}>().total, 0);
@@ -4613,6 +4711,18 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   });
   assert.equal(publish.statusCode, 200);
   assert.equal(publish.json<{ notificationCount: number }>().notificationCount, 2);
+  const publishedAcademicReport = await app.inject({method:"GET",url:academicPath,headers:admin});
+  assert.equal(publishedAcademicReport.statusCode,200,publishedAcademicReport.body);
+  const publishedAcademicSummary = publishedAcademicReport.json<{summary:{
+    publishedGrades:number;publishedExamSubjects:number
+  }}>().summary;
+  assert.equal(publishedAcademicSummary.publishedGrades,2);
+  assert.equal(publishedAcademicSummary.publishedExamSubjects,2);
+  const examsAudit = await app.inject({method:"GET",url:gradesAuditPath+"&category=EXAMS",headers:admin});
+  assert.equal(examsAudit.statusCode,200,examsAudit.body);
+  assert.ok(examsAudit.json<{rows:Array<{action:string}>}>().rows
+    .some(row=>row.action==="exam.results_published"));
+
   const afterPublication = await app.inject({ method: "GET", url: readinessUrl, headers: admin });
   assert.equal(afterPublication.statusCode, 200, afterPublication.body);
   assert.equal(afterPublication.json<{canPublish:boolean;totals:{validMarks:number}}>().canPublish, false);
@@ -4753,6 +4863,16 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
   assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
+  const phase7CorrectionAudit = await app.inject({method:"GET",
+    url:gradesAuditPath+"&category=GRADES",headers:admin});
+  assert.equal(phase7CorrectionAudit.statusCode,200,phase7CorrectionAudit.body);
+  assert.ok(phase7CorrectionAudit.json<{rows:Array<{action:string;metadata?:unknown;score?:number}>}>()
+    .rows.some(row=>row.action==="grade.corrected"));
+  assert.ok(phase7CorrectionAudit.json<{rows:Array<{metadata?:unknown;score?:number}>}>()
+    .rows.every(row=>row.metadata===undefined&&row.score===undefined));
+  const crossYearAudit = await app.inject({method:"GET",url:gradesAuditPath,headers:otherAdmin});
+  assert.equal(crossYearAudit.statusCode,404);
+
   const correctionHistory = await app.inject({ method: "GET",
     url: correctionHistoryUrl, headers: admin });
   assert.equal(correctionHistory.statusCode, 200, correctionHistory.body);

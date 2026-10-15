@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AdminLearningResults } from "./admin-learning-results";
 import { AdminLearningHomework } from "./admin-learning-homework";
 import { AdminLearningTeaching } from "./admin-learning-teaching";
+import { AdminLearningReports } from "./admin-learning-reports";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext } from "./admin-learning-exams";
@@ -305,15 +306,9 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
 
       {activeTab === "REPORTS" ? (
         <section id="learning-panel-reports" role="tabpanel" aria-labelledby="learning-tab-reports"
-          className="learning-tab-panel admin-panel learning-module-summary">
-          <h3>{t("Academic reports & audit")}</h3>
-          <p>{t("Detailed academic report exports and audit filters are not yet available in this workspace.")}</p>
-          <div className="learning-summary-inline">
-            <div><span>{t("Published examinations")}</span>
-              <strong>{dashboard ? formatCount(dashboard.metrics.publishedExams) : "—"}</strong></div>
-            <div><span>{t("Continuous assessments")}</span>
-              <strong>{dashboard ? formatCount(dashboard.metrics.continuousAssessments) : "—"}</strong></div>
-          </div>
+          className="learning-tab-panel">
+          <AdminLearningReports accessToken={accessToken} locale={locale}
+            yearId={selectedAcademicYearId} academics={academics} />
         </section>
       ) : null}
 

@@ -8121,3 +8121,56 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .learning-teaching-card { padding: 12px; }
   .learning-teaching-card > button { width: 100%; }
 }
+
+
+/* Learning Phase 7 — read-only academic reports and safe audit history. */
+.learning-report-workspace { display: grid; gap: 16px; min-width: 0; }
+.learning-report-tabs { display: flex; flex-wrap: wrap; gap: 9px; }
+.learning-report-tabs button { min-height: 44px; padding: 10px 17px; font: inherit; cursor: pointer;
+  border: 1px solid var(--ml-color-border,#d9e1eb); border-radius: 11px;
+  background: var(--ml-color-surface,#fff); color: var(--ml-color-text,#162135); }
+.learning-report-tabs button[aria-selected="true"] { color: #176b60; background: #e2f5ed; border-color: #2c8978; font-weight: 750; }
+.learning-report-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+  align-items: end; gap: 12px; padding: 15px; border: 1px solid var(--ml-color-border,#d9e1eb);
+  background: var(--ml-color-surface,#fff); border-radius: 16px; min-width: 0; }
+.learning-report-filters label { display: grid; gap: 6px; min-width: 0;
+  font-size: 12px; font-weight: 700; color: var(--ml-color-text-muted,#667085); }
+.learning-report-filters input, .learning-report-filters select { width: 100%; min-width: 0;
+  border: 1px solid var(--ml-color-border,#d9e1eb); border-radius: 10px;
+  background: var(--ml-color-surface,#fff); color: var(--ml-color-text,#162135);
+  font: inherit; min-height: 44px; padding: 8px 10px; }
+.learning-report-filters button { min-height: 44px; }
+.learning-report-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.learning-report-metrics > div { display: grid; gap: 7px; min-width: 0; padding: 14px;
+  background: var(--ml-color-surface,#fff); border: 1px solid var(--ml-color-border,#d9e1eb);
+  border-radius: 14px; }
+.learning-report-metrics span { font-size: 12px; color: var(--ml-color-text-muted,#667085); }
+.learning-report-metrics strong { font-size: clamp(17px,2vw,23px); font-variant-numeric: tabular-nums; }
+.learning-report-rows, .learning-report-audit-list { display: grid; gap: 10px; min-width: 0; }
+.learning-report-row { display: grid; gap: 10px; background: var(--ml-color-surface,#fff);
+  padding: 16px; border: 1px solid var(--ml-color-border,#d9e1eb); border-radius: 14px; min-width: 0; }
+.learning-report-row > div:first-child { display: grid; gap: 5px; }
+.learning-report-row strong, .learning-report-audit-item strong { font-size: 15px; overflow-wrap: anywhere; }
+.learning-report-row small, .learning-report-audit-item small { color: var(--ml-color-text-muted,#667085); font-size: 12px; }
+.learning-report-row-values { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.learning-report-row-values span { padding: 10px 11px; background: var(--ml-color-background,#f6f8fb);
+  border-radius: 9px; font-size: 12px; overflow-wrap: anywhere; }
+.learning-report-row-values b { font-variant-numeric: tabular-nums; }
+.learning-report-audit-item { display: flex; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; padding: 14px 16px; border: 1px solid var(--ml-color-border,#d9e1eb);
+  background: var(--ml-color-surface,#fff); border-radius: 14px; min-width: 0; }
+.learning-report-audit-item > div { display: grid; gap: 5px; min-width: 0; }
+.learning-report-export { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  border: 1px solid var(--ml-color-border,#d9e1eb); border-radius: 12px; padding: 13px 15px;
+  background: var(--ml-color-surface,#fff); }
+.learning-report-export > button { min-height: 44px; }
+.learning-report-export small { color: var(--ml-color-text-muted,#667085); flex: 1 1 260px; }
+@media (max-width: 850px) {
+  .learning-report-filters, .learning-report-row-values { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 540px) {
+  .learning-report-filters, .learning-report-metrics, .learning-report-row-values {
+    grid-template-columns: minmax(0,1fr); }
+  .learning-report-row, .learning-report-audit-item { padding: 12px; }
+  .learning-report-export > button { width: 100%; }
+}
