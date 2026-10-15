@@ -6,6 +6,7 @@ import type {
   CreateFeeInvoiceInput,
   UpdateDraftFeeInvoiceInput,
   AdminFeeInvoiceQuery,
+  AdminFeePaymentsQuery,
   DevicePlatform,
   FeeInvoiceStatus,
   RecordFeePaymentInput,
@@ -26,6 +27,7 @@ import {
   notificationPushDeliveries,
   notifications,
   schoolSettings,
+  schools,
   students,
   teacherAssignments,
   users,
@@ -43,6 +45,34 @@ export interface FeeInvoiceView {
   paid: number;
   outstanding: number;
   payments: FeePayment[];
+}
+
+export interface AdminFeePaymentRow {
+  payment: FeePayment;
+  invoiceId: string;
+  invoiceNumber: number;
+  studentId: string;
+  studentName: string;
+  studentCode: string;
+  recordedByUsername: string;
+}
+
+export interface AdminFeeReceipt extends AdminFeePaymentRow {
+  schoolName: string;
+  invoiceAmount: number;
+  description: string | null;
+  dueDate: string;
+  currentOutstanding: number;
+  reversed: boolean;
+}
+
+export interface AdminStudentFeeBalance {
+  student: { id: string; fullName: string; studentCode: string; status: string };
+  billed: number;
+  paid: number;
+  outstanding: number;
+  overdue: number;
+  invoices: FeeInvoiceView[];
 }
 
 export interface CommunicationOverview {
@@ -81,6 +111,11 @@ export interface CommunicationStore {
   listAdminFeeInvoices(schoolId: string, query: AdminFeeInvoiceQuery): Promise<{
     invoices: FeeInvoiceView[]; total: number; page: number; pageSize: number;
   }>;
+  listAdminFeePayments(schoolId: string, query: AdminFeePaymentsQuery): Promise<{
+    payments: AdminFeePaymentRow[]; total: number; page: number; pageSize: number;
+  }>;
+  getAdminFeePaymentReceipt(schoolId: string, paymentId: string): Promise<AdminFeeReceipt>;
+  getAdminStudentFeeBalance(schoolId: string, studentId: string): Promise<AdminStudentFeeBalance>;
   updateDraftFeeInvoice(schoolId: string, actorUserId: string, invoiceId: string,
     input: UpdateDraftFeeInvoiceInput): Promise<FeeInvoice>;
   createFeeInvoice(schoolId: string, actorUserId: string, input: CreateFeeInvoiceInput): Promise<FeeInvoice>;
@@ -619,6 +654,92 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       return {
         invoices: await Promise.all(invoiceRows.map(row => invoiceView(row.invoice))),
         total: countRows[0]?.value ?? 0, page: query.page, pageSize
+      };
+    },
+
+    async listAdminFeePayments(schoolId, query) {
+      const pageSize = 20;
+      const [zoneRow] = await db.select({ timezone: schoolSettings.timezone }).from(schoolSettings)
+        .where(eq(schoolSettings.schoolId, schoolId)).limit(1);
+      const zone = zoneRow?.timezone ?? "Asia/Kabul";
+      const where = and(
+        eq(feePayments.schoolId, schoolId),
+        eq(feeInvoices.schoolId, schoolId),
+        eq(students.schoolId, schoolId),
+        eq(users.schoolId, schoolId),
+        query.studentId ? eq(feeInvoices.studentId, query.studentId) : undefined,
+        query.recordedBy ? eq(feePayments.recordedBy, query.recordedBy) : undefined,
+        query.method !== "ALL" ? eq(feePayments.method, query.method) : undefined,
+        query.kind !== "ALL" ? eq(feePayments.kind, query.kind) : undefined,
+        query.from ? sql`(${feePayments.recordedAt} AT TIME ZONE ${zone})::date >= ${query.from}::date` : undefined,
+        query.to ? sql`(${feePayments.recordedAt} AT TIME ZONE ${zone})::date <= ${query.to}::date` : undefined
+      );
+      const base = () => db.select({
+        payment: feePayments, invoiceId: feeInvoices.id, invoiceNumber: feeInvoices.invoiceNumber,
+        studentId: students.id, studentName: students.fullName,
+        studentCode: students.studentCode, recordedByUsername: users.username
+      }).from(feePayments)
+        .innerJoin(feeInvoices, eq(feePayments.invoiceId, feeInvoices.id))
+        .innerJoin(students, eq(feeInvoices.studentId, students.id))
+        .innerJoin(users, eq(feePayments.recordedBy, users.id));
+      const [count, rows] = await Promise.all([
+        db.select({ total: sql<number>`count(*)::integer` }).from(feePayments)
+          .innerJoin(feeInvoices, eq(feePayments.invoiceId, feeInvoices.id))
+          .innerJoin(students, eq(feeInvoices.studentId, students.id))
+          .innerJoin(users, eq(feePayments.recordedBy, users.id))
+          .where(where),
+        base().where(where).orderBy(desc(feePayments.recordedAt), desc(feePayments.id))
+          .limit(pageSize).offset((query.page - 1) * pageSize)
+      ]);
+      return { payments: rows, total: count[0]?.total ?? 0, page: query.page, pageSize };
+    },
+
+    async getAdminFeePaymentReceipt(schoolId, paymentId) {
+      const [row] = await db.select({
+        payment: feePayments,
+        invoiceId: feeInvoices.id, invoiceNumber: feeInvoices.invoiceNumber,
+        studentId: students.id, studentName: students.fullName,
+        studentCode: students.studentCode, recordedByUsername: users.username,
+        schoolName: schools.name, invoiceAmount: feeInvoices.amount,
+        description: feeInvoices.description, dueDate: feeInvoices.dueDate
+      }).from(feePayments)
+        .innerJoin(feeInvoices, and(eq(feePayments.invoiceId, feeInvoices.id),
+          eq(feeInvoices.schoolId, schoolId)))
+        .innerJoin(students, and(eq(feeInvoices.studentId, students.id),
+          eq(students.schoolId, schoolId)))
+        .innerJoin(users, and(eq(feePayments.recordedBy, users.id),
+          eq(users.schoolId, schoolId)))
+        .innerJoin(schools, eq(schools.id, schoolId))
+        .where(and(eq(feePayments.id, paymentId), eq(feePayments.schoolId, schoolId),
+          eq(feePayments.kind, "PAYMENT"))).limit(1);
+      if (!row) throw new CommunicationNotFoundError("Payment receipt not found.");
+      const [reversal] = await db.select({ id: feePayments.id }).from(feePayments)
+        .where(and(eq(feePayments.schoolId, schoolId),
+          eq(feePayments.reversalOfPaymentId, paymentId))).limit(1);
+      const snapshot = await paymentTotals(schoolId, row.invoiceId);
+      return {
+        ...row,
+        currentOutstanding: Math.max(0, row.invoiceAmount - snapshot.paid),
+        reversed: Boolean(reversal)
+      };
+    },
+
+    async getAdminStudentFeeBalance(schoolId, studentId) {
+      const student = await getStudent(schoolId, studentId);
+      const invoices = await db.select().from(feeInvoices)
+        .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.studentId, studentId),
+          ne(feeInvoices.status, "DRAFT"), ne(feeInvoices.status, "CANCELLED")))
+        .orderBy(desc(feeInvoices.createdAt));
+      const views = await Promise.all(invoices.map(invoiceView));
+      return {
+        student: { id: student.id, fullName: student.fullName,
+          studentCode: student.studentCode, status: student.status },
+        billed: views.reduce((sum, row) => sum + row.invoice.amount, 0),
+        paid: views.reduce((sum, row) => sum + row.paid, 0),
+        outstanding: views.reduce((sum, row) => sum + row.outstanding, 0),
+        overdue: views.filter(row => row.invoice.status === "OVERDUE")
+          .reduce((sum, row) => sum + row.outstanding, 0),
+        invoices: views
       };
     },
 
