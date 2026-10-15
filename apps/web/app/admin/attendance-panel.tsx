@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
+import { AdminAttendanceStudents } from "./admin-attendance-students";
+import { AdminAttendanceClassRegister } from "./admin-attendance-class-register";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useTransientAdminFeedback } from "./admin-feedback";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
@@ -9,7 +11,7 @@ import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-p
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import {
-  ATTENDANCE_TABS, attendanceRate, studentAttendancePreviews, type AttendanceTab
+  ATTENDANCE_TABS, attendanceRate, type AttendanceTab
 } from "./attendance-workspace-model";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
@@ -69,6 +71,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const [schoolToday, setSchoolToday] = useState("");
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [report, setReport] = useState<AttendanceReport | null>(null);
+  const [selectedRegisterClass, setSelectedRegisterClass] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "empty">("loading");
   const [bootstrapRefresh, setBootstrapRefresh] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -86,7 +89,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     const controller = new AbortController();
     loadController.current = controller;
     setReport(null); setAcademics(null); setSchoolToday("");
-    setDraftFilters(EMPTY_FILTERS); setAppliedFilters(null);
+    setDraftFilters(EMPTY_FILTERS); setAppliedFilters(null); setSelectedRegisterClass(null);
     setBusy(false); setActionBusy(false); setStatus(selectedAcademicYearId ? "loading" : "empty");
     setError(""); setNotice("");
     if (selectedAcademicYearId) {
@@ -125,6 +128,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     const run = ++loadSequence.current;
     const expectedScope = scope;
     setBusy(true); setStatus("loading"); setReport(null); setError("");
+    setSelectedRegisterClass(null);
     try {
       const next = await request<AttendanceReport>(
         accessToken, reportUrl(selectedAcademicYearId, filters), controller.signal
@@ -181,7 +185,6 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const classes = useMemo(() => (academics?.classes ?? [])
     .filter(item => item.academicYearId === selectedAcademicYearId)
     .sort((a,b) => a.name.localeCompare(b.name)), [academics, selectedAcademicYearId]);
-  const students = useMemo(() => studentAttendancePreviews(report?.rows ?? []), [report]);
   const attentionRows = useMemo(() => (report?.rows ?? [])
     .filter(row => row.status === "ABSENT" || row.status === "LATE")
     .slice(0, 30), [report]);
@@ -338,10 +341,17 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
               classId={appliedFilters?.classId??""} locale={locale}
               mode="REGISTERS" academicYearStatus={selectedAcademicYear?.status??""}
               schoolToday={schoolToday}
+              onOpenClass={(classId) => setSelectedRegisterClass(classId)}
             />
+            {selectedRegisterClass && appliedFilters?.from === appliedFilters?.to ?
+              <AdminAttendanceClassRegister
+                accessToken={accessToken} academicYearId={selectedAcademicYearId}
+                classId={selectedRegisterClass} date={appliedFilters.from}
+                locale={locale} onClose={() => setSelectedRegisterClass(null)}
+              /> : null}
             <article className="admin-panel academic-list-panel">
               <div className="admin-section-header">
-                <div><h3>{t("Daily registers")}</h3>
+                <div><h3>{t(selectedRegisterClass ? "Selected class attendance marks" : "Daily registers")}</h3>
                   <p>{adminFormat(locale, "{count} student mark(s) from {from} to {to}", {
                     count: report.rows.length,
                     from: formatAdminHijriDate(locale, report.from),
@@ -350,29 +360,21 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 </div>
               </div>
               <div className="attendance-report-list">
-                {report.rows.map(row => <AttendanceReportItem
+                {report.rows.filter(row => !selectedRegisterClass || row.classId === selectedRegisterClass).map(row => <AttendanceReportItem
                   key={`${row.attendanceId}-${row.studentId}`}
                   row={row} locale={locale} busy={busy || actionBusy}
                   readOnly={historicalReadOnly} onCorrect={correct} />)}
-                {!report.rows.length ? <p className="admin-copy">
+                {!report.rows.filter(row => !selectedRegisterClass || row.classId === selectedRegisterClass).length ? <p className="admin-copy">
                   {t("No attendance records match these filters.")}</p> : null}
               </div>
             </article>
           </div>) : null}
 
-          {activeTab === "STUDENTS" ? <article className="admin-panel attendance-preview-panel">
-            <h3>{t("Students with recorded attendance")}</h3>
-            <p>{t("This summary includes only students with recorded marks in the selected period, not the full directory. Detailed profiles and calendars are not available yet.")}</p>
-            <div className="attendance-preview-list">
-              {students.map(item => <div className="attendance-preview-item" key={item.studentId}>
-                <div><strong>{item.studentName}</strong><small>{item.studentCode} · {item.className}</small></div>
-                <div className="attendance-preview-values"><span>{t("Recorded")}: {item.recorded}</span>
-                  <span>{t("Absent")}: {item.absent}</span><span>{t("Late")}: {item.late}</span>
-                  <span>{t("Excused")}: {item.excused}</span></div>
-              </div>)}
-              {!students.length ? <p className="admin-copy">{t("No recorded students match this period.")}</p> : null}
-            </div>
-          </article> : null}
+          {activeTab === "STUDENTS" ? <AdminAttendanceStudents
+            accessToken={accessToken} academicYearId={selectedAcademicYearId}
+            schoolToday={schoolToday} locale={locale}
+            classId={appliedFilters?.classId??""}
+          /> : null}
 
           {activeTab === "FOLLOWUPS" ? <article className="admin-panel attendance-preview-panel">
             <h3>{t("Absence and lateness review")}</h3>
