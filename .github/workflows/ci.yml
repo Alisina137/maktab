@@ -106,6 +106,9 @@ jobs:
       - name: Admin Attendance Phase 6 analytics, school boundary and safe CSV
         run: pnpm verify:admin-attendance:phase6
 
+      - name: Admin Attendance Phase 7 all-six-tab acceptance and safety
+        run: pnpm verify:admin-attendance:phase7
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -164,6 +167,19 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Record Attendance Phase 7 independent manual acceptance as NO-GO
+        if: always()
+        run: node scripts/admin-attendance-phase7-acceptance.mjs --output "$RUNNER_TEMP/maktablink-attendance-phase7-no-go.json"
+
+      - name: Preserve Attendance Phase 7 exact-build manual matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-phase7-manual-no-go
+          path: ${{ runner.temp }}/maktablink-attendance-phase7-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Record production NO-GO until independent release evidence is reviewed
         if: always()
@@ -246,6 +262,7 @@ jobs:
           pnpm verify:admin-attendance:phase4
           pnpm verify:admin-attendance:phase5
           pnpm verify:admin-attendance:phase6
+          pnpm verify:admin-attendance:phase7
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
