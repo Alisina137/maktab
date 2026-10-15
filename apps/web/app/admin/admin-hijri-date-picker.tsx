@@ -123,7 +123,8 @@ export function AdminHijriDatePicker({
   onChange,
   required = false,
   includeTime = false,
-  disabled = false
+  disabled = false,
+  today
 }: {
   locale: AdminLocale;
   name?: string;
@@ -133,6 +134,8 @@ export function AdminHijriDatePicker({
   required?: boolean;
   includeTime?: boolean;
   disabled?: boolean;
+  /** Prefer the API's school-local date over the viewer device's UTC day. */
+  today?: string;
 }) {
   const t = (english: string) => adminText(locale, english);
   const [internalValue, setInternalValue] = useState(value ?? defaultValue);
@@ -203,12 +206,13 @@ export function AdminHijriDatePicker({
   }
 
   function goToday() {
-    const today = new Date().toISOString().slice(0, 10);
-    const parts = solarParts(today);
+    const schoolDay = today && /^\d{4}-\d{2}-\d{2}$/.test(today)
+      ? today : new Date().toISOString().slice(0, 10);
+    const parts = solarParts(schoolDay);
     if (parts) {
       setViewYear(parts.year);
       setViewMonth(parts.month);
-      selectDay(today);
+      selectDay(schoolDay);
     }
   }
 

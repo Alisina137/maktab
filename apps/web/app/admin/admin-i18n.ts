@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Refreshing attendance data…": "در حال تازه‌سازی معلومات حاضری…",
   "No students have recorded marks in this period.": "برای این دوره حاضری شاگردی ثبت نشده است.",
   "student-class entries with recorded marks": "مورد شاگرد-صنف دارای حاضری",
   "Sorted by recorded absences, then lateness. Students without submitted marks are not ranked.": "مرتب‌شده بر اساس غیرحاضری و سپس ناوقتی. شاگردان بدون حاضری ثبت‌شده رتبه‌بندی نمی‌شوند.",
@@ -2029,6 +2030,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Refreshing attendance data…": "د حاضرۍ معلومات تازه کېږي…",
   "No students have recorded marks in this period.": "په دې موده کې د زده کوونکو حاضري نه ده ثبت شوې.",
   "student-class entries with recorded marks": "د ثبت شوې حاضري زده کوونکي-صنف ریکارډونه",
   "Sorted by recorded absences, then lateness. Students without submitted marks are not ranked.": "د ثبت شوو غیرحاضریو او وروسته ناوخته راتګ له مخې ترتیب شوی؛ بې ثبت شوو نښو زده کوونکي نه درجه کېږي.",

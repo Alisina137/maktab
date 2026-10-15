@@ -129,8 +129,9 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     loadController.current = controller;
     const run = ++loadSequence.current;
     const expectedScope = scope;
-    setBusy(true); setStatus("loading"); setReport(null); setError("");
-    setSelectedRegisterClass(null);
+    // Keep the active tab and its last successful data mounted while refreshing.
+    // A report refresh (including a correction) must not blank independent tabs.
+    setBusy(true); setError("");
     try {
       const next = await request<AttendanceReport>(
         accessToken, reportUrl(selectedAcademicYearId, filters), controller.signal
@@ -142,7 +143,8 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     } catch (cause) {
       if (controller.signal.aborted || loadSequence.current !== run || scopeRef.current !== expectedScope) return false;
       setError(adminErrorText(locale, cause, "Could not load attendance report."));
-      setStatus("error");
+      // Preserve the previous successful view so the operator can retry.
+      // Bootstrap failures are handled independently in the mount effect.
       return false;
     } finally {
       if (loadSequence.current === run && scopeRef.current === expectedScope) setBusy(false);
@@ -153,6 +155,10 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     event.preventDefault();
     if (!draftFilters.from || !draftFilters.to || draftFilters.from > draftFilters.to || actionBusy) return;
     setNotice("");
+    if (!appliedFilters || draftFilters.from !== appliedFilters.from ||
+        draftFilters.to !== appliedFilters.to || draftFilters.classId !== appliedFilters.classId) {
+      setSelectedRegisterClass(null);
+    }
     void loadReport(draftFilters);
   }
 
@@ -253,6 +259,9 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
         <strong>{t("Select an academic year")}</strong>
         <p>{t("Choose an academic year in the administrator header to view attendance.")}</p>
       </div> : null}
+      {busy && status === "ready" ? <div className="admin-panel attendance-workspace-refresh" role="status">
+        <AdminLoader label={t("Refreshing attendance data…")} />
+      </div> : null}
       {status === "loading" ? <div className="admin-panel attendance-workspace-state" role="status">
         <AdminLoader label={t("Loading attendance data…")} />
         <AdminSkeleton rows={3} />
@@ -269,11 +278,11 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
         {(activeTab === "OVERVIEW" || activeTab === "REGISTERS") ? (
           <form className="admin-panel attendance-filter" onSubmit={applyFilters} aria-label={t("Attendance filters")}>
             <label>{t("From")}
-              <AdminHijriDatePicker locale={locale} value={draftFilters.from}
+              <AdminHijriDatePicker locale={locale} today={schoolToday} value={draftFilters.from}
                 onChange={from => setDraftFilters(current => ({...current, from}))} required />
             </label>
             <label>{t("To")}
-              <AdminHijriDatePicker locale={locale} value={draftFilters.to}
+              <AdminHijriDatePicker locale={locale} today={schoolToday} value={draftFilters.to}
                 onChange={to => setDraftFilters(current => ({...current, to}))} required />
             </label>
             <label>{t("Class")}
@@ -387,7 +396,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
           {activeTab === "AUDIT" ? <AdminAttendanceAudit
             accessToken={accessToken} academicYearId={selectedAcademicYearId}
-            classes={classes} locale={locale} /> : null}
+            classes={classes} locale={locale} schoolToday={schoolToday} /> : null}
         </div>
       </> : null}
     </section>

@@ -260,7 +260,7 @@ export function AdminAttendanceMonitoring(props: Props) {
         {feedback?<p className="admin-success" role="status">{feedback}</p>:null}
         {canEdit?<form onSubmit={addClosure} className="attendance-closure-form">
           <label>{t("Closure date")}
-            <AdminHijriDatePicker locale={locale} value={closureDay} onChange={setClosureDay} required />
+            <AdminHijriDatePicker locale={locale} today={schoolToday} value={closureDay} onChange={setClosureDay} required />
           </label>
           <label>{t("Reason")}
             <input value={closureReason} maxLength={160} required

@@ -191,9 +191,9 @@ export function AdminAttendanceFollowups({accessToken,academicYearId,academicYea
       </button>)}
     </nav>
     <form className="admin-panel attendance-followup-filter" onSubmit={apply}>
-      <label>{t("From")}<AdminHijriDatePicker locale={locale} value={draft.from}
+      <label>{t("From")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.from}
         onChange={v=>setDraft(f=>({...f,from:v}))}/></label>
-      <label>{t("To")}<AdminHijriDatePicker locale={locale} value={draft.to}
+      <label>{t("To")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.to}
         onChange={v=>setDraft(f=>({...f,to:v}))}/></label>
       <label>{t("Class")}<select value={draft.classId}
         onChange={e=>setDraft(f=>({...f,classId:e.target.value}))}>
@@ -249,7 +249,7 @@ export function AdminAttendanceFollowups({accessToken,academicYearId,academicYea
             <option value="">{t("Unassigned")}</option>
             {assignees.map(a=><option key={a.id} value={a.id}>{a.username}</option>)}
           </select></label>
-          <label>{t("Follow-up due date")}<AdminHijriDatePicker locale={locale} value={dueOn} onChange={setDueOn}/></label>
+          <label>{t("Follow-up due date")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={dueOn} onChange={setDueOn}/></label>
           <label>{t("Opening reason (required)")}<textarea required minLength={5} maxLength={500} value={note}
             onChange={e=>setNote(e.target.value)}/></label>
           <div className="attendance-followup-actions">
@@ -274,7 +274,7 @@ export function AdminAttendanceFollowups({accessToken,academicYearId,academicYea
               <option value="">{t("Unassigned")}</option>
               {assignees.map(a=><option key={a.id} value={a.id}>{a.username}</option>)}
             </select></label>
-            <label>{t("Follow-up due date")}<AdminHijriDatePicker locale={locale} value={dueOn}
+            <label>{t("Follow-up due date")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={dueOn}
               onChange={setDueOn} disabled={!writable||busy}/></label>
             <label>{t("Update / resolution reason (required)")}<textarea required minLength={5} maxLength={500}
               disabled={!writable||busy} value={note} onChange={e=>setNote(e.target.value)}/></label>
