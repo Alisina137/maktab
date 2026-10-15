@@ -19,6 +19,7 @@ import {
 import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
 import { requireSchoolAdmin } from "../users/routes.js";
+import { academicReportCsv, learningAuditCsv } from "./reports-csv.js";
 
 function sendLearningError(reply: FastifyReply, error: unknown) {
   if (error instanceof ZodError) return reply.code(400).send({
@@ -240,6 +241,101 @@ export function registerLearningRoutes(
     } catch (error) {
       return sendLearningError(reply, error);
     }
+  });
+
+  // Phase 7: year-specific academic summaries and privacy-filtered activity.
+  // Exports are fixed, bounded snapshots: no unrestricted full-school dumps.
+  const reportFilters = z.object({
+    academicYearId: z.string().uuid(),
+    classId: z.string().uuid().optional(),
+    subjectId: z.string().uuid().optional(),
+    search: z.string().trim().max(100).optional()
+  }).strict();
+  const reportPaging = reportFilters.extend({
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    offset: z.coerce.number().int().min(0).max(100000).default(0)
+  });
+  const utcDay = z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine(value => {
+    const parsed = new Date(value + "T12:00:00.000Z");
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10) === value;
+  }, "Choose a valid UTC calendar date.");
+  const auditFilters = z.object({
+    academicYearId: z.string().uuid(),
+    category: z.enum(["ALL", "EXAMS", "GRADES", "HOMEWORK", "CURRICULUM"]).default("ALL"),
+    from: utcDay.optional(),
+    to: utcDay.optional()
+  }).strict().refine(value => !value.from || !value.to || value.from <= value.to,
+    "Audit date range must be chronological.")
+    .refine(value => !value.from || !value.to ||
+      (Date.parse(value.to + "T00:00:00.000Z") - Date.parse(value.from + "T00:00:00.000Z"))
+        <= 366 * 86_400_000, "Audit date range is limited to 366 days.");
+  const auditPaging = auditFilters.safeExtend({
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    offset: z.coerce.number().int().min(0).max(100000).default(0)
+  });
+
+  app.get("/v1/admin/learning/reports", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = reportPaging.parse(request.query);
+      reply.header("Cache-Control", "no-store");
+      return await learning.getAdminAcademicReport(context.user.schoolId, query);
+    } catch (error) { return sendLearningError(reply, error); }
+  });
+
+  app.get("/v1/admin/learning/audit", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = auditPaging.parse(request.query);
+      reply.header("Cache-Control", "no-store");
+      return await learning.getAdminLearningAudit(context.user.schoolId, query);
+    } catch (error) { return sendLearningError(reply, error); }
+  });
+
+  app.get("/v1/admin/learning/reports/export", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const filters = reportFilters.parse(request.query);
+      const report = await learning.getAdminAcademicReport(context.user.schoolId,
+        { ...filters, limit: 500, offset: 0 });
+      await accounts.writeAudit({
+        schoolId: context.user.schoolId, actorUserId: context.user.id,
+        action: "learning.report_exported", entityType: "academic_year",
+        entityId: filters.academicYearId, metadata: { count: report.rows.length }
+      });
+      reply.header("Cache-Control", "no-store");
+      return {
+        csv: academicReportCsv(report),
+        filename: `maktab-learning-report-${filters.academicYearId.slice(0,8)}.csv`,
+        exportedRows: report.rows.length, total: report.total,
+        truncated: report.total > report.rows.length
+      };
+    } catch (error) { return sendLearningError(reply, error); }
+  });
+
+  app.get("/v1/admin/learning/audit/export", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const filters = auditFilters.parse(request.query);
+      const audit = await learning.getAdminLearningAudit(context.user.schoolId,
+        { ...filters, limit: 500, offset: 0 });
+      await accounts.writeAudit({
+        schoolId: context.user.schoolId, actorUserId: context.user.id,
+        action: "learning.audit_exported", entityType: "academic_year",
+        entityId: filters.academicYearId, metadata: { count: audit.rows.length }
+      });
+      reply.header("Cache-Control", "no-store");
+      return {
+        csv: learningAuditCsv(audit),
+        filename: `maktab-learning-audit-${filters.academicYearId.slice(0,8)}.csv`,
+        exportedRows: audit.rows.length, total: audit.total,
+        truncated: audit.total > audit.rows.length
+      };
+    } catch (error) { return sendLearningError(reply, error); }
   });
 
   // Phase 5 is intentionally read-only: assigned teachers remain the
