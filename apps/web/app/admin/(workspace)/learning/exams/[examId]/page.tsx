@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { LearningPanel } from "../../../learning-panel";
-import { useAdminWorkspace } from "../../../admin-workspace";
+import { LearningPanel } from "../../../../learning-panel";
+import { useAdminWorkspace } from "../../../../admin-workspace";
 
 export default function AdminExamDetailsPage() {
   const { stored } = useAdminWorkspace();
