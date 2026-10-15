@@ -70,6 +70,9 @@ jobs:
       - name: Admin Learning Phase 1 dashboard, responsive tabs and school scope
         run: pnpm verify:admin-learning:phase1
 
+      - name: Admin Learning Phase 2 examination workspace and schedule safety
+        run: pnpm verify:admin-learning:phase2
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -198,6 +201,7 @@ jobs:
           pnpm verify:admin-headings
           pnpm verify:admin-loading
           pnpm verify:admin-learning:phase1
+          pnpm verify:admin-learning:phase2
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
