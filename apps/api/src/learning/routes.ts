@@ -246,6 +246,17 @@ export function registerLearningRoutes(
     }
   });
 
+  app.get<{ Params: { examId: string } }>("/v1/admin/exams/:examId/readiness", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const examId = z.string().uuid().parse(request.params.examId);
+      return await learning.getAdminExamReadiness(context.user.schoolId, examId);
+    } catch (error) {
+      return sendLearningError(reply, error);
+    }
+  });
+
   app.post("/v1/admin/exams", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
