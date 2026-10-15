@@ -96,9 +96,10 @@ export function PilotOperationalReadinessPanel({ accessToken, locale, compact = 
           {summary ? (
             <p>{summary.evaluatedPeriods === 0 ?
               t("No active-year periods exist; readiness cannot be confirmed. Configure the timetable first.") :
-              adminFormat(locale, "{count} timetable issues require review.", {
-                count: summary.metrics.reduce((sum, metric) => sum + metric.missing, 0)
-              })}</p>
+              summary.ready ? t("Timetable checks passed") :
+              adminFormat(locale, "{critical} critical checks and {warnings} warnings.", {
+                critical: summary.critical, warnings: summary.warnings
+              })</p>
           ) : null}
         </div>
         <Link className="pilot-inline-link" href="/admin/pilot/readiness">
