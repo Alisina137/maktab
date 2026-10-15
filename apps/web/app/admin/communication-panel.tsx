@@ -1088,7 +1088,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
       {section === "FEES" ? (
         <section id="communication-panel-fees" role="tabpanel"
-          aria-labelledby="communication-tab-fees" className="communication-tab-panel">
+          aria-labelledby="communication-tab-fees" className="communication-tab-panel communication-fees-page">
           <div className="communication-dashboard-heading">
             <div>
               <h3>{t("Fee invoices & payments")}</h3>
@@ -1143,7 +1143,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <div className="communication-workflow-form">
               {visibleFamilies && resourceStatus.families === "ready" && ready ? (
                 <>
-        <article className="admin-panel communication-form-card">
+        <article className="admin-panel communication-form-card communication-invoice-create-card">
           <div><h2>{t("Create fee invoice")}</h2><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
           <form className="admin-form" onSubmit={createInvoice}>
             <label>
@@ -1162,28 +1162,44 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             <label>{t("Description")}<input name="description" maxLength={240} placeholder={t("Monthly tuition, transport…")} /></label>
             <button className="admin-primary" disabled={busy}>{t("Create draft invoice")}</button>
           </form>
+        </article>
 
-          <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
-            <strong>{t("Fee reminders · days before due")}</strong>
+        <article className="admin-panel communication-reminder-card">
+          <header className="communication-reminder-heading">
+            <h2>{t("Fee reminders · days before due")}</h2>
             <p>{t("Parents receive one reminder per selected day while the invoice remains unpaid and the student is active.")}</p>
+          </header>
+          <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
+            <span className="admin-reminder-label">{t("Configured reminder days")}</span>
             <div className="admin-reminder-chips" role="list" aria-label={t("Configured reminder days")}>
               {reminderDays.map(day => (
                 <span role="listitem" className="admin-reminder-chip" key={day}>
                   {adminFormat(locale, "{days} days", { days: day })}
                   <button type="button" disabled={busy || reminderDays.length === 1}
                     aria-label={adminFormat(locale, "Remove {days}-day reminder", { days: day })}
+                    title={adminFormat(locale, "Remove {days}-day reminder", { days: day })}
                     onClick={() => setReminderDays(current => current.filter(value => value !== day))}>×</button>
                 </span>
               ))}
             </div>
-            <label>{t("New reminder day (1–90)")}
-              <input type="number" min={1} max={90} step={1} inputMode="numeric"
-                value={reminderCandidate} onChange={event => setReminderCandidate(event.target.value)} />
-            </label>
-            <div className="admin-reminder-actions">
+            <div className="admin-reminder-editor">
+              <label htmlFor="communication-fee-reminder-day">{t("New reminder day (1–90)")}
+                <input id="communication-fee-reminder-day" type="number" min={1} max={90}
+                  step={1} inputMode="numeric"
+                  value={reminderCandidate}
+                  onChange={event => setReminderCandidate(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addReminderDay();
+                    }
+                  }} />
+              </label>
               <button type="button" className="admin-secondary" disabled={busy || reminderDays.length >= 6}
                 onClick={addReminderDay}>{t("Add reminder day")}</button>
-              <button className="admin-secondary" disabled={busy || !reminderDays.length}
+            </div>
+            <div className="admin-reminder-actions">
+              <button className="admin-primary" disabled={busy || !reminderDays.length}
                 type="submit">{t("Save reminder days")}</button>
             </div>
           </form>
@@ -1279,8 +1295,17 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                     <strong>{item.studentName}</strong>
                     <span>{item.studentCode} · {item.invoice.description || t("School fee")} · {adminFormat(locale, "due {date}", { date: formatAdminHijriDate(locale, item.invoice.dueDate) })}</span>
                   </div>
-                  <strong>{t(item.invoice.status)}</strong>
+                  <strong className="communication-invoice-status" data-status={item.invoice.status}>
+                    {t(item.invoice.status)}
+                  </strong>
                 </div>
+                {openInvoiceId!==item.invoice.id ? (
+                  <dl className="communication-invoice-snapshot">
+                    <div><dt>{t("Amount")}</dt><dd>{formatMoney(item.invoice.amount)}</dd></div>
+                    <div><dt>{t("Paid")}</dt><dd>{formatMoney(item.paid)}</dd></div>
+                    <div><dt>{t("Outstanding")}</dt><dd>{formatMoney(item.outstanding)}</dd></div>
+                  </dl>
+                ) : null}
                 {openInvoiceId===item.invoice.id ? (
                   <div className="communication-invoice-expanded">
                     <dl className="communication-invoice-detail-fields">
