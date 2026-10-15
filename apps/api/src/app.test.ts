@@ -4760,6 +4760,32 @@ test("Phase 7 class announcements stay inside the intended class and fee payment
   assert.equal(firstScheduledJob.statusCode, 200);
   const secondScheduledJob = await runJob();
   assert.equal(secondScheduledJob.statusCode, 200);
+  const adminDelivery = await app.inject({
+    method: "GET", url: "/v1/admin/notifications/delivery", headers: admin
+  });
+  assert.equal(adminDelivery.statusCode, 200);
+  const deliveryInfo = adminDelivery.json<{
+    scheduler: { lastSuccessAt: string | null };
+    counts: { providerAccepted: number; read: number };
+    recent: Array<{ id: string; title: string }>;
+  }>();
+  assert.ok(deliveryInfo.scheduler.lastSuccessAt, "scheduler heartbeat must be persisted");
+  assert.ok(deliveryInfo.counts.providerAccepted > 0, "provider accepted is separate from recipient read");
+  assert.ok(deliveryInfo.recent.length > 0);
+  assert.equal((await app.inject({
+    method: "GET", url: "/v1/admin/notifications/delivery",
+    headers: { authorization: `Bearer ${parentBToken}` }
+  })).statusCode, 403);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/v1/admin/notifications/${deliveryInfo.recent[0]!.id}/retry`,
+    headers: admin
+  })).statusCode, 409);
+  assert.equal((await app.inject({
+    method: "POST",
+    url: `/v1/admin/notifications/${deliveryInfo.recent[0]!.id}/retry`,
+    headers: { authorization: `Bearer ${parentBToken}` }
+  })).statusCode, 403);
   for (const [token, expected] of [
     [parentAToken, false], [parentBToken, true],
     [studentAToken, false], [studentBToken, false]
