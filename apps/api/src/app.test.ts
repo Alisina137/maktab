@@ -4375,6 +4375,12 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/admin/exams/${examId}/publish`, headers: assignedTeacher.auth });
   assert.equal(unauthorizedPublish.statusCode, 403);
 
+  // Admin Learning Phase 4: draft grades never enter the published directory.
+  const directoryPath = "/v1/admin/learning/published-results?academicYearId=" + yearId;
+  const draftDirectory = await app.inject({ method: "GET", url: directoryPath, headers: admin });
+  assert.equal(draftDirectory.statusCode, 200, draftDirectory.body);
+  assert.equal(draftDirectory.json<{total:number;rows:unknown[]}>().total, 0);
+
   const publish = await app.inject({
     method: "POST",
     url: `/v1/admin/exams/${examId}/publish`,
@@ -4437,9 +4443,64 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
       .notifications.some((notification) => notification.type === "RESULTS_PUBLISHED")
   );
 
+  // Admin Learning Phase 4: tenant-safe published directory, SQL filters,
+  // stable pagination, and strict filter validation.
+  assert.equal((await app.inject({ method: "GET", url: directoryPath })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: directoryPath,
+    headers: assignedTeacher.auth })).statusCode, 403);
+  const otherSchoolDirectory = await app.inject({ method: "GET", url: directoryPath, headers: otherAdmin });
+  assert.equal(otherSchoolDirectory.statusCode, 200, otherSchoolDirectory.body);
+  assert.equal(otherSchoolDirectory.json<{total:number}>().total, 0);
+  const fullDirectory = await app.inject({ method: "GET", url: directoryPath, headers: admin });
+  assert.equal(fullDirectory.statusCode, 200, fullDirectory.body);
+  const directoryRows = fullDirectory.json<{total:number; rows:Array<{
+    grade:{id:string;score:number}; examId:string; canCorrect:boolean;
+  }> }>();
+  assert.equal(directoryRows.total, 2);
+  assert.equal(directoryRows.rows.length, 2);
+  assert.ok(directoryRows.rows.every(row => row.examId === examId && row.canCorrect));
+  for (const query of [
+    "&examId=" + examId, "&classId=" + classId,
+    "&subjectId=" + subjectId, "&search=Midyear"
+  ]) {
+    const filtered = await app.inject({ method: "GET", url: directoryPath + query, headers: admin });
+    assert.equal(filtered.statusCode, 200, filtered.body);
+    assert.ok(filtered.json<{total:number}>().total >= 1);
+  }
+  for (const query of ["&examId=not-a-uuid", "&limit=1000", "&offset=-1"]) {
+    assert.equal((await app.inject({ method: "GET", url: directoryPath + query,
+      headers: admin })).statusCode, 400);
+  }
+  const firstPage = await app.inject({ method: "GET",
+    url: directoryPath + "&limit=1&offset=0", headers: admin });
+  const secondPage = await app.inject({ method: "GET",
+    url: directoryPath + "&limit=1&offset=1", headers: admin });
+  assert.equal(firstPage.statusCode, 200);
+  assert.equal(secondPage.statusCode, 200);
+  const gradeOnPageOne = firstPage.json<{rows:Array<{grade:{id:string}}>}>().rows[0]?.grade.id;
+  const gradeOnPageTwo = secondPage.json<{rows:Array<{grade:{id:string}}>}>().rows[0]?.grade.id;
+  assert.ok(gradeOnPageOne && gradeOnPageTwo && gradeOnPageOne !== gradeOnPageTwo);
+  const streamlinedOverview = await app.inject({ method: "GET",
+    url: "/v1/admin/learning?includePublishedGrades=false", headers: admin });
+  assert.equal(streamlinedOverview.statusCode, 200);
+  assert.equal(streamlinedOverview.json<{publishedGrades:unknown[]}>().publishedGrades.length, 0);
+
   // 15.10/15.12: post-publication edits are Admin-only and validated.
   const gradeIdToCorrect = results[0]!.grade.id;
   const initialGradeRevision = results[0]!.grade.updatedAt;
+  const correctionHistoryUrl = "/v1/admin/grades/" + gradeIdToCorrect + "/corrections";
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl })).statusCode, 401);
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
+    headers: assignedTeacher.auth })).statusCode, 403);
+  assert.equal((await app.inject({ method: "GET", url: correctionHistoryUrl,
+    headers: otherAdmin })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: "/v1/admin/grades/not-a-uuid/corrections", headers: admin })).statusCode, 400);
+  const beforeCorrectionHistory = await app.inject({ method: "GET",
+    url: correctionHistoryUrl, headers: admin });
+  assert.equal(beforeCorrectionHistory.statusCode, 200);
+  assert.equal(beforeCorrectionHistory.json<{total:number}>().total, 0);
+
   for (const payload of [
     { score: -1, reason: "Bad value" },
     { score: 101, reason: "Out of range" },
@@ -4467,6 +4528,22 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
   assert.equal(corrected.statusCode, 200);
   assert.equal(corrected.json<{ previousScore: number; grade: { score: number } }>().previousScore, 88);
   assert.equal(corrected.json<{ grade: { score: number } }>().grade.score, 91);
+  const correctionHistory = await app.inject({ method: "GET",
+    url: correctionHistoryUrl, headers: admin });
+  assert.equal(correctionHistory.statusCode, 200, correctionHistory.body);
+  const correctionEvents = correctionHistory.json<{total:number; events:Array<{
+    previousScore:number;score:number;reason:string;actorUsername:string;
+  }> }>();
+  assert.equal(correctionEvents.total, 1);
+  assert.equal(correctionEvents.events[0]?.previousScore, 88);
+  assert.equal(correctionEvents.events[0]?.score, 91);
+  assert.equal(correctionEvents.events[0]?.reason, "Verified scoring correction");
+  assert.ok(correctionEvents.events[0]?.actorUsername);
+  const updatedDirectory = await app.inject({ method: "GET", url: directoryPath, headers: admin });
+  assert.equal(updatedDirectory.statusCode, 200);
+  assert.equal(updatedDirectory.json<{rows:Array<{grade:{id:string;score:number}}>}>()
+    .rows.find(item => item.grade.id === gradeIdToCorrect)?.grade.score, 91);
+
   const crossTenantCorrection = await app.inject({ method: "PATCH",
     url: `/v1/admin/grades/${gradeIdToCorrect}/correct`, headers: otherAdmin,
     payload: { score: 90, reason: "Different school may not edit" } });
@@ -4525,6 +4602,12 @@ test("draft grades are hidden until admin publishes the complete exam, and unrel
     url: `/v1/admin/exams/${examId}/status`, headers: admin,
     payload: { status: "ARCHIVED" } });
   assert.equal(archived.statusCode, 200);
+  const archivedDirectory = await app.inject({ method: "GET", url: directoryPath, headers: admin });
+  assert.equal(archivedDirectory.statusCode, 200, archivedDirectory.body);
+  assert.equal(archivedDirectory.json<{rows:Array<{canCorrect:boolean}>}>().rows.length, 2);
+  assert.ok(archivedDirectory.json<{rows:Array<{canCorrect:boolean}>}>()
+    .rows.every(row => !row.canCorrect));
+
   const archivedRoster = await app.inject({ method: "GET",
     url: `/v1/teacher/exam-subjects/${examSubjectId}/grades`,
     headers: assignedTeacher.auth });

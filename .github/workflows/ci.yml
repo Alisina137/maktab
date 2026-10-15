@@ -76,6 +76,9 @@ jobs:
       - name: Admin Learning Phase 3 readiness and publication protections
         run: pnpm verify:admin-learning:phase3
 
+      - name: Admin Learning Phase 4 published-results directory and correction audit
+        run: pnpm verify:admin-learning:phase4
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -206,6 +209,7 @@ jobs:
           pnpm verify:admin-learning:phase1
           pnpm verify:admin-learning:phase2
           pnpm verify:admin-learning:phase3
+          pnpm verify:admin-learning:phase4
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3

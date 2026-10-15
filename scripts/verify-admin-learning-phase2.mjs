@@ -15,7 +15,7 @@ const tests = read("apps/api/src/app.test.ts");
 for (const marker of [
   'AdminLearningExams', 'initialExamId={initialExamId}',
   'role="tabpanel" aria-labelledby="learning-tab-exams"',
-  'setBusy', 'PublishedGradeRow'
+  'AdminLearningResults', 'yearId={selectedAcademicYearId}'
 ]) assert.ok(parent.includes(marker), "Missing parent Learning regression invariant: " + marker);
 for (const marker of [
   'initialExamId={params.examId}', 'LearningPanel',

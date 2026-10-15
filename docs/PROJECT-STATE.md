@@ -1764,3 +1764,21 @@ Implemented interactive Parent Home destination cards (Attendance, Academics Hom
 - Result publication now refreshes eligibility immediately before opening a localized confirmation with exam name, mark count, subject count and **estimated maximum** notification account count. All transitions remain validated by the existing server-side transaction and grade lock. Ineligible status actions are disabled; publish/archive are confirmed explicitly. The server refuses repeat publication and preserves published result privacy until commit.
 - Added English/Dari/Pashto strings, compact RTL/mobile status cards, scoped API integration assertions for unauthorized roles and other schools, partial-grade readiness, completed-grade readiness and duplicate publish denial. Linux/Windows CI runs `pnpm verify:admin-learning:phase3` and the previous phase guards now target the relocated publish confirmation logic.
 - **Outstanding acceptance:** verify on real PostgreSQL under concurrent mark submission and publish; ensure intended counts under withdrawn/re-enrolled student cases, real user devices, screen readers and keyboard RTL at 200% zoom. Phase 4 will add published-grade filtering, detailed corrections and audit navigation. No database migration is required.
+
+
+## Admin Learning workspace — Phase 4: Published results & correction audit (2026-10-15)
+
+Implemented on `feature/admin-learning-phase4-results` (merge to `main` after verification):
+
+- Gradebook & Results now has an accessible, responsive published-grade directory with student/exam search, exam/class/subject filters and 20-item server-side pagination.
+- `GET /v1/admin/learning/published-results` requires an authenticated school administrator and academic year UUID; SQL joins strictly enforce school boundaries, exclude draft grades, sort results predictably and cap page size to 50. Archived published results remain visible but read-only.
+- `GET /v1/admin/grades/:gradeId/corrections` returns a bounded, school-scoped, chronological correction-history view for a published grade; history includes reason, old/new score/remark and actor username (no credentials).
+- Admins can review an individual result then explicitly start a correction, provide a reason, and confirm before writing. The existing optimistic revision check, transactional row locking and immutable audit trail are retained; historical academic years now reject server-side corrections.
+- Fast learning overview requests omit the formerly unbounded published-grade payload via `?includePublishedGrades=false`; the legacy endpoint default stays backward compatible.
+- Loading/retry, account/year/filter switching, and stale-fetch aborts protect student result data. Controls and copy are translated into Dari, Pashto, and English.
+- Integration coverage checks unpublished-grade exclusion, pagination, filtering, role/tenant isolation, invalid filter rejection, audit provenance, optimistic revisions, and archived read-only state.
+- No new database migration is required.
+
+Verification: `pnpm verify:admin-learning:phase4`, `pnpm typecheck`, `pnpm test`, `pnpm build`; GitHub Actions CI should also pass before merging. Physical browser and RTL/keyboard acceptance still require a manual smoke test.
+
+Next: Phase 5 — Homework directory, assigned-teacher submission monitoring and administrator follow-up.
