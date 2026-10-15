@@ -5,6 +5,7 @@ import {
   createFeeInvoiceSchema,
   updateDraftFeeInvoiceSchema,
   adminFeeInvoiceQuerySchema,
+  adminFeePaymentsQuerySchema,
   recordFeePaymentSchema,
   registerPushDeviceSchema,
   reverseFeePaymentSchema,
@@ -334,6 +335,45 @@ export function registerCommunicationRoutes(
       return sendCommunicationError(reply, error);
     }
   });
+
+  app.get("/v1/admin/fees/payments", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const query = adminFeePaymentsQuerySchema.parse(request.query);
+      return await communication.listAdminFeePayments(context.user.schoolId, query);
+    } catch (error) {
+      return sendCommunicationError(reply, error);
+    }
+  });
+
+  app.get<{ Params: { paymentId: string } }>(
+    "/v1/admin/fees/payments/:paymentId/receipt", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        return { receipt: await communication.getAdminFeePaymentReceipt(
+          context.user.schoolId, request.params.paymentId
+        ) };
+      } catch (error) {
+        return sendCommunicationError(reply, error);
+      }
+    }
+  );
+
+  app.get<{ Params: { studentId: string } }>(
+    "/v1/admin/fees/students/:studentId/balance", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        return await communication.getAdminStudentFeeBalance(
+          context.user.schoolId, request.params.studentId
+        );
+      } catch (error) {
+        return sendCommunicationError(reply, error);
+      }
+    }
+  );
 
   app.patch<{ Params: { invoiceId: string } }>(
     "/v1/admin/fees/invoices/:invoiceId",
