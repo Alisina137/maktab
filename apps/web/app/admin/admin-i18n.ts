@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Review timetable": "بررسی تقسیم اوقات",
+  "{critical} critical checks and {warnings} warnings.": "{critical} بررسی بحرانی و {warnings} هشدار.",
   "Checks current active-year timetable periods for conflicts, invalid hours and broken teacher assignments.": "تداخل ساعات، ساعت‌های نادرست و تعیینات ناقص معلم در تقسیم اوقات سال فعال بررسی می‌شود.",
   "Checking timetable integrity…": "در حال بررسی تقسیم اوقات…",
   "Operational checks could not be loaded.": "بررسی‌های عملیاتی دریافت نشد.",
@@ -2065,6 +2067,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Review timetable": "مهالویش وګورئ",
+  "{critical} critical checks and {warnings} warnings.": "{critical} جدي ستونزې او {warnings} خبرتیاوې.",
   "Checks current active-year timetable periods for conflicts, invalid hours and broken teacher assignments.": "د روان تعلیمي کال مهالویش د وخت د ټکر، ناسمو ساعتونو او نیمګړو ښوونکو ټاکنو لپاره کتل کېږي.",
   "Checking timetable integrity…": "د مهالویش ارزونه روانه ده…",
   "Operational checks could not be loaded.": "عملیاتي ارزونه پورته نه شوه.",
