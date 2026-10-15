@@ -29,7 +29,7 @@ for(const fragment of [
   'setDraftFilters({ from: today, to: today, classId: "" })',
   'selectedAcademicYear?.status !== "ACTIVE"',
   'setActionBusy(false)',
-  'studentAttendancePreviews(report?.rows ?? [])',
+  'AdminAttendanceStudents',
   'attendanceRate(report.summary)',
   'readOnly={historicalReadOnly} onCorrect={correct}',
   'onClick={() => void onCorrect(row, status, note)}',
