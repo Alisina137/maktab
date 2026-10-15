@@ -19,8 +19,8 @@ const EMPTY: Filters = { from: "", to: "", classId: "", search: "" };
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const PAGE_SIZE = 15;
 
-export function AdminAttendanceAudit({ accessToken, academicYearId, locale, classes }: {
-  accessToken: string; academicYearId: string; locale: AdminLocale;
+export function AdminAttendanceAudit({ accessToken, academicYearId, locale, classes, schoolToday }: {
+  accessToken: string; academicYearId: string; locale: AdminLocale; schoolToday: string;
   classes: Array<{ id: string; name: string; code: string }>;
 }) {
   const t = (key: string) => adminText(locale, key);
@@ -87,11 +87,11 @@ export function AdminAttendanceAudit({ accessToken, academicYearId, locale, clas
     </header>
     <form className="attendance-audit-filter" onSubmit={submit} aria-label={t("Filter correction history")}>
       <label>{t("From")}
-        <AdminHijriDatePicker locale={locale} value={draft.from}
+        <AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.from}
           onChange={value => setDraft(current => ({...current, from: value}))}/>
       </label>
       <label>{t("To")}
-        <AdminHijriDatePicker locale={locale} value={draft.to}
+        <AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.to}
           onChange={value => setDraft(current => ({...current, to: value}))}/>
       </label>
       <label>{t("Class")}

@@ -164,9 +164,9 @@ export function AdminAttendanceAnalytics({accessToken,academicYearId,schoolToday
       onClick={()=>setReload(v=>v+1)}>{t("Refresh")}</button>
     </header>
     <form className="admin-panel attendance-analytics-filter" onSubmit={apply}>
-      <label>{t("From")}<AdminHijriDatePicker locale={locale} value={draft.from}
+      <label>{t("From")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.from}
         onChange={from=>setDraft(v=>({...v,from}))} required /></label>
-      <label>{t("To")}<AdminHijriDatePicker locale={locale} value={draft.to}
+      <label>{t("To")}<AdminHijriDatePicker locale={locale} today={schoolToday} value={draft.to}
         onChange={to=>setDraft(v=>({...v,to}))} required /></label>
       <label>{t("Class")}<select value={draft.classId}
         onChange={event=>setDraft(v=>({...v,classId:event.target.value}))}>
