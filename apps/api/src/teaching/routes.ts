@@ -57,6 +57,61 @@ export function registerTeachingRoutes(
     return context.user;
   }
 
+  // Phase 6: role-protected, read-only progress across school assignments.
+  // A teacher's write APIs remain the only way to record lesson/unit progress.
+  const progressPage = z.object({
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    offset: z.coerce.number().int().min(0).max(100000).default(0)
+  }).strict();
+  const progressFilters = progressPage.extend({
+    academicYearId: uuid,
+    classId: uuid.optional(),
+    subjectId: uuid.optional(),
+    teacherUserId: uuid.optional(),
+    search: z.string().trim().max(100).optional(),
+    focus: z.enum(["ALL","NO_CURRICULUM","NOT_STARTED","INCOMPLETE",
+      "POSTPONED","NO_LESSONS"]).default("ALL")
+  });
+  const progressDetails = progressPage.extend({
+    academicYearId: uuid
+  });
+  app.get("/v1/admin/teaching/progress", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      return await teaching.listAdminTeachingProgress(context.user.schoolId,
+        progressFilters.parse(request.query));
+    } catch (error) { return respond(reply, error); }
+  });
+
+  app.get<{ Params: { assignmentId: string } }>(
+    "/v1/admin/teaching/progress/:assignmentId/units", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const { academicYearId, limit, offset, status } = progressDetails.extend({
+          status: z.enum(["ALL","NOT_STARTED","IN_PROGRESS","COMPLETED"]).default("ALL")
+        }).parse(request.query);
+        return await teaching.listAdminTeachingUnits(context.user.schoolId, academicYearId,
+          uuid.parse(request.params.assignmentId), status, limit, offset);
+      } catch (error) { return respond(reply, error); }
+    }
+  );
+
+  app.get<{ Params: { assignmentId: string } }>(
+    "/v1/admin/teaching/progress/:assignmentId/lessons", async (request, reply) => {
+      const context = await requireSchoolAdmin(request, reply, accounts);
+      if (!context) return;
+      try {
+        const { academicYearId, limit, offset, status } = progressDetails.extend({
+          status: z.enum(["ALL","PLANNED","COMPLETED","POSTPONED"]).default("ALL")
+        }).parse(request.query);
+        return await teaching.listAdminTeachingLessons(context.user.schoolId, academicYearId,
+          uuid.parse(request.params.assignmentId), status, limit, offset);
+      } catch (error) { return respond(reply, error); }
+    }
+  );
+
   app.get<{ Querystring: { academicYearId: string; classId: string; subjectId: string } }>(
     "/v1/admin/teaching/curriculum", async (request, reply) => {
       const context = await requireSchoolAdmin(request, reply, accounts);
