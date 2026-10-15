@@ -34,7 +34,7 @@ for (const fragment of [
 ]) assert.ok(panel.includes(fragment), "Missing Phase 1 UI safeguard: "+fragment);
 for (const fragment of [
   '"Exam lifecycle"', 'role="tablist" aria-label={t("Examination detail sections")}',
-  'window.confirm(t(exam.status === "RESULTS_READY"'
+  'window.confirm(adminFormat(locale,'
 ]) assert.ok(examWorkspace.includes(fragment), "Phase 2 must preserve relocated Phase 1 exam behavior: "+fragment);
 assert.ok(!panel.includes('Phase 6 · Homework, Exams & Results'), "No internal phase language on Learning page.");
 for (const fragment of [
