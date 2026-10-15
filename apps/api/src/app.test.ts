@@ -7730,6 +7730,37 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
   }
 });
 
+test("Pilot refinement Phase 4 usage reporting is school-scoped and validates period", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PILOT-ADOPTION-A");
+  const schoolB = await provisionSchool(app, "PILOT-ADOPTION-B");
+  const a = { authorization: "Bearer " + await bootstrapAdmin(app, schoolA) };
+  const b = { authorization: "Bearer " + await bootstrapAdmin(app, schoolB) };
+  const route = "/v1/admin/pilot/adoption";
+  assert.equal((await app.inject({ method: "GET", url: route })).statusCode, 401);
+  const response = await app.inject({ method: "GET", url: route + "?window=7d", headers: a });
+  assert.equal(response.statusCode, 200, response.body);
+  assert.equal(response.headers["cache-control"], "no-store");
+  const report = response.json<{ window: string; timeZone: string;
+    roles: Array<{role: string; eligible: number; signedInPercent: number | null}>;
+    activities: { homeworkPublished: number; attendanceClassDays: number };
+  }>();
+  assert.equal(report.window, "7d");
+  assert.equal(report.timeZone, "Asia/Kabul");
+  assert.deepEqual(report.roles.map((metric) => metric.role), ["TEACHER", "PARENT", "STUDENT"]);
+  assert.equal(report.roles.every((metric) => metric.eligible === 0 && metric.signedInPercent === null), true);
+  assert.equal(report.activities.homeworkPublished, 0);
+  const other = await app.inject({ method: "GET", url: route + "?window=30d", headers: b });
+  assert.equal(other.statusCode, 200, other.body);
+  assert.equal(other.json<{ activities: {attendanceClassDays: number} }>().activities.attendanceClassDays, 0);
+  for (const query of ["window=wrong", "window=7d&schoolId=" + schoolB,
+    "window=30d&limit=100", "unexpected=1"]) {
+    const invalid = await app.inject({ method: "GET", url: route + "?" + query, headers: a });
+    assert.equal(invalid.statusCode, 400, invalid.body);
+  }
+});
+
 test("Pilot Phase 3 school import history, replay protection and rejected validation stay tenant-scoped", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
