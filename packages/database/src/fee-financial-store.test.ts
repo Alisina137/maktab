@@ -18,7 +18,7 @@ async function setup() {
     "0008_phase8_pilot_readiness.sql","0009_school_image.sql",
     "0014_student_phone.sql","0019_fee_payment_idempotency.sql",
     "0022_fee_invoice_numbers.sql","0023_notification_scheduler_health.sql",
-    "0024_fee_payment_reconciliation.sql"
+    "0024_fee_payment_reconciliation.sql", "0025_notification_push_lease.sql"
   ];
   for (const file of migrations) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
