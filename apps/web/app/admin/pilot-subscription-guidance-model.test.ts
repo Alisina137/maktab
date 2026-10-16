@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseSubscriptionHealth, subscriptionNextActions, subscriptionCheckpoints } from "./pilot-subscription-guidance-model.js";
-import { evaluateSubscriptionHealth } from "../../../../../packages/database/src/subscription-health.js";
+import { evaluateSubscriptionHealth } from "../../../../packages/database/src/subscription-health.js";
 
 const data = (
   status: "TRIAL" | "ACTIVE" | "PAST_DUE" | "GRACE" | "SUSPENDED" | "CANCELLED",
