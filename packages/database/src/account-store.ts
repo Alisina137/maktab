@@ -5,9 +5,11 @@ import { categorizeAuditAction, safeAuditMetadata, type AuditCategory } from "./
 import type { UserRole, UserStatus } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import { isUniqueConstraintViolation } from "./db-errors.js";
+import { normalizeStaffPermissions, type StaffProfile, type StaffProfileInput } from "./staff-permissions.js";
 import {
   adminPasswordVerifications,
   adminProfiles,
+  staffProfiles,
   auditLogs,
   authSessions,
   parentProfiles,
@@ -148,6 +150,9 @@ export interface AccountStore {
     actorUserId: string,
     reason?: string
   ): Promise<User[]>;
+  getStaffProfile(schoolId: string, userId: string): Promise<StaffProfile | null>;
+  upsertStaffProfile(schoolId: string, userId: string, input: StaffProfileInput, actorUserId: string):
+    Promise<StaffProfile | null>;
   getAdminProfile(schoolId: string, userId: string): Promise<AdminContactProfile | null>;
   getSchoolAdminContact(schoolId: string): Promise<SchoolAdminContact | null>;
   upsertAdminProfile(
@@ -498,6 +503,48 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           metadata: reason && action === "suspend" ? { reason, bulk: true } : { bulk: true }
         })));
         return updated;
+      });
+    },
+
+    async getStaffProfile(schoolId, userId) {
+      const [row] = await db.select().from(staffProfiles)
+        .innerJoin(users, and(eq(users.id, staffProfiles.userId),
+          eq(users.schoolId, staffProfiles.schoolId), eq(users.role, "SCHOOL_STAFF")))
+        .where(and(eq(staffProfiles.schoolId, schoolId),
+          eq(staffProfiles.userId, userId))).limit(1);
+      if (!row) return null;
+      const normalized = normalizeStaffPermissions(row.staff_profiles.permissions);
+      return { ...row.staff_profiles, permissions: normalized } as StaffProfile;
+    },
+
+    async upsertStaffProfile(schoolId, userId, input, actorUserId) {
+      // One transaction: reject non-staff/cross-school targets, persist changes,
+      // invalidate prior access/refresh tokens and keep school-scoped audit.
+      const permissions = normalizeStaffPermissions(input.permissions);
+      return db.transaction(async (tx) => {
+        const [user] = await tx.select({ id: users.id }).from(users)
+          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId),
+            eq(users.role, "SCHOOL_STAFF"), sql`${users.status} <> 'ARCHIVED'`)).limit(1);
+        if (!user) return null;
+        const [updated] = await tx.insert(staffProfiles).values({
+          userId, schoolId, fullName: input.fullName,
+          employeeCode: input.employeeCode, department: input.department,
+          position: input.position, permissions, updatedAt: new Date()
+        }).onConflictDoUpdate({ target: staffProfiles.userId, set: {
+          fullName: input.fullName, employeeCode: input.employeeCode,
+          department: input.department, position: input.position,
+          permissions, updatedAt: new Date()
+        }}).returning();
+        if (!updated) throw new Error("Staff profile update failed.");
+        await tx.update(authSessions).set({ revokedAt: new Date() })
+          .where(and(eq(authSessions.schoolId, schoolId),
+            eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+        await tx.insert(auditLogs).values({
+          id: randomUUID(), schoolId, actorUserId, entityType: "user",
+          entityId: userId, action: "staff.profile_updated",
+          metadata: { position: input.position, permissions }
+        });
+        return { ...updated, permissions } as StaffProfile;
       });
     },
 
