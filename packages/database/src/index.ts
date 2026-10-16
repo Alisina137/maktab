@@ -24,6 +24,7 @@ export * from "./teacher-tasks-store.js";
 export * from "./pilot-readiness-advanced.js";
 export * from "./pilot-adoption-store.js";
 export * from "./pilot-service-health-store.js";
+export * from "./pilot-oversight-store.js";
 export * from "./pilot-readiness-operational.js";
 
 export * from "./subscription-health.js";
