@@ -87,6 +87,11 @@ export function registerPilotRoutes(
   app.get("/v1/admin/pilot/service-health", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
+    if (!z.object({}).strict().safeParse(request.query).success) {
+      return reply.code(400).send({
+        error: "validation_error", message: "This report accepts no query parameters."
+      });
+    }
     reply.header("cache-control", "no-store");
     return {
       report: await pilot.getServiceHealth(context.user.schoolId),
