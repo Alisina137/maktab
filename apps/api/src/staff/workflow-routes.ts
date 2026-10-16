@@ -17,20 +17,23 @@ const taskUpdate=z.object({
   status:z.enum(["TODO","IN_PROGRESS","DONE"]),
   expectedUpdatedAt:z.string().datetime({offset:true})
 }).strict();
-const draftBody=z.object({
+const draftFields=z.object({
   title:z.string().trim().min(3).max(160),
   content:z.string().trim().min(5).max(5000),
   audienceScope:z.enum(["SCHOOL","ROLE"]),
   audienceRole:z.enum(["TEACHER","PARENT","STUDENT"]).nullable().optional()
-}).strict().superRefine((body,ctx)=>{
+}).strict();
+const validateAudience=(body:{audienceScope:"SCHOOL"|"ROLE";audienceRole?:"TEACHER"|"PARENT"|"STUDENT"|null},
+  ctx:z.RefinementCtx)=>{
   if(body.audienceScope==="ROLE"&&!body.audienceRole)
     ctx.addIssue({code:"custom",message:"Select an audience role.",path:["audienceRole"]});
   if(body.audienceScope==="SCHOOL"&&body.audienceRole)
     ctx.addIssue({code:"custom",message:"School-wide messages cannot select a role.",path:["audienceRole"]});
-});
-const draftEdit=z.intersection(draftBody,z.object({
+};
+const draftBody=draftFields.superRefine(validateAudience);
+const draftEdit=draftFields.extend({
   expectedUpdatedAt:z.string().datetime({offset:true})
-}).strict());
+}).superRefine(validateAudience);
 const decision=z.discriminatedUnion("action",[
   z.object({action:z.literal("APPROVE"),note:z.string().trim().max(500).default("")}).strict(),
   z.object({action:z.literal("REJECT"),note:z.string().trim().min(3).max(500)}).strict()
