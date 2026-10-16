@@ -4,15 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { formatPilotTimestamp } from "./pilot-timestamp";
+import {
+  parseOversightPage, parseOversightRelease, summarizeOversightPage,
+  oversightReviewActions, type OversightPage, type OversightRelease
+} from "./pilot-oversight-triage-model";
 
 type Window = "7d" | "30d" | "90d";
 type Kind = "ALL" | "SUPPORT" | "EVIDENCE" | "DECISION" | "IMPORT" | "EXPORT";
-type Event = { id: string; kind: Exclude<Kind, "ALL">; action: string; occurredAt: string };
-type Page = { events: Event[]; limit: number; offset: number; hasMore: boolean;
-  window: Window; kind: Kind; startAt: string; endAt: string; timeZone: "Asia/Kabul" };
-type Release = { productionDecision: "NO_GO"; setupReady: boolean;
-  effectivePilotApproval: boolean; evidenceVerified: number; evidenceRequired: number;
-  openCriticalTickets: number; missingExternalGates: string[] };
+type Event = OversightPage["events"][number];
+type Page = OversightPage;
+type Release = OversightRelease;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const periods: Array<{ value: Window; label: string }> = [
@@ -62,6 +63,7 @@ export function PilotOversightPanel({ accessToken, locale }: {
   const [kind, setKind] = useState<Kind>("ALL");
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
+  const [onlyReview, setOnlyReview] = useState(false);
   const [page, setPage] = useState<Page | null>(null);
   const [timelineError, setTimelineError] = useState("");
   const [timelineBusy, setTimelineBusy] = useState(true);
@@ -70,14 +72,19 @@ export function PilotOversightPanel({ accessToken, locale }: {
   const [releaseBusy, setReleaseBusy] = useState(true);
   const formatTime = (value: string) => formatPilotTimestamp(locale, value);
   const number = (value: number) => new Intl.NumberFormat(locale === "en" ? "en-US" : locale).format(value);
+  const pageSummary = page ? summarizeOversightPage(page) : null;
+  const visibleEvents = page?.events.filter(entry => !onlyReview || oversightReviewActions.has(entry.action)) ?? [];
 
   // Timeline failures must not prevent independent release oversight data from displaying.
   useEffect(() => {
     const controller = new AbortController();
     setTimelineBusy(true); setTimelineError(""); setPage(null);
     const query = new URLSearchParams({ window, kind, offset: String(offset), limit: "15" });
-    void request<Page>(accessToken, "/v1/admin/pilot/oversight?" + query.toString(), controller.signal)
-      .then((value) => { if (!controller.signal.aborted) setPage(value); })
+    void request<unknown>(accessToken, "/v1/admin/pilot/oversight?" + query.toString(), controller.signal)
+      .then((value) => {
+        const verified = parseOversightPage(value, { window, kind, limit: 15, offset });
+        if (!controller.signal.aborted) setPage(verified);
+      })
       .catch((cause) => {
         if (!controller.signal.aborted)
           setTimelineError(adminErrorText(locale, cause, "Oversight timeline could not be loaded."));
@@ -89,8 +96,11 @@ export function PilotOversightPanel({ accessToken, locale }: {
   useEffect(() => {
     const controller = new AbortController();
     setRelease(null); setReleaseError(""); setReleaseBusy(true);
-    void request<Release>(accessToken, "/v1/admin/pilot/release-readiness", controller.signal)
-      .then((value) => { if (!controller.signal.aborted) setRelease(value); })
+    void request<unknown>(accessToken, "/v1/admin/pilot/release-readiness", controller.signal)
+      .then((value) => {
+        const verified = parseOversightRelease(value);
+        if (!controller.signal.aborted) setRelease(verified);
+      })
       .catch((cause) => {
         if (!controller.signal.aborted)
           setReleaseError(adminErrorText(locale, cause, "Release oversight could not be loaded."));
@@ -184,6 +194,14 @@ export function PilotOversightPanel({ accessToken, locale }: {
             </select>
           </label>
         </div>
+        <div className="pilot-oversight-review-controls">
+          <label>
+            <input type="checkbox" checked={onlyReview}
+              onChange={(event) => setOnlyReview(event.target.checked)} />
+            <span>{t("Show notable records on this page only")}</span>
+          </label>
+          <p>{t("A notable event is not proof of an unresolved incident. Open Support for current ticket status.")}</p>
+        </div>
         {timelineBusy ? <p role="status">{t("Loading operational events…")}</p> : null}
         {timelineError ? (
           <div className="admin-error" role="alert">{timelineError}
@@ -192,16 +210,48 @@ export function PilotOversightPanel({ accessToken, locale }: {
             </button>
           </div>
         ) : null}
+        {page && pageSummary ? (
+          <div className="pilot-oversight-page-metrics">
+            {([
+              ["Recorded on this page", pageSummary.events],
+              ["Notable on this page", pageSummary.needsReview],
+              ["Support events on this page", pageSummary.support],
+              ["Import events on this page", pageSummary.imports],
+              ["Evidence and decisions on this page", pageSummary.evidenceAndDecisions],
+              ["Export events on this page", pageSummary.exports]
+            ] as const).map(([label, value]) => (
+              <div key={label} className="pilot-oversight-page-metric">
+                <span>{t(label)}</span><strong>{number(value)}</strong>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {page && pageSummary ? (
+          <p className="pilot-security-note">
+            {adminFormat(locale, "Showing events {start}–{end} from the loaded page.", {
+              start: number(pageSummary.start), end: number(pageSummary.end)
+            })}
+            {" "}{t("These are page counts, not totals for the reporting period.")}
+          </p>
+        ) : null}
         {page && page.events.length === 0 ? (
           <p>{t("No matching operational events were recorded in this reporting period.")}</p>
         ) : null}
-        {page && page.events.length > 0 ? (
+        {page && page.events.length > 0 && visibleEvents.length === 0 ? (
+          <p className="pilot-security-note">{t("No notable records on this page. Other pages may contain them.")}</p>
+        ) : null}
+        {page && visibleEvents.length > 0 ? (
           <ol className="pilot-oversight-list">
-            {page.events.map((entry) => (
-              <li key={entry.kind + entry.id} className="pilot-oversight-row">
+            {visibleEvents.map((entry) => (
+              <li key={entry.kind + entry.id}
+                className={oversightReviewActions.has(entry.action) ?
+                  "pilot-oversight-row pilot-oversight-row-review" : "pilot-oversight-row"}>
                 <div className="pilot-oversight-event">
                   <span className="pilot-badge">{t(kinds.find((item) => item.value === entry.kind)?.label ?? entry.kind)}</span>
                   <strong>{t(actions[entry.action] ?? "Operational event recorded")}</strong>
+                  {oversightReviewActions.has(entry.action) ? (
+                    <span className="pilot-badge pilot-badge-warning">{t("Review recorded event")}</span>
+                  ) : null}
                   <Link className="pilot-inline-link" href={kindLinks[entry.kind]}>{t("Open section")}</Link>
                 </div>
                 <time dateTime={entry.occurredAt}>{formatTime(entry.occurredAt)}</time>
