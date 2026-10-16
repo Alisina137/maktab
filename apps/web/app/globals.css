@@ -9021,3 +9021,36 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
 @media(max-width:520px) {
   .pilot-oversight-page-metrics { grid-template-columns: minmax(0,1fr); }
 }
+
+/* Pilot Operations Phase 7: no-write, responsive subscription/admin guidance. */
+.pilot-subscription-guidance, .pilot-subscription-thresholds { display: grid; gap: 14px; min-width: 0; }
+.pilot-subscription-guidance .admin-section-header h3,
+.pilot-subscription-thresholds .admin-section-header h3 { margin: 0 0 6px; }
+.pilot-subscription-guidance .admin-section-header p,
+.pilot-subscription-thresholds .admin-section-header p { margin: 0; }
+.pilot-subscription-actions { display: grid; gap: 9px; padding: 0; margin: 0; list-style: none; }
+.pilot-subscription-action { min-width: 0; display: flex; gap: 13px;
+  align-items: center; justify-content: space-between; padding: 13px 15px;
+  border-radius: 12px; border: 1px solid #dbe5f1; border-inline-start: 4px solid #6e88af;
+  background: #f8fbff; }
+.pilot-subscription-action-critical { background: #fffafa; border-inline-start-color: #b14e46; }
+.pilot-subscription-action-warning { background: #fffcf7; border-inline-start-color: #b18b38; }
+.pilot-subscription-action strong { display: block; font-size: 13px; }
+.pilot-subscription-action p { font-size: 12px; line-height: 1.6;
+  color: var(--ml-color-text-muted); margin: 5px 0 0; overflow-wrap: anywhere; }
+.pilot-subscription-action a { flex: 0 0 auto; }
+.pilot-subscription-threshold-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.pilot-subscription-threshold { display: grid; gap: 5px; padding: 14px;
+  border: 1px solid #d9e3ee; border-radius: 12px; background: #f9fbff; min-width: 0; }
+.pilot-subscription-threshold strong { font-size: 23px; font-weight: 850;
+  font-variant-numeric: tabular-nums; color: #285c92; }
+.pilot-subscription-threshold span { color: var(--ml-color-text-muted); font-size: 12px; }
+.pilot-subscription-threshold small { font-size: 11px; line-height: 1.5; color: #53677f; }
+.pilot-subscription-guidance a:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+@media (max-width: 900px) {
+  .pilot-subscription-threshold-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 570px) {
+  .pilot-subscription-action { align-items: flex-start; flex-direction: column; }
+  .pilot-subscription-threshold-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
