@@ -65,13 +65,28 @@ export async function getPilotServiceHealthReport(
     : (result as unknown as { rows?: Array<Record<string, unknown>> }).rows ?? [];
   const row = rows[0] as Record<string, unknown> | undefined;
   if (!row) throw new Error("Service health aggregate returned no record.");
-  const number = (name: string) => Number(row[name] ?? 0);
+  // An incomplete or malformed aggregate is UNKNOWN, never a healthy zero.
+  // PostgreSQL can return integer aggregates as numbers or decimal strings.
+  const number = (name: string): number => {
+    const raw = row[name];
+    if (typeof raw !== "number" && (typeof raw !== "string" || !/^(0|[1-9][0-9]*)$/.test(raw))) {
+      throw new Error("Incomplete service health aggregate.");
+    }
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new Error("Invalid service health aggregate.");
+    }
+    return value;
+  };
   const pending = number("notifications_pending");
   const stalePending = number("notifications_stale");
   const failed = number("notifications_failed");
   const unresolved = number("support_unresolved");
   const unresolvedCritical = number("support_critical");
   const failedLast7Days = number("imports_failed");
+  if (stalePending > pending || unresolvedCritical > unresolved) {
+    throw new Error("Contradictory service health aggregate.");
+  }
   return {
     evaluatedAt, timeZone: "Asia/Kabul",
     api: "responding", database: "query_succeeded",
