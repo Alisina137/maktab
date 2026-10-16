@@ -36,3 +36,5 @@ export * from "./pilot-release-readiness.js";
 export * from "./staff-permissions.js";
 
 export * from "./registration-store.js";
+
+export * from "./staff-attendance-correction-store.js";
