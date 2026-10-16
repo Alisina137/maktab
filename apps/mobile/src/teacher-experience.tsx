@@ -3,9 +3,7 @@ import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from "
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
-  formatLocalizedDate,
   formatLocalizedNumber,
-  formatLocalizedTime,
   getDirection,
   translate,
   type SupportedLocale,
@@ -151,9 +149,6 @@ export function TeacherExperience({
   const rtl = getDirection(locale) === "rtl";
   const statusKey = (status: "PENDING" | "SUBMITTED") =>
     status === "PENDING" ? "attendance.pending" : "attendance.submitted";
-  const todaySchedule = [...(today?.schedule ?? [])].sort(
-    (a, b) => a.startsAt.localeCompare(b.startsAt) || a.className.localeCompare(b.className)
-  );
   const schedule = academics?.schedule ?? [];
   const assignments = academics?.assignmentDetails ?? [];
   const uniqueClassCount = new Set(assignments.map((item) => item.classId)).size;
