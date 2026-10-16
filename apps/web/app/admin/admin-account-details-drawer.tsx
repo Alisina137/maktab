@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { adminApi, friendlyAdminError, type User } from "./admin-client";
+import { AdminStaffProfileEditor } from "./admin-staff-profile-editor";
 import { formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import type { AdminLocale } from "./admin-i18n";
 import {
@@ -218,6 +219,11 @@ export function AdminAccountDetailsDrawer({
               <Fact label={t("Password setup")} value={t(user.mustChangePassword ? "Password change required" : "Completed")} />
             </dl>
           </section>
+
+          {user.role === "SCHOOL_STAFF" && user.status !== "ARCHIVED" ? (
+            <AdminStaffProfileEditor key={user.id} userId={user.id}
+              username={user.username} accessToken={accessToken} locale={locale} t={t} />
+          ) : null}
 
           {user.role === "PARENT" ? (
             <section className="account-detail-section">
