@@ -7730,6 +7730,70 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
   }
 });
 
+test("Pilot Operations Phase 8 all read-only workspaces reject parent roles and preserve suspension read access", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "PILOT-PHASE8");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const admin = { authorization: "Bearer " + adminToken };
+  const parentCreation = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents", headers: admin,
+    payload: { username: "pilotparent8", fullName: "Pilot Parent Eight" }
+  });
+  assert.equal(parentCreation.statusCode, 201, parentCreation.body);
+  const temporaryPassword = parentCreation.json<{ temporaryPassword: string }>().temporaryPassword;
+  const parentToken = await activateRoleLogin(
+    app, schoolId, "PARENT", "pilotparent8", temporaryPassword, "PilotParent2026!"
+  );
+  const parent = { authorization: "Bearer " + parentToken };
+  const paths = [
+    "/v1/admin/subscription",
+    "/v1/admin/pilot/readiness",
+    "/v1/admin/pilot/readiness/advanced",
+    "/v1/admin/pilot/adoption?window=7d",
+    "/v1/admin/pilot/service-health",
+    "/v1/admin/pilot/oversight?window=30d",
+    "/v1/admin/pilot/release-readiness",
+    "/v1/admin/pilot/audit",
+    "/v1/admin/pilot/launch",
+    "/v1/admin/pilot/support"
+  ];
+  for (const url of paths) {
+    const missing = await app.inject({ method: "GET", url });
+    assert.equal(missing.statusCode, 401, url + ": unauthenticated");
+    const denied = await app.inject({ method: "GET", url, headers: parent });
+    assert.equal(denied.statusCode, 403, url + ": parent must not access school operations");
+  }
+  for (const url of [
+    "/v1/admin/pilot/adoption?window=7d",
+    "/v1/admin/pilot/service-health",
+    "/v1/admin/pilot/oversight?window=30d",
+    "/v1/admin/pilot/release-readiness"
+  ]) {
+    const ok = await app.inject({ method: "GET", url, headers: admin });
+    assert.equal(ok.statusCode, 200, url + ": " + ok.body);
+    assert.equal(ok.headers["cache-control"], "no-store", url + ": no-store");
+  }
+  const suspended = await app.inject({
+    method: "PATCH", url: "/v1/platform/schools/" + schoolId + "/subscription",
+    headers: { "x-platform-provisioning-key": provisioningKey },
+    payload: { status: "SUSPENDED" }
+  });
+  assert.equal(suspended.statusCode, 200, suspended.body);
+  // A disabled subscription must not hide billing/support diagnostics.
+  for (const url of ["/v1/admin/subscription", "/v1/admin/pilot/service-health",
+    "/v1/admin/pilot/release-readiness", "/v1/admin/pilot/support"]) {
+    const response = await app.inject({ method: "GET", url, headers: admin });
+    assert.equal(response.statusCode, 200, url + ": " + response.body);
+  }
+  const support = await app.inject({
+    method: "POST", url: "/v1/admin/pilot/support", headers: admin,
+    payload: { subject: "Subscription issue", description: "Request subscription assistance",
+      category: "BILLING", priority: "NORMAL" }
+  });
+  assert.equal(support.statusCode, 201, support.body);
+});
+
 test("Pilot refinement Phase 6 oversight timeline enforces school, filters, paging and privacy", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
