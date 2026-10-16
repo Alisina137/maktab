@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { adminErrorText, adminText, type AdminLocale } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { formatPilotTimestamp } from "./pilot-timestamp";
 import { parseServiceHealthResponse, serviceFollowUps, type ServiceHealthResponse } from "./pilot-service-health-model";
 
