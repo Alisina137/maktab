@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, ilike, ne } from "drizzle-orm";
 import type { FoundationDatabase } from "./client.js";
+import { isUniqueConstraintViolation } from "./db-errors.js";
 import { academicYears, classSections, gradeLevels, parentProfiles, registrationRequests,
   studentClassHistory, students, users, type RegistrationRequest } from "./schema.js";
 
@@ -46,7 +47,7 @@ export function createRegistrationStore(db: FoundationDatabase): RegistrationSto
   async function checked<T>(operation:()=>Promise<T>):Promise<T> {
     try { return await operation(); }
     catch(error) {
-      if (error && typeof error==="object" && "code" in error && error.code==="23505")
+      if (isUniqueConstraintViolation(error))
         throw new RegistrationError(409,"An open registration or student already uses this code.");
       throw error;
     }
