@@ -16,7 +16,7 @@ const locale=read("apps/web/app/admin/admin-i18n.ts");
 for(const p of ["/v1/staff/me","/v1/staff/directory"]){
   assert.ok(api.includes('"'+p+'"'),"Staff endpoint missing "+p);
 }
-assert.ok(register.includes("registerStaffRoutes(app, options.accountStore)"));
+assert.ok(register.includes("registerStaffRoutes(app, options.accountStore, options.registrationStore)"));
 assert.ok(api.includes('context.user.role !== "SCHOOL_STAFF"') &&
   api.includes("context.user.mustChangePassword") &&
   api.includes("requireAccess(request, reply, accounts)") &&
