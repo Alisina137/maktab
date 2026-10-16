@@ -23,8 +23,8 @@ import {
   databaseSchema,
   type FoundationDatabase
 } from "@maktablink/database";
-import { buildApp } from "./app.js";
-import type { AdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
+import { buildApp } from "../app.js";
+import type { AdminPasswordVerificationDelivery } from "../auth/admin-password-2fa.js";
 
 const provisioningKey = "phase-3-test-provisioning-key";
 
