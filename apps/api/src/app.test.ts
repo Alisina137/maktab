@@ -9143,6 +9143,13 @@ test("Staff Phase 1: job profiles are school-scoped, grants explicit, admin-only
   assert.equal(valid.statusCode,200,valid.body);
   assert.deepEqual(valid.json<{profile:{permissions:string[]}}>().profile.permissions,
     ["DIRECTORY_VIEW","TASKS_VIEW"]);
+  const staffDirectory=await app.inject({method:"GET",
+    url:"/v1/admin/users/directory?group=STAFF&query=OFF-001",headers:headerA});
+  assert.equal(staffDirectory.statusCode,200,staffDirectory.body);
+  const named=staffDirectory.json<{users:Array<{profile:{fullName:string;code:string|null}}>}>().users;
+  assert.equal(named.length,1);
+  assert.equal(named[0]?.profile.fullName,"Office Staff");
+  assert.equal(named[0]?.profile.code,"OFF-001");
   const revoked=await app.inject({method:"GET",url:"/v1/staff/me",headers:myHeaders});
   assert.equal(revoked.statusCode,401);
   const repeat=await app.inject({method:"POST",url:"/v1/auth/login",
