@@ -8,6 +8,8 @@ import { PilotSubscriptionHealthPanel } from "./pilot-subscription-health";
 import { PilotLaunchSupportPanel } from "./pilot-launch-support-panel";
 import { PilotOverviewActivity } from "./pilot-overview-activity";
 import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
+import { PilotOnboardingImportPlan } from "./pilot-onboarding-import-plan";
+import { parseImportHistoryPage, importPageInsights, type ImportHistoryPage } from "./pilot-import-history-model";
 import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
@@ -98,23 +100,6 @@ const coverageDestinations: Record<CoverageMetric["key"], string> = {
 };
 
 
-type ImportHistoryRow = {
-  id: string;
-  entityType: "PARENT" | "STUDENT" | "TEACHER";
-  rowCount: number;
-  importedCount: number;
-  rejectedCount: number;
-  status: "COMPLETED" | "REJECTED" | "FAILED";
-  reason: string | null;
-  createdAt: string;
-  actorUsername: string | null;
-};
-type ImportHistoryPage = {
-  rows: ImportHistoryRow[];
-  offset: number;
-  limit: number;
-  hasMore: boolean;
-};
 type ImportHistoryFilters = {
   entityType: string; status: string; actor: string; dateFrom: string; dateTo: string;
 };
@@ -279,6 +264,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   async function loadImportHistory(offset: number, filters: ImportHistoryFilters = importAppliedFilters) {
     const version = ++importHistoryRequestVersion.current;
     setImportHistoryBusy(true);
+    setImportHistory(null);
     setImportHistoryError("");
     if (filters.actor.trim().length === 1) {
       setImportHistoryError(t("Enter at least two characters to search by administrator."));
@@ -297,8 +283,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       if (filters.actor.trim()) query.set("actor", filters.actor.trim());
       if (filters.dateFrom) query.set("dateFrom", filters.dateFrom);
       if (filters.dateTo) query.set("dateTo", filters.dateTo);
-      const page = await request<ImportHistoryPage>(accessToken,
+      const data = await request<unknown>(accessToken,
         "/v1/admin/families/import/history?" + query.toString());
+      const page = parseImportHistoryPage(data, offset, 20);
       if (version === importHistoryRequestVersion.current) setImportHistory(page);
     } catch (cause) {
       if (version === importHistoryRequestVersion.current) {
@@ -826,6 +813,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         <PilotOnboardingGuide readiness={readiness} advanced={advanced}
           advancedLoading={advancedBusy} locale={locale} />
       ) : null}
+      {section === "onboarding" ? <PilotOnboardingImportPlan locale={locale} /> : null}
 
       {section === "onboarding" ? (
         <article className="admin-panel pilot-import-history">
@@ -899,8 +887,28 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                 onClick={() => void loadImportHistory(importHistory?.offset ?? 0)}>{t("Retry")}</button>
             </div>
           ) : null}
-          {importHistory ? (
+          {importHistory && !importHistoryBusy && !importHistoryError ? (
             <>
+              <div className="pilot-import-page-insights" aria-label={t("Import results on this page")}>
+                {([
+                  ["Batches on this page", importPageInsights(importHistory).batches],
+                  ["Completed on this page", importPageInsights(importHistory).completed],
+                  ["Rejected on this page", importPageInsights(importHistory).rejected],
+                  ["Failed on this page", importPageInsights(importHistory).failed],
+                  ["Rows imported on this page", importPageInsights(importHistory).importedRows]
+                ] as const).map(([label, value]) => (
+                  <div key={label} className="pilot-import-page-stat">
+                    <span>{t(label)}</span><strong>{value.toLocaleString(locale === "en" ? "en-US" : locale)}</strong>
+                  </div>
+                ))}
+              </div>
+              <p className="pilot-security-note">
+                {adminFormat(locale, "Showing entries {start}–{end} from the loaded page.", {
+                  start: importPageInsights(importHistory).rowStart,
+                  end: importPageInsights(importHistory).rowEnd
+                })}
+                {" "}{t("Counts describe this filtered page, not all school imports.")}
+              </p>
               <div className="pilot-import-list">
                 {importHistory.rows.map((item) => (
                   <div className="pilot-import-row" key={item.id}>
@@ -979,7 +987,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         ) : null}
 
         {section === "onboarding" ? (
-        <article className="admin-panel">
+        <article className="admin-panel" id="pilot-import-templates">
           <h3>{t("Import templates")}</h3>
           <Link className="pilot-inline-link" href="/admin/families">{t("Start import in Families")}</Link>
           <p className="admin-copy">{t("Use the exact pilot CSV headers before upload and validation.")}</p>
