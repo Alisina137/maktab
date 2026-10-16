@@ -486,9 +486,7 @@ export function TeacherExperience({
         />
       ) : null}
 
-      {(tab === "TODAY" && todayReady && !today) ||
-        (tab === "SCHEDULE" && academicsReady && !academics) ||
-        (tab === "CLASSES" && ((todayReady && !today) || (academicsReady && !academics))) ? (
+      {tab === "CLASSES" && ((todayReady && !today) || (academicsReady && !academics)) ? (
         <Pressable accessibilityRole="button" style={styles.retry} onPress={onRetry}>
           <Ionicons name="refresh-outline" color={tokens.color.brandStrong} size={18} />
           <Text style={styles.linkText}>{translate(locale, "action.retry")}</Text>
@@ -532,23 +530,13 @@ const styles = StyleSheet.create({
   heading: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconShell: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 13, backgroundColor: "#edf3ff" },
   headingText: { fontSize: 16, fontWeight: "800", color: tokens.color.text },
-  date: { fontSize: 15, fontWeight: "800", color: tokens.color.brandStrong },
   muted: { color: tokens.color.textMuted, fontSize: 12.5, lineHeight: 19 },
   itemTitle: { fontSize: 14, fontWeight: "800", color: tokens.color.text },
-  periodRow: { flexDirection: "row", alignItems: "center", gap: 13, padding: 10, backgroundColor: "#f7faff", borderRadius: 13 },
-  timeChip: { minWidth: 69, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, paddingVertical: 9, borderRadius: 10, backgroundColor: "#e8f1fc" },
-  timeText: { fontSize: 12, fontWeight: "800", color: tokens.color.brandStrong },
   actionRow: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#e5ecf5", borderRadius: 13, backgroundColor: "#f9fbff", padding: 12, minHeight: 55 },
   link: { padding: 13, flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center", borderRadius: 13, backgroundColor: "#edf4ff" },
   linkText: { fontSize: 13, fontWeight: "800", color: tokens.color.brandStrong },
   loadingCard: { paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   empty: { padding: 14, backgroundColor: "#f6f8fb", borderRadius: 12, flexDirection: "row", alignItems: "center", gap: 10 },
-  dayCard: { padding: 12, borderWidth: 1, borderColor: "#e1e8f2", borderRadius: 15, gap: 9 },
-  todayDay: { borderWidth: 2, borderColor: tokens.color.brand, backgroundColor: "#f1f7ff" },
-  dayHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  dayLabel: { flex: 1, fontSize: 14, fontWeight: "800", color: tokens.color.text },
-  dayCount: { minWidth: 24, textAlign: "center", color: tokens.color.brandStrong, fontWeight: "800" },
-  todayBadge: { fontSize: 11, fontWeight: "800", color: tokens.color.brandStrong },
   retry: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#dae6f5", padding: 15, gap: 8, borderRadius: 14 },
   logout: { minHeight: 49, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 9, borderWidth: 1, borderColor: "#dce5f1", borderRadius: 13, backgroundColor: "#f8faff" },
   bottomBar: { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 6, paddingTop: 7, paddingBottom: 9, gap: 2, backgroundColor: tokens.color.surface, borderTopWidth: 1, borderTopColor: "#e2e8f0", elevation: 12, shadowColor: "#172033", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: -5 } },
