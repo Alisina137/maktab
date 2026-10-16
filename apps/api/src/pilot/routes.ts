@@ -67,7 +67,7 @@ const adoptionQuerySchema = z.object({
 
 const templates: Record<BulkImportEntity, string> = {
   PARENT: "username,fullName,phone\nparent.001,Parent Full Name,0700000000\n",
-  STUDENT: "studentCode,fullName,parentUsername,academicYear,classCode\nS-001,Student Full Name,parent.001,1405,7A\n",
+  STUDENT: "username,studentCode,fullName,parentUsername,academicYear,classCode\nstudent.001,S-001,Student Full Name,parent.001,1405,7A\n",
   TEACHER: "username,employeeCode,fullName,phone\nteacher.001,T-001,Teacher Full Name,0700000000\n"
 };
 
