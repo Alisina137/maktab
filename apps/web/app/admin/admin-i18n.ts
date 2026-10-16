@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Review administrative audit history": "بررسی تاریخچهٔ حسابرسی مدیریت",
+  "Inspect school-scoped records of administrative actions and changes.": "رویدادها و تغییرات مدیریتی مخصوص همین مکتب را بررسی کنید.",
   "These thresholds do not confirm a scheduler run, message creation, delivery, or receipt.": "این مراحل نشان‌دهندهٔ اجرای زمان‌بند یا ایجاد، ارسال و دریافت پیام نیست.",
   "Status evaluated for Kabul date": "وضعیت بررسی‌شده برای تاریخ کابل",
   "Review school access restrictions": "بررسی محدودیت‌های دسترسی مکتب",
@@ -2385,6 +2387,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Review administrative audit history": "د ادارې د پلټنې تاریخچه وڅېړئ",
+  "Inspect school-scoped records of administrative actions and changes.": "د همدې ښوونځي اداري کړنې او بدلونونه وڅېړئ.",
   "These thresholds do not confirm a scheduler run, message creation, delivery, or receipt.": "دا پړاوونه د مهالویش چلولو، پیغام جوړولو، لېږلو یا رسېدو ثبوت نه دي.",
   "Status evaluated for Kabul date": "د کابل د نېټې لپاره ارزول شوی حالت",
   "Review school access restrictions": "د ښوونځي د لاسرسي محدودیتونه وڅېړئ",
