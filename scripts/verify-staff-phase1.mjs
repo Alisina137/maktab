@@ -13,7 +13,7 @@ const drawer=read("apps/web/app/admin/admin-account-details-drawer.tsx");
 const tests=read("apps/api/src/app.test.ts");
 const css=read("apps/web/app/globals.css");
 const i18n=read("apps/web/app/admin/admin-i18n.ts");
-assert.equal(journal.entries.at(-1)?.tag,"0028_staff_profiles_permissions");
+assert.equal(journal.entries[28]?.tag,"0028_staff_profiles_permissions");
 assert.ok(schema.includes("export const staffProfiles = pgTable"));
 assert.ok(schema.includes('name: "staff_profiles_user_school_fk"'));
 assert.ok(migration.includes("FOREIGN KEY (\"school_id\",\"user_id\")"));
