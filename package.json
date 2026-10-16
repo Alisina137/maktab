@@ -73,14 +73,15 @@
     "verify:pilot:improvements:phase6": "node scripts/verify-pilot-improvements-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-oversight-triage-model.test.ts",
     "verify:pilot:improvements:phase7": "node scripts/verify-pilot-improvements-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-subscription-guidance-model.test.ts",
     "verify:pilot:improvements:phase8": "node scripts/verify-pilot-improvements-phase8.mjs && pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-release-readiness-model.test.ts && node --test scripts/test-pilot-phase8-acceptance-report.mjs",
-    "verify:staff": "node scripts/verify-staff-web-portal.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Standalone web staff role\" src/app.test.ts && pnpm verify:staff:phase1 && pnpm verify:staff:phase2 && pnpm verify:staff:phase3 && pnpm verify:staff:phase4 && pnpm verify:staff:phase5 && pnpm verify:staff:phase6 && pnpm verify:staff:phase7",
+    "verify:staff": "node scripts/verify-staff-web-portal.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Standalone web staff role\" src/app.test.ts && pnpm verify:staff:phase1 && pnpm verify:staff:phase2 && pnpm verify:staff:phase3 && pnpm verify:staff:phase4 && pnpm verify:staff:phase5 && pnpm verify:staff:phase6 && pnpm verify:staff:phase7 && pnpm verify:staff:phase8",
     "verify:staff:phase1": "node scripts/verify-staff-phase1.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 1\" src/app.test.ts && pnpm --filter @maktablink/api exec tsx --test ../../packages/database/src/migration-chain.test.ts",
     "verify:staff:phase2": "node scripts/verify-staff-phase2.mjs",
     "verify:staff:phase3": "node scripts/verify-staff-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 3: directory filtering\" src/app.test.ts",
     "verify:staff:phase4": "node scripts/verify-staff-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 4\" src/app.test.ts",
     "verify:staff:phase5": "node scripts/verify-staff-phase5.mjs && pnpm --filter @maktablink/database exec tsx --test src/staff-attendance-correction-store.test.ts src/migration-chain.test.ts && pnpm typecheck",
     "verify:staff:phase6": "node scripts/verify-staff-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/fees-phase6.integration.test.ts && pnpm typecheck",
-    "verify:staff:phase7": "node scripts/verify-staff-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/workflow-phase7.integration.test.ts && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck"
+    "verify:staff:phase7": "node scripts/verify-staff-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/workflow-phase7.integration.test.ts && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck",
+    "verify:staff:phase8": "node scripts/verify-staff-phase8.mjs && pnpm verify:staff:phase1 && pnpm verify:staff:phase2 && pnpm verify:staff:phase3 && pnpm verify:staff:phase4 && pnpm verify:staff:phase5 && pnpm verify:staff:phase6 && pnpm verify:staff:phase7 && pnpm --filter @maktablink/api exec tsx --test src/staff/fees-phase6.integration.test.ts src/staff/workflow-phase7.integration.test.ts && pnpm typecheck"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
