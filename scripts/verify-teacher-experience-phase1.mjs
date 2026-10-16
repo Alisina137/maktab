@@ -34,7 +34,9 @@ assert.ok(teacher.includes('onSelect("WORK")')&&teacher.includes('onSelect("MORE
 assert.ok(teacher.includes('goToWorkflow("ANNOUNCEMENTS")'));
 assert.ok(!hub.includes('export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS"'),
   "School announcements must no longer be a Work subtab.");
-assert.ok(hub.includes('export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "TASKS";'));
+assert.ok(hub.includes('export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "TEACHING" | "TASKS";'));
+assert.ok(teacher.includes('workflowSection === "TEACHING"')&&teacher.includes('setClassSection("TEACHING")'),
+  "The Work teaching shortcut must deep link into the chosen subject's teaching planner.");
 assert.ok(teacher.includes('mode="TEACHER" teacherSection="ANNOUNCEMENTS"'),
   "Existing school-scoped teacher announcement component must remain available.");
 assert.ok(teacher.includes("supervisedClasses={activeSupervisions}"),
