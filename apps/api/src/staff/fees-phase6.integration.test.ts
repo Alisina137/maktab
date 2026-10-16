@@ -63,7 +63,7 @@ async function createTestApp() {
     "0030_staff_attendance_corrections.sql"
   ]) {
     const sql = await readFile(
-      new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
+      new URL(`../../../../packages/database/drizzle/${file}`, import.meta.url),
       "utf8"
     );
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
