@@ -8793,3 +8793,23 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-oversight-row { align-items: start; flex-direction: column; gap: 8px; }
   .pilot-oversight-event { align-items: start; }
 }
+
+/* Pilot Operations final refinement: grouped navigation, mobile jump-to */
+.pilot-nav-layout { min-width: 0; }
+.pilot-section-nav.pilot-nav-desktop { display: flex; align-items: stretch; gap: 6px; padding: 7px; }
+.pilot-nav-group { display: grid; align-content: start; gap: 5px; flex: 0 0 auto; padding-inline: 5px; }
+.pilot-nav-group:not(:last-child) { border-inline-end: 1px solid var(--ml-color-border); }
+.pilot-nav-group-heading { padding-inline: 12px; font-size: 10px; font-weight: 750;
+  line-height: 1.25; letter-spacing: .06em; text-transform: uppercase; color: var(--ml-color-text-muted); }
+.pilot-nav-group-links { display: flex; gap: 4px; }
+.pilot-section-nav.pilot-nav-desktop .pilot-section-link { min-height: 42px; }
+.pilot-nav-mobile { display: none; }
+@media (max-width: 760px) {
+  .pilot-section-nav.pilot-nav-desktop { display: none; }
+  .pilot-nav-mobile { display: grid; gap: 7px; font-size: 13px; font-weight: 700; }
+  .pilot-nav-mobile select { width: 100%; max-width: 100%; min-height: 45px;
+    padding: 10px 12px; border: 1px solid var(--ml-color-border);
+    border-radius: 12px; background: var(--ml-color-surface, white);
+    color: var(--ml-color-text); font-size: 14px; }
+  .pilot-nav-mobile select:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+}
