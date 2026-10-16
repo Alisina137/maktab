@@ -1,5 +1,6 @@
 import {
   boolean,
+  foreignKey,
   date,
   index,
   integer,
@@ -113,6 +114,7 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_school_username_unique").on(table.schoolId, table.username),
+    uniqueIndex("users_school_user_compound_unique").on(table.schoolId, table.id),
     index("users_school_role_idx").on(table.schoolId, table.role),
     index("users_school_status_idx").on(table.schoolId, table.status)
   ]
@@ -131,7 +133,12 @@ export const staffProfiles = pgTable("staff_profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
   uniqueIndex("staff_profiles_school_code_unique").on(table.schoolId, table.employeeCode),
-  index("staff_profiles_school_idx").on(table.schoolId)
+  index("staff_profiles_school_idx").on(table.schoolId),
+  foreignKey({
+    name: "staff_profiles_user_school_fk",
+    columns: [table.schoolId, table.userId],
+    foreignColumns: [users.schoolId, users.id]
+  }).onDelete("cascade")
 ]);
 
 export const authSessions = pgTable(
