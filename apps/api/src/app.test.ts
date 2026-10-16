@@ -9171,3 +9171,95 @@ test("Staff Phase 1: job profiles are school-scoped, grants explicit, admin-only
   assert.ok(audited.json<{logs:Array<{action:string}>}>().logs.some(row=>
     row.action==="staff.profile_updated"));
 });
+
+
+test("Staff Phase 3: directory filtering, privacy boundaries and read-only details", async(t) => {
+  const {app,client}=await createTestApp();
+  t.after(async()=>{await app.close();await client.close();});
+  const schoolA=await provisionSchool(app,"STAFF-SEARCH-A");
+  const schoolB=await provisionSchool(app,"STAFF-SEARCH-B");
+  const adminA=await bootstrapAdmin(app,schoolA);
+  const adminB=await bootstrapAdmin(app,schoolB);
+  const adminHeaders={authorization:`Bearer ${adminA}`};
+  const created=await app.inject({method:"POST",url:"/v1/admin/users",
+    headers:adminHeaders,payload:{username:"staffsearch",role:"SCHOOL_STAFF"}});
+  assert.equal(created.statusCode,201);
+  const staff=created.json<{user:{id:string};temporaryPassword:string}>();
+  for (const username of ["teacheralpha","teacheromega"]) {
+    const added=await app.inject({method:"POST",url:"/v1/admin/users",
+      headers:adminHeaders,payload:{username,role:"TEACHER"}});
+    assert.equal(added.statusCode,201);
+  }
+  const foreign=await app.inject({method:"POST",url:"/v1/admin/users",
+    headers:{authorization:`Bearer ${adminB}`},
+    payload:{username:"teacherother",role:"TEACHER"}});
+  assert.equal(foreign.statusCode,201);
+
+  const initial=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"staffsearch",password:staff.temporaryPassword}});
+  assert.equal(initial.statusCode,200);
+  const changed=await app.inject({method:"POST",
+    url:"/v1/auth/change-temporary-password",
+    headers:{authorization:`Bearer ${initial.json<{accessToken:string}>().accessToken}`},
+    payload:{newPassword:"StaffSearchAccess2026!"}});
+  assert.equal(changed.statusCode,200);
+  let token=changed.json<{accessToken:string}>().accessToken;
+  let headers={authorization:`Bearer ${token}`};
+  const denied=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacher&status=INVITED",headers});
+  assert.equal(denied.statusCode,403);
+  const configured=await app.inject({method:"PUT",
+    url:`/v1/admin/staff/${staff.user.id}/profile`,headers:adminHeaders,
+    payload:{fullName:"Staff Searcher",employeeCode:"SS-001",
+      department:"Front desk",position:"RECEPTIONIST",permissions:["DIRECTORY_VIEW"]}});
+  assert.equal(configured.statusCode,200);
+  const revoked=await app.inject({method:"GET",url:"/v1/staff/me",headers});
+  assert.equal(revoked.statusCode,401);
+  const reLogin=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"staffsearch",password:"StaffSearchAccess2026!"}});
+  assert.equal(reLogin.statusCode,200);
+  token=reLogin.json<{accessToken:string}>().accessToken;
+  headers={authorization:`Bearer ${token}`};
+
+  const list=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacher&group=TEACHER&status=INVITED&sortBy=username&order=desc&pageSize=10",
+    headers});
+  assert.equal(list.statusCode,200,list.body);
+  const found=list.json<{total:number;entries:Array<Record<string,unknown>>;pageSize:number}>();
+  assert.equal(found.total,2);
+  assert.equal(found.entries.length,2);
+  assert.equal(found.entries[0]?.username,"teacheromega");
+  assert.equal(found.entries[1]?.username,"teacheralpha");
+  assert.equal(found.pageSize,10);
+  for(const row of found.entries)
+    for(const hidden of ["id","phone","email","passwordHash","accessToken","schoolId","lastLoginAt"]) {
+      assert.equal(Object.hasOwn(row,hidden),false,
+        "Staff response must be redacted: "+hidden);
+    }
+
+  const empty=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacher&group=TEACHER&status=ACTIVE",headers});
+  assert.equal(empty.statusCode,200);
+  assert.equal(empty.json<{total:number}>().total,0);
+  const privateField=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=INVITED&group=TEACHER",headers});
+  assert.equal(privateField.statusCode,200);
+  assert.equal(privateField.json<{total:number}>().total,0,
+    "Hidden status strings must never work as staff free-text search");
+  const otherSchool=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacherother&group=TEACHER",headers});
+  assert.equal(otherSchool.statusCode,200);
+  assert.equal(otherSchool.json<{total:number}>().total,0);
+  for(const url of [
+    "/v1/staff/directory?query=teacher&group=SCHOOL_ADMIN",
+    "/v1/staff/directory?query=teacher&status=OTHER",
+    "/v1/staff/directory?query=teacher&sortBy=lastLoginAt",
+    "/v1/staff/directory?query=teacher&order=wrong",
+    "/v1/staff/directory?query=teacher&pageSize=500"
+  ]) {
+    const invalid=await app.inject({method:"GET",url,headers});
+    assert.equal(invalid.statusCode,400,url);
+  }
+});
