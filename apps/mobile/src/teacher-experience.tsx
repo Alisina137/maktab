@@ -516,7 +516,7 @@ export function TeacherExperience({
             </View>
           ) : (
             <TeacherLearningPanel
-              key={`teacher-learning-${reconnectEpoch}-${workflowSection}`
+              key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
               section={workflowSection}
               onScrollTop={onScrollTop}
               accessToken={accessToken} locale={locale}
