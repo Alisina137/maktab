@@ -10,6 +10,7 @@ import {
 } from "./pilot-readiness-operational.js";
 import { getPilotAdoptionReport, type AdoptionWindow, type AdoptionReport } from "./pilot-adoption-store.js";
 import { getPilotServiceHealthReport, type PilotServiceHealthReport } from "./pilot-service-health-store.js";
+import { listPilotOversightEvents, type OversightQuery, type OversightPage } from "./pilot-oversight-store.js";
 import type { FoundationDatabase } from "./client.js";
 import {
   academicYears,
@@ -78,6 +79,7 @@ export interface PilotStore {
   getReadiness(schoolId: string): Promise<PilotReadiness>;
   getAdoptionReport(schoolId: string, window: AdoptionWindow): Promise<AdoptionReport>;
   getServiceHealth(schoolId: string): Promise<PilotServiceHealthReport>;
+  listOversightEvents(schoolId: string, options: OversightQuery): Promise<OversightPage>;
   getAdvancedReadiness(schoolId: string): Promise<AdvancedPilotReadiness>;
   listReadinessIssues(schoolId: string, metric: PilotCoverageKey, options: { limit: number; offset: number }): Promise<PilotCoverageIssues>;
   getOperationalReadiness(schoolId: string): Promise<OperationalReadiness>;
@@ -89,6 +91,9 @@ export interface PilotStore {
 
 export function createPilotStore(db: FoundationDatabase): PilotStore {
   return {
+    async listOversightEvents(schoolId, options) {
+      return listPilotOversightEvents(db, schoolId, options);
+    },
     async getServiceHealth(schoolId) {
       return getPilotServiceHealthReport(db, schoolId);
     },
