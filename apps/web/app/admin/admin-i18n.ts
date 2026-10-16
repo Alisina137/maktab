@@ -10,6 +10,18 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Show notable records on this page only": "فقط نمایش رویدادهای قابل بررسی در این صفحه",
+  "A notable event is not proof of an unresolved incident. Open Support for current ticket status.": "رویداد قابل بررسی به معنی مشکل حل‌نشده نیست. برای وضعیت فعلی به پشتیبانی مراجعه کنید.",
+  "Recorded on this page": "ثبت‌شده در این صفحه",
+  "Notable on this page": "قابل بررسی در این صفحه",
+  "Support events on this page": "رویدادهای پشتیبانی در این صفحه",
+  "Import events on this page": "رویدادهای واردسازی در این صفحه",
+  "Evidence and decisions on this page": "شواهد و تصمیم‌ها در این صفحه",
+  "Export events on this page": "رویدادهای صدور در این صفحه",
+  "Showing events {start}–{end} from the loaded page.": "نمایش رویدادهای {start} تا {end} از صفحهٔ بارگذاری‌شده.",
+  "These are page counts, not totals for the reporting period.": "این آمار مربوط به صفحهٔ فعلی است، نه تمام دورهٔ گزارش.",
+  "No notable records on this page. Other pages may contain them.": "در این صفحه رویداد قابل بررسی نیست. ممکن است در صفحات دیگر وجود داشته باشد.",
+  "Review recorded event": "بررسی رویداد ثبت‌شده",
   "Scheduler, push delivery, backup restore and historical uptime were not verified by this report.": "این گزارش اجرای زمان‌بند، تحویل پیام، بازیابی نسخه پشتیبان و سابقه دسترسی را تأیید نمی‌کند.",
   "Independent infrastructure checks are outstanding": "بررسی مستقل زیربنا هنوز انجام نشده است",
   "Investigate failed imports": "بررسی واردسازی‌های ناموفق",
@@ -2349,6 +2361,18 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Show notable records on this page only": "یوازې د دې پاڼې د پام وړ ثبتونه وښایئ",
+  "A notable event is not proof of an unresolved incident. Open Support for current ticket status.": "د پام وړ پېښه د نه حل شوې ستونزې ثبوت نه دی. د اوسني حالت لپاره ملاتړ وګورئ.",
+  "Recorded on this page": "په دې پاڼه کې ثبت شوي",
+  "Notable on this page": "په دې پاڼه کې د پام وړ",
+  "Support events on this page": "په دې پاڼه کې د ملاتړ پېښې",
+  "Import events on this page": "په دې پاڼه کې د واردولو پېښې",
+  "Evidence and decisions on this page": "په دې پاڼه کې شواهد او پرېکړې",
+  "Export events on this page": "په دې پاڼه کې د صادرولو پېښې",
+  "Showing events {start}–{end} from the loaded page.": "له بار شوې پاڼې څخه له {start} تر {end} پورې پېښې ښودل کېږي.",
+  "These are page counts, not totals for the reporting period.": "دا د همدې پاڼې شمېرې دي، نه د ټولې راپور موده.",
+  "No notable records on this page. Other pages may contain them.": "په دې پاڼه کې د پام وړ پېښه نشته. ښايي په نورو پاڼو کې وي.",
+  "Review recorded event": "ثبت شوې پېښه وڅېړئ",
   "Scheduler, push delivery, backup restore and historical uptime were not verified by this report.": "دا راپور مهالویش، پیغام رسونه، بیک اپ او د خدمت مخکینی دوام نه تاییدوي.",
   "Independent infrastructure checks are outstanding": "د زیربنا خپلواکې کتنې لا پاتې دي",
   "Investigate failed imports": "ناکام واردونې وڅېړئ",
