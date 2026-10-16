@@ -93,7 +93,7 @@ export function TeacherSchedulePanel({
     <View style={[styles.header,rtl&&styles.rowRtl]}>
       <View style={styles.headerIcon}><Ionicons name="calendar-outline" size={21} color={tokens.color.brandStrong}/></View>
       <View style={styles.flex}>
-        <Text style={[styles.title,textDirection]}>{translate(locale,"teacher.fullSchedule")}</Text>
+        <Text style={[styles.title,textDirection]}>{translate(locale,view==="DAY"?"teacher.scheduleDayTitle":"teacher.fullSchedule")}</Text>
         <Text style={[styles.subText,textDirection]}>{translate(locale,"teacher.scheduleTemplateHint")}</Text>
       </View>
     </View>
