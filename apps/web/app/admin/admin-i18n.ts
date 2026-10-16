@@ -10,6 +10,18 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "These thresholds do not confirm a scheduler run, message creation, delivery, or receipt.": "این مراحل نشان‌دهندهٔ اجرای زمان‌بند یا ایجاد، ارسال و دریافت پیام نیست.",
+  "Status evaluated for Kabul date": "وضعیت بررسی‌شده برای تاریخ کابل",
+  "Review school access restrictions": "بررسی محدودیت‌های دسترسی مکتب",
+  "School operational changes are blocked by the recorded subscription state.": "وضعیت ثبت‌شدهٔ اشتراک مانع تغییرات عملیاتی مکتب است.",
+  "Request platform reconciliation": "درخواست تطبیق وضعیت پلتفرم",
+  "Recorded subscription dates and lifecycle state may not agree.": "تاریخ‌ها و وضعیت اشتراک ثبت‌شده ممکن است همخوانی نداشته باشند.",
+  "Discuss subscription renewal": "گفتگو دربارهٔ تمدید اشتراک",
+  "Review renewal terms and deadlines with platform support. No payment is submitted here.": "شرایط و مهلت تمدید را با پشتیبانی پلتفرم بررسی کنید؛ هیچ پرداختی در اینجا انجام نمی‌شود.",
+  "Confirm subscription expiry terms": "تأیید شرایط انقضای اشتراک",
+  "No expiry date is recorded. Ask platform support to verify the agreed plan.": "تاریخ انقضا ثبت نشده است؛ از پشتیبانی پلتفرم دربارهٔ برنامهٔ توافق‌شده بپرسید.",
+  "Review school accounts": "بررسی حساب‌های مکتب",
+  "Manage school users and permissions in the existing account workspace.": "کاربران و دسترسی‌های مکتب را در بخش حساب‌ها مدیریت کنید.",
   "Read-only account guidance": "رهنمای حساب‌ها (فقط مشاهده)",
   "Subscription and administration next steps": "اقدامات بعدی اشتراک و مدیریت",
   "Actions are recommendations and links only; school administrators cannot change platform billing states here.": "این اقدامات تنها پیشنهاد و پیوند هستند؛ مدیر مکتب نمی‌تواند وضعیت مالی پلتفرم را در اینجا تغییر دهد.",
@@ -2373,6 +2385,18 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "These thresholds do not confirm a scheduler run, message creation, delivery, or receipt.": "دا پړاوونه د مهالویش چلولو، پیغام جوړولو، لېږلو یا رسېدو ثبوت نه دي.",
+  "Status evaluated for Kabul date": "د کابل د نېټې لپاره ارزول شوی حالت",
+  "Review school access restrictions": "د ښوونځي د لاسرسي محدودیتونه وڅېړئ",
+  "School operational changes are blocked by the recorded subscription state.": "د ګډون ثبت شوی حالت د ښوونځي عملي بدلونونه بندوي.",
+  "Request platform reconciliation": "د پلاتفورم د حالت د سمون غوښتنه",
+  "Recorded subscription dates and lifecycle state may not agree.": "د ګډون ثبت شوې نېټې او حالت کېدای شي سره برابر نه وي.",
+  "Discuss subscription renewal": "د ګډون د نوي کولو خبرې",
+  "Review renewal terms and deadlines with platform support. No payment is submitted here.": "د پلاتفورم له ملاتړ سره د نوي کولو شرایط او نېټې وګورئ؛ دلته تادیه نه کېږي.",
+  "Confirm subscription expiry terms": "د ګډون د پای شرایط تایید کړئ",
+  "No expiry date is recorded. Ask platform support to verify the agreed plan.": "د پای نېټه نشته؛ د پلاتفورم له ملاتړ څخه د هوکړې د پلان تایید وغواړئ.",
+  "Review school accounts": "د ښوونځي حسابونه وڅېړئ",
+  "Manage school users and permissions in the existing account workspace.": "د ښوونځي کاروونکي او اجازې په حسابونو برخه کې اداره کړئ.",
   "Read-only account guidance": "د حسابونو لارښوونه (یوازې لوستل)",
   "Subscription and administration next steps": "د ګډون او مدیریت راتلونکي ګامونه",
   "Actions are recommendations and links only; school administrators cannot change platform billing states here.": "دا یوازې وړاندیزونه او تړنې دي؛ د ښوونځي مدیر دلته د پلاتفورم مالي حالت نه شي بدلولای.",
