@@ -40,7 +40,7 @@ export function teacherPeriodsForDay(
   return [...(academics?.schedule ?? [])]
     .filter(period => period.weekday === weekday)
     .sort((a, b) =>
-      a.startsAt.localeCompare(b.startsAt) ||
+      (startEndMinutes(a.startsAt) ?? Infinity) - (startEndMinutes(b.startsAt) ?? Infinity) ||
       a.endsAt.localeCompare(b.endsAt) ||
       a.className.localeCompare(b.className) ||
       a.id.localeCompare(b.id)
