@@ -48,7 +48,7 @@ assert.ok(page.includes('"/v1/admin/pilot/readiness/advanced"') &&
   page.includes("issueRequestVersion.current"),
   "UI must use actual API and bounded drilldown, not fabricated coverage");
 assert.ok(page.includes("effectiveSetupReady = Boolean(advanced?.ready)") &&
-  page.includes('t("Not verified")'), "Do not conflate core configuration and live approval");
+  page.includes('advancedError ? "Setup status unavailable"'), "Do not conflate core configuration and live approval");
 assert.ok(css.includes(".pilot-coverage-grid") && css.includes(".pilot-coverage-card") &&
   css.includes("@media (max-width:880px)"),
   "Readiness cards must adapt for tablet/phone");
