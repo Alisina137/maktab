@@ -10,6 +10,15 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Actions based on recorded school issues. Zero recorded alerts never verifies uptime or delivery.": "اقدامات بر اساس مشکلات ثبت‌شدهٔ مکتب است؛ نبود هشدار تأیید دسترسی یا تحویل پیام نیست.",
+  "Critical support tickets need attention": "درخواست‌های پشتیبانی بحرانی نیاز به بررسی دارند",
+  "Unresolved critical support tickets recorded for this school.": "درخواست‌های پشتیبانی بحرانی حل‌نشده ثبت شده‌اند.",
+  "School writes are restricted": "تغییرات عملیاتی مکتب محدود شده است",
+  "The recorded subscription status blocks operational changes.": "وضعیت ثبت‌شدهٔ اشتراک مانع تغییرات عملیاتی است.",
+  "Review failed notification records": "بررسی پیام‌های ناموفق",
+  "Failed queue records require investigation; push delivery remains unverified.": "پیام‌های ناموفق نیاز به بررسی دارند؛ تحویل پوش تأیید نشده است.",
+  "Review notifications waiting over one hour": "بررسی پیام‌های معطل بیش از یک ساعت",
+  "Older pending records may need a scheduler or delivery check.": "پیام‌های معطل قدیمی ممکن است به بررسی زمان‌بند یا تحویل نیاز داشته باشند.",
   "Priority service checks": "بررسی‌های مهم خدمات",
   "Recommended service follow-ups": "پیگیری‌های پیشنهادی خدمات",
   "Include unverified checks": "نمایش بررسی‌های تأییدنشده",
@@ -2334,6 +2343,15 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Actions based on recorded school issues. Zero recorded alerts never verifies uptime or delivery.": "اقدامات د ښوونځي پر ثبتونو ولاړ دي؛ د خبرتیا نه شتون د خدمت یا پیغام رسونې ثبوت نه دی.",
+  "Critical support tickets need attention": "جدي ملاتړ غوښتنې پاملرنې ته اړتیا لري",
+  "Unresolved critical support tickets recorded for this school.": "نه حل شوې جدي ملاتړ غوښتنې ثبت شوې دي.",
+  "School writes are restricted": "د ښوونځي عملي بدلونونه محدود دي",
+  "The recorded subscription status blocks operational changes.": "د ګډون ثبت شوی حالت عملیاتي بدلونونه بندوي.",
+  "Review failed notification records": "ناکامې خبرتیاوې وڅېړئ",
+  "Failed queue records require investigation; push delivery remains unverified.": "ناکامې خبرتیاوې څېړنې ته اړتیا لري؛ پوش رسونه ناتایید ده.",
+  "Review notifications waiting over one hour": "تر یوه ساعت ډېرې انتظار کوونکې خبرتیاوې وڅېړئ",
+  "Older pending records may need a scheduler or delivery check.": "زړې منتظرې خبرتیاوې د مهالویش یا رسونې کتنې ته اړتیا لري.",
   "Priority service checks": "د خدمتونو مهمې کتنې",
   "Recommended service follow-ups": "د خدماتو سپارښتل شوې څارنې",
   "Include unverified checks": "ناتایید شوې کتنې هم وښایئ",
