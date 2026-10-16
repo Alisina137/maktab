@@ -7,14 +7,14 @@ on:
       - ".github/workflows/teacher-navigation.yml"
       - "apps/mobile/**"
       - "packages/localization/**"
-      - "scripts/verify-teacher-experience-phase1.mjs"
+      - "scripts/verify-teacher-experience-phase*.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
   pull_request:
     paths:
       - "apps/mobile/**"
       - "packages/localization/**"
-      - "scripts/verify-teacher-experience-phase1.mjs"
+      - "scripts/verify-teacher-experience-phase*.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
   workflow_dispatch:
@@ -42,5 +42,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify teacher Phase 1 navigation and TypeScript
-        run: pnpm verify:teacher:phase1
+      - name: Verify teacher Phases 1–2, TypeScript and lesson clock model
+        run: pnpm verify:teacher:phase2
