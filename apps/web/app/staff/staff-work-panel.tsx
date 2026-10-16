@@ -33,7 +33,6 @@ export function StaffWorkPanel({locale,api,canTasks,canDrafts,
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
  const [success,setSuccess]=useState("");
- const [selectedTask,setSelectedTask]=useState<string|null>(null);
  const [selectedDraft,setSelectedDraft]=useState<string|null>(null);
  const [draftTitle,setDraftTitle]=useState("");
  const [draftContent,setDraftContent]=useState("");
@@ -84,7 +83,6 @@ export function StaffWorkPanel({locale,api,canTasks,canDrafts,
    await execute(()=>api("/v1/staff/tasks/"+task.id,{
      method:"PATCH",body:JSON.stringify({status,expectedUpdatedAt:task.updatedAt})
    }),"Task status updated.");
-   setSelectedTask(null);
  }
  async function saveDraft(event:FormEvent){
    event.preventDefault();
