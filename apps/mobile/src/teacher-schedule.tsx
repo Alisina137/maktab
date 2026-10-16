@@ -109,6 +109,12 @@ export function TeacherSchedulePanel({
         </Pressable>
       ))}
     </View>
+    <Pressable accessibilityRole="button" testID="teacher-schedule-refresh"
+      disabled={!ready} onPress={onRetry}
+      style={[styles.refreshButton,!ready&&styles.refreshDisabled,rtl&&styles.rowRtl]}>
+      <Ionicons name="refresh-outline" size={17} color={tokens.color.brandStrong}/>
+      <Text style={styles.linkText}>{translate(locale,"teacher.scheduleRefresh")}</Text>
+    </Pressable>
     {!ready?<View style={styles.loading}><ActivityIndicator color={tokens.color.brandStrong}/>
       <Text style={[styles.subText,textDirection]}>{translate(locale,"common.loading")}</Text>
     </View>:!academics?<Pressable accessibilityRole="button" style={styles.empty}
@@ -250,5 +256,9 @@ const styles=StyleSheet.create({
   dayCount:{minWidth:26,textAlign:"center",fontWeight:"800",color:tokens.color.brandStrong},
   seeDay:{alignSelf:"flex-start",minHeight:38,paddingHorizontal:9,flexDirection:"row",
     alignItems:"center",gap:7,backgroundColor:"#edf4ff",borderRadius:10},
+  refreshButton:{alignSelf:"flex-start",minHeight:40,paddingHorizontal:12,borderRadius:10,
+    alignItems:"center",justifyContent:"center",flexDirection:"row",gap:7,
+    borderWidth:1,borderColor:"#d5e5fa",backgroundColor:"#f7faff"},
+  refreshDisabled:{opacity:0.5},
   pressed:{opacity:0.75}
 });
