@@ -98,7 +98,10 @@ const fa:Record<string,string>={
  "Approved text copied.":"متن کاپی شد.",
  "Copy was blocked. Select the preview text manually.":"کاپی ممکن نشد؛ متن را دستی انتخاب کنید.",
  "Approval does not publish or notify parents, teachers, or students. The administrator must create and publish an announcement separately.":"تأیید به معنی انتشار یا خبررسانی به والدین، معلمان و شاگردان نیست. مدیر باید اعلامیه را جداگانه نشر کند.",
- "Select a staff member with tasks permission.":"کارمندی با مجوز وظایف انتخاب کنید."
+ "Select a staff member with tasks permission.":"کارمندی با مجوز وظایف انتخاب کنید.",
+ "Cancel task":"لغو وظیفه",
+ "Cancel this assigned task?":"این وظیفه لغو شود؟",
+ "Task cancelled.":"وظیفه لغو شد."
 };
 const ps:Record<string,string>={
  "Staff work":"د کارکوونکو چارې",
@@ -197,7 +200,10 @@ const ps:Record<string,string>={
  "Open announcements":"اعلانونه پرانیزئ",
  "Approved text copied.":"متن کاپي شو.",
  "Copy was blocked. Select the preview text manually.":"کاپي ونشوه؛ متن پخپله وټاکئ.",
- "Approval does not publish or notify parents, teachers, or students. The administrator must create and publish an announcement separately.":"تایید خپرول نه دي او والدینو، ښوونکو او زده کوونکو ته خبر نه ورکوي؛ مدیر باید اعلان جلا خپور کړي."
+ "Approval does not publish or notify parents, teachers, or students. The administrator must create and publish an announcement separately.":"تایید خپرول نه دي او والدینو، ښوونکو او زده کوونکو ته خبر نه ورکوي؛ مدیر باید اعلان جلا خپور کړي.",
+ "Cancel task":"دنده لغوه کړئ",
+ "Cancel this assigned task?":"دا سپارل شوې دنده لغوه شي؟",
+ "Task cancelled.":"دنده لغوه شوه."
 };
 export function staffWorkText(locale:AdminLocale,key:string):string{
  const translations:Record<string,string>=locale==="fa-AF"?fa:locale==="ps-AF"?ps:{};
