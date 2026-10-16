@@ -102,7 +102,7 @@ export function adoptionSummary(report: AdoptionReport): AdoptionSummary {
       if (role.signedIn < role.eligible) followUps.push({
         key: role.role + "-latest-login", role: role.role, kind: "latest_login",
         count: role.eligible - role.signedIn, total: role.eligible,
-        href: "/admin/pilot/adoption"
+        href: "/admin/accounts"
       });
     }
   }
