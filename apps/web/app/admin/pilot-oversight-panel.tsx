@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { formatPilotTimestamp } from "./pilot-timestamp";
 
 type Window = "7d" | "30d" | "90d";
 type Kind = "ALL" | "SUPPORT" | "EVIDENCE" | "DECISION" | "IMPORT" | "EXPORT";
@@ -68,11 +68,7 @@ export function PilotOversightPanel({ accessToken, locale }: {
   const [release, setRelease] = useState<Release | null>(null);
   const [releaseError, setReleaseError] = useState("");
   const [releaseBusy, setReleaseBusy] = useState(true);
-  const formatTime = (value: string) => locale === "en"
-    ? new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Kabul", dateStyle: "medium", timeStyle: "short", hour12: true
-    }).format(new Date(value))
-    : formatAdminHijriDateTime(locale, value, "Asia/Kabul");
+  const formatTime = (value: string) => formatPilotTimestamp(locale, value);
   const number = (value: number) => new Intl.NumberFormat(locale === "en" ? "en-US" : locale).format(value);
 
   // Timeline failures must not prevent independent release oversight data from displaying.
