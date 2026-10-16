@@ -10,6 +10,18 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Read-only account guidance": "رهنمای حساب‌ها (فقط مشاهده)",
+  "Subscription and administration next steps": "اقدامات بعدی اشتراک و مدیریت",
+  "Actions are recommendations and links only; school administrators cannot change platform billing states here.": "این اقدامات تنها پیشنهاد و پیوند هستند؛ مدیر مکتب نمی‌تواند وضعیت مالی پلتفرم را در اینجا تغییر دهد.",
+  "Billing support links open an editable draft. No support ticket, payment, or renewal is submitted automatically.": "پیوند پشتیبانی مالی یک پیش‌نویس قابل ویرایش باز می‌کند؛ هیچ درخواست، پرداخت یا تمدیدی خودکار ارسال نمی‌شود.",
+  "Renewal schedule reference": "رهنمای زمان‌بندی تمدید",
+  "Expiry reminder checkpoints": "مراحل یادآوری انقضا",
+  "Calendar thresholds based on the recorded expiry date, not verified notification delivery.": "این زمان‌ها بر اساس تاریخ انقضای ثبت‌شده است، نه تحویل تأییدشدهٔ پیام.",
+  "Days before expiry": "روز پیش از انقضا",
+  "No expiry date recorded": "تاریخ انقضا ثبت نشده",
+  "Not reached yet": "هنوز نرسیده است",
+  "Threshold is today": "امروز زمان یادآوری است",
+  "Threshold already passed": "زمان یادآوری گذشته است",
   "Show notable records on this page only": "فقط نمایش رویدادهای قابل بررسی در این صفحه",
   "A notable event is not proof of an unresolved incident. Open Support for current ticket status.": "رویداد قابل بررسی به معنی مشکل حل‌نشده نیست. برای وضعیت فعلی به پشتیبانی مراجعه کنید.",
   "Recorded on this page": "ثبت‌شده در این صفحه",
@@ -2361,6 +2373,18 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Read-only account guidance": "د حسابونو لارښوونه (یوازې لوستل)",
+  "Subscription and administration next steps": "د ګډون او مدیریت راتلونکي ګامونه",
+  "Actions are recommendations and links only; school administrators cannot change platform billing states here.": "دا یوازې وړاندیزونه او تړنې دي؛ د ښوونځي مدیر دلته د پلاتفورم مالي حالت نه شي بدلولای.",
+  "Billing support links open an editable draft. No support ticket, payment, or renewal is submitted automatically.": "د مالي ملاتړ تړنه د سمون وړ مسوده پرانیزي؛ هېڅ غوښتنه، تادیه یا تمدید په خپله نه لېږل کېږي.",
+  "Renewal schedule reference": "د نوي کولو مهالویش",
+  "Expiry reminder checkpoints": "د پای نېټې یادونې پړاوونه",
+  "Calendar thresholds based on the recorded expiry date, not verified notification delivery.": "دا نېټې د ثبت شوې پای نېټې پر بنسټ دي، نه د تایید شوې خبرتیا رسونه.",
+  "Days before expiry": "د پای نېټې مخکې ورځې",
+  "No expiry date recorded": "د پای نېټه نه ده ثبت شوې",
+  "Not reached yet": "لا نه دی رسېدلی",
+  "Threshold is today": "نن د یادونې وخت دی",
+  "Threshold already passed": "د یادونې وخت تېر شوی",
   "Show notable records on this page only": "یوازې د دې پاڼې د پام وړ ثبتونه وښایئ",
   "A notable event is not proof of an unresolved incident. Open Support for current ticket status.": "د پام وړ پېښه د نه حل شوې ستونزې ثبوت نه دی. د اوسني حالت لپاره ملاتړ وګورئ.",
   "Recorded on this page": "په دې پاڼه کې ثبت شوي",
