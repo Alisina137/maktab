@@ -24,6 +24,7 @@ export default function Home() {
         </p>
         <div className="hero-actions">
           <Link className="primary-link" href="/admin">Go to school administration</Link>
+          <Link className="primary-link" href="/staff">School staff sign in</Link>
         </div>
       </section>
 
