@@ -44,9 +44,9 @@ export function PilotOperationsNavigation({ section, locale }: {
     const area = nav.getBoundingClientRect();
     const item = selected.getBoundingClientRect();
     if (item.left < area.left + 8) {
-      nav.scrollBy({ left: item.left - area.left - 12, behavior: "instant" });
+      nav.scrollBy({ left: item.left - area.left - 12, behavior: "auto" });
     } else if (item.right > area.right - 8) {
-      nav.scrollBy({ left: item.right - area.right + 12, behavior: "instant" });
+      nav.scrollBy({ left: item.right - area.right + 12, behavior: "auto" });
     }
   }, [section, locale]);
 
