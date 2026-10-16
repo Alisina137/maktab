@@ -10,6 +10,10 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Investigate failed imports": "بررسی واردسازی‌های ناموفق",
+  "Failed import batches recorded in the last seven days.": "واردسازی‌های ناموفق طی هفت روز اخیر ثبت شده‌اند.",
+  "Request subscription reconciliation": "درخواست بررسی مجدد اشتراک",
+  "The recorded subscription and its dates require platform review.": "اشتراک ثبت‌شده و تاریخ‌های آن به بررسی پلتفرم نیاز دارند.",
   "Actions based on recorded school issues. Zero recorded alerts never verifies uptime or delivery.": "اقدامات بر اساس مشکلات ثبت‌شدهٔ مکتب است؛ نبود هشدار تأیید دسترسی یا تحویل پیام نیست.",
   "Critical support tickets need attention": "درخواست‌های پشتیبانی بحرانی نیاز به بررسی دارند",
   "Unresolved critical support tickets recorded for this school.": "درخواست‌های پشتیبانی بحرانی حل‌نشده ثبت شده‌اند.",
@@ -2343,6 +2347,10 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Investigate failed imports": "ناکام واردونې وڅېړئ",
+  "Failed import batches recorded in the last seven days.": "په تېرو اوو ورځو کې ناکامې واردونې ثبت شوې دي.",
+  "Request subscription reconciliation": "د ګډون د بیاکتنې غوښتنه",
+  "The recorded subscription and its dates require platform review.": "ثبت شوی ګډون او نېټې د پلاتفورم کتنې ته اړتیا لري.",
   "Actions based on recorded school issues. Zero recorded alerts never verifies uptime or delivery.": "اقدامات د ښوونځي پر ثبتونو ولاړ دي؛ د خبرتیا نه شتون د خدمت یا پیغام رسونې ثبوت نه دی.",
   "Critical support tickets need attention": "جدي ملاتړ غوښتنې پاملرنې ته اړتیا لري",
   "Unresolved critical support tickets recorded for this school.": "نه حل شوې جدي ملاتړ غوښتنې ثبت شوې دي.",
