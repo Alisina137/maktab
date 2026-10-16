@@ -51,7 +51,7 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
       </article>
       <article className="staff-home-card">
         <span>{t("Available workspace")}</span>
-        <strong>{canRegister ? t("Registration requests") : canDirectory ? t("School directory") : t("No active modules")}</strong>
+        <strong>{canRegister ? t("Registration requests") : canAttend ? t("Attendance") : canDirectory ? t("School directory") : t("No active modules")}</strong>
         <small>{t("Only enabled workflows appear as actions.")}</small>
       </article>
     </div>
