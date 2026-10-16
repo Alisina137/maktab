@@ -38,3 +38,5 @@ export * from "./staff-permissions.js";
 export * from "./registration-store.js";
 
 export * from "./staff-attendance-correction-store.js";
+
+export * from "./staff-fee-read-store.js";
