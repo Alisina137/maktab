@@ -12,7 +12,8 @@ import {
 import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type AdminContactPayload, type TeacherLearningPayload, type ParentNotification, type AnnouncementPayload } from "./api";
 import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
 import { notificationDestination } from "./notification-destination";
-import { teacherTime12 } from "./teacher-hub-data";
+import { TeacherSchedulePanel, type TeacherScheduleView } from "./teacher-schedule";
+import type { TeacherSchedulePeriod, TeacherWeekday } from "./teacher-schedule-model";
 import { teacherAssignmentForPeriod, type TodayPeriod } from "./teacher-today-model";
 import { TeacherClassDetailPage, type TeacherClassSection, type TeacherClassLearningSection } from "./teacher-class-detail";
 import { TeacherMorePanel, type TeacherMoreSection } from "./teacher-more";
@@ -24,16 +25,6 @@ import type { AppErrorKind } from "./error-message";
 export type TeacherTab = "TODAY" | "SCHEDULE" | "CLASSES" | "WORK" | "MORE";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
-type Period = TeacherAcademicsPayload["schedule"][number];
-
-const weekdays = [
-  "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY"
-] as const;
-const weekdayLabels: Record<(typeof weekdays)[number], TranslationKey> = {
-  SATURDAY: "weekday.saturday", SUNDAY: "weekday.sunday",
-  MONDAY: "weekday.monday", TUESDAY: "weekday.tuesday",
-  WEDNESDAY: "weekday.wednesday", THURSDAY: "weekday.thursday"
-};
 
 export function TeacherBottomNavigation({
   tab, locale, onSelect
@@ -81,20 +72,6 @@ function SectionHeading({ icon, title, rtl, textDirection }: {
     <View style={[styles.heading, rtl && styles.rowRtl]}>
       <View style={styles.iconShell}><Ionicons name={icon} size={20} color={tokens.color.brandStrong} /></View>
       <Text style={[styles.headingText, styles.flex, textDirection]}>{title}</Text>
-    </View>
-  );
-}
-
-function PeriodRow({ item, locale, textDirection, rtl }: {
-  item: Period; locale: SupportedLocale; textDirection: Direction; rtl: boolean;
-}) {
-  return (
-    <View style={[styles.periodRow, rtl && styles.rowRtl]}>
-      <View style={styles.timeChip}><Text style={styles.timeText}>{teacherTime12(item.startsAt)}</Text></View>
-      <View style={styles.flex}>
-        <Text style={[styles.itemTitle, textDirection]}>{item.subjectName}</Text>
-        <Text style={[styles.muted, textDirection]}>{item.className} · {item.classCode}</Text>
-      </View>
     </View>
   );
 }
@@ -149,13 +126,13 @@ export function TeacherExperience({
   const rtl = getDirection(locale) === "rtl";
   const statusKey = (status: "PENDING" | "SUBMITTED") =>
     status === "PENDING" ? "attendance.pending" : "attendance.submitted";
-  const schedule = academics?.schedule ?? [];
   const assignments = academics?.assignmentDetails ?? [];
   const uniqueClassCount = new Set(assignments.map((item) => item.classId)).size;
-  const currentWeekday = today?.weekday;
   const activeSupervisions = today?.supervisedClasses ?? [];
   const [workflowSection, setWorkflowSection] = useState<TeacherWorkflowSection>("HOMEWORK");
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [scheduleView, setScheduleView] = useState<TeacherScheduleView>("DAY");
+  const [scheduleWeekday, setScheduleWeekday] = useState<TeacherWeekday | null>(null);
   const [classSection, setClassSection] = useState<TeacherClassSection>("OVERVIEW");
   const [classLearningSection, setClassLearningSection] = useState<TeacherClassLearningSection>("HOMEWORK");
   const [moreSection, setMoreSection] = useState<TeacherMoreSection>("HOME");
@@ -260,6 +237,10 @@ export function TeacherExperience({
     onSelect("CLASSES");
     onScrollTop();
   }
+  function openScheduleLesson(period: TeacherSchedulePeriod) {
+    // Same school-authorized class and subject guard as the Today shortcut.
+    openTodayLesson(period);
+  }
   // An external notification must open its nested destination, not the
   // previously selected Work or More subtab.
   useEffect(() => {
@@ -320,27 +301,19 @@ export function TeacherExperience({
       ) : null}
 
       {tab === "SCHEDULE" ? (
-        <View style={styles.card}>
-          <SectionHeading icon="calendar-outline" title={translate(locale, "teacher.fullSchedule")} rtl={rtl} textDirection={textDirection} />
-          {!academicsReady ? <LoadingCard locale={locale} /> : weekdays.map((weekday) => {
-            const items = schedule.filter((item) => item.weekday === weekday)
-              .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.className.localeCompare(b.className));
-            return (
-              <View key={weekday} style={[styles.dayCard, weekday === currentWeekday && styles.todayDay]}>
-                <View style={[styles.dayHeader, rtl && styles.rowRtl]}>
-                  <Text style={[styles.dayLabel, textDirection]}>{translate(locale, weekdayLabels[weekday])}</Text>
-                  {weekday === currentWeekday ? <Text style={styles.todayBadge}>{translate(locale, "student.today")}</Text> : null}
-                  <Text style={styles.dayCount}>{formatLocalizedNumber(items.length, locale)}</Text>
-                </View>
-                {items.map((item) => <PeriodRow key={item.id} item={item} locale={locale} textDirection={textDirection} rtl={rtl} />)}
-                {items.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noClassesForDay")}</Text> : null}
-              </View>
-            );
-          })}
-          {academicsReady && schedule.filter((item) => item.weekday !== "FRIDAY").length === 0 ? (
-            <Empty message={translate(locale, "teacher.noSchedule")} rtl={rtl} textDirection={textDirection} />
-          ) : null}
-        </View>
+        <TeacherSchedulePanel
+          academics={academics}
+          today={today}
+          ready={academicsReady}
+          locale={locale}
+          textDirection={textDirection}
+          view={scheduleView}
+          onViewChange={setScheduleView}
+          selectedWeekday={scheduleWeekday}
+          onSelectWeekday={setScheduleWeekday}
+          onOpenPeriod={openScheduleLesson}
+          onRetry={onRetry}
+        />
       ) : null}
 
       {tab === "CLASSES" ? (
