@@ -67,9 +67,12 @@ export function TeacherTodayInsights({
   const plan=teacherDayTimeline(today,now);
   const pending=teacherTaskCounts(today,learning);
   const unreadCount=notifications.filter(x=>!x.readAt).length;
-  const waiting=!!today && today.supervisedClasses.filter(x=>x.attendanceStatus==="PENDING");
-  const supervision=waiting?waiting[0]:undefined;
-  const priorityCount=pending.pendingAttendance+pending.openGradeSheets+pending.homeworkDrafts+unreadCount;
+  // School-day attendance shortcuts are invalid if the cached server day is stale.
+  const pendingAttendance=plan.stage==="UNAVAILABLE"?0:pending.pendingAttendance;
+  const waiting=today&&plan.stage!=="UNAVAILABLE"
+    ? today.supervisedClasses.filter(x=>x.attendanceStatus==="PENDING"):[];
+  const supervision=waiting[0];
+  const priorityCount=pendingAttendance+pending.openGradeSheets+pending.homeworkDrafts+unreadCount;
   const featured=plan.current??plan.next;
   const latestAnnouncements=[...announcements].sort((a,b)=>b.publishAt.localeCompare(a.publishAt)).slice(0,2);
   return <View style={styles.stack} testID="teacher-today-dashboard">
@@ -141,9 +144,9 @@ export function TeacherTodayInsights({
         <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.pendingTasks")}</Text>
         {priorityCount>0?<Text style={styles.priorityBadge}>{formatLocalizedNumber(priorityCount,locale)}</Text>:null}
       </View>
-      {pending.pendingAttendance>0&&supervision&&today?(
+      {pendingAttendance>0&&supervision&&today?(
         <Task urgent label={translate(locale,"teacher.attendancePending")}
-          count={pending.pendingAttendance} rtl={rtl} locale={locale}
+          count={pendingAttendance} rtl={rtl} locale={locale}
           icon="checkmark-done-outline" textDirection={textDirection}
           onPress={()=>onAttendance(supervision.classId,today.date)}/>
       ):null}
