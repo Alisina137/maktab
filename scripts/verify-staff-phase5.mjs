@@ -15,7 +15,7 @@ const admin=read("apps/web/app/admin/admin-staff-attendance-requests.tsx");
 const panel=read("apps/web/app/admin/attendance-panel.tsx");
 const model=read("apps/web/app/admin/attendance-workspace-model.ts");
 const local=read("apps/web/app/staff/staff-attendance-i18n.ts");
-assert.equal(journal.entries.at(-1)?.tag,"0030_staff_attendance_corrections");
+assert.equal(journal.entries[30]?.tag,"0030_staff_attendance_corrections");
 for(const key of [
   'CREATE TABLE "staff_attendance_correction_requests"',
   'CHECK ("status" IN', 'staff_attendance_one_pending_mark_idx',
