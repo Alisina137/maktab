@@ -134,6 +134,19 @@ export function TeacherTodayInsights({
       :<Text style={[styles.muted,textDirection]}>{translate(locale,
         plan.stage==="EMPTY"?"teacher.noClassesToday":
         plan.stage==="UNAVAILABLE"?"teacher.dayNotCurrent":"teacher.noUpcomingLesson")}</Text>}
+      {plan.current&&plan.next&&plan.stage!=="UNAVAILABLE"?(
+        <Pressable accessibilityRole="button" testID="teacher-open-up-next-lesson"
+          onPress={()=>onOpenLesson(plan.next!)}
+          accessibilityLabel={`${translate(locale,"teacher.upNext")}: ${plan.next.subjectName} · ${plan.next.className}`}
+          style={({pressed})=>[styles.upNextRow,rtl&&styles.rowRtl,pressed&&styles.pressed]}>
+          <Ionicons name="arrow-forward-circle-outline" size={21} color={tokens.color.brandStrong}/>
+          <View style={styles.flex}>
+            <Text style={[styles.upNextLabel,textDirection]}>{translate(locale,"teacher.upNext")} · {teacherTime12(plan.next.startsAt)}</Text>
+            <Text style={[styles.muted,textDirection]}>{plan.next.subjectName} · {plan.next.className}</Text>
+          </View>
+          <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={18} color={tokens.color.brandStrong}/>
+        </Pressable>
+      ):null}
       <View style={[styles.actions,rtl&&styles.rowRtl]}>
         <Action label={translate(locale,"teacher.viewFullSchedule")} icon="calendar-outline" rtl={rtl} onPress={onSchedule}/>
         <Action label={translate(locale,"teacher.viewAssignments")} icon="people-outline" rtl={rtl} onPress={onClasses}/>
@@ -310,6 +323,8 @@ const styles = StyleSheet.create({
   openLabel: { color: tokens.color.brandStrong, fontSize: 11.5, marginTop: 5, fontWeight: "800" },
   endTime: { color: tokens.color.textMuted, fontSize: 10, marginTop: 3 },
   priorityBadge: { backgroundColor: "#e8efff", color: tokens.color.brandStrong, minWidth: 26, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 12, fontSize: 13, fontWeight: "900", textAlign: "center" },
+  upNextRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 60, borderWidth: 1, borderColor: "#e0eafa", borderRadius: 12, backgroundColor: "#fcfdff", padding: 10 },
+  upNextLabel: { fontSize: 12, fontWeight: "800", color: tokens.color.brandStrong },
   urgentTask: { backgroundColor: "#fff8ee", borderWidth: 1, borderColor: "#f9e2bd" },
   urgentIcon: { backgroundColor: "#fff1d8", paddingVertical: 5, borderRadius: 8 },
   muted: { fontSize: 12.5, lineHeight: 19, color: tokens.color.textMuted },
