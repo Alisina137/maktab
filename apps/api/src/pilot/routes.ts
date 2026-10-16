@@ -82,6 +82,18 @@ export function registerPilotRoutes(
     return { health: evaluateSubscriptionHealth(context.subscription) };
   });
 
+  // No raw infrastructure metrics, cross-tenant counts, credentials or billing writes.
+  // This is a point-in-time school snapshot, not proof of platform uptime.
+  app.get("/v1/admin/pilot/service-health", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    reply.header("cache-control", "no-store");
+    return {
+      report: await pilot.getServiceHealth(context.user.schoolId),
+      subscription: evaluateSubscriptionHealth(context.subscription)
+    };
+  });
+
   app.get("/v1/admin/pilot/readiness", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
