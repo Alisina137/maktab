@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, RegistrationStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PilotLaunchStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
+import type { AcademicStore, AccountStore, RegistrationStore, StaffAttendanceCorrectionStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PilotLaunchStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
@@ -18,6 +18,7 @@ import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
 import { registerUserRoutes } from "./users/routes.js";
 import { registerStaffRoutes } from "./staff/routes.js";
+import { registerStaffAttendanceRoutes } from "./staff/attendance-routes.js";
 import { ApiMetrics } from "./observability.js";
 
 export interface BuildAppOptions {
@@ -26,6 +27,7 @@ export interface BuildAppOptions {
   academicStore: AcademicStore;
   familyStore: FamilyStore;
   registrationStore?: RegistrationStore;
+  staffAttendanceCorrectionStore?: StaffAttendanceCorrectionStore;
   attendanceStore: AttendanceStore;
   learningStore: LearningStore;
   learningExtensionsStore?: LearningExtensionsStore;
@@ -94,6 +96,8 @@ export function buildApp(options: BuildAppOptions) {
   });
   registerUserRoutes(app, options.accountStore);
   registerStaffRoutes(app, options.accountStore, options.registrationStore);
+  if (options.staffAttendanceCorrectionStore) registerStaffAttendanceRoutes(app,
+    options.accountStore, options.attendanceStore, options.staffAttendanceCorrectionStore);
   registerAcademicRoutes(app, options.accountStore, options.academicStore);
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
   registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);
