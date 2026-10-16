@@ -81,7 +81,7 @@ export function TeacherSchedulePanel({
   const liveWeekday=teacherKabulWeekday(now);
   const currentDay=selectedWeekday??liveWeekday??"SATURDAY";
   const clock=kabulTeacherClock(now);
-  const isToday=(weekday:TeacherWeekday)=>liveWeekday===weekday&&today?.date===clock?.date;
+  const isToday=(weekday:TeacherWeekday)=>liveWeekday===weekday;
   const dayItems=teacherPeriodsForDay(academics,currentDay);
   const weekDays:TeacherWeekday[]=[
     ...TEACHER_SCHOOL_WEEKDAYS,
