@@ -1,13 +1,15 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { adminText, type AdminLocale } from "./admin-i18n";
+import "../staff/attendance.css";
+import { type AdminLocale } from "./admin-i18n";
+import { staffAttendanceText } from "../staff/staff-attendance-i18n";
 import { formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { adminApi, friendlyAdminError } from "./admin-client";
 import type { StaffAttendanceRequest } from "../staff/staff-attendance-panel";
 
 type Props={locale:AdminLocale;accessToken:string;onApproved?:()=>void};
 export function AdminStaffAttendanceRequests({locale,accessToken,onApproved}:Props){
-  const t=(name:string)=>adminText(locale,name);
+  const t=(name:string)=>staffAttendanceText(locale,name);
   const [rows,setRows]=useState<StaffAttendanceRequest[]>([]);
   const [filter,setFilter]=useState("PENDING");
   const [selected,setSelected]=useState<StaffAttendanceRequest|null>(null);
