@@ -4,24 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminText, type AdminLocale } from "./admin-i18n";
 import { formatPilotTimestamp } from "./pilot-timestamp";
+import { parseServiceHealthResponse, serviceFollowUps, type ServiceHealthResponse } from "./pilot-service-health-model";
 
-type HealthResponse = {
-  report: {
-    evaluatedAt: string; timeZone: "Asia/Kabul";
-    api: "responding"; database: "query_succeeded";
-    notificationQueue: { pending: number; stalePending: number; failed: number;
-      status: "attention" | "no_backlog" };
-    support: { unresolved: number; unresolvedCritical: number;
-      status: "attention" | "no_critical_tickets" };
-    imports: { failedLast7Days: number; status: "attention" | "no_recent_failures" };
-    unverified: Array<"scheduler" | "push_delivery" | "backups" | "uptime_history">;
-  };
-  subscription: {
-    status: string; level: "healthy" | "info" | "warning" | "critical";
-    code: string; platformReviewNeeded: boolean; operationalWritesBlocked: boolean;
-    daysUntilExpiry: number | null;
-  };
-};
+type HealthResponse = ServiceHealthResponse;
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export function PilotServiceHealthPanel({ accessToken, locale }: {
@@ -33,6 +18,10 @@ export function PilotServiceHealthPanel({ accessToken, locale }: {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  const [showUnverified, setShowUnverified] = useState(true);
+  const followUps = data ? serviceFollowUps(data) : [];
+  const recordedIssues = followUps.filter(item => item.level !== "unverified");
+  const displayedFollowUps = showUnverified ? followUps : recordedIssues;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,7 +34,8 @@ export function PilotServiceHealthPanel({ accessToken, locale }: {
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) throw new Error(body?.message ?? "Service health report could not be loaded.");
-        if (!controller.signal.aborted) setData(body as HealthResponse);
+        const verified = parseServiceHealthResponse(body);
+        if (!controller.signal.aborted) setData(verified);
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(adminErrorText(locale, cause, "Service health report could not be loaded."));
@@ -84,6 +74,62 @@ export function PilotServiceHealthPanel({ accessToken, locale }: {
               {formatPilotTimestamp(locale, data.report.evaluatedAt)}
             </time> · {t("Reporting timezone: Asia/Kabul")}
           </p>
+          <section className="admin-panel pilot-service-triage" aria-labelledby="pilot-service-triage-title">
+            <div className="admin-section-header">
+              <div>
+                <span className="eyebrow">{t("Priority service checks")}</span>
+                <h3 id="pilot-service-triage-title">{t("Recommended service follow-ups")}</h3>
+                <p>{t("Actions based on recorded school issues. Zero recorded alerts never verifies uptime or delivery.")}</p>
+              </div>
+              <label className="pilot-service-triage-filter">
+                <input type="checkbox" checked={showUnverified}
+                  onChange={(event) => setShowUnverified(event.target.checked)} />
+                <span>{t("Include unverified checks")}</span>
+              </label>
+            </div>
+            <div className="pilot-service-triage-stats" role="status">
+              <span className="pilot-badge pilot-badge-danger">
+                {t("Critical")}: {number(recordedIssues.filter((item) => item.level === "critical").length)}
+              </span>
+              <span className="pilot-badge pilot-badge-warning">
+                {t("Warnings")}: {number(recordedIssues.filter((item) => item.level === "warning").length)}
+              </span>
+              <span className="pilot-service-unverified-indicator">
+                {t("Independent infrastructure checks unverified")}
+              </span>
+            </div>
+            {displayedFollowUps.length ? (
+              <ul className="pilot-service-triage-list">
+                {displayedFollowUps.map((item) => (
+                  <li key={item.key} className={"pilot-service-triage-item pilot-service-triage-" + item.level}>
+                    <div>
+                      <span className="pilot-service-triage-level">
+                        {t(item.level === "critical" ? "Critical" :
+                          item.level === "warning" ? "Warning" : "Not verified")}
+                      </span>
+                      <strong>{t(item.title)}</strong>
+                      <p>{t(item.detail)}</p>
+                      {item.count !== undefined ? (
+                        <span className="pilot-service-triage-count">
+                          {adminFormat(locale, "{count} recorded", { count: number(item.count) })}
+                        </span>
+                      ) : null}
+                    </div>
+                    <Link className="pilot-inline-link" href={item.href}>
+                      {t("Review action")} <span aria-hidden="true">↗</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="pilot-security-note">
+                {t("No recorded issues in the checked categories. Unverified infrastructure checks still remain.")}
+              </p>
+            )}
+            <p className="pilot-security-note">
+              {t("Items are issue categories, not distinct incidents or affected people. This is a point-in-time report.")}
+            </p>
+          </section>
           <div className="pilot-service-grid">
             <article className="admin-panel pilot-service-card">
               <span className="eyebrow">{t("API and database")}</span>
