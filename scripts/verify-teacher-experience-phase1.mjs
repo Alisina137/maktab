@@ -32,6 +32,8 @@ assert.ok(more.includes("accessibilityRole=\"radio\""),
 assert.ok(teacher.includes('onSelect("WORK")')&&teacher.includes('onSelect("MORE")'),
   "Today shortcuts should open Work and More instead of the old Workflows screen.");
 assert.ok(teacher.includes('goToWorkflow("ANNOUNCEMENTS")'));
+assert.ok(teacher.includes('key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}\n'),
+  "The Work learning panel must have a valid JSX key and retain its selected workflow.");
 assert.ok(!hub.includes('export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS"'),
   "School announcements must no longer be a Work subtab.");
 assert.ok(hub.includes('export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "TEACHING" | "TASKS";'));
