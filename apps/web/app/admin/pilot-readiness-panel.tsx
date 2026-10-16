@@ -12,9 +12,10 @@ import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
 import { PilotOperationsNavigation, type PilotSection } from "./pilot-operations-navigation";
+import { formatPilotTimestamp } from "./pilot-timestamp";
 export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
-import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
@@ -162,14 +163,6 @@ function auditQuery(filters: AuditFilters, offset: number, limit = 20) {
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
   if (filters.actorUserId.trim()) params.set("actorUserId", filters.actorUserId.trim());
   return params.toString();
-}
-
-function formatPilotImportTimestamp(locale: "fa-AF" | "ps-AF" | "en", date: string) {
-  if (locale !== "en") return formatAdminHijriDateTime(locale, date, "Asia/Kabul");
-  const parsed = new Date(date);
-  return Number.isNaN(parsed.getTime()) ? "" : new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium", timeStyle: "short", hour12: true, timeZone: "Asia/Kabul"
-  }).format(parsed);
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -907,7 +900,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                   <div className="pilot-import-row" key={item.id}>
                     <div className="pilot-import-meta">
                       <strong>{t(item.entityType === "PARENT" ? "Parents" : item.entityType === "TEACHER" ? "Teachers" : "Students")}</strong>
-                      <span>{formatPilotImportTimestamp(locale, item.createdAt)}</span>
+                      <span>{formatPilotTimestamp(locale, item.createdAt)}</span>
                       <span>{item.actorUsername ?? t("Unknown administrator")}</span>
                     </div>
                     <div className="pilot-import-summary">
@@ -1081,7 +1074,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                     <span>{t("Affected record")}: {item.targetLabel ?? t(item.entityType)}</span>
                   </div>
                   <div className="pilot-audit-row-end">
-                    <time dateTime={item.createdAt}>{formatAdminHijriDateTime(locale, item.createdAt)}</time>
+                    <time dateTime={item.createdAt}>{formatPilotTimestamp(locale, item.createdAt)}</time>
                     <button className="admin-secondary" type="button"
                       aria-expanded={selectedAudit?.id === item.id}
                       onClick={() => setSelectedAudit(item)}>{t("View details")}</button>
@@ -1108,7 +1101,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
                   <div><dt>{t("Category")}</dt><dd>{t(selectedAudit.category)}</dd></div>
                   <div><dt>{t("Performed by")}</dt><dd>{selectedAudit.actorUsername ?? t("System")}</dd></div>
                   <div><dt>{t("Affected record")}</dt><dd>{selectedAudit.targetLabel ?? t(selectedAudit.entityType)}</dd></div>
-                  <div><dt>{t("Date")}</dt><dd>{formatAdminHijriDateTime(locale, selectedAudit.createdAt)}</dd></div>
+                  <div><dt>{t("Date")}</dt><dd>{formatPilotTimestamp(locale, selectedAudit.createdAt)}</dd></div>
                   {Object.entries(selectedAudit.metadata).map(([key, value]) => (
                     <div key={key}><dt>{t(key)}</dt><dd>{String(value)}</dd></div>
                   ))}
