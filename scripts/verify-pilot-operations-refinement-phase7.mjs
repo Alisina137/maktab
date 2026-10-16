@@ -73,7 +73,7 @@ assert.ok(overview.includes("Promise.allSettled(") &&
   overview.includes("setRevision") &&
   overview.includes('failed: results.filter((result) => result.status === "rejected").length'),
   "Pulse requires independent retryable requests and stale-session protection");
-assert.ok(overview.includes('snapshot?.service?.report') &&
+assert.ok(overview.includes('pulseAlertCount(snapshot?.service ?? null)') &&
   overview.includes('loading || alerts === null ? "—"') &&
   overview.includes("Values are not assumed to be zero.") &&
   overview.includes('snapshot?.release?.productionDecision === "NO_GO"'),
