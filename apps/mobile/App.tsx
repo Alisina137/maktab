@@ -230,6 +230,10 @@ function AppContent() {
   const [teacherTodayReady, setTeacherTodayReady] = useState(false);
   const [teacherAcademicsReady, setTeacherAcademicsReady] = useState(false);
   const [teacherTab, setTeacherTab] = useState<TeacherTab>("TODAY");
+  const [teacherExternalNavigation, setTeacherExternalNavigation] = useState<{
+    id: number; target: "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS"
+  } | null>(null);
+  const teacherNavigationRequest = useRef(0);
   const [studentEnrollmentUnavailable, setStudentEnrollmentUnavailable] = useState(false);
   const [studentTimetable, setStudentTimetable] = useState<StudentTimetablePayload | null>(null);
   const [studentTimetableReady, setStudentTimetableReady] = useState(false);
@@ -1741,9 +1745,15 @@ function AppContent() {
     } else if (destination === "STUDENT_HOMEWORK") setScreen("student-homework");
     else if (destination === "STUDENT_RESULTS") setScreen("student-results");
     else if (destination === "STUDENT_HOME") setScreen("home");
-    else if (destination.startsWith("TEACHER_")) setTeacherTab(
-      destination === "TEACHER_TODAY" ? "TODAY" : "WORKFLOWS"
-    );
+    else if (destination.startsWith("TEACHER_")) {
+      if (destination === "TEACHER_TODAY") setTeacherTab("TODAY");
+      else {
+        const target = destination === "TEACHER_ANNOUNCEMENTS" ? "ANNOUNCEMENTS" :
+          destination === "TEACHER_GRADES" ? "GRADES" : "HOMEWORK";
+        setTeacherExternalNavigation({ id: ++teacherNavigationRequest.current, target });
+        setTeacherTab(target === "ANNOUNCEMENTS" ? "MORE" : "WORK");
+      }
+    }
     setNotice(null);
     setAppError(null);
   }
@@ -1766,6 +1776,7 @@ function AppContent() {
       setReadCacheScope(`${school.id}:${next.user.id}`);
       await saveStoredSession({ auth: next, school });
       setPassword("");
+      setTeacherExternalNavigation(null);
       setScreen(screenForSession(next));
       if (next.user.status === "SUSPENDED") {
         setAppError("auth.accountSuspended");
@@ -2879,6 +2890,8 @@ function AppContent() {
             onError={setAppError}
             onNotice={setNotice}
             onLogout={() => void logout()}
+            onLocaleChange={chooseLocale}
+            externalNavigation={teacherExternalNavigation}
           />
         ) : null}
 
