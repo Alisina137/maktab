@@ -9167,3 +9167,22 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .staff-workspace-nav button { padding:10px 5px; font-size:12px; }
   .staff-home-responsibilities li { flex-direction:column; align-items:flex-start; }
 }
+
+
+/* Staff Phase 3: query filters and safe read-only account detail. */
+.staff-directory .staff-search { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.staff-directory-actions { display:flex; gap:8px; align-self:end; flex-wrap:wrap; }
+.staff-directory-actions>button { flex:1 1 auto; white-space:nowrap; }
+.staff-lookup-button { width:100%; text-align:start; font-family:inherit; cursor:pointer; font-size:inherit; }
+.staff-lookup-button:hover,.staff-lookup-button[aria-expanded="true"] { border-color:#497aaf; background:#eef5ff; }
+.staff-lookup-button:focus-visible { outline:3px solid #326bb7; outline-offset:2px; }
+.staff-lookup-ident { min-width:0; display:grid; gap:5px; overflow-wrap:anywhere; flex:1; }
+.staff-record-details { margin:14px 0; padding:20px; border:1px solid #c6d9ee; background:#f9fbff; }
+.staff-record-details .pilot-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:800px) {
+  .staff-directory .staff-search { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:550px) {
+  .staff-directory .staff-search { grid-template-columns:minmax(0,1fr); }
+  .staff-record-details .pilot-detail-grid { grid-template-columns:minmax(0,1fr); }
+}
