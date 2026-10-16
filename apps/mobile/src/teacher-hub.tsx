@@ -98,8 +98,10 @@ export function TeacherTodayInsights({
       </View>
       {!todayReady?<Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
       :!today?<Action label={translate(locale,"action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry}/>
-      :plan.stage==="UNAVAILABLE"?
-        <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.dayNotCurrent")}</Text>:null}
+      :plan.stage==="UNAVAILABLE"?<>
+        <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.dayNotCurrent")}</Text>
+        <Action label={translate(locale,"action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry}/>
+      </>:null}
     </View>
 
     <View style={styles.card} testID="teacher-today-featured-lesson">
