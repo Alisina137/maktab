@@ -16,6 +16,7 @@ import { PilotOperationsPulse } from "./pilot-operations-pulse";
 import { formatPilotTimestamp } from "./pilot-timestamp";
 export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
+import { PilotReadinessPriorities } from "./pilot-readiness-priorities";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
@@ -544,6 +545,10 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           </span>
           <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("Review coverage")}</Link>
         </div>
+      ) : null}
+      {section === "readiness" ? (
+        <PilotReadinessPriorities core={readiness} coverage={advanced}
+          locale={locale} busy={busy || advancedBusy} />
       ) : null}
       {section === "readiness" ? (
         <PilotOperationalReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} />
