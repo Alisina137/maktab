@@ -254,6 +254,7 @@ export type TranslationKey =
   | "teacher.viewAssignments"
   | "teacher.fullSchedule"
   | "teacher.scheduleDay"
+  | "teacher.scheduleRefresh"
   | "teacher.scheduleDayTitle"
   | "teacher.scheduleWeek"
   | "teacher.schedulePrevious"
@@ -850,6 +851,7 @@ const en: Record<TranslationKey, string> = {
   "teacher.viewAssignments": "View my classes and subjects",
   "teacher.fullSchedule": "My weekly schedule",
   "teacher.scheduleDay": "Day",
+  "teacher.scheduleRefresh": "Refresh timetable",
   "teacher.scheduleDayTitle": "My daily timetable",
   "teacher.scheduleWeek": "Week",
   "teacher.schedulePrevious": "Previous day",
@@ -1462,6 +1464,7 @@ const dari: Record<TranslationKey, string> = {
   "teacher.viewAssignments": "دیدن صنف‌ها و مضامین من",
   "teacher.fullSchedule": "تقسیم اوقات هفتگی من",
   "teacher.scheduleDay": "روز",
+  "teacher.scheduleRefresh": "تازه‌سازی تقسیم اوقات",
   "teacher.scheduleDayTitle": "تقسیم اوقات روزانهٔ من",
   "teacher.scheduleWeek": "هفته",
   "teacher.schedulePrevious": "روز قبل",
@@ -2074,6 +2077,7 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.viewAssignments": "زما ټولګي او مضمونونه",
   "teacher.fullSchedule": "زما اونیز مهالویش",
   "teacher.scheduleDay": "ورځ",
+  "teacher.scheduleRefresh": "مهالویش تازه کول",
   "teacher.scheduleDayTitle": "زما ورځنی مهالویش",
   "teacher.scheduleWeek": "اونۍ",
   "teacher.schedulePrevious": "مخکینۍ ورځ",
