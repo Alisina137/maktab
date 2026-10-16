@@ -8,7 +8,7 @@ const css=read("apps/web/app/globals.css");
 const locale=read("apps/web/app/admin/admin-i18n.ts");
 assert.ok(dashboard.includes('useState<"home"|"directory"|"settings">("home")') &&
  dashboard.includes("staff-workspace-nav") &&
- dashboard.includes('aria-pressed={tab===key}') &&
+ dashboard.includes('aria-pressed={tab===item.id}') &&
  dashboard.includes('tab==="home"') &&
  dashboard.includes('tab==="directory"') &&
  dashboard.includes('tab==="settings"') &&
