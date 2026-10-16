@@ -9105,3 +9105,24 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .staff-pages { flex-wrap: wrap; }
   .staff-directory,.staff-security { padding: 15px; }
 }
+
+/* Phase 1 — staff positions & permission editor in the admin account drawer. */
+.staff-permissions-editor { min-width: 0; }
+.staff-permissions-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.staff-permissions-heading h3 { margin: 0; }
+.staff-permissions-form { display: grid; gap: 14px; padding-top: 12px; }
+.staff-permissions-form > label { display: grid; gap: 7px; font-size: 13px; font-weight: 650; min-width: 0; }
+.staff-permissions-form input:not([type="checkbox"]),.staff-permissions-form select {
+  width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #c8d5e7;
+  border-radius: 9px; background: #fff; font: inherit;
+}
+.staff-permissions-fieldset { min-width: 0; border: 1px solid #dce5f1; border-radius: 12px;
+  display: grid; gap: 6px; padding: 12px; }
+.staff-permissions-fieldset legend { padding: 0 5px; font-size: 13px; font-weight: 750; }
+.staff-permission-checkbox { display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px; border-radius: 8px; font-weight: 500; line-height: 1.45; font-size: 12px; }
+.staff-permission-checkbox:hover { background: #f4f8ff; }
+.staff-permission-checkbox input { flex: 0 0 auto; margin-top: 2px; width: 16px; height: 16px; accent-color: #326bb7; }
+.staff-permissions-form :is(input,select,button):focus-visible { outline: 3px solid #326bb7; outline-offset: 2px; }
+@media(max-width:620px) { .staff-permissions-form { gap: 11px; }
+  .staff-permission-checkbox { min-height: 36px; } }
