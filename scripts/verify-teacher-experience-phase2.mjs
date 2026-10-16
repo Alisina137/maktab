@@ -6,7 +6,7 @@ const model=read("apps/mobile/src/teacher-today-model.ts");
 const ui=read("apps/mobile/src/teacher-hub.tsx");
 const experience=read("apps/mobile/src/teacher-experience.tsx");
 const translations=read("packages/localization/src/index.ts");
-const tests=read("apps/mobile/src/teacher-today-model.test.ts");
+const tests=read("scripts/test-teacher-today-model.ts");
 const api=read("apps/mobile/src/api.ts");
 const scripts=JSON.parse(read("package.json")).scripts;
 
