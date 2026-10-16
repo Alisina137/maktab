@@ -1138,7 +1138,27 @@ export const registrationRequests = pgTable("staff_registration_requests", {
   index("staff_registration_school_status_idx").on(table.schoolId,table.status,table.updatedAt)
 ]);
 
+
+/** Staff Phase 5 requests are immutable proposals until an admin decides. */
+export const staffAttendanceCorrectionRequests = pgTable("staff_attendance_correction_requests",{
+  id:uuid("id").primaryKey(),
+  schoolId:uuid("school_id").notNull().references(()=>schools.id,{onDelete:"cascade"}),
+  attendanceId:uuid("attendance_id").notNull().references(()=>dailyAttendances.id,{onDelete:"restrict"}),
+  studentId:uuid("student_id").notNull().references(()=>students.id,{onDelete:"restrict"}),
+  createdBy:uuid("created_by").notNull().references(()=>users.id,{onDelete:"restrict"}),
+  originalStatus:attendanceStatusEnum("original_status").notNull(),
+  requestedStatus:attendanceStatusEnum("requested_status").notNull(),
+  expectedUpdatedAt:timestamp("expected_updated_at",{withTimezone:true}).notNull(),
+  reason:varchar("reason",{length:500}).notNull(),
+  status:varchar("status",{length:16}).$type<"PENDING"|"APPROVED"|"REJECTED">().notNull().default("PENDING"),
+  reviewedBy:uuid("reviewed_by").references(()=>users.id,{onDelete:"set null"}),
+  reviewNote:varchar("review_note",{length:500}),
+  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  decidedAt:timestamp("decided_at",{withTimezone:true})
+},table=>[index("staff_attendance_requests_school_status_idx").on(table.schoolId,table.status,table.createdAt)]);
+
 export const databaseSchema = {
+  staffAttendanceCorrectionRequests,
   registrationRequests,
   pilotLaunchEvidence,
   pilotSupportTickets,
@@ -1243,3 +1263,5 @@ export type PilotLaunchEvidence = typeof pilotLaunchEvidence.$inferSelect;
 export type PilotSupportTicket = typeof pilotSupportTickets.$inferSelect;
 export type PilotSupportUpdate = typeof pilotSupportUpdates.$inferSelect;
 export type PilotLaunchDecision = typeof pilotLaunchDecisions.$inferSelect;
+
+export type StaffAttendanceCorrectionRequest = typeof staffAttendanceCorrectionRequests.$inferSelect;
