@@ -6,7 +6,7 @@ const home=read("apps/web/app/staff/staff-home-panel.tsx");
 const api=read("apps/api/src/staff/routes.ts");
 const css=read("apps/web/app/globals.css");
 const locale=read("apps/web/app/admin/admin-i18n.ts");
-assert.ok(dashboard.includes('useState<"home"|"directory"|"registration"|"attendance"|"settings">("home")') &&
+assert.ok(dashboard.includes('useState<"home"|"directory"|"registration"|"attendance"|"fees"|"settings">("home")') &&
  dashboard.includes("staff-workspace-nav") &&
  dashboard.includes('aria-pressed={tab===item.id}') &&
  dashboard.includes('tab==="home"') &&
