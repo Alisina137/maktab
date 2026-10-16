@@ -6,6 +6,7 @@ const store = read("packages/database/src/pilot-store.ts");
 const exports = read("packages/database/src/index.ts");
 const api = read("apps/api/src/pilot/routes.ts");
 const page = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
 const ui = read("apps/web/app/admin/pilot-adoption-panel.tsx");
 const workspace = read("apps/web/app/admin/admin-workspace.tsx");
 const styles = read("apps/web/app/globals.css");
@@ -42,8 +43,8 @@ assert.ok(api.includes('"/v1/admin/pilot/adoption"') &&
   api.includes("pilot.getAdoptionReport(context.user.schoolId, window)") &&
   api.includes('reply.header("cache-control", "no-store")'),
   "Authenticated school-scoped route must validate periods and be uncached");
-assert.ok(page.includes('section: "adoption"') &&
-  page.includes('href: "/admin/pilot/adoption"') &&
+assert.ok(navigation.includes('section: "adoption"') &&
+  navigation.includes('href: "/admin/pilot/adoption"') &&
   page.includes('<PilotAdoptionPanel') &&
   page.includes('if (section === "adoption") {'),
   "Route-backed tab must be independent of other readiness API calls");
