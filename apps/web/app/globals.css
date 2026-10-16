@@ -8854,3 +8854,32 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   color: var(--ml-color-brand-strong); text-underline-offset: 3px; }
 .pilot-action-link:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
 @media (max-width: 620px) { .pilot-action { align-items: flex-start; flex-direction: column; gap: 7px; } }
+
+/* School Readiness Phase 2: prioritized action worklist with RTL-safe accents */
+.pilot-priority-worklist { display: grid; gap: 13px; min-width: 0; }
+.pilot-priority-worklist .admin-section-header { align-items: flex-start; gap: 12px; }
+.pilot-priority-worklist .admin-section-header h3 { margin: 0 0 5px; }
+.pilot-priority-worklist .admin-section-header p { margin: 0; }
+.pilot-priority-filter { display: grid; gap: 6px; min-width: 145px; font-size: 12px; font-weight: 700; }
+.pilot-priority-filter select { min-height: 40px; width: 100%; padding: 8px;
+  border-radius: 10px; border: 1px solid var(--ml-color-border);
+  background: #fff; color: var(--ml-color-text); }
+.pilot-priority-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pilot-priority-unknown { border: 1px solid #ddd4eb; background: #faf8ff; color: #685780;
+  border-radius: 22px; padding: 5px 10px; font-size: 12px; font-weight: 750; }
+.pilot-priority-list { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.pilot-priority-row { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; min-width: 0; padding: 12px 14px; border: 1px solid #dfe5ef;
+  border-inline-start: 4px solid #a98142; border-radius: 11px; background: #fffcf7; }
+.pilot-priority-blocker { border-inline-start-color: #b9544a; background: #fffbfa; }
+.pilot-priority-unverified { border-inline-start-color: #8b7c9f; background: #fcfaff; }
+.pilot-priority-row strong { display: block; font-size: 13px; }
+.pilot-priority-row p { margin: 5px 0 0; font-size: 12px; line-height: 1.55;
+  color: var(--ml-color-text-muted); overflow-wrap: anywhere; }
+.pilot-priority-row a { flex: 0 0 auto; }
+.pilot-priority-worklist select:focus-visible, .pilot-priority-worklist button:focus-visible,
+.pilot-priority-worklist a:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+@media (max-width: 620px) {
+  .pilot-priority-row { flex-direction: column; align-items: flex-start; }
+  .pilot-priority-filter { width: 100%; }
+}
