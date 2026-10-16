@@ -42,3 +42,34 @@ The automated integration regression covers wrong-role and wrong-school login, f
 **Manual checks:** test Android/mobile absence of Staff role, English/Dari/Pashto RTL, keyboard navigation, small screens, a real staff account's initial password setup, session refresh, suspension, and an administrator account's inability to open staff endpoints.
 
 The initial staff permissions intentionally cover **front-desk account lookup and self-service account security**, not generalized administrative privileges. More staff workflows (attendance support, enrollment, fee collection, reception, library) require an explicit permission matrix and matching school-scoped endpoints before being enabled.
+
+
+## Phase 1 — Staff positions, profiles and permissions (October 2026)
+
+Staff job responsibilities are now **explicit administrator-assigned permissions**, not inferred from the `SCHOOL_STAFF` role or position. Existing staff and newly-created staff **start with no operational grants** until configured. Staff can still authenticate to review their own school and security settings.
+
+**Administration:** /admin/accounts → Account directory → open a School Staff account → **Staff position & permissions**. Record full name, optional school-unique employee code, position, department and only the appropriate permissions. Saving requires an authenticated school admin; the backend scopes by that school's account and rejects cross-school or non-staff targets. Every change is audited and revokes existing staff sessions, so the staff member must log in again.
+
+| Permission | Phase 1 enforcement | Later workflow |
+| --- | --- | --- |
+| `DIRECTORY_VIEW` | Allows `GET /v1/staff/directory`, denied without explicit grant | Role-/record-level directory refinements |
+| `ENROLLMENT_REQUESTS` | Reserved; does not unlock account creation | Phase 4 registration workflow |
+| `ATTENDANCE_REVIEW` | Reserved; does not unlock admin attendance | Phase 5 attendance assistance |
+| `FEES_VIEW`, `FEES_COLLECT` | Reserved; does not unlock admin financial APIs | Phase 6, separate payment protection |
+| `TASKS_VIEW` | Reserved | Phase 7 tasks |
+| `COMMUNICATION_DRAFT` | Reserved; not an announcement publish grant | Phase 7 communication |
+| `REPORTS_VIEW` | Reserved | Role-scoped reports |
+
+The staff dashboard shows profile, position and department. If directory access has not been granted, it shows a clear restricted state rather than a query. The administrator retains the only account-creation and permission-editing rights. Positions are organizational labels only, so being named `ACCOUNTANT` **never** grants fee-editing rights by itself.
+
+**Migration:** the new `0028_staff_profiles_permissions.sql` migration is mandatory for this phase. The new table has a compound school+user foreign key, and a school-unique optional employee code. Existing users are not migrated into privileged staff profiles.
+
+```powershell
+cd C:\projects\maktab
+git pull --ff-only origin main
+pnpm db:migrate
+pnpm verify:staff
+pnpm typecheck
+```
+
+Run the migration once per environment **before** starting the updated API. Do not enable unimplemented staff modules just because a future permission is assigned. Run `pnpm verify:staff:phase1` for the Phase 1 scoped API, revoked-session, audit and migration integration tests.
