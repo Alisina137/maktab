@@ -8992,6 +8992,15 @@ test("Standalone web staff role: first-login setup, scoped directory, and admin 
   assert.equal(created.user.role,"SCHOOL_STAFF");
   assert.equal(created.user.mustChangePassword,true);
 
+  // Directory is permission-gated. The school admin explicitly assigns it
+  // before the staff session is activated, never from job title alone.
+  const configured=await app.inject({
+    method:"PUT",url:`/v1/admin/staff/${created.user.id}/profile`,headers:adminHeaders,
+    payload:{fullName:"Front Desk Staff",employeeCode:"FD-001",
+      position:"RECEPTIONIST",department:"Front Desk",permissions:["DIRECTORY_VIEW"]}
+  });
+  assert.equal(configured.statusCode,200,configured.body);
+
   const teacherA=await app.inject({
     method:"POST",url:"/v1/admin/users",headers:adminHeaders,
     payload:{username:"teacherstaffa",role:"TEACHER"}
