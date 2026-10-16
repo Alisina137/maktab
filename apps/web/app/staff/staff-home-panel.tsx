@@ -11,10 +11,10 @@ type StaffHomeProps = {
   permissions: string[];
   onDirectory: () => void;
   onRegistrations: () => void;
+  onAttendance: () => void;
   onSettings: () => void;
 };
 const PLANNED: Record<string,string> = {
-  ATTENDANCE_REVIEW: "Attendance review",
   FEES_VIEW: "Fee records",
   FEES_COLLECT: "Payment collection",
   TASKS_VIEW: "Assigned tasks",
@@ -24,10 +24,11 @@ const PLANNED: Record<string,string> = {
 /** Informational home only: assigned future permissions must never imply an
  * operational feature, existing record count or completed task. */
 export function StaffHomePanel({locale, school, displayName, position, department,
-  permissions, onDirectory, onRegistrations, onSettings}: StaffHomeProps) {
+  permissions, onDirectory, onRegistrations, onAttendance, onSettings}: StaffHomeProps) {
   const t = (label:string) => adminText(locale,label);
   const canDirectory = permissions.includes("DIRECTORY_VIEW");
   const canRegister = permissions.includes("ENROLLMENT_REQUESTS");
+  const canAttend = permissions.includes("ATTENDANCE_REVIEW");
   const planned = permissions.filter(p => p in PLANNED);
   return <section className="staff-home" aria-labelledby="staff-home-heading">
     <div className="staff-home-heading">
@@ -63,6 +64,8 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
             onClick={onDirectory}>{t("Search school directory")}</button> : null}
           {canRegister?<button className="admin-primary" type="button"
             onClick={onRegistrations}>{t("New registration")}</button>:null}
+          {canAttend?<button className="admin-primary" type="button"
+            onClick={onAttendance}>{t("Review attendance")}</button>:null}
           <button className="admin-secondary" type="button"
             onClick={onSettings}>{t("My profile & security")}</button>
         </div>
