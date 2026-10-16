@@ -8720,3 +8720,38 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-adoption-event-grid { grid-template-columns: minmax(0,1fr); }
   .pilot-adoption-toolbar { width: 100%; }
 }
+
+/* Pilot Operations Phase 5 refinement — Service Health & Assistance */
+.pilot-service { display: grid; gap: 18px; min-width: 0; }
+.pilot-service > .admin-section-header { gap: 16px; align-items: flex-start; }
+.pilot-service-grid { display: grid; gap: 14px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.pilot-service-card { min-width: 0; display: grid; align-content: start; justify-items: start; gap: 10px; }
+.pilot-service-card h4 { margin: 0; font-size: 16px; line-height: 1.4; }
+.pilot-service-card p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--ml-color-text-muted); }
+.pilot-service-card dl { display: grid; gap: 9px; width: 100%; margin: 5px 0; }
+.pilot-service-card dl > div { display: flex; gap: 12px; justify-content: space-between;
+  border-bottom: 1px solid #e7ebf2; padding: 7px 0; }
+.pilot-service-card dt { font-size: 13px; }
+.pilot-service-card dd { margin: 0; font-weight: 750; font-variant-numeric: tabular-nums; }
+.pilot-service-number { font-size: clamp(26px,4vw,38px); font-variant-numeric: tabular-nums; color: #24548a; }
+.pilot-service-card .pilot-inline-link { margin-top: 5px; }
+.pilot-service-billing { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.pilot-service-billing h3 { margin-block: 8px 10px; font-size: 17px; }
+.pilot-service-billing p { font-size: 13px; line-height: 1.6; }
+.pilot-service-actions { display: flex; flex-wrap: wrap; gap: 9px; justify-content: flex-end; }
+.pilot-service-actions a { text-align: center; text-decoration: none; white-space: nowrap; }
+.pilot-service-caveat { border-inline-start: 4px solid #ad802b; background: #fffdf4; }
+.pilot-service-caveat p { font-size: 13px; line-height: 1.7; }
+.pilot-service-error { display: grid; gap: 9px; }
+.pilot-service-error button { justify-self: start; }
+.pilot-service :is(button,a):focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+#pilot-support-form { scroll-margin-top: 100px; }
+@media (max-width: 850px) {
+  .pilot-service-grid { grid-template-columns: minmax(0,1fr); }
+  .pilot-service-billing { align-items: stretch; flex-direction: column; }
+  .pilot-service-actions { justify-content: flex-start; }
+}
+@media (max-width: 540px) {
+  .pilot-service-actions { flex-direction: column; }
+  .pilot-service-actions a { width: 100%; white-space: normal; }
+}
