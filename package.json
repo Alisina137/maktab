@@ -78,7 +78,7 @@
     "verify:staff:phase2": "node scripts/verify-staff-phase2.mjs",
     "verify:staff:phase3": "node scripts/verify-staff-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 3: directory filtering\" src/app.test.ts",
     "verify:staff:phase4": "node scripts/verify-staff-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 4\" src/app.test.ts",
-    "verify:staff:phase5": "node scripts/verify-staff-phase5.mjs && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck"
+    "verify:staff:phase5": "node scripts/verify-staff-phase5.mjs && pnpm --filter @maktablink/database exec tsx --test src/staff-attendance-correction-store.test.ts src/migration-chain.test.ts && pnpm typecheck"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
