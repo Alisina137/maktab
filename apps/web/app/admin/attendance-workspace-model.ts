@@ -1,5 +1,5 @@
 export type AttendanceTab =
-  "OVERVIEW" | "REGISTERS" | "STUDENTS" | "FOLLOWUPS" | "REPORTS" | "AUDIT";
+  "OVERVIEW" | "REGISTERS" | "STUDENTS" | "FOLLOWUPS" | "REPORTS" | "AUDIT" | "STAFF_REQUESTS";
 
 export const ATTENDANCE_TABS: ReadonlyArray<{ id: AttendanceTab; label: string }> = [
   { id: "OVERVIEW", label: "Overview" },
@@ -7,7 +7,8 @@ export const ATTENDANCE_TABS: ReadonlyArray<{ id: AttendanceTab; label: string }
   { id: "STUDENTS", label: "Students" },
   { id: "FOLLOWUPS", label: "Follow-ups" },
   { id: "REPORTS", label: "Reports" },
-  { id: "AUDIT", label: "Audit trail" }
+  { id: "AUDIT", label: "Audit trail" },
+  { id: "STAFF_REQUESTS", label: "Staff requests" }
 ];
 
 export type AttendancePeriodRow = {
