@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { adminText, type AdminLocale } from "../admin/admin-i18n";
+import "./attendance.css";
+import { type AdminLocale } from "../admin/admin-i18n";
+import { staffAttendanceText } from "./staff-attendance-i18n";
 import { formatAdminHijriDate } from "../admin/admin-hijri-date-picker";
 import { friendlyAdminError } from "../admin/admin-client";
 
@@ -23,7 +25,7 @@ type Props={locale:AdminLocale;api:<T>(path:string,init?:RequestInit)=>Promise<T
 const STATUSES=["PRESENT","ABSENT","LATE","EXCUSED"] as const;
 
 export function StaffAttendancePanel({locale,api}:Props){
-  const t=(label:string)=>adminText(locale,label);
+  const t=(label:string)=>staffAttendanceText(locale,label);
   const [report,setReport]=useState<Report|null>(null);
   const [requests,setRequests]=useState<StaffAttendanceRequest[]>([]);
   const [from,setFrom]=useState("");
