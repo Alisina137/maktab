@@ -11,7 +11,10 @@ const taskCreate=z.object({
   assignedTo:uuid,title:z.string().trim().min(3).max(160),
   details:z.string().trim().max(2000).default(""),
   priority:z.enum(["LOW","NORMAL","HIGH"]).default("NORMAL"),
-  dueDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional()
+  dueDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine(value=>{const day=new Date(value+"T12:00:00Z");
+      return !Number.isNaN(day.getTime())&&day.toISOString().slice(0,10)===value;
+    },"Use a real calendar date.").nullable().optional()
 }).strict();
 const taskUpdate=z.object({
   status:z.enum(["TODO","IN_PROGRESS","DONE"]),
@@ -23,17 +26,20 @@ const draftFields=z.object({
   audienceScope:z.enum(["SCHOOL","ROLE"]),
   audienceRole:z.enum(["TEACHER","PARENT","STUDENT"]).nullable().optional()
 }).strict();
-const validateAudience=(body:{audienceScope:"SCHOOL"|"ROLE";audienceRole?:"TEACHER"|"PARENT"|"STUDENT"|null},
-  ctx:z.RefinementCtx)=>{
+const draftBody=draftFields.superRefine((body,ctx)=>{
   if(body.audienceScope==="ROLE"&&!body.audienceRole)
     ctx.addIssue({code:"custom",message:"Select an audience role.",path:["audienceRole"]});
   if(body.audienceScope==="SCHOOL"&&body.audienceRole)
     ctx.addIssue({code:"custom",message:"School-wide messages cannot select a role.",path:["audienceRole"]});
-};
-const draftBody=draftFields.superRefine(validateAudience);
+});
 const draftEdit=draftFields.extend({
   expectedUpdatedAt:z.string().datetime({offset:true})
-}).superRefine(validateAudience);
+}).superRefine((body,ctx)=>{
+  if(body.audienceScope==="ROLE"&&!body.audienceRole)
+    ctx.addIssue({code:"custom",message:"Select an audience role.",path:["audienceRole"]});
+  if(body.audienceScope==="SCHOOL"&&body.audienceRole)
+    ctx.addIssue({code:"custom",message:"School-wide messages cannot select a role.",path:["audienceRole"]});
+});
 const decision=z.discriminatedUnion("action",[
   z.object({action:z.literal("APPROVE"),note:z.string().trim().max(500).default("")}).strict(),
   z.object({action:z.literal("REJECT"),note:z.string().trim().min(3).max(500)}).strict()
