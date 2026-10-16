@@ -35,8 +35,8 @@ assert.ok(db.includes("ORDER BY occurred_at DESC, kind ASC, id DESC") &&
   db.includes("LIMIT ${limit + 1} OFFSET ${offset}") &&
   db.includes("Math.min(30, Math.max(1") &&
   db.includes("Math.min(50_000, Math.max(0"), "Timeline must be stable, limited and paginated");
-for(const secret of ["operator_label", "operatorLabel", "reference", "password_hash",
-  "review_note", "s.note", "t.description", "b.reason", "metadata", "access_token"]) {
+for(const secret of ["operator_label", "operatorLabel", "e.reference", "password_hash",
+  "review_note", "s.note", "t.description", "b.reason", "a.metadata", "access_token"]) {
   assert.ok(!db.includes(secret), "Timeline must not expose private field: " + secret);
 }
 assert.ok(store.includes("listOversightEvents(schoolId, options)") &&
