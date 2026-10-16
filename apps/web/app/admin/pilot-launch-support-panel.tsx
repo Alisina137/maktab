@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PilotReleaseReadinessPanel } from "./pilot-release-readiness-panel";
 import Link from "next/link";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { formatPilotTimestamp } from "./pilot-timestamp";
 
 type EvidenceCategory = "CROSS_ROLE" | "DATABASE" | "BACKUP_RESTORE" | "NOTIFICATIONS_JOBS" | "ACCESSIBILITY_RTL";
 type Evidence = { id: string; category: EvidenceCategory; reference: string; note: string;
@@ -179,7 +179,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
                 })}</p>
               ) : null}
               {overview.decision?.reviewedAt ? (
-                <p>{formatAdminHijriDateTime(locale, overview.decision.reviewedAt)} · {overview.decision.operatorLabel}</p>
+                <p>{formatPilotTimestamp(locale, overview.decision.reviewedAt)} · {overview.decision.operatorLabel}</p>
               ) : null}
               {overview.decision?.note ? <p>{overview.decision.note}</p> : null}
               <p className="pilot-security-note">{t("Only an authorized platform operator can verify evidence or approve the school. Production release acceptance remains a separate operational gate.")}</p>
@@ -195,7 +195,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
                     <div className="pilot-workflow-check" key={category}>
                       <div>
                         <strong>{t(categoryNames[category])}</strong>
-                        {record ? <p>{formatAdminHijriDateTime(locale, record.updatedAt)}</p> : null}
+                        {record ? <p>{formatPilotTimestamp(locale, record.updatedAt)}</p> : null}
                       </div>
                       <span className={"pilot-badge " + (record?.status === "VERIFIED" ? "pilot-badge-ok" : "pilot-badge-warning")}>
                         {t(record?.status ?? "NOT_SUBMITTED")}
@@ -247,7 +247,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
               <summary>{t("Launch decision history")}</summary>
               {overview.decisionHistory.map((item) => (
                 <div key={item.id}>
-                  <strong>{t(item.status)}</strong> · {item.operatorLabel} · {formatAdminHijriDateTime(locale, item.createdAt)}
+                  <strong>{t(item.status)}</strong> · {item.operatorLabel} · {formatPilotTimestamp(locale, item.createdAt)}
                   <p>{item.note}</p>
                 </div>
               ))}
@@ -298,7 +298,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
           {tickets?.tickets.map((ticket) => (
             <button className="pilot-support-row" type="button" key={ticket.id}
               onClick={() => void viewTicket(ticket.id)} aria-expanded={selectedTicket?.ticket.id === ticket.id}>
-              <span><strong>{ticket.subject}</strong><small>{formatAdminHijriDateTime(locale, ticket.createdAt)}</small></span>
+              <span><strong>{ticket.subject}</strong><small>{formatPilotTimestamp(locale, ticket.createdAt)}</small></span>
               <span className="pilot-badge pilot-badge-warning">{t(ticket.priority)}</span>
               <span className="pilot-badge">{t(ticket.status)}</span>
             </button>
@@ -323,7 +323,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
             {selectedTicket.updates.map((item) => (
               <div className="pilot-support-message" key={item.id}>
                 <strong>{t(item.authorKind === "PLATFORM" ? "Platform support" : "School administrator")}</strong>
-                <span>{formatAdminHijriDateTime(locale, item.createdAt)}</span>
+                <span>{formatPilotTimestamp(locale, item.createdAt)}</span>
                 <p>{item.note}</p>
                 {item.statusAfter ? <span className="pilot-badge">{t(item.statusAfter)}</span> : null}
               </div>
