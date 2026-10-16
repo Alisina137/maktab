@@ -73,10 +73,10 @@ export function StaffWorkPanel({locale,api,canTasks,canDrafts,
    setDraftContent(draft?.content??"");setScope(draft?.audienceScope??"SCHOOL");
    setRole(draft?.audienceRole??"PARENT");setError("");setSuccess("");
  }
- async function execute(action:()=>Promise<unknown>,message:string){
-   if(busy)return;setBusy(true);setError("");setSuccess("");
-   try{await action();await fetchAll();setSuccess(t(message));}
-   catch(e){setError(friendlyAdminError(e,"Could not save changes.",locale));}
+ async function execute(action:()=>Promise<unknown>,message:string):Promise<boolean>{
+   if(busy)return false;setBusy(true);setError("");setSuccess("");
+   try{await action();await fetchAll();setSuccess(t(message));return true;}
+   catch(e){setError(friendlyAdminError(e,"Could not save changes.",locale));return false;}
    finally{setBusy(false);}
  }
  async function changeTask(task:WorkTask,status:"TODO"|"IN_PROGRESS"|"DONE"){
@@ -92,21 +92,21 @@ export function StaffWorkPanel({locale,api,canTasks,canDrafts,
      audienceRole:scope==="ROLE"?role:null};
    const editable=currentDraft&&["DRAFT","REJECTED"].includes(currentDraft.status);
    if(currentDraft&&!editable)return;
-   await execute(async()=>{
+   const saved=await execute(async()=>{
      await api(currentDraft?"/v1/staff/message-drafts/"+currentDraft.id:
         "/v1/staff/message-drafts",{
        method:currentDraft?"PUT":"POST",
        body:JSON.stringify(currentDraft?{...payload,expectedUpdatedAt:currentDraft.updatedAt}:payload)
      });
    },"Draft saved. Submit it when ready for administrator review.");
-   editDraft(null);
+   if(saved)editDraft(null);
  }
  async function submitDraft(draft:MessageDraft){
    if(!window.confirm(t("Submit this message to the administrator for review?")))return;
-   await execute(()=>api("/v1/staff/message-drafts/"+draft.id+"/submit",{
+   const sent=await execute(()=>api("/v1/staff/message-drafts/"+draft.id+"/submit",{
      method:"POST"
    }),"Message submitted for review. It has not been published.");
-   editDraft(null);
+   if(sent)editDraft(null);
  }
  async function markRead(notice:WorkNotice){
    if(notice.readAt)return;
