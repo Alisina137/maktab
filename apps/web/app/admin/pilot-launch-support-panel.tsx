@@ -88,6 +88,23 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
     sessionVersion.current += 1;
     setOverview(null); setTickets(null); setSelectedTicket(null);
     setReference(""); setNote(""); setSubject(""); setDescription(""); setReply("");
+    // Direct links from Service Health fill an editable draft only. Nothing
+    // is transmitted until the school administrator submits the ticket.
+    const help = new URLSearchParams(window.location.search).get("support");
+    if (help === "billing") {
+      setIssueCategory("BILLING");
+      setSubject("Subscription renewal assistance");
+      setDescription("Please review our school's subscription status and advise on renewal or access.");
+      setPriority("NORMAL");
+    } else if (help === "technical") {
+      setIssueCategory("TECHNICAL");
+      setSubject("School service health question");
+      setDescription("Please investigate a school service issue. Observed behavior and affected time:");
+      setPriority("NORMAL");
+    } else {
+      setIssueCategory("TECHNICAL");
+      setPriority("NORMAL");
+    }
     setError(""); setNotice(""); setLoading(true); setSaving(false);
     void load(0, controller.signal).catch((cause) => {
       if (!controller.signal.aborted) setError(adminErrorText(locale, cause, "Could not load launch or support data."));
@@ -250,7 +267,7 @@ export function PilotLaunchSupportPanel({ accessToken, locale, setupReady }: {
               setError(adminErrorText(locale, cause, "Could not load launch or support data.")))
               .finally(() => setLoading(false)); }}>{t("Refresh")}</button>
         </div>
-        <form className="pilot-support-form" onSubmit={(event) => {
+        <form id="pilot-support-form" className="pilot-support-form" onSubmit={(event) => {
           event.preventDefault();
           void mutate("/v1/admin/pilot/support", "POST", {
             subject: subject.trim(), description: description.trim(), category: issueCategory, priority
