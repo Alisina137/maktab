@@ -3,34 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-
-type Adoption = {
-  roles: Array<{ role: string; eligible: number; signedIn: number }>;
-};
-type Service = {
-  report: {
-    notificationQueue: { stalePending: number; failed: number };
-    support: { unresolvedCritical: number };
-    imports: { failedLast7Days: number };
-  };
-};
-type Release = {
-  productionDecision: "NO_GO"; missingExternalGates: string[];
-  effectivePilotApproval: boolean;
-};
-type Snapshot = {
-  adoption: Adoption | null; service: Service | null; release: Release | null;
-  failed: number;
-};
+import {
+  parsePulseAdoption, parsePulseService, parsePulseRelease,
+  pulseSignInCoverage, pulseAlertCount,
+  type PilotPulseAdoption, type PilotPulseService, type PilotPulseRelease,
+  type PilotPulseSnapshot
+} from "./pilot-operations-pulse-model";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-async function read<T>(token: string, path: string, signal: AbortSignal): Promise<T> {
+async function read<T>(token: string, path: string, signal: AbortSignal,
+  validate: (body: unknown) => T): Promise<T> {
   const response = await fetch(API_URL + path, {
     headers: { Authorization: `Bearer ${token}` },
     signal, cache: "no-store"
   });
   if (!response.ok) throw new Error("Unavailable");
-  return response.json() as Promise<T>;
+  return validate(await response.json() as unknown);
 }
 
 /** Independent snapshots: a failure does not turn missing data into healthy zeros. */
@@ -39,16 +27,19 @@ export function PilotOperationsPulse({ accessToken, locale }: {
 }) {
   const t = (label: string) => adminText(locale, label);
   const number = (n: number) => new Intl.NumberFormat(locale === "en" ? "en-US" : locale).format(n);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<PilotPulseSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setSnapshot(null); setLoading(true);
     void Promise.allSettled([
-      read<Adoption>(accessToken, "/v1/admin/pilot/adoption?window=7d", controller.signal),
-      read<Service>(accessToken, "/v1/admin/pilot/service-health", controller.signal),
-      read<Release>(accessToken, "/v1/admin/pilot/release-readiness", controller.signal)
+      read<PilotPulseAdoption>(accessToken, "/v1/admin/pilot/adoption?window=7d",
+        controller.signal, parsePulseAdoption),
+      read<PilotPulseService>(accessToken, "/v1/admin/pilot/service-health",
+        controller.signal, parsePulseService),
+      read<PilotPulseRelease>(accessToken, "/v1/admin/pilot/release-readiness",
+        controller.signal, parsePulseRelease)
     ]).then(([adoption, service, release]) => {
       if (controller.signal.aborted) return;
       const results = [adoption, service, release];
@@ -64,13 +55,8 @@ export function PilotOperationsPulse({ accessToken, locale }: {
     return () => controller.abort();
   }, [accessToken, revision]);
 
-  const roles = snapshot?.adoption?.roles ?? [];
-  const eligible = roles.reduce((sum, role) => sum + role.eligible, 0);
-  const signedIn = roles.reduce((sum, role) => sum + role.signedIn, 0);
-  const health = snapshot?.service?.report;
-  const alerts = health ? health.notificationQueue.stalePending +
-    health.notificationQueue.failed + health.support.unresolvedCritical +
-    health.imports.failedLast7Days : null;
+  const coverage = pulseSignInCoverage(snapshot?.adoption ?? null);
+  const alerts = pulseAlertCount(snapshot?.service ?? null);
 
   return (
     <section className="pilot-pulse" aria-labelledby="pilot-pulse-title">
@@ -97,7 +83,7 @@ export function PilotOperationsPulse({ accessToken, locale }: {
         <Link href="/admin/pilot/adoption" className="pilot-pulse-card">
           <span>{t("Recorded sign-ins in 7 days")}</span>
           <strong>{loading || !snapshot?.adoption ? "—" :
-            eligible > 0 ? number(signedIn) + " / " + number(eligible) : "—"}</strong>
+            coverage ? number(coverage.signedIn) + " / " + number(coverage.eligible) : "—"}</strong>
           <small>{t("Latest-login approximation, not daily active use.")}</small>
           <span className="pilot-pulse-card-action">{t("Usage & adoption")} ↗</span>
         </Link>
