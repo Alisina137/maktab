@@ -62,6 +62,15 @@ export default function StaffWorkAdministration(){
     }catch(e){setError(friendlyAdminError(e,"Could not assign task.",locale));}
     finally{setBusy(false);}
   }
+  async function cancelTask(id:string){
+    if(!window.confirm(t("Cancel this assigned task?")))return;
+    setBusy(true);setError("");setSuccess("");
+    try{
+      await api("/v1/admin/staff-work/tasks/"+id+"/cancel",{method:"POST"});
+      await reload();setSuccess(t("Task cancelled."));
+    }catch(e){setError(friendlyAdminError(e,"Could not cancel task.",locale));}
+    finally{setBusy(false);}
+  }
   async function decide(action:"APPROVE"|"REJECT"){
     if(!selected||busy)return;
     if(!window.confirm(t(action==="APPROVE"?
@@ -126,6 +135,9 @@ export default function StaffWorkAdministration(){
           <p>{assignees.get(x.assignedTo)||t("Former staff member")} · {t(x.priority)}</p>
           {x.details?<p>{x.details}</p>:null}
           {x.dueDate?<small>{t("Due")}: {formatAdminHijriDate(locale,x.dueDate)}</small>:null}
+          {x.status!=="CANCELLED"&&x.status!=="DONE"?
+            <button type="button" className="admin-secondary" disabled={busy}
+              onClick={()=>void cancelTask(x.id)}>{t("Cancel task")}</button>:null}
         </article>)}
         {!tasks.tasks.length?<p>{t("No tasks have been assigned.")}</p>:null}</div>
       </section>
