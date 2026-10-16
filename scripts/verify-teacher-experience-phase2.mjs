@@ -24,6 +24,7 @@ for(const marker of [
   'testID="teacher-today-dashboard"',
   'testID="teacher-today-featured-lesson"',
   'testID="teacher-today-priorities"',
+  'testID="teacher-open-up-next-lesson"',
   "teacherDayTimeline(today,now)",
   'AppState.addEventListener("change"',
   'setInterval(()=>setNow(new Date()),60_000)',
@@ -48,7 +49,8 @@ assert.ok(!experience.includes("todaySchedule.map("),
 assert.ok(api.includes('supervisedClasses: Array<'),"Permission-scoped Negaran data must remain server-owned.");
 for(const key of [
   "teacher.currentLesson","teacher.inProgress","teacher.openLesson",
-  "teacher.lessonsCompleted","teacher.lessonsRemaining","teacher.dayNotCurrent"
+  "teacher.lessonsCompleted","teacher.lessonsRemaining","teacher.dayNotCurrent",
+  "teacher.upNext"
 ]) {
   assert.ok(translations.includes('  | "'+key+'"'));
   assert.equal((translations.match(new RegExp('"'+key.replaceAll(".","\\.")+'":',"g"))??[]).length,3,
