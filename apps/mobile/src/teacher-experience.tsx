@@ -464,6 +464,7 @@ export function TeacherExperience({
               {([
                 ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
                 ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
+                ["TEACHING", "teaching.workspace", "school-outline"],
                 ["TASKS", "productivity.title", "checkbox-outline"]
               ] as const).map(([id, label, icon]) => (
                 <Pressable key={id} accessibilityRole="tab"
@@ -487,9 +488,35 @@ export function TeacherExperience({
               locale={locale} textDirection={textDirection} reconnectEpoch={reconnectEpoch}
               onError={onError} onNotice={onNotice}
             />
+          ) : workflowSection === "TEACHING" ? (
+            <View style={styles.card}>
+              <SectionHeading icon="school-outline" title={translate(locale, "teaching.workspace")}
+                rtl={rtl} textDirection={textDirection}/>
+              <Text style={[styles.muted, textDirection]}>{translate(locale,"teacher.myAssignments")}</Text>
+              {!academicsReady ? <LoadingCard locale={locale}/> : assignments.length ? (
+                assignments.map((item)=>(
+                  <Pressable key={item.assignmentId} accessibilityRole="button"
+                    accessibilityLabel={`${item.className} · ${item.subjectName}`}
+                    onPress={()=>{
+                      setSelectedAssignmentId(item.assignmentId);
+                      setClassSection("TEACHING");
+                      setClassLearningSection("HOMEWORK");
+                      onSelect("CLASSES");onScrollTop();
+                    }}
+                    style={({pressed})=>[styles.actionRow,rtl&&styles.rowRtl,pressed&&styles.pressed]}>
+                    <Ionicons name="book-outline" size={20} color={tokens.color.brandStrong}/>
+                    <View style={styles.flex}>
+                      <Text style={[styles.itemTitle,textDirection]}>{item.subjectName}</Text>
+                      <Text style={[styles.muted,textDirection]}>{item.className} · {item.classCode}</Text>
+                    </View>
+                    <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={18} color={tokens.color.textMuted}/>
+                  </Pressable>
+                ))
+              ) : <Empty message={translate(locale,"teacher.noAssignments")} rtl={rtl} textDirection={textDirection}/>}
+            </View>
           ) : (
             <TeacherLearningPanel
-              key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
+              key={`teacher-learning-${reconnectEpoch}-${workflowSection}`
               section={workflowSection}
               onScrollTop={onScrollTop}
               accessToken={accessToken} locale={locale}
