@@ -445,9 +445,11 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
 
   // Render navigation even when a section is unavailable. Launch/support is
   // independently accessible during subscription or readiness outages.
+  // Subscription health is an independent authenticated endpoint: a failed
+  // plan-details request must not hide its own fail-closed status/retry panel.
   const coreMissing = (
     (section === "overview" || section === "readiness" || section === "onboarding") && !readiness
-  ) || (section === "subscription" && !subscription);
+  );
   const auditMissing = section === "audit" && !auditLoaded;
 
   // Audit-only render does not require the two core responses.
@@ -658,7 +660,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </article>
       ) : null}
 
-      {subscription && (section === "overview" || section === "subscription") ? (
+      {(section === "subscription" || (section === "overview" && subscription)) ? (
         <PilotSubscriptionHealthPanel key={accessToken} accessToken={accessToken}
           locale={locale} compact={section === "overview"} />
       ) : null}
