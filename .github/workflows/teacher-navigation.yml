@@ -1,0 +1,46 @@
+name: Teacher navigation regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/teacher-navigation.yml"
+      - "apps/mobile/**"
+      - "packages/localization/**"
+      - "scripts/verify-teacher-experience-phase1.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "packages/localization/**"
+      - "scripts/verify-teacher-experience-phase1.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teacher-navigation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  teacher-navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify teacher Phase 1 navigation and TypeScript
+        run: pnpm verify:teacher:phase1
