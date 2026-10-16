@@ -60,7 +60,9 @@ export async function getPilotServiceHealthReport(
           AND b.created_at <= ${evaluatedAt}::timestamptz)
         AS imports_failed
   `);
-  const rows = Array.isArray(result) ? result : result.rows;
+  const rows: Array<Record<string, unknown>> = Array.isArray(result)
+    ? result as Array<Record<string, unknown>>
+    : (result as unknown as { rows?: Array<Record<string, unknown>> }).rows ?? [];
   const row = rows[0] as Record<string, unknown> | undefined;
   if (!row) throw new Error("Service health aggregate returned no record.");
   const number = (name: string) => Number(row[name] ?? 0);
