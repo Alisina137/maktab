@@ -64,13 +64,15 @@ export function createStaffWorkflowStore(db:FoundationDatabase):StaffWorkflowSto
       )).orderBy(asc(staffWorkTasks.dueDate),desc(staffWorkTasks.createdAt)).limit(150);
     },
     async listStaffDirectory(schoolId){
-      return db.select({id:users.id,fullName:staffProfiles.fullName,
-        employeeCode:staffProfiles.employeeCode}).from(staffProfiles)
+      const rows=await db.select({id:users.id,fullName:staffProfiles.fullName,
+        employeeCode:staffProfiles.employeeCode,permissions:staffProfiles.permissions}).from(staffProfiles)
         .innerJoin(users,and(eq(users.schoolId,staffProfiles.schoolId),
           eq(users.id,staffProfiles.userId)))
         .where(and(eq(staffProfiles.schoolId,schoolId),eq(users.role,"SCHOOL_STAFF"),
           eq(users.status,"ACTIVE")))
         .orderBy(asc(staffProfiles.fullName)).limit(150);
+      return rows.filter(row=>Array.isArray(row.permissions)&&row.permissions.includes("TASKS_VIEW"))
+        .map(({id,fullName,employeeCode})=>({id,fullName,employeeCode}));
     },
     async createTask(schoolId,adminId,input){
       return db.transaction(async tx=>{
