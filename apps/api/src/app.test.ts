@@ -7730,6 +7730,118 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
   }
 });
 
+test("Pilot refinement Phase 6 oversight timeline enforces school, filters, paging and privacy", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "OVERSIGHT-A");
+  const schoolB = await provisionSchool(app, "OVERSIGHT-B");
+  const a = { authorization: "Bearer " + await bootstrapAdmin(app, schoolA) };
+  const b = { authorization: "Bearer " + await bootstrapAdmin(app, schoolB) };
+  const endpoint = "/v1/admin/pilot/oversight";
+  assert.equal((await app.inject({ method: "GET", url: endpoint })).statusCode, 401);
+  for (const query of [
+    "kind=UNKNOWN", "window=today", "limit=31", "limit=0",
+    "offset=-1", "offset=999999", "schoolId=" + schoolB
+  ]) {
+    const response = await app.inject({ method: "GET", url: endpoint + "?" + query, headers: a });
+    assert.equal(response.statusCode, 400, query + ": " + response.body);
+  }
+
+  const now = Date.now();
+  const recent = new Date(now - 24 * 60 * 60_000).toISOString();
+  const days10 = new Date(now - 10 * 86_400_000).toISOString();
+  const days100 = new Date(now - 100 * 86_400_000).toISOString();
+  const ids = (n: number) => "20000000-0000-4000-8000-" + String(n).padStart(12, "0");
+
+  const ticketA = await app.inject({
+    method: "POST", url: "/v1/admin/pilot/support", headers: a,
+    payload: { subject: "Private support issue", description: "Highly confidential private note",
+      category: "TECHNICAL", priority: "NORMAL" }
+  });
+  assert.equal(ticketA.statusCode, 201, ticketA.body);
+  const ticketB = await app.inject({
+    method: "POST", url: "/v1/admin/pilot/support", headers: b,
+    payload: { subject: "Another school issue", description: "Other school private note",
+      category: "TECHNICAL", priority: "HIGH" }
+  });
+  assert.equal(ticketB.statusCode, 201, ticketB.body);
+
+  await client.query(`INSERT INTO audit_logs(id,school_id,action,entity_type,metadata,created_at)
+    VALUES ($1,$2,'pilot.evidence_submitted','pilot_launch_evidence',
+      '{"passwordHash":"never-expose-passwords"}',$3),
+      ($4,$2,'pilot.exported','school', '{"private":"never-expose-exports"}',$3),
+      ($5,$6,'pilot.evidence_reviewed','pilot_launch_evidence','{}',$3)`,
+    [ids(6001),schoolA,recent,ids(6002),ids(6003),schoolB]);
+  await client.query(`INSERT INTO pilot_launch_decision_history
+    (id,school_id,status,operator_label,note,created_at)
+    VALUES ($1,$2,'NOT_APPROVED','operator','private operator comment',$3)`,
+    [ids(6004),schoolA,recent]);
+  await client.query(`INSERT INTO family_import_batches
+    (id,school_id,idempotency_key,row_count,status,reason,created_at)
+    VALUES ($1,$2,$3,1,'FAILED','confidential error',$4),
+      ($5,$2,$6,1,'REJECTED','old confidential error',$7),
+      ($8,$9,$10,1,'COMPLETED','private other school',$4)`,
+    [ids(6005),schoolA,ids(6006),days10,ids(6007),ids(6008),days100,
+      ids(6009),schoolB,ids(6010)]);
+
+  const recentResponse = await app.inject({ method: "GET",
+    url: endpoint + "?window=7d", headers: a });
+  assert.equal(recentResponse.statusCode, 200, recentResponse.body);
+  assert.equal(recentResponse.headers["cache-control"], "no-store");
+  const recentPage = recentResponse.json<{
+    events: Array<{ id: string; kind: string; action: string; occurredAt: string }>;
+    limit: number; offset: number; hasMore: boolean; window: string;
+    timeZone: string; startAt: string; endAt: string;
+  }>();
+  assert.equal(recentPage.window, "7d");
+  assert.equal(recentPage.timeZone, "Asia/Kabul");
+  assert.equal(recentPage.events.some((event) => event.kind === "SUPPORT"), true);
+  assert.equal(recentPage.events.some((event) => event.action === "EVIDENCE_SUBMITTED"), true);
+  assert.equal(recentPage.events.some((event) => event.action === "PILOT_NOT_APPROVED"), true);
+  assert.equal(recentPage.events.some((event) => event.action === "SCHOOL_DATA_EXPORTED"), true);
+  assert.equal(recentPage.events.some((event) => event.kind === "IMPORT"), false);
+  assert.equal(recentPage.events.some((event) => event.id === ids(6003)), false);
+  assert.equal(recentResponse.body.includes("never-expose-passwords"), false);
+  assert.equal(recentResponse.body.includes("Highly confidential"), false);
+  assert.equal(recentResponse.body.includes("private operator"), false);
+  assert.equal(recentResponse.body.includes("operatorLabel"), false);
+  assert.equal(recentResponse.body.includes("actorUserId"), false);
+  assert.equal(recentPage.events.every((event, index, all) =>
+    index === 0 || Date.parse(all[index - 1]!.occurredAt) >= Date.parse(event.occurredAt)), true);
+
+  const imports = await app.inject({ method: "GET", headers: a,
+    url: endpoint + "?window=30d&kind=IMPORT" });
+  assert.equal(imports.statusCode, 200, imports.body);
+  const importEvents = imports.json<typeof recentPage>().events;
+  assert.deepEqual(importEvents.map((event) => event.action), ["IMPORT_FAILED"]);
+  assert.deepEqual(importEvents.map((event) => event.id), [ids(6005)]);
+
+  const other = await app.inject({ method: "GET", headers: b,
+    url: endpoint + "?window=30d&kind=IMPORT" });
+  assert.deepEqual(other.json<typeof recentPage>().events.map((event) => event.id),
+    [ids(6009)], "School B must receive only B's import activity");
+
+  const evidence = await app.inject({ method: "GET", headers: a,
+    url: endpoint + "?window=7d&kind=EVIDENCE" });
+  assert.deepEqual(evidence.json<typeof recentPage>().events.map((event) => event.action),
+    ["EVIDENCE_SUBMITTED"]);
+
+  const first = await app.inject({ method: "GET", headers: a,
+    url: endpoint + "?window=30d&limit=1&offset=0" });
+  const firstPage = first.json<typeof recentPage>();
+  assert.equal(firstPage.events.length, 1);
+  assert.equal(firstPage.hasMore, true);
+  const second = await app.inject({ method: "GET", headers: a,
+    url: endpoint + "?window=30d&limit=1&offset=1" });
+  const secondPage = second.json<typeof recentPage>();
+  assert.equal(secondPage.events.length, 1);
+  assert.notEqual(firstPage.events[0]?.id, secondPage.events[0]?.id);
+
+  const release = await app.inject({ method: "GET", url: "/v1/admin/pilot/release-readiness", headers: a });
+  assert.equal(release.statusCode, 200, release.body);
+  assert.equal(release.json<{productionDecision:string}>().productionDecision, "NO_GO");
+});
+
 test("Pilot refinement Phase 5 school service checks are isolated and advisory", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
