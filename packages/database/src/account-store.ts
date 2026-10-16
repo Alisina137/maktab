@@ -507,14 +507,14 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
     },
 
     async getStaffProfile(schoolId, userId) {
-      const [row] = await db.select().from(staffProfiles)
+      const [row] = await db.select({profile: staffProfiles}).from(staffProfiles)
         .innerJoin(users, and(eq(users.id, staffProfiles.userId),
           eq(users.schoolId, staffProfiles.schoolId), eq(users.role, "SCHOOL_STAFF")))
         .where(and(eq(staffProfiles.schoolId, schoolId),
           eq(staffProfiles.userId, userId))).limit(1);
       if (!row) return null;
-      const normalized = normalizeStaffPermissions(row.staff_profiles.permissions);
-      return { ...row.staff_profiles, permissions: normalized } as StaffProfile;
+      const normalized = normalizeStaffPermissions(row.profile.permissions);
+      return { ...row.profile, permissions: normalized } as StaffProfile;
     },
 
     async upsertStaffProfile(schoolId, userId, input, actorUserId) {
