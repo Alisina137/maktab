@@ -2,6 +2,7 @@
 
 import { AdminAttendanceAudit } from "./admin-attendance-audit";
 import { AdminStaffAttendanceRequests } from "./admin-staff-attendance-requests";
+import { staffAttendanceText } from "../staff/staff-attendance-i18n";
 import { AdminAttendanceFollowups } from "./admin-attendance-followups";
 import { AdminAttendanceAnalytics } from "./admin-attendance-analytics";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
@@ -66,7 +67,7 @@ function reportUrl(yearId: string, filters?: Filters): string {
 
 export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
-  const t = (english: string) => adminText(locale, english);
+  const t = (english: string) => staffAttendanceText(locale, english);
   const [activeTab, setActiveTab] = useState<AttendanceTab>("OVERVIEW");
   const tabRefs = useRef<Partial<Record<AttendanceTab, HTMLButtonElement | null>>>({});
   const [draftFilters, setDraftFilters] = useState<Filters>(EMPTY_FILTERS);
