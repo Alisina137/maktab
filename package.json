@@ -32,7 +32,7 @@
     "verify:pilot:phase4": "node scripts/verify-pilot-operations-phase4.mjs && node scripts/verify-pilot-adoption-refinement-phase4.mjs",
     "verify:pilot:phase5": "node scripts/verify-pilot-operations-phase5.mjs && node scripts/verify-pilot-service-refinement-phase5.mjs",
     "verify:pilot:phase6": "node scripts/verify-pilot-operations-phase6.mjs && node scripts/verify-pilot-oversight-refinement-phase6.mjs",
-    "verify:pilot:phase7": "node scripts/verify-pilot-operations-phase7.mjs && node --test scripts/test-phase7-release-report.mjs && node scripts/phase7-release-report.mjs",
+    "verify:pilot:phase7": "node scripts/verify-pilot-operations-phase7.mjs && node scripts/verify-pilot-operations-refinement-phase7.mjs && node --test scripts/test-phase7-release-report.mjs && node scripts/phase7-release-report.mjs",
     "verify:parent:phase1": "node scripts/verify-parent-experience-phase1.mjs",
     "verify:parent:phase2": "node scripts/verify-parent-experience-phase2.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-home-model.test.ts",
     "verify:parent:phase3": "node scripts/verify-parent-experience-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-parent-attendance-model.test.ts",
