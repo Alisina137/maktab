@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
@@ -35,7 +36,7 @@ export function TeacherMorePanel({
   onNotifications: () => void;
   onChangeLocale: (locale: SupportedLocale) => void;
   onLogout: () => void;
-  announcementContent: React.ReactNode;
+  announcementContent: ReactNode;
 }) {
   const rtl=getDirection(locale)==="rtl";
   const actions: MoreAction[]=[
@@ -115,7 +116,7 @@ const styles=StyleSheet.create({
   card:{gap:12,padding:16,backgroundColor:tokens.color.surface,borderRadius:19,
     borderWidth:1,borderColor:"#e1e7f0"},
   heading:{fontSize:18,fontWeight:"900",color:tokens.color.text},
-  label:{fontSize:14,fontWeight:"750",color:tokens.color.text},
+  label:{fontSize:14,fontWeight:"700",color:tokens.color.text},
   muted:{fontSize:12.5,lineHeight:20,color:tokens.color.textMuted},
   row:{flexDirection:"row",alignItems:"center",gap:12,minHeight:61,padding:10,
     borderRadius:13,borderWidth:1,borderColor:"#e4ebf5",backgroundColor:"#f9fbff"},
