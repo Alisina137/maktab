@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Record code": "کد سابقه",
   "Staff Home": "خانهٔ کارمندان",
   "My daily workspace": "فضای کاری روزانهٔ من",
   "Your available work is based on permissions assigned by the school administrator.": "امکانات کاری شما مطابق صلاحیت‌هایی است که مدیر مکتب تعیین کرده است.",
@@ -2493,6 +2494,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Record code": "د ریکارډ کوډ",
   "Staff Home": "د کارکوونکو کورپاڼه",
   "My daily workspace": "زما ورځنی کاري ځای",
   "Your available work is based on permissions assigned by the school administrator.": "ستاسو شته چارې د ښوونځي مدیر له خوا ټاکل شوو واکونو پورې تړلې دي.",
