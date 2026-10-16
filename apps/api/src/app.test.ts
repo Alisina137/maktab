@@ -9068,5 +9068,7 @@ test("Standalone web staff role: first-login setup, scoped directory, and admin 
     payload:{reason:"Testing staff security"}});
   assert.equal(suspend.statusCode,200);
   const nowForbidden=await app.inject({method:"GET",url:"/v1/staff/me",headers});
-  assert.equal(nowForbidden.statusCode,403);
+  // Suspension revokes the issued session, so the prior token is invalid (401),
+  // rather than reaching the live-role guard (403).
+  assert.equal(nowForbidden.statusCode,401);
 });
