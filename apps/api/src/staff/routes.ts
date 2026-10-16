@@ -25,6 +25,13 @@ async function requireStaff(request: FastifyRequest, reply: FastifyReply, accoun
     });
     return null;
   }
+  if (context.user.status !== "ACTIVE") {
+    await reply.code(403).send({
+      error:"account_unavailable",
+      message:"An active staff account is required."
+    });
+    return null;
+  }
   return context;
 }
 
