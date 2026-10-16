@@ -161,6 +161,12 @@ export type TranslationKey =
   | "teacher.onlyUnread"
   | "teacher.allNotifications"
   | "teacher.dayAtGlance"
+  | "teacher.currentLesson"
+  | "teacher.inProgress"
+  | "teacher.openLesson"
+  | "teacher.lessonsCompleted"
+  | "teacher.lessonsRemaining"
+  | "teacher.dayNotCurrent"
   | "teacher.attendancePending"
   | "teacher.nextLesson"
   | "teacher.noUpcomingLesson"
@@ -739,6 +745,12 @@ const en: Record<TranslationKey, string> = {
   "teacher.onlyUnread": "Unread only",
   "teacher.allNotifications": "All notifications",
   "teacher.dayAtGlance": "Your day at a glance",
+  "teacher.currentLesson": "Current lesson",
+  "teacher.inProgress": "In progress",
+  "teacher.openLesson": "Open class",
+  "teacher.lessonsCompleted": "Completed",
+  "teacher.lessonsRemaining": "Remaining",
+  "teacher.dayNotCurrent": "Today's timetable is not available yet. Refresh to check the latest school day.",
   "teacher.attendancePending": "Attendance pending",
   "teacher.nextLesson": "Next lesson",
   "teacher.noUpcomingLesson": "No more scheduled lessons today.",
@@ -1333,6 +1345,12 @@ const dari: Record<TranslationKey, string> = {
   "teacher.onlyUnread": "فقط خوانده‌نشده",
   "teacher.allNotifications": "همه اعلان‌ها",
   "teacher.dayAtGlance": "نمای کلی روز شما",
+  "teacher.currentLesson": "درس فعلی",
+  "teacher.inProgress": "در جریان",
+  "teacher.openLesson": "بازکردن صنف",
+  "teacher.lessonsCompleted": "تکمیل‌شده",
+  "teacher.lessonsRemaining": "باقی‌مانده",
+  "teacher.dayNotCurrent": "برنامهٔ درسی امروز هنوز در دسترس نیست. برای دریافت تازه‌ترین برنامه، تازه‌سازی کنید.",
   "teacher.attendancePending": "حاضری ثبت‌نشده",
   "teacher.nextLesson": "درس بعدی",
   "teacher.noUpcomingLesson": "برای امروز درس دیگری در پیش نیست.",
@@ -1927,6 +1945,12 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.onlyUnread": "یوازې نالوستل شوي",
   "teacher.allNotifications": "ټول خبرتیاوې",
   "teacher.dayAtGlance": "ستاسو د ورځې لنډیز",
+  "teacher.currentLesson": "روان درس",
+  "teacher.inProgress": "روان دی",
+  "teacher.openLesson": "ټولګی پرانیزئ",
+  "teacher.lessonsCompleted": "بشپړ شوي",
+  "teacher.lessonsRemaining": "پاتې",
+  "teacher.dayNotCurrent": "د نن ورځې مهالویش لا نه دی چمتو شوی. د تازه معلوماتو لپاره بیا یې پورته کړئ.",
   "teacher.attendancePending": "نا ثبت شوې حاضري",
   "teacher.nextLesson": "راتلونکی درس",
   "teacher.noUpcomingLesson": "نن نور ټاکل شوي درسونه نشته.",
