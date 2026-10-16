@@ -109,6 +109,9 @@ jobs:
       - name: Admin Attendance Phase 7 all-six-tab acceptance and safety
         run: pnpm verify:admin-attendance:phase7
 
+      - name: School staff web portal role security and front-desk workflows
+        run: pnpm verify:staff
+
       - name: Pilot Operations Phase 1 regression guard
         run: pnpm verify:pilot
 
@@ -281,6 +284,7 @@ jobs:
           pnpm verify:admin-attendance:phase5
           pnpm verify:admin-attendance:phase6
           pnpm verify:admin-attendance:phase7
+          pnpm verify:staff
           pnpm verify:pilot
           pnpm verify:pilot:phase2
           pnpm verify:pilot:phase3
