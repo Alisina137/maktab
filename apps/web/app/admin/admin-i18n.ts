@@ -10,6 +10,15 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Priority service checks": "بررسی‌های مهم خدمات",
+  "Recommended service follow-ups": "پیگیری‌های پیشنهادی خدمات",
+  "Include unverified checks": "نمایش بررسی‌های تأییدنشده",
+  "Warnings": "هشدارها",
+  "Independent infrastructure checks unverified": "بررسی‌های مستقل زیربنا تأیید نشده‌اند",
+  "{count} recorded": "{count} مورد ثبت‌شده",
+  "Review action": "بررسی اقدام",
+  "No recorded issues in the checked categories. Unverified infrastructure checks still remain.": "در بخش‌های بررسی‌شده مشکلی ثبت نشده است؛ بررسی‌های زیربنا همچنان تأیید نشده است.",
+  "Items are issue categories, not distinct incidents or affected people. This is a point-in-time report.": "این موارد دسته‌های مشکل‌اند، نه رویدادها یا افراد مستقل. این گزارش لحظه‌ای است.",
   "Refresh report": "تازه‌سازی گزارش",
   "Account adoption overview": "نمای کلی استفاده از حساب‌ها",
   "Current eligible accounts and their recorded latest-login and activation status.": "حساب‌های واجد شرایط فعلی همراه با آخرین ورود ثبت‌شده و وضعیت فعال‌سازی.",
@@ -2325,6 +2334,15 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Priority service checks": "د خدمتونو مهمې کتنې",
+  "Recommended service follow-ups": "د خدماتو سپارښتل شوې څارنې",
+  "Include unverified checks": "ناتایید شوې کتنې هم وښایئ",
+  "Warnings": "خبرداري",
+  "Independent infrastructure checks unverified": "د زیربنا خپلواکې کتنې نه دي تایید شوې",
+  "{count} recorded": "{count} ثبت شوي",
+  "Review action": "اقدام وڅېړئ",
+  "No recorded issues in the checked categories. Unverified infrastructure checks still remain.": "په کتل شوو برخو کې ستونزه نشته؛ د زیربنا کتنې لا ناتایید دي.",
+  "Items are issue categories, not distinct incidents or affected people. This is a point-in-time report.": "دا د ستونزو ډولونه دي، نه جلا پېښې یا کسان. دا د یوې شېبې راپور دی.",
   "Refresh report": "راپور تازه کړئ",
   "Account adoption overview": "د حسابونو د کارونې لنډیز",
   "Current eligible accounts and their recorded latest-login and activation status.": "اوسني وړ حسابونه او د هغوی وروستۍ ثبت شوې ننوتنه او فعالېدو حالت.",
