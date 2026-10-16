@@ -496,7 +496,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             {t("Review onboarding checks, subscription access, audit history, safe school export, and import templates.")}
           </p>
         </div>
-        {(["overview", "readiness", "onboarding", "subscription", "audit", "launch"] as PilotSection[])
+        {(["overview", "readiness", "onboarding", "subscription", "audit"] as PilotSection[])
           .includes(section) ? (
           <button className="admin-secondary" type="button"
             onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
