@@ -15,14 +15,14 @@ import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type Admin
 import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
 import { notificationDestination } from "./notification-destination";
 import { teacherTime12 } from "./teacher-hub-data";
-import { TeacherClassDetailPage } from "./teacher-class-detail";
-import { AdminContactCard } from "./admin-contact-card";
+import { TeacherClassDetailPage, type TeacherClassSection, type TeacherClassLearningSection } from "./teacher-class-detail";
+import { TeacherMorePanel, type TeacherMoreSection } from "./teacher-more";
 import { TeacherLearningPanel } from "./learning-ui";
 import { TeacherTasksPanel } from "./teacher-tasks";
 import { CommunicationPanel } from "./communication-ui";
 import type { AppErrorKind } from "./error-message";
 
-export type TeacherTab = "TODAY" | "SCHEDULE" | "CLASSES" | "WORKFLOWS";
+export type TeacherTab = "TODAY" | "SCHEDULE" | "CLASSES" | "WORK" | "MORE";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
 type Period = TeacherAcademicsPayload["schedule"][number];
@@ -48,7 +48,8 @@ export function TeacherBottomNavigation({
     { id: "TODAY", label: "teacher.todayTitle", icon: "today-outline", activeIcon: "today" },
     { id: "SCHEDULE", label: "teacher.navSchedule", icon: "calendar-outline", activeIcon: "calendar" },
     { id: "CLASSES", label: "teacher.navClasses", icon: "people-outline", activeIcon: "people" },
-    { id: "WORKFLOWS", label: "teacher.navWorkflows", icon: "briefcase-outline", activeIcon: "briefcase" }
+    { id: "WORK", label: "teacher.navWork", icon: "briefcase-outline", activeIcon: "briefcase" },
+    { id: "MORE", label: "teacher.navMore", icon: "ellipsis-horizontal-circle-outline", activeIcon: "ellipsis-horizontal-circle" }
   ];
   return (
     <View style={[styles.bottomBar, rtl && styles.rowRtl]} accessibilityRole="tablist">
@@ -120,7 +121,7 @@ function Empty({ message, rtl, textDirection }: { message: string; rtl: boolean;
 export function TeacherExperience({
   tab, today, academics, todayReady, academicsReady, schoolName, username, teacherUserId, schoolId, locale,
   textDirection, accessToken, adminContact, reconnectEpoch, onSelect, onAttendance,
-  onRetry, onError, onNotice, onLogout, onScrollTop
+  onRetry, onError, onNotice, onLogout, onScrollTop, onLocaleChange, externalNavigation
 }: {
   tab: TeacherTab;
   today: TeacherTodayPayload | null;
@@ -143,6 +144,8 @@ export function TeacherExperience({
   onNotice: (message: string | null) => void;
   onLogout: () => void;
   onScrollTop: () => void;
+  onLocaleChange: (locale: SupportedLocale) => void;
+  externalNavigation?: { id: number; target: "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS" } | null;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const statusKey = (status: "PENDING" | "SUBMITTED") =>
@@ -157,6 +160,9 @@ export function TeacherExperience({
   const activeSupervisions = today?.supervisedClasses ?? [];
   const [workflowSection, setWorkflowSection] = useState<TeacherWorkflowSection>("HOMEWORK");
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [classSection, setClassSection] = useState<TeacherClassSection>("OVERVIEW");
+  const [classLearningSection, setClassLearningSection] = useState<TeacherClassLearningSection>("HOMEWORK");
+  const [moreSection, setMoreSection] = useState<TeacherMoreSection>("HOME");
   const [inboxOpen, setInboxOpen] = useState(false);
   const [hubLearning, setHubLearning] = useState<TeacherLearningPayload | null>(null);
   const [hubAnnouncements, setHubAnnouncements] = useState<AnnouncementPayload[]>([]);
@@ -175,7 +181,7 @@ export function TeacherExperience({
   }, []);
 
   useEffect(() => {
-    if (previousTab.current === "WORKFLOWS" && tab === "TODAY") {
+    if (previousTab.current === "WORK" && tab === "TODAY") {
       setHubRefresh((value) => value + 1);
     }
     previousTab.current = tab;
@@ -231,11 +237,23 @@ export function TeacherExperience({
     }
   }
 
-  function goToWorkflow(section: TeacherWorkflowSection) {
-    setWorkflowSection(section);
-    onSelect("WORKFLOWS");
+  function goToWorkflow(section: TeacherWorkflowSection | "ANNOUNCEMENTS") {
+    if (section === "ANNOUNCEMENTS") {
+      setMoreSection("ANNOUNCEMENTS");
+      onSelect("MORE");
+    } else {
+      setWorkflowSection(section);
+      onSelect("WORK");
+    }
     onScrollTop();
   }
+  // An external notification must open its nested destination, not the
+  // previously selected Work or More subtab.
+  useEffect(() => {
+    if (!externalNavigation) return;
+    if (externalNavigation.target === "ANNOUNCEMENTS") setMoreSection("ANNOUNCEMENTS");
+    else setWorkflowSection(externalNavigation.target);
+  }, [externalNavigation?.id]);
 
   const unreadCount = hubNotifications.filter((item) => !item.readAt).length;
 
@@ -374,7 +392,9 @@ export function TeacherExperience({
             locale={locale}
             textDirection={textDirection}
             teacherToday={today}
-            onBack={() => { setSelectedAssignmentId(null); onScrollTop(); }}
+            onBack={() => { setSelectedAssignmentId(null); setClassSection("OVERVIEW"); onScrollTop(); }}
+            section={classSection} onSectionChange={setClassSection}
+            learningSection={classLearningSection} onLearningSectionChange={setClassLearningSection}
             onAttendance={onAttendance}
             onError={onError}
             onNotice={onNotice}
@@ -392,7 +412,9 @@ export function TeacherExperience({
                 {assignments.map((item) => (
                   <Pressable key={item.assignmentId} accessibilityRole="button"
                     accessibilityLabel={`${item.className} · ${item.subjectName}`}
-                    onPress={() => { setSelectedAssignmentId(item.assignmentId); onScrollTop(); }}
+                    onPress={() => { if (selectedAssignmentId !== item.assignmentId) {
+                      setClassSection("OVERVIEW"); setClassLearningSection("HOMEWORK");
+                    } setSelectedAssignmentId(item.assignmentId); onScrollTop(); }}
                     style={({ pressed }) => [styles.actionRow, rtl && styles.rowRtl, pressed && styles.pressed]}>
                     <Ionicons name="book-outline" color={tokens.color.brandStrong} size={20} />
                     <View style={styles.flex}>
@@ -433,27 +455,24 @@ export function TeacherExperience({
         )
       ) : null}
 
-      {tab === "WORKFLOWS" ? (
+      {tab === "WORK" ? (
         <>
           <View style={styles.card}>
-            <SectionHeading icon="briefcase-outline" title={translate(locale, "teacher.navWorkflows")} rtl={rtl} textDirection={textDirection} />
+            <SectionHeading icon="briefcase-outline" title={translate(locale, "teacher.navWork")} rtl={rtl} textDirection={textDirection} />
             <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.workflowsHint")}</Text>
             <View style={[styles.workflowTabs, rtl && styles.rowRtl]} accessibilityRole="tablist">
               {([
                 ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
                 ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
-                ["ANNOUNCEMENTS", "teacher.workflowAnnouncements", "megaphone-outline"],
                 ["TASKS", "productivity.title", "checkbox-outline"]
               ] as const).map(([id, label, icon]) => (
-                <Pressable
-                  key={id} accessibilityRole="tab"
+                <Pressable key={id} accessibilityRole="tab"
                   accessibilityLabel={translate(locale, label)}
                   accessibilityState={{ selected: workflowSection === id }}
                   onPress={() => { setWorkflowSection(id); onScrollTop(); }}
                   style={({ pressed }) => [
                     styles.workflowTab, workflowSection === id && styles.workflowTabActive, pressed && styles.pressed
-                  ]}
-                >
+                  ]}>
                   <Ionicons name={icon} size={18} color={workflowSection === id ? tokens.color.brandStrong : tokens.color.textMuted} />
                   <Text numberOfLines={2} style={[styles.workflowTabText, workflowSection === id && styles.workflowTabTextActive]}>
                     {translate(locale, label)}
@@ -468,7 +487,7 @@ export function TeacherExperience({
               locale={locale} textDirection={textDirection} reconnectEpoch={reconnectEpoch}
               onError={onError} onNotice={onNotice}
             />
-          ) : workflowSection !== "ANNOUNCEMENTS" ? (
+          ) : (
             <TeacherLearningPanel
               key={`teacher-learning-${reconnectEpoch}-${workflowSection}`}
               section={workflowSection}
@@ -476,7 +495,25 @@ export function TeacherExperience({
               accessToken={accessToken} locale={locale}
               textDirection={textDirection} onError={onError} onNotice={onNotice}
             />
-          ) : (
+          )}
+        </>
+      ) : null}
+
+      {tab === "MORE" ? (
+        <TeacherMorePanel
+          section={moreSection}
+          schoolName={schoolName}
+          username={username}
+          fullName={today?.teacher.fullName ?? username}
+          unreadCount={unreadCount}
+          locale={locale}
+          textDirection={textDirection}
+          contact={adminContact}
+          onSectionChange={(next) => { setMoreSection(next); onScrollTop(); }}
+          onNotifications={openInbox}
+          onChangeLocale={onLocaleChange}
+          onLogout={onLogout}
+          announcementContent={moreSection === "ANNOUNCEMENTS" ? (
             <CommunicationPanel
               key={`teacher-communication-${reconnectEpoch}`}
               accessToken={accessToken} mode="TEACHER" teacherSection="ANNOUNCEMENTS"
@@ -484,13 +521,8 @@ export function TeacherExperience({
               locale={locale} textDirection={textDirection}
               onError={onError} onNotice={onNotice}
             />
-          )}
-          <AdminContactCard contact={adminContact} locale={locale} />
-          <Pressable accessibilityRole="button" style={styles.logout} onPress={onLogout}>
-            <Ionicons name="log-out-outline" size={18} color={tokens.color.brandStrong} />
-            <Text style={styles.linkText}>{translate(locale, "auth.logout")}</Text>
-          </Pressable>
-        </>
+          ) : null}
+        />
       ) : null}
 
       {(tab === "TODAY" && todayReady && !today) ||
@@ -558,12 +590,12 @@ const styles = StyleSheet.create({
   todayBadge: { fontSize: 11, fontWeight: "800", color: tokens.color.brandStrong },
   retry: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#dae6f5", padding: 15, gap: 8, borderRadius: 14 },
   logout: { minHeight: 49, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 9, borderWidth: 1, borderColor: "#dce5f1", borderRadius: 13, backgroundColor: "#f8faff" },
-  bottomBar: { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 10, paddingTop: 7, paddingBottom: 9, gap: 3, backgroundColor: tokens.color.surface, borderTopWidth: 1, borderTopColor: "#e2e8f0", elevation: 12, shadowColor: "#172033", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: -5 } },
+  bottomBar: { flexDirection: "row", alignItems: "stretch", paddingHorizontal: 6, paddingTop: 7, paddingBottom: 9, gap: 2, backgroundColor: tokens.color.surface, borderTopWidth: 1, borderTopColor: "#e2e8f0", elevation: 12, shadowColor: "#172033", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: -5 } },
   bottomTab: { flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: 16 },
   activeBottomTab: { backgroundColor: "#f3f6fc" },
   navIcon: { width: 32, height: 28, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   navIconActive: { backgroundColor: "#e7efff" },
-  navLabel: { color: tokens.color.textMuted, fontSize: 10.5, fontWeight: "700" },
+  navLabel: { color: tokens.color.textMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
   activeNavLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
   inboxButton: { width: 49, height: 49, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: "#e7efff" },
   inboxBadge: { position: "absolute", top: 1, right: 0, minWidth: 20, height: 20, paddingHorizontal: 3, borderRadius: 11, backgroundColor: "#c53549", alignItems: "center", justifyContent: "center" },
