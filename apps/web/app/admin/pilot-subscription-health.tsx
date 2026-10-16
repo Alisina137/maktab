@@ -4,23 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
-
-type HealthCode = "CANCELLED" | "SUSPENDED" | "GRACE_ENDED" | "GRACE_PERIOD" | "PAST_DUE" |
-  "EXPIRED_PENDING_UPDATE" | "EXPIRES_SOON" | "EXPIRING" | "NO_EXPIRY" | "ON_TRACK";
-
-type SubscriptionHealth = {
-  status: string;
-  evaluatedOn: string;
-  code: HealthCode;
-  level: "healthy" | "info" | "warning" | "critical";
-  operationalWritesBlocked: boolean;
-  expiryDate: string | null;
-  graceEndDate: string | null;
-  daysUntilExpiry: number | null;
-  daysUntilGraceEnd: number | null;
-  nextReminderDays: number | null;
-  platformReviewNeeded: boolean;
-};
+import { parseSubscriptionHealth, type SubscriptionHealth, type HealthCode } from "./pilot-subscription-guidance-model";
+import { PilotSubscriptionNextSteps } from "./pilot-subscription-next-steps";
 
 const codeLabels: Record<HealthCode, string> = {
   CANCELLED: "Subscription cancelled",
@@ -75,8 +60,9 @@ export function PilotSubscriptionHealthPanel({
           const body = await response.json().catch(() => null);
           throw new Error(body?.message ?? "Subscription status could not be loaded.");
         }
-        const data = (await response.json()) as { health: SubscriptionHealth };
-        if (!controller.signal.aborted) setHealth(data.health);
+        const data: unknown = await response.json();
+        const verified = parseSubscriptionHealth(data);
+        if (!controller.signal.aborted) setHealth(verified);
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(adminErrorText(locale, cause, "Subscription status could not be loaded."));
@@ -182,6 +168,8 @@ export function PilotSubscriptionHealthPanel({
         ) : null}
       </div>
 
+      <PilotSubscriptionNextSteps health={health} locale={locale} />
+
       <div className="admin-panel pilot-billing-support">
         <h3>{t("Renewal and support")}</h3>
         <p>{t("School administrators can review the plan and deadlines here, but cannot update pricing, make a payment, renew, or reactivate a subscription.")}</p>
@@ -191,6 +179,9 @@ export function PilotSubscriptionHealthPanel({
         </button>
         <p className="pilot-security-note">
           {t("Subscription dates are calculated using the Afghanistan local calendar date; dates are displayed in Solar Hijri.")}
+        </p>
+        <p className="pilot-security-note">
+          {t("Status evaluated for Kabul date")}: {formatAdminHijriDate(locale, health.evaluatedOn)}
         </p>
       </div>
     </section>
