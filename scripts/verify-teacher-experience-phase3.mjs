@@ -64,7 +64,7 @@ for(const key of [
 assert.ok(!teacher.includes('weekdays.map((weekday)'),
   "Old six-day full list must not duplicate new timetable.");
 const localeKeys=[
-  "weekday.friday","teacher.scheduleDay","teacher.scheduleWeek",
+  "weekday.friday","teacher.scheduleDay","teacher.scheduleDayTitle","teacher.scheduleWeek",
   "teacher.schedulePrevious","teacher.scheduleNext","teacher.scheduleViewDay",
   "teacher.scheduleCurrent","teacher.scheduleFinished","teacher.scheduleUpcoming",
   "teacher.scheduleTemplateHint"
