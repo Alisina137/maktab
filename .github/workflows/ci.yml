@@ -288,6 +288,7 @@ jobs:
           pnpm verify:pilot:phase5
           pnpm verify:pilot:phase6
           pnpm verify:pilot:phase7
+          pnpm verify:pilot:improvements:phase8
           pnpm verify:release
           pnpm verify:parent-localization
           pnpm verify:parent-resilience
