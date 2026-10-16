@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import type { AcademicStore, AccountStore, RegistrationStore, StaffAttendanceCorrectionStore, StaffFeeReadStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PilotLaunchStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
+import type { AcademicStore, AccountStore, RegistrationStore, StaffAttendanceCorrectionStore, StaffFeeReadStore, StaffWorkflowStore, AttendanceStore, CommunicationStore, FamilyStore, LearningStore, LearningExtensionsStore, TeacherTeachingStore, TeacherTasksStore, PilotStore, PilotLaunchStore, PlatformSchoolStore, PushProvider } from "@maktablink/database";
 import { registerAcademicRoutes } from "./academics/routes.js";
 import { registerAttendanceRoutes } from "./attendance/routes.js";
 import { LoginRateLimiter } from "./auth/rate-limit.js";
@@ -20,6 +20,7 @@ import { registerUserRoutes } from "./users/routes.js";
 import { registerStaffRoutes } from "./staff/routes.js";
 import { registerStaffAttendanceRoutes } from "./staff/attendance-routes.js";
 import { registerStaffFeeRoutes } from "./staff/fee-routes.js";
+import { registerStaffWorkflowRoutes } from "./staff/workflow-routes.js";
 import { ApiMetrics } from "./observability.js";
 
 export interface BuildAppOptions {
@@ -30,6 +31,7 @@ export interface BuildAppOptions {
   registrationStore?: RegistrationStore;
   staffAttendanceCorrectionStore?: StaffAttendanceCorrectionStore;
   staffFeeReadStore?: StaffFeeReadStore;
+  staffWorkflowStore?: StaffWorkflowStore;
   attendanceStore: AttendanceStore;
   learningStore: LearningStore;
   learningExtensionsStore?: LearningExtensionsStore;
@@ -111,6 +113,8 @@ export function buildApp(options: BuildAppOptions) {
   registerPilotLaunchRoutes(app, options.accountStore, options.pilotLaunchStore, options.pilotStore);
   if (options.staffFeeReadStore) registerStaffFeeRoutes(app,
     options.accountStore, options.communicationStore, options.staffFeeReadStore);
+  if (options.staffWorkflowStore) registerStaffWorkflowRoutes(app,
+    options.accountStore,options.communicationStore,options.staffWorkflowStore);
   registerCommunicationRoutes(
     app,
     options.accountStore,
