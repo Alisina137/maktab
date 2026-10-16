@@ -11,16 +11,16 @@ import { NegaranHistoryPanel } from "./negaran-history";
 import { TeacherTeachingPanel } from "./teacher-teaching";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
-type Section = "OVERVIEW" | "STUDENTS" | "HOMEWORK" | "GRADES" | "TEACHING" | "SUPERVISION";
+export type TeacherClassSection = "OVERVIEW" | "STUDENTS" | "LEARNING" | "TEACHING" | "ATTENDANCE";
+export type TeacherClassLearningSection = "HOMEWORK" | "GRADES";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
-const tabs: Array<[Section, TranslationKey, Icon]> = [
+const tabs: Array<[TeacherClassSection, TranslationKey, Icon]> = [
   ["OVERVIEW", "teacher.classOverview", "information-circle-outline"],
   ["STUDENTS", "teacher.classStudents", "people-outline"],
-  ["HOMEWORK", "teacher.workflowHomework", "document-text-outline"],
-  ["GRADES", "teacher.workflowGrades", "stats-chart-outline"],
+  ["LEARNING", "teacher.classLearning", "book-outline"],
   ["TEACHING", "teaching.workspace", "school-outline"],
-  ["SUPERVISION", "teacher.classSupervision", "shield-checkmark-outline"]
+  ["ATTENDANCE", "teacher.classAttendance", "shield-checkmark-outline"]
 ];
 const weekdayKey: Record<string, TranslationKey> = {
   SATURDAY: "weekday.saturday", SUNDAY: "weekday.sunday", MONDAY: "weekday.monday",
@@ -29,18 +29,22 @@ const weekdayKey: Record<string, TranslationKey> = {
 
 export function TeacherClassDetailPage({
   assignmentId, accessToken, reconnectEpoch, locale, textDirection,
-  onBack, onAttendance, onError, onNotice, onScrollTop, teacherToday
+  onBack, onAttendance, onError, onNotice, onScrollTop, teacherToday,
+  section, onSectionChange, learningSection, onLearningSectionChange
 }: {
   assignmentId: string; accessToken: string; reconnectEpoch: number;
   locale: SupportedLocale; textDirection: Direction; teacherToday: TeacherTodayPayload | null;
   onBack: () => void; onAttendance: (id: string, day: string) => void;
   onError: (key: TranslationKey | null, kind?: AppErrorKind) => void;
   onNotice: (notice: string | null) => void; onScrollTop: () => void;
+  section: TeacherClassSection;
+  onSectionChange: (section: TeacherClassSection) => void;
+  learningSection: TeacherClassLearningSection;
+  onLearningSectionChange: (section: TeacherClassLearningSection) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
   const [detail, setDetail] = useState<TeacherClassDetailPayload | null>(null);
   const [ready, setReady] = useState(false);
-  const [section, setSection] = useState<Section>("OVERVIEW");
   const [studentId, setStudentId] = useState("");
   const [refresh, setRefresh] = useState(0);
   const requestId = useRef(0);
@@ -61,8 +65,8 @@ export function TeacherClassDetailPage({
     return () => { requestId.current += 1; };
   }, [assignmentId, accessToken, reconnectEpoch, refresh]);
 
-  function openSection(next: Section) {
-    setSection(next);
+  function openSection(next: TeacherClassSection) {
+    onSectionChange(next);
     onScrollTop();
   }
   const current = detail?.assignment;
@@ -100,7 +104,7 @@ export function TeacherClassDetailPage({
             </View>
           </View>
           <View style={[styles.tabs, rtl && styles.rtl]} accessibilityRole="tablist">
-            {tabs.filter(([id]) => id !== "SUPERVISION" || detail.canSuperviseToday).map(([id, label, icon]) => (
+            {tabs.filter(([id]) => id !== "ATTENDANCE" || detail.canSuperviseToday).map(([id, label, icon]) => (
               <Pressable key={id} accessibilityRole="tab" accessibilityLabel={translate(locale, label)}
                 accessibilityState={{ selected: section === id }} onPress={() => openSection(id)}
                 style={[styles.tab, id === section && styles.activeTab]}>
@@ -140,7 +144,7 @@ export function TeacherClassDetailPage({
                     <View style={styles.studentMore}>
                       <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.studentReadOnly")}</Text>
                       <Text style={[styles.label, textDirection]}>{current.subjectName} · {current.className}</Text>
-                      <Pressable accessibilityRole="button" style={styles.smallButton} onPress={() => openSection("GRADES")}>
+                      <Pressable accessibilityRole="button" style={styles.smallButton} onPress={() => { onLearningSectionChange("GRADES"); openSection("LEARNING"); }}>
                         <Text style={styles.link}>{translate(locale, "teacher.workflowGrades")}</Text>
                       </Pressable>
                     </View>
@@ -150,11 +154,29 @@ export function TeacherClassDetailPage({
               {!detail.students.length ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noActiveStudents")}</Text> : null}
             </View>
           ) : null}
-          {section === "HOMEWORK" || section === "GRADES" ? (
-            <TeacherLearningPanel key={`${assignmentId}-${section}-${reconnectEpoch}`}
-              section={section} assignmentContext={{ assignmentId: current.assignmentId, academicYearId: current.academicYearId,
-                classId: current.classId, subjectId: current.subjectId }}
-              accessToken={accessToken} locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice} onScrollTop={onScrollTop} />
+          {section === "LEARNING" ? (
+            <View style={styles.stack}>
+              <View style={[styles.learningTabs, rtl && styles.rtl]} accessibilityRole="tablist">
+                {(["HOMEWORK", "GRADES"] as const).map((next) => (
+                  <Pressable key={next} accessibilityRole="tab"
+                    accessibilityState={{ selected: learningSection === next }}
+                    accessibilityLabel={translate(locale, next === "HOMEWORK" ? "teacher.workflowHomework" : "teacher.workflowGrades")}
+                    onPress={() => { onLearningSectionChange(next); onScrollTop(); }}
+                    style={[styles.learningTab, learningSection === next && styles.activeTab]}>
+                    <Ionicons name={next === "HOMEWORK" ? "document-text-outline" : "stats-chart-outline"} size={17}
+                      color={learningSection === next ? tokens.color.brandStrong : tokens.color.textMuted}/>
+                    <Text style={[styles.tabLabel, learningSection === next && styles.activeLabel]}>
+                      {translate(locale, next === "HOMEWORK" ? "teacher.workflowHomework" : "teacher.workflowGrades")}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TeacherLearningPanel key={`${assignmentId}-${learningSection}-${reconnectEpoch}`}
+                section={learningSection} assignmentContext={{ assignmentId: current.assignmentId,
+                  academicYearId: current.academicYearId, classId: current.classId, subjectId: current.subjectId }}
+                accessToken={accessToken} locale={locale} textDirection={textDirection}
+                onError={onError} onNotice={onNotice} onScrollTop={onScrollTop}/>
+            </View>
           ) : null}
           {section === "TEACHING" ? (
             <TeacherTeachingPanel
@@ -168,7 +190,7 @@ export function TeacherClassDetailPage({
               onNotice={onNotice}
             />
           ) : null}
-          {section === "SUPERVISION" && detail.canSuperviseToday ? (
+          {section === "ATTENDANCE" && detail.canSuperviseToday ? (
             <View style={styles.stack}>
               <View style={styles.card}>
                 <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.classSupervision")}</Text>
@@ -222,7 +244,9 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 12, color: tokens.color.textMuted, textAlign: "center" },
   value: { fontSize: 21, fontWeight: "900", color: tokens.color.brandStrong },
   tabs: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
-  tab: { flexGrow: 1, minWidth: "29%", maxWidth: "48%", gap: 4, minHeight: 61, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#e1e7f0", alignItems: "center", justifyContent: "center", padding: 7 },
+  tab: { flexGrow: 1, minWidth: "29%", maxWidth: "48%", gap: 4, minHeight: 58, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#e1e7f0", alignItems: "center", justifyContent: "center", padding: 7 },
+  learningTabs: { flexDirection: "row", gap: 10, padding: 3, borderRadius: 13, backgroundColor: "#f2f5fc" },
+  learningTab: { flex: 1, minHeight: 46, gap: 6, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "#e1e7f0", borderRadius: 11, padding: 8 },
   activeTab: { backgroundColor: "#eaf2ff", borderColor: "#a0c1f3" },
   tabLabel: { fontSize: 11, fontWeight: "700", color: tokens.color.textMuted, textAlign: "center" },
   activeLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
