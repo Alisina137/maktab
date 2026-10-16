@@ -1873,6 +1873,7 @@ function AppContent() {
       setTeacherTodayReady(false);
       setTeacherAcademicsReady(false);
       setTeacherTab("TODAY");
+      setTeacherExternalNavigation(null);
       setStudentEnrollmentUnavailable(false);
       setStudentTimetable(null);
       setStudentTimetableReady(false);
