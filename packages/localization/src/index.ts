@@ -253,6 +253,15 @@ export type TranslationKey =
   | "teacher.viewFullSchedule"
   | "teacher.viewAssignments"
   | "teacher.fullSchedule"
+  | "teacher.scheduleDay"
+  | "teacher.scheduleWeek"
+  | "teacher.schedulePrevious"
+  | "teacher.scheduleNext"
+  | "teacher.scheduleViewDay"
+  | "teacher.scheduleCurrent"
+  | "teacher.scheduleFinished"
+  | "teacher.scheduleUpcoming"
+  | "teacher.scheduleTemplateHint"
   | "teacher.noClassesForDay"
   | "teacher.noSchedule"
   | "teacher.myAssignments"
@@ -466,6 +475,7 @@ export type TranslationKey =
   | "weekday.tuesday"
   | "weekday.wednesday"
   | "weekday.thursday"
+  | "weekday.friday"
   | "learning.newHomework"
   | "learning.attachmentHint"
   | "learning.searchHomework"
@@ -838,6 +848,15 @@ const en: Record<TranslationKey, string> = {
   "teacher.viewFullSchedule": "View full weekly schedule",
   "teacher.viewAssignments": "View my classes and subjects",
   "teacher.fullSchedule": "My weekly schedule",
+  "teacher.scheduleDay": "Day",
+  "teacher.scheduleWeek": "Week",
+  "teacher.schedulePrevious": "Previous day",
+  "teacher.scheduleNext": "Next day",
+  "teacher.scheduleViewDay": "View full day",
+  "teacher.scheduleCurrent": "Now in progress",
+  "teacher.scheduleFinished": "Finished",
+  "teacher.scheduleUpcoming": "Upcoming",
+  "teacher.scheduleTemplateHint": "Regular weekly timetable. Individual cancellations and substitutions are not shown yet.",
   "teacher.noClassesForDay": "No classes on this day.",
   "teacher.noSchedule": "You have no timetable periods in the active academic year.",
   "teacher.myAssignments": "My assigned classes and subjects",
@@ -1051,6 +1070,7 @@ const en: Record<TranslationKey, string> = {
   "weekday.tuesday": "Tuesday",
   "weekday.wednesday": "Wednesday",
   "weekday.thursday": "Thursday",
+  "weekday.friday": "Friday",
   "learning.newHomework": "New homework draft",
   "learning.attachmentHint": "Optional: paste an HTTPS link to a PDF, image or worksheet. File upload is not available yet.",
   "learning.searchHomework": "Search homework title or instructions",
@@ -1439,6 +1459,15 @@ const dari: Record<TranslationKey, string> = {
   "teacher.viewFullSchedule": "دیدن تقسیم اوقات هفته",
   "teacher.viewAssignments": "دیدن صنف‌ها و مضامین من",
   "teacher.fullSchedule": "تقسیم اوقات هفتگی من",
+  "teacher.scheduleDay": "روز",
+  "teacher.scheduleWeek": "هفته",
+  "teacher.schedulePrevious": "روز قبل",
+  "teacher.scheduleNext": "روز بعد",
+  "teacher.scheduleViewDay": "دیدن تمام روز",
+  "teacher.scheduleCurrent": "در حال برگزاری",
+  "teacher.scheduleFinished": "پایان‌یافته",
+  "teacher.scheduleUpcoming": "در پیش",
+  "teacher.scheduleTemplateHint": "تقسیم اوقات معمول هفته؛ لغو شدن یا تبدیل درس‌های یک روز مشخص هنوز نمایش داده نمی‌شود.",
   "teacher.noClassesForDay": "در این روز درسی ندارید.",
   "teacher.noSchedule": "در سال تعلیمی فعال تقسیم اوقاتی برای شما ثبت نشده است.",
   "teacher.myAssignments": "صنف‌ها و مضامین سپرده‌شده به من",
@@ -1652,6 +1681,7 @@ const dari: Record<TranslationKey, string> = {
   "weekday.tuesday": "سه‌شنبه",
   "weekday.wednesday": "چهارشنبه",
   "weekday.thursday": "پنجشنبه",
+  "weekday.friday": "جمعه",
   "learning.newHomework": "وظیفه جدید",
   "learning.attachmentHint": "اختیاری: لینک HTTPS یک PDF، عکس یا ورق کار را وارد کنید. بارگذاری فایل هنوز فعال نیست.",
   "learning.searchHomework": "جستجوی عنوان یا رهنمای وظیفه",
@@ -2040,6 +2070,15 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.viewFullSchedule": "د اونۍ بشپړ مهالویش",
   "teacher.viewAssignments": "زما ټولګي او مضمونونه",
   "teacher.fullSchedule": "زما اونیز مهالویش",
+  "teacher.scheduleDay": "ورځ",
+  "teacher.scheduleWeek": "اونۍ",
+  "teacher.schedulePrevious": "مخکینۍ ورځ",
+  "teacher.scheduleNext": "راتلونکې ورځ",
+  "teacher.scheduleViewDay": "ټوله ورځ وګورئ",
+  "teacher.scheduleCurrent": "اوس روان دی",
+  "teacher.scheduleFinished": "پای ته رسېدلی",
+  "teacher.scheduleUpcoming": "راتلونکی",
+  "teacher.scheduleTemplateHint": "دا عادي اونیز مهالویش دی؛ د ځانګړو ورځو لغوه شوي یا بدل شوي درسونه لا نه ښودل کېږي.",
   "teacher.noClassesForDay": "په دې ورځ درس نه لرئ.",
   "teacher.noSchedule": "په فعال ښوونیز کال کې ستاسو لپاره مهالویش نشته.",
   "teacher.myAssignments": "زما ټاکل شوي ټولګي او مضمونونه",
@@ -2253,6 +2292,7 @@ const pashto: Record<TranslationKey, string> = {
   "weekday.tuesday": "سې‌شنبه",
   "weekday.wednesday": "چهارشنبه",
   "weekday.thursday": "پنجشنبه",
+  "weekday.friday": "جمعه",
   "learning.newHomework": "نوې کورنۍ دنده",
   "learning.attachmentHint": "اختیاري: د PDF، انځور یا کاري پاڼې HTTPS لینک ولیکئ. د فایل پورته کول لا نه دي فعال.",
   "learning.searchHomework": "د کورنۍ دندې سرلیک یا لارښوونې ولټوئ",
