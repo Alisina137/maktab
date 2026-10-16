@@ -73,3 +73,31 @@ pnpm typecheck
 ```
 
 Run the migration once per environment **before** starting the updated API. Do not enable unimplemented staff modules just because a future permission is assigned. Run `pnpm verify:staff:phase1` for the Phase 1 scoped API, revoked-session, audit and migration integration tests.
+
+
+## Phase 2 — Role-aware Home, navigation and workspace layout
+
+After sign-in, all staff see **Home**, a read-only summary of their school, position, department and currently operational tools. Their **Profile & Settings** tab includes account information and password changes. A **Directory** navigation item appears only when the school administrator explicitly assigned `DIRECTORY_VIEW`.
+
+Home explicitly distinguishes **future workflow grants** (registration, attendance, fees, tasks, messaging, reports) from actually implemented operations. No fake pending-task counters or functional links to unimplemented backends are displayed. The navigation remains part of the standalone `/staff/dashboard` website, not the mobile app.
+
+## Phase 3 — Safe search, filters and basic directory details
+
+Staff granted `DIRECTORY_VIEW` can search **students, parents or teachers**, filter by account status (All / Active / Invited / Suspended / Archived), sort by name or username, choose ascending/descending ordering and ten/twenty records per page. Clear filters resets the search. Results are scoped to the authenticated school, and selecting a result reveals a read-only detail card with name, username, school code and status.
+
+**Privacy controls:** staff free-text lookup matches only usernames, display names and applicable student/teacher codes. Unlike the administrator's directory search, staff cannot use a private parent or teacher phone number, role or account status as a hidden searchable field. Status filtering is explicit and authorized; all results and counts remain school scoped. The detail card contains no private contact, family link, grades, payment data or account identifier. The server rejects unsupported filters and disallowed roles, requires an active permitted staff account and returns `Cache-Control: no-store`.
+
+The staff directory does **not yet** offer grade/class filters or academic, attendance or fee tabs. Those need separately authorized, dedicated school-scoped data interfaces and are intentionally excluded here.
+
+### Verify Phases 1–3
+
+```powershell
+cd C:\projects\maktab
+git pull --ff-only origin main
+pnpm verify:staff:phase1
+pnpm verify:staff:phase2
+pnpm verify:staff:phase3
+pnpm typecheck
+```
+
+The Phase 3 integration test checks denied access before assignment, forced session revocation after an administrator grants permissions, correct sorting/status filtering, malformed filters, redaction, no cross-school results and disabled hidden-field searching. Test the real website manually in Dari, Pashto and English at desktop and small mobile-browser widths.
