@@ -76,22 +76,39 @@ export default function StaffDashboard() {
     router.replace("/staff");
   },[router]);
 
+  // Single-flight rotation: Home, notifications and tasks often load together.
+  // Refresh-token reuse across concurrent requests would otherwise invalidate
+  // a valid staff session.
+  const refreshFlight=useRef<Promise<StaffSession>|null>(null);
   const authenticated=useCallback(async <T,>(path:string, init:RequestInit={}):Promise<T>=>{
     let value=current.current;
     if(!value || value.session.user.role!=="SCHOOL_STAFF") throw Error("Staff login is required.");
-    // Refresh slightly before expiry. A revoked/suspended user cannot read
-    // staff records; every API call performs role and school validation.
     const deadline=Date.parse(value.session.accessExpiresAt??"");
-    if(!Number.isFinite(deadline) || deadline<=Date.now()+30_000){
-      try{
-        const next=await adminApi<Session>("/v1/auth/refresh",{
-          method:"POST",body:JSON.stringify({refreshToken:value.session.refreshToken})
+    if(!Number.isFinite(deadline)||deadline<=Date.now()+30_000){
+      const original=value;
+      if(!refreshFlight.current){
+        const operation=(async():Promise<StaffSession>=>{
+          const next=await adminApi<Session>("/v1/auth/refresh",{
+            method:"POST",body:JSON.stringify({refreshToken:original.session.refreshToken})
+          });
+          if(next.user.role!=="SCHOOL_STAFF"||next.mustChangePassword||next.user.status!=="ACTIVE")
+            throw Error("Staff login is required.");
+          // Do not restore the session after the user has manually signed out.
+          if(current.current?.session.refreshToken!==original.session.refreshToken)
+            throw Error("The staff session changed during refresh.");
+          const fresh:StaffSession={...original,session:next};
+          storeStaffSession(fresh);current.current=fresh;setStored(fresh);
+          return fresh;
+        })();
+        refreshFlight.current=operation;
+        void operation.then(()=>{
+          if(refreshFlight.current===operation)refreshFlight.current=null;
+        },()=>{
+          if(refreshFlight.current===operation)refreshFlight.current=null;
         });
-        if(next.user.role!=="SCHOOL_STAFF" || next.mustChangePassword ||
-           next.user.status!=="ACTIVE")throw Error("Staff login is required.");
-        value={...value,session:next};
-        storeStaffSession(value);current.current=value;setStored(value);
-      }catch{exit();throw Error("Your staff session has expired.");}
+      }
+      try{value=await refreshFlight.current;}
+      catch{exit();throw Error("Your staff session has expired.");}
     }
     try{
       return await adminApi<T>(path,{...init,headers:{
@@ -100,13 +117,12 @@ export default function StaffDashboard() {
     }catch(cause){
       if(cause && typeof cause==="object" && "status" in cause) {
         const failure=cause as {status:number;code?:string};
-        const sessionBlocked = (failure.status===401 || failure.status===503 ||
-          (failure.status===403 && failure.code!=="permission_denied")) &&
-          !(path==="/v1/auth/change-password" &&
-            failure.status===401 && failure.code==="current_password_invalid");
-        // Permission denied is a page-level error, not an expired session.
-        // An incorrect current password is also a form error, not a revoked session.
-        // Revoked, suspended and unavailable staff accounts still leave immediately.
+        const sessionBlocked=(failure.status===401||failure.status===503||
+          (failure.status===403&&failure.code!=="permission_denied"))&&
+          !(path==="/v1/auth/change-password"&&failure.status===401&&
+            failure.code==="current_password_invalid");
+        // Page-specific permission failures remain visible without signing out.
+        // Suspended, revoked, invalid and unavailable sessions are cleared.
         if(sessionBlocked)exit();
       }
       throw cause;
