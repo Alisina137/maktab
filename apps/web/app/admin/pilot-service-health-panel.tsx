@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminText, type AdminLocale } from "./admin-i18n";
-import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { formatPilotTimestamp } from "./pilot-timestamp";
 
 type HealthResponse = {
   report: {
@@ -81,12 +81,7 @@ export function PilotServiceHealthPanel({ accessToken, locale }: {
         <>
           <p className="pilot-security-note">
             {t("Last checked")}: <time dateTime={data.report.evaluatedAt}>
-              {locale === "en"
-                ? new Intl.DateTimeFormat("en-US", {
-                    dateStyle: "medium", timeStyle: "short", hour12: true,
-                    timeZone: "Asia/Kabul"
-                  }).format(new Date(data.report.evaluatedAt))
-                : formatAdminHijriDateTime(locale, data.report.evaluatedAt, "Asia/Kabul")}
+              {formatPilotTimestamp(locale, data.report.evaluatedAt)}
             </time> · {t("Reporting timezone: Asia/Kabul")}
           </p>
           <div className="pilot-service-grid">
