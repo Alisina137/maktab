@@ -7,6 +7,7 @@ const exports = read("packages/database/src/index.ts");
 const api = read("apps/api/src/pilot/routes.ts");
 const ui = read("apps/web/app/admin/pilot-oversight-panel.tsx");
 const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
 const release = read("packages/database/src/pilot-release-readiness.ts");
 const layout = read("apps/web/app/admin/admin-workspace.tsx");
 const css = read("apps/web/app/globals.css");
@@ -51,8 +52,8 @@ assert.ok(api.includes('"/v1/admin/pilot/oversight"') &&
 assert.ok(api.includes('.max(30)') && api.includes('.max(50_000)') &&
   api.includes('z.enum(["ALL", "SUPPORT", "EVIDENCE", "DECISION", "IMPORT", "EXPORT"])'),
   "Only known kinds, limits and offsets may be accepted");
-assert.ok(pilot.includes('section: "oversight"') &&
-  pilot.includes('href: "/admin/pilot/oversight"') &&
+assert.ok(navigation.includes('section: "oversight"') &&
+  navigation.includes('href: "/admin/pilot/oversight"') &&
   pilot.includes('<PilotOversightPanel') &&
   pilot.includes('section === "oversight"') &&
   pilot.includes('section === "adoption" || section === "service" || section === "oversight"'),
