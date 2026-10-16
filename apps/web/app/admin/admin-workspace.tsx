@@ -79,6 +79,7 @@ const navItems = [
 const adminLoadingTextByRoute: Record<string, string> = {
   "/admin/accounts": "Loading accounts data…",
   "/admin/pilot": "Loading pilot operations data…",
+  "/admin/pilot/adoption": "Loading usage & adoption data…",
   "/admin/communication": "Loading communication & fees data…",
   "/admin/learning": "Loading learning data…",
   "/admin/attendance": "Loading attendance data…",
@@ -116,6 +117,7 @@ const pageCopy: Record<string, { title: string; description: string }> = {
     description: "Review readiness, subscription access, school exports, import templates, and audit activity."
   },
   "/admin/pilot/readiness": { title: "Pilot operations", description: "Check school configuration and missing setup items." },
+  "/admin/pilot/adoption": { title: "Usage & adoption", description: "Review school sign-ins and academic activity, not learning outcomes." },
   "/admin/pilot/onboarding": { title: "Pilot operations", description: "Prepare school setup and validated family imports." },
   "/admin/pilot/subscription": { title: "Pilot operations", description: "Review school subscription and access." },
   "/admin/pilot/audit": { title: "Pilot operations", description: "View school audit history and data exports." },

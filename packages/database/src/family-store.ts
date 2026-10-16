@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lt } from "drizzle-orm";
 import type {
   CreateParentAccountInput,
   CreateStudentInput,
   StudentImportRow,
   StudentStatus,
   TeacherImportRow,
-  UpdateStudentInput,
+  UpdateStudentInput
 } from "@maktablink/contracts";
 import type { FoundationDatabase } from "./client.js";
 import {
@@ -27,7 +27,7 @@ import {
   type ParentProfile,
   type Student,
   type StudentClassHistory,
-  type User,
+  type User
 } from "./schema.js";
 
 export interface ParentSummary {
@@ -90,7 +90,11 @@ export type ImportBatchPage = { rows: ImportBatchPublic[]; offset: number; limit
 export interface FamilyStore {
   getOverview(schoolId: string): Promise<FamilyOverview>;
   getImportBatch(schoolId: string, key: string): Promise<FamilyImportBatch | null>;
-  listImportBatches(schoolId: string, options: { limit: number; offset: number; entityType?: ImportBatchMeta["entityType"] }): Promise<ImportBatchPage>;
+  listImportBatches(schoolId: string, options: {
+    limit: number; offset: number; entityType?: ImportBatchMeta["entityType"];
+    status?: "COMPLETED" | "REJECTED" | "FAILED";
+    dateFrom?: Date; dateToExclusive?: Date; actor?: string;
+  }): Promise<ImportBatchPage>;
   recordImportAttempt(schoolId: string, actorUserId: string, input: {
     entityType: ImportBatchMeta["entityType"]; rowCount: number;
     rejectedCount: number; status: "REJECTED" | "FAILED"; reason: string;
@@ -98,20 +102,16 @@ export interface FamilyStore {
   getParentHome(schoolId: string, parentUserId: string): Promise<ParentHome>;
   createParentAccount(
     schoolId: string,
-    input: CreateParentAccountInput & { passwordHash: string },
+    input: CreateParentAccountInput & { passwordHash: string }
   ): Promise<{ user: User; profile: ParentProfile }>;
   deleteParentAccount(schoolId: string, parentUserId: string): Promise<void>;
   createStudentAccount(
     schoolId: string,
     studentId: string,
-    input: { username: string; phone?: string; passwordHash: string },
+    input: { username: string; phone?: string; passwordHash: string }
   ): Promise<{ user: User; student: Student }>;
   createStudent(schoolId: string, input: CreateStudentInput): Promise<Student>;
-  updateStudent(
-    schoolId: string,
-    studentId: string,
-    input: UpdateStudentInput,
-  ): Promise<Student>;
+  updateStudent(schoolId: string, studentId: string, input: UpdateStudentInput): Promise<Student>;
   deleteStudent(schoolId: string, studentId: string): Promise<void>;
   importParents(
     schoolId: string,
@@ -144,9 +144,7 @@ export class FamilyValidationError extends Error {
   }
 }
 
-type FamilyTransaction = Parameters<
-  Parameters<FoundationDatabase["transaction"]>[0]
->[0];
+type FamilyTransaction = Parameters<Parameters<FoundationDatabase["transaction"]>[0]>[0];
 
 export class FamilyNotFoundError extends Error {
   constructor(message: string) {
@@ -157,10 +155,7 @@ export class FamilyNotFoundError extends Error {
 
 function databaseErrorCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;
-  if (
-    "code" in error &&
-    typeof (error as { code?: unknown }).code === "string"
-  ) {
+  if ("code" in error && typeof (error as { code?: unknown }).code === "string") {
     return (error as { code: string }).code;
   }
   if ("cause" in error) {
@@ -172,9 +167,7 @@ function databaseErrorCode(error: unknown): string | undefined {
 function databaseErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     const causeMessage =
-      "cause" in error
-        ? databaseErrorMessage((error as Error & { cause?: unknown }).cause)
-        : "";
+      "cause" in error ? databaseErrorMessage((error as Error & { cause?: unknown }).cause) : "";
     return [error.message, causeMessage].filter(Boolean).join(" ");
   }
   if (
@@ -189,17 +182,11 @@ function databaseErrorMessage(error: unknown): string {
 }
 
 function isUniqueError(error: unknown): boolean {
-  return (
-    databaseErrorCode(error) === "23505" ||
-    /unique|duplicate/i.test(databaseErrorMessage(error))
-  );
+  return databaseErrorCode(error) === "23505" || /unique|duplicate/i.test(databaseErrorMessage(error));
 }
 
 function isForeignKeyError(error: unknown): boolean {
-  return (
-    databaseErrorCode(error) === "23503" ||
-    /foreign key/i.test(databaseErrorMessage(error))
-  );
+  return databaseErrorCode(error) === "23503" || /foreign key/i.test(databaseErrorMessage(error));
 }
 
 export function createFamilyStore(db: FoundationDatabase): FamilyStore {
@@ -220,79 +207,45 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     const [row] = await db
       .select({ profile: parentProfiles, user: users })
       .from(parentProfiles)
-      .innerJoin(
-        users,
-        and(
-          eq(users.id, parentProfiles.userId),
-          eq(users.schoolId, parentProfiles.schoolId),
-        ),
-      )
-      .where(
-        and(
-          eq(parentProfiles.schoolId, schoolId),
-          eq(parentProfiles.userId, parentUserId),
-        ),
-      )
+      .innerJoin(users, and(eq(users.id, parentProfiles.userId), eq(users.schoolId, parentProfiles.schoolId)))
+      .where(and(eq(parentProfiles.schoolId, schoolId), eq(parentProfiles.userId, parentUserId)))
       .limit(1);
     if (!row) throw new FamilyNotFoundError("Parent account not found.");
-    if (row.user.role !== "PARENT")
-      throw new FamilyValidationError("Linked account is not a parent.");
+    if (row.user.role !== "PARENT") throw new FamilyValidationError("Linked account is not a parent.");
     return row;
   }
 
   async function getClassYear(
     schoolId: string,
     academicYearId: string,
-    classId: string,
+    classId: string
   ): Promise<{ year: AcademicYear; classSection: ClassSection }> {
     const [year] = await db
       .select()
       .from(academicYears)
-      .where(
-        and(
-          eq(academicYears.schoolId, schoolId),
-          eq(academicYears.id, academicYearId),
-        ),
-      )
+      .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, academicYearId)))
       .limit(1);
     if (!year) throw new FamilyNotFoundError("Academic year not found.");
 
     const [classSection] = await db
       .select()
       .from(classSections)
-      .where(
-        and(
-          eq(classSections.schoolId, schoolId),
-          eq(classSections.id, classId),
-        ),
-      )
+      .where(and(eq(classSections.schoolId, schoolId), eq(classSections.id, classId)))
       .limit(1);
     if (!classSection) throw new FamilyNotFoundError("Class not found.");
     if (classSection.academicYearId !== year.id) {
-      throw new FamilyValidationError(
-        "The selected class does not belong to the selected academic year.",
-      );
+      throw new FamilyValidationError("The selected class does not belong to the selected academic year.");
     }
     if (year.status === "CLOSED" || year.status === "ARCHIVED") {
-      throw new FamilyConflictError(
-        "Students cannot be added to a closed or archived academic year.",
-      );
+      throw new FamilyConflictError("Students cannot be added to a closed or archived academic year.");
     }
     return { year, classSection };
   }
 
-  async function validateParentForStudent(
-    schoolId: string,
-    parentUserId: string,
-  ) {
+  async function validateParentForStudent(schoolId: string, parentUserId: string) {
     const parent = await getParent(schoolId, parentUserId);
-    if (
-      parent.user.status === "SUSPENDED" ||
-      parent.user.status === "ARCHIVED"
-    ) {
-      throw new FamilyConflictError(
-        "Students must be linked to an available parent account.",
-      );
+    if (parent.user.status === "SUSPENDED" || parent.user.status === "ARCHIVED") {
+      throw new FamilyConflictError("Students must be linked to an available parent account.");
     }
     return parent;
   }
@@ -300,7 +253,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
   async function insertStudent(
     tx: FamilyTransaction,
     schoolId: string,
-    input: CreateStudentInput & { userId?: string; phone?: string },
+    input: CreateStudentInput & { userId?: string; phone?: string }
   ): Promise<Student> {
     const [student] = await tx
       .insert(students)
@@ -314,7 +267,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         phone: input.phone || null,
         academicYearId: input.academicYearId,
         classId: input.classId,
-        status: "ACTIVE",
+        status: "ACTIVE"
       })
       .returning();
     if (!student) throw new Error("Student insert did not return a row.");
@@ -324,7 +277,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       schoolId,
       studentId: student.id,
       academicYearId: student.academicYearId,
-      classId: student.classId,
+      classId: student.classId
     });
     return student;
   }
@@ -340,6 +293,14 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     async listImportBatches(schoolId, options) {
       const conditions = [eq(familyImportBatches.schoolId, schoolId)];
       if (options.entityType) conditions.push(eq(familyImportBatches.entityType, options.entityType));
+      if (options.status) conditions.push(eq(familyImportBatches.status, options.status));
+      if (options.dateFrom) conditions.push(gte(familyImportBatches.createdAt, options.dateFrom));
+      if (options.dateToExclusive) conditions.push(lt(familyImportBatches.createdAt, options.dateToExclusive));
+      if (options.actor) {
+        // Escape SQL LIKE wildcards before wrapping in the contains pattern.
+        const escaped = options.actor.replace(/[\\%_]/g, (character) => "\\" + character);
+        conditions.push(ilike(users.username, `%${escaped}%`));
+      }
       const rows = await db.select({
         id: familyImportBatches.id, entityType: familyImportBatches.entityType,
         rowCount: familyImportBatches.rowCount,
@@ -370,44 +331,15 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         db
           .select({ profile: parentProfiles, user: users })
           .from(parentProfiles)
-          .innerJoin(
-            users,
-            and(
-              eq(users.id, parentProfiles.userId),
-              eq(users.schoolId, parentProfiles.schoolId),
-            ),
-          )
+          .innerJoin(users, and(eq(users.id, parentProfiles.userId), eq(users.schoolId, parentProfiles.schoolId)))
           .where(eq(parentProfiles.schoolId, schoolId))
           .orderBy(asc(parentProfiles.fullName)),
         db
-          .select({
-            student: students,
-            user: users,
-            classSection: classSections,
-            academicYear: academicYears,
-          })
+          .select({ student: students, user: users, classSection: classSections, academicYear: academicYears })
           .from(students)
-          .leftJoin(
-            users,
-            and(
-              eq(users.id, students.userId),
-              eq(users.schoolId, students.schoolId),
-            ),
-          )
-          .innerJoin(
-            classSections,
-            and(
-              eq(classSections.id, students.classId),
-              eq(classSections.schoolId, students.schoolId),
-            ),
-          )
-          .innerJoin(
-            academicYears,
-            and(
-              eq(academicYears.id, students.academicYearId),
-              eq(academicYears.schoolId, students.schoolId),
-            ),
-          )
+          .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
+          .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
+          .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
           .where(eq(students.schoolId, schoolId))
           .orderBy(asc(students.fullName)),
         db
@@ -416,96 +348,46 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
             student: students,
             user: users,
             classSection: classSections,
-            academicYear: academicYears,
+            academicYear: academicYears
           })
           .from(studentClassHistory)
-          .innerJoin(
-            students,
-            and(
-              eq(students.id, studentClassHistory.studentId),
-              eq(students.schoolId, studentClassHistory.schoolId),
-            ),
-          )
-          .leftJoin(
-            users,
-            and(
-              eq(users.id, students.userId),
-              eq(users.schoolId, students.schoolId),
-            ),
-          )
-          .innerJoin(
-            classSections,
-            and(
-              eq(classSections.id, studentClassHistory.classId),
-              eq(classSections.schoolId, studentClassHistory.schoolId),
-            ),
-          )
-          .innerJoin(
-            academicYears,
-            and(
-              eq(academicYears.id, studentClassHistory.academicYearId),
-              eq(academicYears.schoolId, studentClassHistory.schoolId),
-            ),
-          )
+          .innerJoin(students, and(eq(students.id, studentClassHistory.studentId), eq(students.schoolId, studentClassHistory.schoolId)))
+          .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
+          .innerJoin(classSections, and(eq(classSections.id, studentClassHistory.classId), eq(classSections.schoolId, studentClassHistory.schoolId)))
+          .innerJoin(academicYears, and(eq(academicYears.id, studentClassHistory.academicYearId), eq(academicYears.schoolId, studentClassHistory.schoolId)))
           .where(eq(studentClassHistory.schoolId, schoolId))
-          .orderBy(asc(students.fullName), asc(studentClassHistory.startedAt)),
+          .orderBy(asc(students.fullName), asc(studentClassHistory.startedAt))
       ]);
 
       const counts = new Map<string, number>();
       for (const row of studentRows) {
-        counts.set(
-          row.student.parentUserId,
-          (counts.get(row.student.parentUserId) ?? 0) + 1,
-        );
+        counts.set(row.student.parentUserId, (counts.get(row.student.parentUserId) ?? 0) + 1);
       }
 
       return {
         parents: parentRows.map((row) => ({
           ...row,
-          childCount: counts.get(row.profile.userId) ?? 0,
+          childCount: counts.get(row.profile.userId) ?? 0
         })),
         students: studentRows,
-        enrollments: enrollmentRows,
+        enrollments: enrollmentRows
       };
     },
 
     async getParentHome(schoolId, parentUserId) {
       const { profile } = await getParent(schoolId, parentUserId);
       const children = await db
-        .select({
-          student: students,
-          user: users,
-          classSection: classSections,
-          academicYear: academicYears,
-        })
+        .select({ student: students, user: users, classSection: classSections, academicYear: academicYears })
         .from(students)
-        .leftJoin(
-          users,
-          and(
-            eq(users.id, students.userId),
-            eq(users.schoolId, students.schoolId),
-          ),
-        )
-        .innerJoin(
-          classSections,
-          and(
-            eq(classSections.id, students.classId),
-            eq(classSections.schoolId, students.schoolId),
-          ),
-        )
-        .innerJoin(
-          academicYears,
-          and(
-            eq(academicYears.id, students.academicYearId),
-            eq(academicYears.schoolId, students.schoolId),
-          ),
-        )
+        .leftJoin(users, and(eq(users.id, students.userId), eq(users.schoolId, students.schoolId)))
+        .innerJoin(classSections, and(eq(classSections.id, students.classId), eq(classSections.schoolId, students.schoolId)))
+        .innerJoin(academicYears, and(eq(academicYears.id, students.academicYearId), eq(academicYears.schoolId, students.schoolId)))
         .where(
           and(
             eq(students.schoolId, schoolId),
             eq(students.parentUserId, parentUserId),
-            eq(students.status, "ACTIVE"),
-          ),
+            eq(students.status, "ACTIVE")
+          )
         )
         .orderBy(asc(students.fullName));
       return { parent: profile, children };
@@ -523,11 +405,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               passwordHash: input.passwordHash,
               role: "PARENT",
               status: "INVITED",
-              mustChangePassword: true,
+              mustChangePassword: true
             })
             .returning();
-          if (!user)
-            throw new Error("Parent user insert did not return a row.");
+          if (!user) throw new Error("Parent user insert did not return a row.");
 
           const [profile] = await tx
             .insert(parentProfiles)
@@ -535,18 +416,14 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               userId: user.id,
               schoolId,
               fullName: input.fullName,
-              phone: input.phone || null,
+              phone: input.phone || null
             })
             .returning();
-          if (!profile)
-            throw new Error("Parent profile insert did not return a row.");
+          if (!profile) throw new Error("Parent profile insert did not return a row.");
           return { user, profile };
         });
       } catch (error) {
-        if (isUniqueError(error))
-          throw new FamilyConflictError(
-            "This username already exists. Please type another username.",
-          );
+        if (isUniqueError(error)) throw new FamilyConflictError("This username already exists. Please type another username.");
         throw error;
       }
     },
@@ -556,18 +433,11 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
       const [linkedStudent] = await db
         .select({ id: students.id })
         .from(students)
-        .where(
-          and(
-            eq(students.schoolId, schoolId),
-            eq(students.parentUserId, parentUserId),
-          ),
-        )
+        .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, parentUserId)))
         .limit(1);
 
       if (linkedStudent) {
-        throw new FamilyConflictError(
-          "This parent cannot be deleted because students are linked to the account.",
-        );
+        throw new FamilyConflictError("This parent cannot be deleted because students are linked to the account.");
       }
 
       await db
@@ -582,10 +452,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
         .limit(1);
       if (!student) throw new FamilyNotFoundError("Student not found.");
-      if (student.userId)
-        throw new FamilyConflictError(
-          "This student already has a student account.",
-        );
+      if (student.userId) throw new FamilyConflictError("This student already has a student account.");
 
       try {
         return await db.transaction(async (tx) => {
@@ -598,31 +465,21 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               passwordHash: input.passwordHash,
               role: "STUDENT",
               status: "INVITED",
-              mustChangePassword: true,
+              mustChangePassword: true
             })
             .returning();
-          if (!user)
-            throw new Error("Student user insert did not return a row.");
+          if (!user) throw new Error("Student user insert did not return a row.");
 
           const [updated] = await tx
             .update(students)
-            .set({
-              userId: user.id,
-              phone: input.phone || null,
-              updatedAt: new Date(),
-            })
-            .where(
-              and(eq(students.schoolId, schoolId), eq(students.id, studentId)),
-            )
+            .set({ userId: user.id, phone: input.phone || null, updatedAt: new Date() })
+            .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
             .returning();
           if (!updated) throw new FamilyNotFoundError("Student not found.");
           return { user, student: updated };
         });
       } catch (error) {
-        if (isUniqueError(error))
-          throw new FamilyConflictError(
-            "This username already exists. Please type another username.",
-          );
+        if (isUniqueError(error)) throw new FamilyConflictError("This username already exists. Please type another username.");
         throw error;
       }
     },
@@ -633,13 +490,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         await getClassYear(schoolId, input.academicYearId, input.classId);
         return await db.transaction((tx) => insertStudent(tx, schoolId, input));
       } catch (error) {
-        if (isUniqueError(error))
-          throw new FamilyConflictError(
-            "That student code already exists in this school.",
-          );
+        if (isUniqueError(error)) throw new FamilyConflictError("That student code already exists in this school.");
         if (isForeignKeyError(error)) {
           throw new FamilyConflictError(
-            "The selected parent, academic year, or class is no longer available. Refresh the page and try again.",
+            "The selected parent, academic year, or class is no longer available. Refresh the page and try again."
           );
         }
         throw error;
@@ -662,8 +516,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
 
       return db.transaction(async (tx) => {
         const classChanged =
-          current.academicYearId !== academicYearId ||
-          current.classId !== classId;
+          current.academicYearId !== academicYearId || current.classId !== classId;
 
         if (classChanged) {
           await tx
@@ -673,15 +526,15 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               and(
                 eq(studentClassHistory.schoolId, schoolId),
                 eq(studentClassHistory.studentId, studentId),
-                isNull(studentClassHistory.endedAt),
-              ),
+                isNull(studentClassHistory.endedAt)
+              )
             );
           await tx.insert(studentClassHistory).values({
             id: randomUUID(),
             schoolId,
             studentId,
             academicYearId,
-            classId,
+            classId
           });
         }
 
@@ -694,8 +547,8 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               and(
                 eq(studentClassHistory.schoolId, schoolId),
                 eq(studentClassHistory.studentId, studentId),
-                isNull(studentClassHistory.endedAt),
-              ),
+                isNull(studentClassHistory.endedAt)
+              )
             );
         }
 
@@ -707,11 +560,9 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
             classId,
             fullName: input.fullName ?? current.fullName,
             status,
-            updatedAt: new Date(),
+            updatedAt: new Date()
           })
-          .where(
-            and(eq(students.schoolId, schoolId), eq(students.id, studentId)),
-          )
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
           .returning();
         if (!updated) throw new FamilyNotFoundError("Student not found.");
         return updated;
@@ -730,54 +581,35 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         db
           .select({ id: studentAttendances.id })
           .from(studentAttendances)
-          .where(
-            and(
-              eq(studentAttendances.schoolId, schoolId),
-              eq(studentAttendances.studentId, studentId),
-            ),
-          )
+          .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.studentId, studentId)))
           .limit(1),
         db
           .select({ id: gradeRecords.id })
           .from(gradeRecords)
-          .where(
-            and(
-              eq(gradeRecords.schoolId, schoolId),
-              eq(gradeRecords.studentId, studentId),
-            ),
-          )
+          .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.studentId, studentId)))
           .limit(1),
         db
           .select({ id: feeInvoices.id })
           .from(feeInvoices)
-          .where(
-            and(
-              eq(feeInvoices.schoolId, schoolId),
-              eq(feeInvoices.studentId, studentId),
-            ),
-          )
-          .limit(1),
+          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.studentId, studentId)))
+          .limit(1)
       ]);
 
       if (attendance[0] || grade[0] || invoice[0]) {
         throw new FamilyConflictError(
-          "This student cannot be deleted because attendance, grade, or fee data is linked to the student.",
+          "This student cannot be deleted because attendance, grade, or fee data is linked to the student."
         );
       }
 
       await db.transaction(async (tx) => {
         await tx
           .delete(students)
-          .where(
-            and(eq(students.schoolId, schoolId), eq(students.id, studentId)),
-          );
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)));
 
         if (student.userId) {
           await tx
             .delete(users)
-            .where(
-              and(eq(users.schoolId, schoolId), eq(users.id, student.userId)),
-            );
+            .where(and(eq(users.schoolId, schoolId), eq(users.id, student.userId)));
         }
       });
     },
@@ -797,31 +629,26 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
                 passwordHash: row.passwordHash,
                 role: "PARENT",
                 status: "INVITED",
-                mustChangePassword: true,
+                mustChangePassword: true
               })
               .returning();
-            if (!user)
-              throw new Error("Parent user insert did not return a row.");
+            if (!user) throw new Error("Parent user insert did not return a row.");
             const [profile] = await tx
               .insert(parentProfiles)
               .values({
                 userId: user.id,
                 schoolId,
                 fullName: row.fullName,
-                phone: row.phone || null,
+                phone: row.phone || null
               })
               .returning();
-            if (!profile)
-              throw new Error("Parent profile insert did not return a row.");
+            if (!profile) throw new Error("Parent profile insert did not return a row.");
             created.push({ user, profile });
           }
           return created;
         });
       } catch (error) {
-        if (isUniqueError(error))
-          throw new FamilyConflictError(
-            "Import conflicts with an existing parent username.",
-          );
+        if (isUniqueError(error)) throw new FamilyConflictError("Import conflicts with an existing parent username.");
         throw error;
       }
     },
@@ -845,11 +672,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
                 passwordHash: row.passwordHash,
                 role: "STUDENT",
                 status: "INVITED",
-                mustChangePassword: true,
+                mustChangePassword: true
               })
               .returning();
-            if (!user)
-              throw new Error("Student user insert did not return a row.");
+            if (!user) throw new Error("Student user insert did not return a row.");
 
             const student = await insertStudent(tx, schoolId, {
               parentUserId: row.parentUserId,
@@ -858,7 +684,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
               academicYearId: row.academicYearId,
               classId: row.classId,
               userId: user.id,
-              phone: row.phone,
+              phone: row.phone
             });
             created.push({ user, student });
           }
@@ -866,9 +692,7 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         });
       } catch (error) {
         if (isUniqueError(error)) {
-          throw new FamilyConflictError(
-            "Import conflicts with an existing student username or student code.",
-          );
+          throw new FamilyConflictError("Import conflicts with an existing student username or student code.");
         }
         throw error;
       }
@@ -889,17 +713,16 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
                 passwordHash: row.passwordHash,
                 role: "TEACHER",
                 status: "INVITED",
-                mustChangePassword: true,
+                mustChangePassword: true
               })
               .returning();
-            if (!user)
-              throw new Error("Teacher user insert did not return a row.");
+            if (!user) throw new Error("Teacher user insert did not return a row.");
             await tx.insert(teacherProfiles).values({
               userId: user.id,
               schoolId,
               employeeCode: row.employeeCode,
               fullName: row.fullName,
-              phone: row.phone || null,
+              phone: row.phone || null
             });
             created.push({ user });
           }
@@ -907,12 +730,10 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
         });
       } catch (error) {
         if (isUniqueError(error)) {
-          throw new FamilyConflictError(
-            "Import conflicts with an existing teacher username or employee code.",
-          );
+          throw new FamilyConflictError("Import conflicts with an existing teacher username or employee code.");
         }
         throw error;
       }
-    },
+    }
   };
 }

@@ -43,11 +43,22 @@ const commitSchema = z.object({
 });
 
 
+const importHistoryDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const date = new Date(value + "T00:00:00Z");
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, "Invalid import history date.");
+
 const importHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
-  entityType: bulkImportEntitySchema.optional()
-}).strict();
+  entityType: bulkImportEntitySchema.optional(),
+  status: z.enum(["COMPLETED", "REJECTED", "FAILED"]).optional(),
+  dateFrom: importHistoryDateSchema.optional(),
+  dateTo: importHistoryDateSchema.optional(),
+  actor: z.string().trim().min(2).max(64).optional()
+}).strict().refine((value) => !value.dateFrom || !value.dateTo || value.dateFrom <= value.dateTo, {
+  message: "Import history date range must be chronological."
+});
 
 type ImportErrorRow = { row: number; field?: string; message: string };
 
@@ -311,7 +322,15 @@ export function registerFamilyRoutes(
     if (!context) return;
     try {
       const options = importHistoryQuerySchema.parse(request.query);
-      return families.listImportBatches(context.user.schoolId, options);
+      reply.header("cache-control", "no-store");
+      return families.listImportBatches(context.user.schoolId, {
+        limit: options.limit, offset: options.offset,
+        entityType: options.entityType, status: options.status, actor: options.actor,
+        dateFrom: options.dateFrom ? new Date(options.dateFrom + "T00:00:00+04:30") : undefined,
+        dateToExclusive: options.dateTo
+          ? new Date(Date.parse(options.dateTo + "T00:00:00+04:30") + 86_400_000)
+          : undefined
+      });
     } catch (error) {
       return sendFamilyError(reply, error);
     }

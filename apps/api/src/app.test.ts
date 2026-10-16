@@ -7730,6 +7730,37 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
   }
 });
 
+test("Pilot refinement Phase 4 usage reporting is school-scoped and validates period", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PILOT-ADOPTION-A");
+  const schoolB = await provisionSchool(app, "PILOT-ADOPTION-B");
+  const a = { authorization: "Bearer " + await bootstrapAdmin(app, schoolA) };
+  const b = { authorization: "Bearer " + await bootstrapAdmin(app, schoolB) };
+  const route = "/v1/admin/pilot/adoption";
+  assert.equal((await app.inject({ method: "GET", url: route })).statusCode, 401);
+  const response = await app.inject({ method: "GET", url: route + "?window=7d", headers: a });
+  assert.equal(response.statusCode, 200, response.body);
+  assert.equal(response.headers["cache-control"], "no-store");
+  const report = response.json<{ window: string; timeZone: string;
+    roles: Array<{role: string; eligible: number; signedInPercent: number | null}>;
+    activities: { homeworkPublished: number; attendanceClassDays: number };
+  }>();
+  assert.equal(report.window, "7d");
+  assert.equal(report.timeZone, "Asia/Kabul");
+  assert.deepEqual(report.roles.map((metric) => metric.role), ["TEACHER", "PARENT", "STUDENT"]);
+  assert.equal(report.roles.every((metric) => metric.eligible === 0 && metric.signedInPercent === null), true);
+  assert.equal(report.activities.homeworkPublished, 0);
+  const other = await app.inject({ method: "GET", url: route + "?window=30d", headers: b });
+  assert.equal(other.statusCode, 200, other.body);
+  assert.equal(other.json<{ activities: {attendanceClassDays: number} }>().activities.attendanceClassDays, 0);
+  for (const query of ["window=wrong", "window=7d&schoolId=" + schoolB,
+    "window=30d&limit=100", "unexpected=1"]) {
+    const invalid = await app.inject({ method: "GET", url: route + "?" + query, headers: a });
+    assert.equal(invalid.statusCode, 400, invalid.body);
+  }
+});
+
 test("Pilot Phase 3 school import history, replay protection and rejected validation stay tenant-scoped", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
@@ -7818,6 +7849,56 @@ test("Pilot Phase 3 school import history, replay protection and rejected valida
     method: "GET", url: "/v1/admin/families/import/history?entityType=TEACHER", headers: firstAuth
   });
   assert.deepEqual(filtered.json<{ rows: unknown[] }>().rows, []);
+
+  // Pilot Operations Data Onboarding refinement: server-side filters must work
+  // BEFORE pagination, be school-scoped and disclose no password material.
+  const completedOnly = await app.inject({
+    method: "GET", url: historyUrl + "&status=COMPLETED", headers: firstAuth
+  });
+  assert.equal(completedOnly.statusCode, 200, completedOnly.body);
+  assert.equal(completedOnly.json<{ rows: Array<{ status: string }> }>().rows.length, 1);
+  assert.equal(completedOnly.json<{ rows: Array<{ status: string }> }>().rows[0]?.status, "COMPLETED");
+  const failedOnly = await app.inject({
+    method: "GET", url: historyUrl + "&status=FAILED", headers: firstAuth
+  });
+  assert.deepEqual(failedOnly.json<{ rows: unknown[] }>().rows, []);
+
+  const createdBy = history.json<{ rows: Array<{ actorUsername: string | null }> }>()
+    .rows.find((row) => row.actorUsername)?.actorUsername;
+  assert.ok(createdBy, "Expected an actor for a school-admin import");
+  const actorOnly = await app.inject({
+    method: "GET", url: historyUrl + "&actor=" + encodeURIComponent(createdBy),
+    headers: firstAuth
+  });
+  assert.equal(actorOnly.statusCode, 200, actorOnly.body);
+  assert.equal(actorOnly.json<{ rows: unknown[] }>().rows.length, 2);
+  const mismatchedActor = await app.inject({
+    method: "GET", url: historyUrl + "&actor=nobody_matches_this_actor",
+    headers: firstAuth
+  });
+  assert.deepEqual(mismatchedActor.json<{ rows: unknown[] }>().rows, []);
+  const historicalDates = await app.inject({
+    method: "GET", url: historyUrl + "&dateFrom=2000-01-01&dateTo=2000-12-31",
+    headers: firstAuth
+  });
+  assert.deepEqual(historicalDates.json<{ rows: unknown[] }>().rows, []);
+  const inclusiveRange = await app.inject({
+    method: "GET", url: historyUrl + "&dateFrom=2000-01-01&dateTo=2099-12-31",
+    headers: firstAuth
+  });
+  assert.equal(inclusiveRange.json<{ rows: unknown[] }>().rows.length, 2);
+  assert.equal(inclusiveRange.headers["cache-control"], "no-store");
+
+  for (const invalid of [
+    "status=OTHER", "actor=x", "actor=" + "a".repeat(65),
+    "dateFrom=2026-02-30", "dateTo=2026-13-01",
+    "dateFrom=2026-10-20&dateTo=2026-10-01"
+  ]) {
+    const response = await app.inject({
+      method: "GET", url: historyUrl + "&" + invalid, headers: firstAuth
+    });
+    assert.equal(response.statusCode, 400, invalid + ": " + response.body);
+  }
 
   const otherSchool = await app.inject({ method: "GET", url: historyUrl, headers: secondAuth });
   assert.equal(otherSchool.statusCode, 200);

@@ -54,6 +54,10 @@ const operationalIssueQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(1_000_000).default(0)
 }).strict();
 
+const adoptionQuerySchema = z.object({
+  window: z.enum(["today", "7d", "30d"]).default("7d")
+}).strict();
+
 const templates: Record<BulkImportEntity, string> = {
   PARENT: "username,fullName,phone\nparent.001,Parent Full Name,0700000000\n",
   STUDENT: "studentCode,fullName,parentUsername,academicYear,classCode\nS-001,Student Full Name,parent.001,1405,7A\n",
@@ -123,6 +127,23 @@ export function registerPilotRoutes(
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({
         error: "validation_error", message: "Invalid operational readiness filter.", issues: error.issues
+      });
+      throw error;
+    }
+  });
+
+  // Aggregate metrics only; the school ID comes exclusively from auth context.
+  app.get("/v1/admin/pilot/adoption", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    try {
+      const { window } = adoptionQuerySchema.parse(request.query);
+      reply.header("cache-control", "no-store");
+      return pilot.getAdoptionReport(context.user.schoolId, window);
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({
+        error: "validation_error", message: "Invalid adoption reporting window.",
+        issues: error.issues
       });
       throw error;
     }
