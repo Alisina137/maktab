@@ -29,7 +29,7 @@ CREATE TABLE "staff_message_drafts" (
   "audience_scope" varchar(16) NOT NULL DEFAULT 'SCHOOL',
   "audience_role" varchar(16),
   "status" varchar(16) NOT NULL DEFAULT 'DRAFT',
-  "reviewed_by" uuid,
+  "reviewed_by" uuid REFERENCES "users"("id") ON DELETE SET NULL,
   "review_note" varchar(500),
   "reviewed_at" timestamp with time zone,
   "created_at" timestamp with time zone NOT NULL DEFAULT now(),
@@ -39,8 +39,7 @@ CREATE TABLE "staff_message_drafts" (
     OR ("audience_scope"='ROLE' AND "audience_role" IN ('TEACHER','PARENT','STUDENT'))
   ),
   CONSTRAINT "staff_message_status" CHECK ("status" IN ('DRAFT','SUBMITTED','APPROVED','REJECTED')),
-  CONSTRAINT "staff_message_author_school_fk" FOREIGN KEY ("school_id","created_by") REFERENCES "users"("school_id","id") ON DELETE CASCADE,
-  CONSTRAINT "staff_message_reviewer_school_fk" FOREIGN KEY ("school_id","reviewed_by") REFERENCES "users"("school_id","id") ON DELETE SET NULL
+  CONSTRAINT "staff_message_author_school_fk" FOREIGN KEY ("school_id","created_by") REFERENCES "users"("school_id","id") ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE INDEX "staff_message_review_idx" ON "staff_message_drafts"("school_id","status","created_at");
