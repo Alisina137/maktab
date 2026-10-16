@@ -31,6 +31,7 @@ for(const key of [
  'testID="teacher-schedule-panel"',
  'testID="teacher-schedule-week-list"',
  'testID="teacher-schedule-today"',
+ 'testID="teacher-schedule-refresh"',
  'testID="teacher-schedule-previous-day"',
  'testID="teacher-schedule-next-day"',
  'testID={`teacher-schedule-period-${period.id}`}',
@@ -68,7 +69,7 @@ const localeKeys=[
   "weekday.friday","teacher.scheduleDay","teacher.scheduleDayTitle","teacher.scheduleWeek",
   "teacher.schedulePrevious","teacher.scheduleNext","teacher.scheduleViewDay",
   "teacher.scheduleCurrent","teacher.scheduleFinished","teacher.scheduleUpcoming",
-  "teacher.scheduleTemplateHint"
+  "teacher.scheduleTemplateHint","teacher.scheduleRefresh"
 ];
 for(const key of localeKeys){
   assert.ok(translations.includes('  | "'+key+'"'),"Missing localization type: "+key);
