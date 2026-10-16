@@ -63,7 +63,9 @@ export function PilotReadinessPriorities({ core, coverage, locale, busy }: {
               <p>{issue.level === "unverified"
                 ? t("Report unavailable or invalid. Retry and verify the data.")
                 : issue.affected === undefined
-                ? t("Required setup or coverage check needs attention.")
+                ? t(issue.key.startsWith("coverage-")
+                  ? "No eligible records; coverage is not verified."
+                  : "Required setup or coverage check needs attention.")
                 : adminFormat(locale, "{count} affected records need correction.", {
                   count: number(issue.affected)
                 })}</p>
