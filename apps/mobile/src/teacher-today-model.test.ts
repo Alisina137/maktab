@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {teacherAssignmentForPeriod, teacherDayTimeline, kabulTeacherClock} from "./teacher-hub-data.js";
+import {teacherAssignmentForPeriod, teacherDayTimeline, kabulTeacherClock} from "./teacher-today-model.js";
 import type {TeacherTodayPayload, TeacherAcademicsPayload} from "./api.js";
 
 const lesson = (id:string,startsAt:string,endsAt:string,classId="C1",subjectId="S1")=>({
@@ -29,7 +29,7 @@ test("Phase 2: before, during, between, after and inclusive boundary semantics",
   assert.equal(last.stage,"DONE");assert.equal(last.completed,2);assert.equal(last.remaining,0);
 });
 test("Phase 2: refuse stale school day and malformed periods",()=>{
-  assert.equal(teacherDayTimeline(today,new Date("2026-10-17T00:00:00Z")).stage,"UNAVAILABLE");
+  assert.equal(teacherDayTimeline(today,new Date("2026-10-16T12:00:00Z")).stage,"UNAVAILABLE");
   assert.equal(teacherDayTimeline(null,clock(9)).stage,"UNAVAILABLE");
   assert.equal(teacherDayTimeline({...today,schedule:[]},clock(9)).stage,"EMPTY");
   assert.equal(teacherDayTimeline({...today,schedule:[lesson("bad","25:00","26:00")]},clock(9)).total,0);
