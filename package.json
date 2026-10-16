@@ -81,7 +81,7 @@
     "verify:staff:phase5": "node scripts/verify-staff-phase5.mjs && pnpm --filter @maktablink/database exec tsx --test src/staff-attendance-correction-store.test.ts src/migration-chain.test.ts && pnpm typecheck",
     "verify:staff:phase6": "node scripts/verify-staff-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/fees-phase6.integration.test.ts && pnpm typecheck",
     "verify:staff:phase7": "node scripts/verify-staff-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/workflow-phase7.integration.test.ts && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck",
-    "verify:staff:phase8": "node scripts/verify-staff-phase8.mjs && pnpm verify:staff:phase1 && pnpm verify:staff:phase2 && pnpm verify:staff:phase3 && pnpm verify:staff:phase4 && pnpm verify:staff:phase5 && pnpm verify:staff:phase6 && pnpm verify:staff:phase7 && pnpm --filter @maktablink/api exec tsx --test src/staff/fees-phase6.integration.test.ts src/staff/workflow-phase7.integration.test.ts && pnpm typecheck"
+    "verify:staff:phase8": "node scripts/verify-staff-phase8.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/security-phase8.integration.test.ts && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
