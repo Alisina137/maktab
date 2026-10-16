@@ -9082,3 +9082,85 @@ test("Standalone web staff role: first-login setup, scoped directory, and admin 
   // rather than reaching the live-role guard (403).
   assert.equal(nowForbidden.statusCode,401);
 });
+
+test("Staff Phase 1: job profiles are school-scoped, grants explicit, admin-only and session-revoking", async(t) => {
+  const {app,client}=await createTestApp();
+  t.after(async()=>{await app.close();await client.close();});
+  const schoolA=await provisionSchool(app,"STAFF-JOB-A");
+  const schoolB=await provisionSchool(app,"STAFF-JOB-B");
+  const adminA=await bootstrapAdmin(app,schoolA);
+  const adminB=await bootstrapAdmin(app,schoolB);
+  const headerA={authorization:`Bearer ${adminA}`};
+  const headerB={authorization:`Bearer ${adminB}`};
+  const create=await app.inject({method:"POST",url:"/v1/admin/users",headers:headerA,
+    payload:{username:"staffphaseone",role:"SCHOOL_STAFF"}});
+  assert.equal(create.statusCode,201);
+  const {user,temporaryPassword}=create.json<{user:{id:string};temporaryPassword:string}>();
+  const profileUrl=`/v1/admin/staff/${user.id}/profile`;
+  const noProfile=await app.inject({method:"GET",url:profileUrl,headers:headerA});
+  assert.equal(noProfile.statusCode,200);
+  assert.equal(noProfile.json<{profile:unknown}>().profile,null);
+  for(const headers of [headerB,{}]) {
+    const forbidden=await app.inject({method:"GET",url:profileUrl,headers});
+    assert.ok([401,404].includes(forbidden.statusCode));
+  }
+  const attempt=await app.inject({method:"PUT",url:profileUrl,headers:headerA,
+    payload:{fullName:"Office Staff",employeeCode:"OFF-001",department:"Reception",
+      position:"RECEPTIONIST",permissions:["ADMIN_ALL"]}});
+  assert.equal(attempt.statusCode,400);
+  const duplicate=await app.inject({method:"PUT",url:profileUrl,headers:headerA,
+    payload:{fullName:"Office Staff",employeeCode:"OFF-001",department:"Reception",
+      position:"RECEPTIONIST",permissions:["DIRECTORY_VIEW","DIRECTORY_VIEW"]}});
+  assert.equal(duplicate.statusCode,400);
+  const crossSchool=await app.inject({method:"PUT",url:profileUrl,headers:headerB,
+    payload:{fullName:"Foreign",employeeCode:null,department:"Office",
+      position:"RECEPTIONIST",permissions:["DIRECTORY_VIEW"]}});
+  assert.equal(crossSchool.statusCode,404);
+  const staffLogin=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"staffphaseone",password:temporaryPassword}});
+  assert.equal(staffLogin.statusCode,200);
+  const setup=await app.inject({method:"POST",url:"/v1/auth/change-temporary-password",
+    headers:{authorization:`Bearer ${staffLogin.json<{accessToken:string}>().accessToken}`},
+    payload:{newPassword:"StaffJobPhase1New2026!"}});
+  assert.equal(setup.statusCode,200);
+  const token=setup.json<{accessToken:string}>().accessToken;
+  const myHeaders={authorization:`Bearer ${token}`};
+  const me=await app.inject({method:"GET",url:"/v1/staff/me",headers:myHeaders});
+  assert.equal(me.statusCode,200);
+  assert.equal(me.json<{profile:unknown}>().profile,null);
+  const denied=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=student",headers:myHeaders});
+  assert.equal(denied.statusCode,403);
+  assert.equal(denied.json<{error:string}>().error,"permission_denied");
+  const staffAttempt=await app.inject({method:"PUT",url:profileUrl,headers:myHeaders,
+    payload:{fullName:"Office Staff",employeeCode:"OFF-001",department:"Reception",
+      position:"RECEPTIONIST",permissions:["DIRECTORY_VIEW"]}});
+  assert.equal(staffAttempt.statusCode,403);
+  const valid=await app.inject({method:"PUT",url:profileUrl,headers:headerA,
+    payload:{fullName:"Office Staff",employeeCode:"OFF-001",department:"Reception",
+      position:"RECEPTIONIST",permissions:["DIRECTORY_VIEW","TASKS_VIEW"]}});
+  assert.equal(valid.statusCode,200,valid.body);
+  assert.deepEqual(valid.json<{profile:{permissions:string[]}}>().profile.permissions,
+    ["DIRECTORY_VIEW","TASKS_VIEW"]);
+  const revoked=await app.inject({method:"GET",url:"/v1/staff/me",headers:myHeaders});
+  assert.equal(revoked.statusCode,401);
+  const repeat=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"staffphaseone",password:"StaffJobPhase1New2026!"}});
+  assert.equal(repeat.statusCode,200);
+  const newToken=repeat.json<{accessToken:string}>().accessToken;
+  const meAgain=await app.inject({method:"GET",url:"/v1/staff/me",
+    headers:{authorization:`Bearer ${newToken}`}});
+  assert.equal(meAgain.statusCode,200);
+  assert.equal(meAgain.json<{profile:{position:string;employeeCode:string}}>().profile.employeeCode,"OFF-001");
+  const allowed=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=staff&group=TEACHER",
+    headers:{authorization:`Bearer ${newToken}`}});
+  assert.equal(allowed.statusCode,200);
+  const audited=await app.inject({method:"GET",url:`/v1/admin/users/${user.id}/audit`,
+    headers:headerA});
+  assert.equal(audited.statusCode,200);
+  assert.ok(audited.json<{logs:Array<{action:string}>}>().logs.some(row=>
+    row.action==="staff.profile_updated"));
+});
