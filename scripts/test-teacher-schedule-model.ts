@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   TEACHER_SCHOOL_WEEKDAYS, TEACHER_ALL_WEEKDAYS, teacherKabulWeekday,
-  teacherPeriodsForDay, teacherSchedulePeriodState, teacherShiftWeekday
+  teacherPeriodsForDay, teacherSchedulePeriodState, teacherShiftWeekday, teacherWeekdayOrder
 } from "../apps/mobile/src/teacher-schedule-model.js";
 import type { TeacherAcademicsPayload, TeacherTodayPayload } from "../apps/mobile/src/api.js";
 
@@ -38,6 +38,15 @@ test("Teacher Phase 3: six standard teaching days, Friday reachable in Day view"
     "SATURDAY","SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY"
   ]);
   assert.equal(TEACHER_ALL_WEEKDAYS.length,7);
+  assert.deepEqual(teacherWeekdayOrder(false),[
+    "SATURDAY","SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY"
+  ]);
+  assert.deepEqual(teacherWeekdayOrder(true),[
+    "MONDAY","TUESDAY","WEDNESDAY","THURSDAY","SATURDAY","SUNDAY"
+  ]);
+  assert.deepEqual(teacherWeekdayOrder(true,true),[
+    "MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"
+  ]);
   assert.equal(teacherShiftWeekday("SATURDAY",-1),"FRIDAY");
   assert.equal(teacherShiftWeekday("FRIDAY",1),"SATURDAY");
   assert.equal(teacherShiftWeekday("MONDAY",1),"TUESDAY");
