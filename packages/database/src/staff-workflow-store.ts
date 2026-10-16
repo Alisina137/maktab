@@ -189,7 +189,7 @@ export function createStaffWorkflowStore(db:FoundationDatabase):StaffWorkflowSto
         const admins=await tx.select({id:users.id}).from(users).where(and(
           eq(users.schoolId,schoolId),eq(users.role,"SCHOOL_ADMIN"),eq(users.status,"ACTIVE")));
         for(const admin of admins){
-          await notify(tx,schoolId,admin.id,`staff-message:${draft.id}:${draft.updatedAt.getTime()}:${admin.id}`,
+          await notify(tx,schoolId,admin.id,`staff-message:${draft.id}:${randomUUID()}:${admin.id}`,
             "Staff message needs review",draft.title,"/admin");
         }
         return draft;
@@ -206,7 +206,7 @@ export function createStaffWorkflowStore(db:FoundationDatabase):StaffWorkflowSto
         await audit(tx,schoolId,adminId,"staff_message.reviewed","staff_message_draft",draft.id,{
           status:draft.status,authorId:draft.createdBy
         });
-        await notify(tx,schoolId,draft.createdBy,`staff-message-review:${draft.id}:${draft.reviewedAt?.getTime() ?? draft.updatedAt.getTime()}`,
+        await notify(tx,schoolId,draft.createdBy,`staff-message-review:${draft.id}:${randomUUID()}`,
           "Communication draft reviewed",draft.title+" — "+draft.status,"/staff/dashboard");
         // APPROVED means admin reviewed the copy; it is NOT published or sent.
         // Only the separately authorized admin announcement workflow may publish.
