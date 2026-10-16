@@ -784,9 +784,8 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
               <Link className="pilot-inline-link" href="/admin/pilot/readiness">{t("View all checks")}</Link>
             </article>
             <article className="admin-panel pilot-launch-note">
-              <h3>{t("Launch approval")}</h3>
-              <span className="pilot-badge pilot-badge-warning">{t("Not verified")}</span>
-              <p>{t("Live deployment, device tests, backup recovery, and operator approval require separate verification.")}</p>
+              <h3>{t("Launch evidence & support")}</h3>
+              <p>{t("Track operator-reviewed pilot evidence and support requests separately from production acceptance.")}</p>
               <Link className="pilot-inline-link" href="/admin/pilot/launch">{t("View launch requirements")}</Link>
             </article>
           </div>
