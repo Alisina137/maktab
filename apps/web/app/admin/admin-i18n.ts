@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Independent infrastructure checks are outstanding": "بررسی مستقل زیربنا هنوز انجام نشده است",
   "Investigate failed imports": "بررسی واردسازی‌های ناموفق",
   "Failed import batches recorded in the last seven days.": "واردسازی‌های ناموفق طی هفت روز اخیر ثبت شده‌اند.",
   "Request subscription reconciliation": "درخواست بررسی مجدد اشتراک",
@@ -2347,6 +2348,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Independent infrastructure checks are outstanding": "د زیربنا خپلواکې کتنې لا پاتې دي",
   "Investigate failed imports": "ناکام واردونې وڅېړئ",
   "Failed import batches recorded in the last seven days.": "په تېرو اوو ورځو کې ناکامې واردونې ثبت شوې دي.",
   "Request subscription reconciliation": "د ګډون د بیاکتنې غوښتنه",
