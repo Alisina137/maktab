@@ -8991,12 +8991,6 @@ test("Standalone web staff role: first-login setup, scoped directory, and admin 
   assert.equal(created.user.role,"SCHOOL_STAFF");
   assert.equal(created.user.mustChangePassword,true);
 
-  const studentA=await app.inject({
-    method:"POST",url:"/v1/admin/families/students",headers:adminHeaders,
-    payload:{username:"student_staff_a",fullName:"Student Alpha"}
-  });
-  // Schools with different enrollment workflows may reject this optional setup.
-  // Teacher accounts are universally creatable through admin provisioning.
   const teacherA=await app.inject({
     method:"POST",url:"/v1/admin/users",headers:adminHeaders,
     payload:{username:"teacherstaffa",role:"TEACHER"}
@@ -9008,7 +9002,6 @@ test("Standalone web staff role: first-login setup, scoped directory, and admin 
     payload:{username:"teacherotherb",role:"TEACHER"}
   });
   assert.equal(teacherB.statusCode,201);
-  void studentA;
 
   const wrongRole=await app.inject({method:"POST",url:"/v1/auth/login",
     payload:{schoolId:schoolA,expectedRole:"SCHOOL_ADMIN",
