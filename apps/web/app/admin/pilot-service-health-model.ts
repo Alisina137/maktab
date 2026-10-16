@@ -48,9 +48,10 @@ export function parseServiceHealthResponse(raw: unknown): ServiceHealthResponse 
       report.timeZone !== "Asia/Kabul" || report.api !== "responding" ||
       report.database !== "query_succeeded")
     throw new Error("Invalid service health evidence.");
-  if (!Array.isArray(report.unverified) || report.unverified.length !== requiredUnknown.length ||
-      new Set(report.unverified).size !== requiredUnknown.length ||
-      !requiredUnknown.every(key => report.unverified.includes(key)))
+  const unverified = report.unverified;
+  if (!Array.isArray(unverified) || unverified.length !== requiredUnknown.length ||
+      new Set(unverified).size !== requiredUnknown.length ||
+      !requiredUnknown.every(key => unverified.includes(key)))
     throw new Error("Independent service checks are not verified.");
   const queue = record(report.notificationQueue);
   const pending = natural(queue.pending);
