@@ -10,7 +10,9 @@ import {
 import { clearStaffSession, readStaffSession, storeStaffSession, type StaffSession } from "../staff-client";
 
 type StaffMe={user:{id:string;username:string;role:"SCHOOL_STAFF";status:string};
-  school:{id:string;name:string;code:string}};
+  school:{id:string;name:string;code:string};
+  profile:{fullName:string;employeeCode:string|null;position:string;
+    department:string;permissions:string[]} | null};
 type Match={username:string;fullName:string;code:string|null;
   role:"STUDENT"|"PARENT"|"TEACHER";status:string};
 type Directory={entries:Match[];total:number;page:number;pages:number;pageSize:number};
@@ -34,6 +36,7 @@ export default function StaffDashboard() {
   const [passwordBusy,setPasswordBusy]=useState(false);
   const [passwordNotice,setPasswordNotice]=useState("");
   const t=(s:string)=>adminText(locale,s);
+  const canDirectory=profile?.profile?.permissions?.includes("DIRECTORY_VIEW")===true;
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
@@ -162,11 +165,14 @@ export default function StaffDashboard() {
       </header>
       <section className="staff-hero">
         <span className="eyebrow">{t("Staff workspace")}</span>
-        <h1>{t("Welcome back")}, {profile.user.username}</h1>
+        <h1>{t("Welcome back")}, {profile.profile?.fullName || profile.user.username}</h1>
         <p>{t("Find school records for front-desk assistance. Account creation, grades, fees and administrative settings remain administrator-only.")}</p>
-        <div className="staff-school-badge">{profile.school.name} · {profile.school.code}</div>
+        <div className="staff-school-badge">{profile.school.name} · {profile.school.code}
+          {profile.profile ? ` · ${t(profile.profile.position.replaceAll("_"," ").toLowerCase())}` : ""}
+        </div>
       </section>
       <div className="staff-workspace-grid">
+        {canDirectory ? (
         <section className="admin-panel staff-directory">
           <div className="admin-section-header">
             <div>
@@ -229,6 +235,12 @@ export default function StaffDashboard() {
             {t("This is a limited lookup, not an administrator directory. Private contacts and student family relationships are not shown.")}
           </p>
         </section>
+        ) : (
+          <section className="admin-panel staff-directory" role="status">
+            <h2>{t("Directory access not assigned")}</h2>
+            <p>{t("Ask your school administrator to assign the directory permission. Your staff account remains separate from the admin dashboard.")}</p>
+          </section>
+        )}
         <aside className="staff-side">
           <section className="admin-panel staff-security">
             <h2>{t("My staff account")}</h2>
@@ -237,6 +249,11 @@ export default function StaffDashboard() {
               <div><dt>{t("Role")}</dt><dd>{t("School staff")}</dd></div>
               <div><dt>{t("School")}</dt><dd>{profile.school.name}</dd></div>
               <div><dt>{t("Status")}</dt><dd>{t(profile.user.status)}</dd></div>
+              <div><dt>{t("Position")}</dt><dd>{profile.profile
+                ? t(profile.profile.position.replaceAll("_"," ").toLowerCase()) : "—"}</dd></div>
+              <div><dt>{t("Department")}</dt><dd>{profile.profile?.department || "—"}</dd></div>
+              <div><dt>{t("Employee code")}</dt><dd>{profile.profile?.employeeCode || "—"}</dd></div>
+              <div><dt>{t("Assigned permissions")}</dt><dd>{profile.profile?.permissions.length ?? 0}</dd></div>
             </dl>
           </section>
           <section className="admin-panel staff-security">
