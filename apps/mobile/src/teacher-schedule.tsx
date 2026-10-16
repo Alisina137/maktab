@@ -185,7 +185,7 @@ export function TeacherSchedulePanel({
             {items.length>2?<Pressable accessibilityRole="button" style={styles.seeDay}
               onPress={()=>{onSelectWeekday(weekday);onViewChange("DAY");}}>
               <Text style={styles.linkText}>{translate(locale,"teacher.scheduleViewDay")} · {
-                formatLocalizedNumber(items.length-2,locale)
+                formatLocalizedNumber(items.length,locale)
               }</Text>
               <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={16} color={tokens.color.brandStrong}/>
             </Pressable>:null}
