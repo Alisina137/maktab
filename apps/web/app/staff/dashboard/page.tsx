@@ -12,6 +12,9 @@ import { StaffHomePanel } from "../staff-home-panel";
 import { StaffRegistrationPanel } from "../staff-registration-panel";
 import { StaffAttendancePanel } from "../staff-attendance-panel";
 import { StaffFeesPanel } from "../staff-fees-panel";
+import { StaffWorkPanel } from "../staff-work-panel";
+import { StaffWorkPreferences, DEFAULT_STAFF_PREFERENCES, type StaffPreferences } from "../staff-work-preferences";
+import { staffWorkText } from "../staff-work-i18n";
 
 type StaffMe={user:{id:string;username:string;role:"SCHOOL_STAFF";status:string};
   school:{id:string;name:string;code:string};
@@ -24,7 +27,7 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
-  const [tab,setTab]=useState<"home"|"directory"|"registration"|"attendance"|"fees"|"settings">("home");
+  const [tab,setTab]=useState<"home"|"directory"|"registration"|"attendance"|"fees"|"work"|"notifications"|"settings">("home");
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -45,19 +48,26 @@ export default function StaffDashboard() {
   const [newPassword,setNewPassword]=useState("");
   const [passwordBusy,setPasswordBusy]=useState(false);
   const [passwordNotice,setPasswordNotice]=useState("");
-  const t=(s:string)=>adminText(locale,s);
+  const [workPrefs,setWorkPrefs]=useState<StaffPreferences>(DEFAULT_STAFF_PREFERENCES);
+  const [workUnread,setWorkUnread]=useState(0);
+  const t=(s:string)=>staffWorkText(locale,s);
   const canDirectory=profile?.profile?.permissions?.includes("DIRECTORY_VIEW")===true;
   const canRegister=profile?.profile?.permissions?.includes("ENROLLMENT_REQUESTS")===true;
   const canAttend=profile?.profile?.permissions?.includes("ATTENDANCE_REVIEW")===true;
   const canViewFees=profile?.profile?.permissions?.includes("FEES_VIEW")===true;
   const canCollectFees=profile?.profile?.permissions?.includes("FEES_COLLECT")===true;
   const canFees=canViewFees||canCollectFees;
+  const canTasks=profile?.profile?.permissions?.includes("TASKS_VIEW")===true;
+  const canDrafts=profile?.profile?.permissions?.includes("COMMUNICATION_DRAFT")===true;
+  const canWork=canTasks||canDrafts;
   const tabs=[
     {id:"home" as const,label:"Home"},
     ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
     ...(canRegister?[{id:"registration" as const,label:"Registration"}]:[]),
     ...(canAttend?[{id:"attendance" as const,label:"Attendance"}]:[]),
     ...(canFees?[{id:"fees" as const,label:"Fees"}]:[]),
+    ...(canWork?[{id:"work" as const,label:"Staff work"}]:[]),
+    {id:"notifications" as const,label:"Notifications"},
     {id:"settings" as const,label:"Profile & Settings"}
   ];
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
@@ -206,11 +216,20 @@ export default function StaffDashboard() {
         position={profile.profile?.position ?? null}
         department={profile.profile?.department ?? null}
         permissions={profile.profile?.permissions ?? []}
+        unreadCount={workPrefs.showNotificationBadge?workUnread:0}
         onDirectory={()=>setTab("directory")} onRegistrations={()=>setTab("registration")}
         onAttendance={()=>setTab("attendance")} onFees={()=>setTab("fees")}
+        onWork={()=>setTab("work")} onNotifications={()=>setTab("notifications")}
         onSettings={()=>setTab("settings")}/> : null}
       {tab==="attendance"&&canAttend?<StaffAttendancePanel locale={locale} api={authenticated}/>:null}
       {tab==="fees"&&canFees?<StaffFeesPanel locale={locale} api={authenticated} canCollect={canCollectFees}/>:null}
+      {tab==="work"&&canWork?<StaffWorkPanel locale={locale} api={authenticated}
+        canTasks={canTasks} canDrafts={canDrafts}
+        initialView={canTasks?"tasks":"drafts"} compactTaskView={workPrefs.compactTaskView}
+        onUnreadChange={setWorkUnread}/>:null}
+      {tab==="notifications"?<StaffWorkPanel locale={locale} api={authenticated}
+        canTasks={canTasks} canDrafts={canDrafts} initialView="notifications"
+        compactTaskView={workPrefs.compactTaskView} onUnreadChange={setWorkUnread}/>:null}
       {tab==="registration"&&canRegister?<StaffRegistrationPanel locale={locale}
         userId={profile.user.id} api={authenticated}/>:null}
       {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
@@ -351,6 +370,7 @@ export default function StaffDashboard() {
               <div><dt>{t("Assigned permissions")}</dt><dd>{profile.profile?.permissions.length ?? 0}</dd></div>
             </dl>
           </section>
+          <StaffWorkPreferences locale={locale} api={authenticated} onSaved={setWorkPrefs}/>
           <section className="admin-panel staff-security">
             <h2>{t("Change my password")}</h2>
             <form className="admin-form" onSubmit={changePassword}>
