@@ -8997,3 +8997,27 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-service-triage-filter { flex: 1 1 100%; }
   .pilot-service-triage .admin-section-header { flex-wrap: wrap; }
 }
+
+/* Pilot Ops improvement Phase 6: transparent page-scoped oversight and review. */
+.pilot-oversight-review-controls { display: grid; gap: 5px; margin: 10px 0; }
+.pilot-oversight-review-controls label { display: inline-flex; align-items: center;
+  gap: 9px; font-size: 12px; font-weight: 750; cursor: pointer; }
+.pilot-oversight-review-controls input { width: 17px; height: 17px; accent-color: #315d9b; }
+.pilot-oversight-review-controls p { margin: 0; font-size: 12px;
+  color: var(--ml-color-text-muted); line-height: 1.6; }
+.pilot-oversight-page-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px; margin: 12px 0 7px; }
+.pilot-oversight-page-metric { display: grid; gap: 7px; min-width: 0;
+  border: 1px solid #dce5f0; border-radius: 11px; background: #f9fbff; padding: 12px; }
+.pilot-oversight-page-metric span { font-size: 12px; color: var(--ml-color-text-muted); }
+.pilot-oversight-page-metric strong { font-size: 23px; color: #315788; font-variant-numeric: tabular-nums; }
+.pilot-oversight-row-review { border-inline-start: 4px solid #b18440;
+  background: #fffcf7; border-radius: 8px; }
+.pilot-oversight-review-controls input:focus-visible { outline: 3px solid var(--ml-color-brand);
+  outline-offset: 3px; }
+@media(max-width:850px) {
+  .pilot-oversight-page-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:520px) {
+  .pilot-oversight-page-metrics { grid-template-columns: minmax(0,1fr); }
+}
