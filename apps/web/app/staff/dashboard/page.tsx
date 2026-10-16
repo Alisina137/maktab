@@ -124,6 +124,20 @@ export default function StaffDashboard() {
     }).finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;};
   },[authenticated,router]);
+  // Phase 7: home notification count and display preferences are available
+  // immediately after successful staff login; opening Work is not required.
+  useEffect(()=>{
+    if(!profile?.user.id)return;
+    let active=true;
+    void Promise.all([
+      authenticated<{preferences:StaffPreferences}>("/v1/staff/work-preferences"),
+      authenticated<{unreadCount:number}>("/v1/staff/work-notifications")
+    ]).then(([preferences,notifications])=>{
+      if(active){setWorkPrefs(preferences.preferences);setWorkUnread(notifications.unreadCount);}
+    }).catch(()=>{ /* Existing authenticated() handles invalid sessions. */ });
+    return ()=>{active=false;};
+  },[profile?.user.id,authenticated]);
+
   useEffect(()=>{
     document.documentElement.lang=locale==="en"?"en":locale==="ps-AF"?"ps":"fa";
     document.documentElement.dir=adminDirection(locale);
