@@ -24,7 +24,7 @@ for(const key of ["ENROLLMENT_REQUESTS","requireSchoolAdmin","details.parse(requ
   'reply.header("cache-control","no-store")'])
   assert.ok(api.includes(key),"Registration endpoint guard: "+key);
 assert.ok(dashboard.includes("canRegister")&&dashboard.includes("StaffRegistrationPanel"));
-assert.ok(home.includes("onRegistrations, onAttendance, onFees, onSettings"));
+assert.ok(home.includes("onRegistrations, onAttendance, onFees, onWork, onNotifications, unreadCount, onSettings"));
 assert.ok(staff.includes("Submit for review")&&staff.includes("identityChecked"));
 assert.ok(admin.includes("Approve & enroll")&&admin.includes("Reject application"));
 assert.ok(css.includes(".staff-reg-columns"));
