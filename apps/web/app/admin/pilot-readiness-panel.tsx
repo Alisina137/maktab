@@ -11,6 +11,8 @@ import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
 import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
+import { PilotOperationsNavigation, type PilotSection } from "./pilot-operations-navigation";
+export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -209,24 +211,6 @@ async function downloadAuthenticated(accessToken: string, path: string, fallback
   URL.revokeObjectURL(url);
 }
 
-export const PILOT_TABS = [
-  { section: "overview", label: "Overview", href: "/admin/pilot" },
-  { section: "readiness", label: "School readiness", href: "/admin/pilot/readiness" },
-  { section: "onboarding", label: "Data onboarding", href: "/admin/pilot/onboarding" },
-  { section: "adoption", label: "Usage & adoption", href: "/admin/pilot/adoption" },
-  { section: "service", label: "Service health", href: "/admin/pilot/service" },
-  { section: "oversight", label: "Operations oversight", href: "/admin/pilot/oversight" },
-  { section: "subscription", label: "Subscription", href: "/admin/pilot/subscription" },
-  { section: "audit", label: "Audit & exports", href: "/admin/pilot/audit" },
-  { section: "launch", label: "Launch & support", href: "/admin/pilot/launch" },
-] as const;
-
-export type PilotSection = (typeof PILOT_TABS)[number]["section"];
-
-export function isPilotSection(value: string): value is PilotSection {
-  return PILOT_TABS.some((item) => item.section === value);
-}
-
 const CHECK_DESTINATIONS: Record<string, string> = {
   "school-active": "/admin/pilot/subscription",
   subscription: "/admin/pilot/subscription",
@@ -241,7 +225,6 @@ const CHECK_DESTINATIONS: Record<string, string> = {
 
 export function PilotReadinessPanel({ accessToken, section = "overview" }: { accessToken: string; section?: PilotSection }) {
   const { locale } = useAdminWorkspace();
-  const pilotNavRef = useRef<HTMLElement | null>(null);
   const requestVersion = useRef(0);
   const issueRequestVersion = useRef(0);
   const importHistoryRequestVersion = useRef(0);
@@ -270,11 +253,6 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
   const { error, notice, setError, setNotice } = useTransientAdminFeedback();
-
-  useEffect(() => {
-    const active = pilotNavRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [section, busy]);
 
   useEffect(() => {
     setSubscription(null);
@@ -525,19 +503,15 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             {t("Review onboarding checks, subscription access, audit history, safe school export, and import templates.")}
           </p>
         </div>
-        <button className="admin-secondary" type="button" onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
+        {(["overview", "readiness", "onboarding", "subscription", "audit", "launch"] as PilotSection[])
+          .includes(section) ? (
+          <button className="admin-secondary" type="button"
+            onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
+        ) : null}
       </div>
 
 
-      <nav className="pilot-section-nav" aria-label={t("Pilot operations sections")} ref={pilotNavRef}>
-        {PILOT_TABS.map((item) => (
-          <Link key={item.section} href={item.href}
-            aria-current={section === item.section ? "page" : undefined}
-            className={section === item.section ? "pilot-section-link pilot-section-link-active" : "pilot-section-link"}>
-            {t(item.label)}
-          </Link>
-        ))}
-      </nav>
+      <PilotOperationsNavigation section={section} locale={locale} />
 
       {loadError ? <div className="admin-error pilot-retry-alert" role="alert">
         <span>{loadError}</span>
