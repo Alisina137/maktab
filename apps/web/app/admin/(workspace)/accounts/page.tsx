@@ -23,7 +23,7 @@ function roleCreationHelp(role: User["role"]): string {
     case "PARENT": return "Create a parent login and parent profile together.";
     case "STUDENT": return "Select an existing active student without a login. Family linking stays in Families.";
     case "TEACHER": return "Create a teacher login here, then complete the teacher profile in Academics.";
-    case "SCHOOL_STAFF": return "Create a school staff login with school-scoped access.";
+    case "SCHOOL_STAFF": return "Create a staff account for the separate web staff portal at /staff. Give the staff member their username and temporary password; they must change it at first sign-in. Staff cannot access the administrator dashboard.";
     case "SCHOOL_ADMIN": return "Create another administrator only when school-wide administrative access is necessary.";
   }
 }
