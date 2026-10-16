@@ -7,6 +7,7 @@ const exports = read("packages/database/src/index.ts");
 const routes = read("apps/api/src/pilot/routes.ts");
 const ui = read("apps/web/app/admin/pilot-service-health-panel.tsx");
 const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
 const support = read("apps/web/app/admin/pilot-launch-support-panel.tsx");
 const workspace = read("apps/web/app/admin/admin-workspace.tsx");
 const styles = read("apps/web/app/globals.css");
@@ -47,8 +48,8 @@ assert.ok(routes.includes("subscription: evaluateSubscriptionHealth(context.subs
   subscription.includes("platformReviewNeeded") &&
   subscription.includes("operationalWritesBlocked"),
   "Billing status must reuse read-only platform subscription health");
-assert.ok(pilot.includes('section: "service"') &&
-  pilot.includes('href: "/admin/pilot/service"') &&
+assert.ok(navigation.includes('section: "service"') &&
+  navigation.includes('href: "/admin/pilot/service"') &&
   pilot.includes('<PilotServiceHealthPanel') &&
   pilot.includes('section === "adoption" || section === "service"'),
   "Service tab must render independently of unrelated readiness failures");
