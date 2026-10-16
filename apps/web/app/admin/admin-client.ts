@@ -175,6 +175,10 @@ export function friendlyAdminError(
 }
 
 export function saveAdminSession(value: StoredAdminSession) {
+  if (value.session.user.role !== "SCHOOL_ADMIN" || value.session.mustChangePassword ||
+      value.session.user.status === "SUSPENDED" || value.session.user.status === "ARCHIVED") {
+    throw new Error("A valid administrator session is required.");
+  }
   if (typeof window !== "undefined") {
     window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(value));
   }
@@ -185,7 +189,15 @@ export function loadAdminSession(): StoredAdminSession | null {
   const value = window.sessionStorage.getItem(ADMIN_SESSION_KEY);
   if (!value) return null;
   try {
-    return JSON.parse(value) as StoredAdminSession;
+    const session=JSON.parse(value) as StoredAdminSession;
+    if (!session?.session?.accessToken || !session.session.refreshToken ||
+        !session.school?.id || session.session.user?.role !== "SCHOOL_ADMIN" ||
+        session.session.mustChangePassword ||
+        session.session.user.status === "ARCHIVED" ||
+        session.session.user.status === "SUSPENDED") {
+      throw new Error("Invalid administrator session.");
+    }
+    return session;
   } catch {
     window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
     return null;
