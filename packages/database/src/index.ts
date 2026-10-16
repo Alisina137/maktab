@@ -40,3 +40,4 @@ export * from "./registration-store.js";
 export * from "./staff-attendance-correction-store.js";
 
 export * from "./staff-fee-read-store.js";
+export * from "./staff-workflow-store.js";
