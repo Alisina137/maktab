@@ -162,6 +162,7 @@ export type TranslationKey =
   | "teacher.allNotifications"
   | "teacher.dayAtGlance"
   | "teacher.currentLesson"
+  | "teacher.upNext"
   | "teacher.inProgress"
   | "teacher.openLesson"
   | "teacher.lessonsCompleted"
@@ -746,6 +747,7 @@ const en: Record<TranslationKey, string> = {
   "teacher.allNotifications": "All notifications",
   "teacher.dayAtGlance": "Your day at a glance",
   "teacher.currentLesson": "Current lesson",
+  "teacher.upNext": "Up next",
   "teacher.inProgress": "In progress",
   "teacher.openLesson": "Open class",
   "teacher.lessonsCompleted": "Completed",
@@ -1346,6 +1348,7 @@ const dari: Record<TranslationKey, string> = {
   "teacher.allNotifications": "همه اعلان‌ها",
   "teacher.dayAtGlance": "نمای کلی روز شما",
   "teacher.currentLesson": "درس فعلی",
+  "teacher.upNext": "درس بعدی",
   "teacher.inProgress": "در جریان",
   "teacher.openLesson": "بازکردن صنف",
   "teacher.lessonsCompleted": "تکمیل‌شده",
@@ -1946,6 +1949,7 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.allNotifications": "ټول خبرتیاوې",
   "teacher.dayAtGlance": "ستاسو د ورځې لنډیز",
   "teacher.currentLesson": "روان درس",
+  "teacher.upNext": "راتلونکی درس",
   "teacher.inProgress": "روان دی",
   "teacher.openLesson": "ټولګی پرانیزئ",
   "teacher.lessonsCompleted": "بشپړ شوي",
