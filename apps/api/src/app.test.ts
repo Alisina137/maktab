@@ -9,6 +9,7 @@ import {
   createAttendanceStore,
   createCommunicationStore,
   createFamilyStore,
+  createRegistrationStore,
   createLearningStore,
   createLearningExtensionsStore,
   createTeacherTeachingStore,
@@ -55,7 +56,8 @@ async function createTestApp() {
     "0025_notification_push_lease.sql",
     "0026_admin_attendance_calendar.sql",
     "0027_admin_attendance_followups.sql",
-    "0028_staff_profiles_permissions.sql"
+    "0028_staff_profiles_permissions.sql",
+    "0029_staff_registration_requests.sql"
   ]) {
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
@@ -90,6 +92,7 @@ async function createTestApp() {
     accountStore: createAccountStore(db),
     academicStore: createAcademicStore(db),
     familyStore: createFamilyStore(db),
+    registrationStore: createRegistrationStore(db),
     attendanceStore: createAttendanceStore(db),
     learningStore: createLearningStore(db),
     learningExtensionsStore,
@@ -9262,4 +9265,133 @@ test("Staff Phase 3: directory filtering, privacy boundaries and read-only detai
     const invalid=await app.inject({method:"GET",url,headers});
     assert.equal(invalid.statusCode,400,url);
   }
+});
+
+
+test("Staff Phase 4: draft, submission, approval, duplicate and tenant safety",async(t)=>{
+  const {app,client}=await createTestApp();
+  t.after(async()=>{await app.close();await client.close();});
+  const schoolA=await provisionSchool(app,"REG-PH4-A");
+  const schoolB=await provisionSchool(app,"REG-PH4-B");
+  const adminA={authorization:`Bearer ${await bootstrapAdmin(app,schoolA)}`};
+  const adminB={authorization:`Bearer ${await bootstrapAdmin(app,schoolB)}`};
+  const parentA=await app.inject({method:"POST",url:"/v1/admin/families/parents",
+    headers:adminA,payload:{username:"regparenta",fullName:"Registration Parent A"}});
+  const parentB=await app.inject({method:"POST",url:"/v1/admin/families/parents",
+    headers:adminB,payload:{username:"regparentb",fullName:"Registration Parent B"}});
+  assert.equal(parentA.statusCode,201,parentA.body);
+  assert.equal(parentB.statusCode,201,parentB.body);
+  const parentId=parentA.json<{user:{id:string}}>().user.id;
+  const foreignParentId=parentB.json<{user:{id:string}}>().user.id;
+  const year=await app.inject({method:"POST",url:"/v1/admin/academics/years",
+    headers:adminA,payload:{name:"1407 Registration",startDate:"2028-03-20",endDate:"2029-03-19"}});
+  assert.equal(year.statusCode,201,year.body);
+  const yearId=year.json<{academicYear:{id:string}}>().academicYear.id;
+  const activated=await app.inject({method:"POST",url:`/v1/admin/academics/years/${yearId}/activate`,
+    headers:adminA});
+  assert.equal(activated.statusCode,200,activated.body);
+  const grade=await app.inject({method:"POST",url:"/v1/admin/academics/grades",
+    headers:adminA,payload:{code:"G10REG4",name:"Grade Ten Registration",sortOrder:10}});
+  assert.equal(grade.statusCode,201,grade.body);
+  const gradeId=grade.json<{grade:{id:string}}>().grade.id;
+  const klass=await app.inject({method:"POST",url:"/v1/admin/academics/classes",
+    headers:adminA,payload:{academicYearId:yearId,gradeLevelId:gradeId,
+      code:"10REG4",name:"Grade Ten Registration"}});
+  assert.equal(klass.statusCode,201,klass.body);
+  const classId=klass.json<{class:{id:string}}>().class.id;
+  const staff=await app.inject({method:"POST",url:"/v1/admin/users",
+    headers:adminA,payload:{username:"registrarphase4",role:"SCHOOL_STAFF"}});
+  assert.equal(staff.statusCode,201,staff.body);
+  const {user,temporaryPassword}=staff.json<{user:{id:string};temporaryPassword:string}>();
+  const firstLogin=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"registrarphase4",password:temporaryPassword}});
+  assert.equal(firstLogin.statusCode,200);
+  const changed=await app.inject({method:"POST",url:"/v1/auth/change-temporary-password",
+    headers:{authorization:`Bearer ${firstLogin.json<{accessToken:string}>().accessToken}`},
+    payload:{newPassword:"RegistrarPhase4New2026!"}});
+  assert.equal(changed.statusCode,200);
+  const token=changed.json<{accessToken:string}>().accessToken;
+  const denied=await app.inject({method:"GET",url:"/v1/staff/registrations",
+    headers:{authorization:`Bearer ${token}`}});
+  assert.equal(denied.statusCode,403);
+  const setProfile=await app.inject({method:"PUT",
+    url:`/v1/admin/staff/${user.id}/profile`,headers:adminA,
+    payload:{fullName:"Registration Officer",employeeCode:"REG4",department:"Admissions",
+      position:"REGISTRATION_OFFICER",permissions:["ENROLLMENT_REQUESTS"]}});
+  assert.equal(setProfile.statusCode,200,setProfile.body);
+  const revoked=await app.inject({method:"GET",url:"/v1/staff/registrations",
+    headers:{authorization:`Bearer ${token}`}});
+  assert.equal(revoked.statusCode,401);
+  const login=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"registrarphase4",password:"RegistrarPhase4New2026!"}});
+  assert.equal(login.statusCode,200,login.body);
+  const staffHeaders={authorization:`Bearer ${login.json<{accessToken:string}>().accessToken}`};
+  const options=await app.inject({method:"GET",url:"/v1/staff/registrations/options",headers:staffHeaders});
+  assert.equal(options.statusCode,200,options.body);
+  assert.ok(options.json<{parents:Array<{userId:string}>}>().parents.some(x=>x.userId===parentId));
+  assert.ok(!options.json<{parents:Array<{userId:string}>}>().parents.some(x=>x.userId===foreignParentId));
+  const input={fullName:"Registration Student",studentCode:"S-REG4-001",
+    parentName:"Registration Parent A",academicYearId:yearId,gradeLevelId:gradeId,
+    documents:{identityChecked:false,consentChecked:false,priorRecordChecked:false},notes:""};
+  const foreign=await app.inject({method:"GET",url:"/v1/admin/registrations",headers:staffHeaders});
+  assert.equal(foreign.statusCode,403);
+  const draft=await app.inject({method:"POST",url:"/v1/staff/registrations",
+    headers:staffHeaders,payload:input});
+  assert.equal(draft.statusCode,201,draft.body);
+  const id=draft.json<{request:{id:string}}>().request.id;
+  const early=await app.inject({method:"POST",url:`/v1/staff/registrations/${id}/submit`,
+    headers:staffHeaders});
+  assert.equal(early.statusCode,400,early.body);
+  const completedInput={...input,documents:{identityChecked:true,consentChecked:true,
+    priorRecordChecked:false}};
+  const updated=await app.inject({method:"PUT",url:`/v1/staff/registrations/${id}`,
+    headers:staffHeaders,payload:completedInput});
+  assert.equal(updated.statusCode,200,updated.body);
+  const duplicateDraft=await app.inject({method:"POST",url:"/v1/staff/registrations",
+    headers:staffHeaders,payload:completedInput});
+  assert.equal(duplicateDraft.statusCode,409,duplicateDraft.body);
+  const submit=await app.inject({method:"POST",url:`/v1/staff/registrations/${id}/submit`,
+    headers:staffHeaders});
+  assert.equal(submit.statusCode,200,submit.body);
+  const secondSubmit=await app.inject({method:"POST",url:`/v1/staff/registrations/${id}/submit`,
+    headers:staffHeaders});
+  assert.equal(secondSubmit.statusCode,409);
+  const staffApproved=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/decision`,headers:staffHeaders,
+    payload:{action:"APPROVE",parentUserId:parentId,classId,note:""}}); 
+  assert.equal(staffApproved.statusCode,403);
+  const otherSchoolList=await app.inject({method:"GET",url:"/v1/admin/registrations",
+    headers:adminB});
+  assert.equal(otherSchoolList.statusCode,200);
+  assert.equal(otherSchoolList.json<{requests:unknown[]}>().requests.length,0);
+  const reviewed=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/review`,headers:adminA});
+  assert.equal(reviewed.statusCode,200,reviewed.body);
+  const foreignApproval=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/decision`,headers:adminA,
+    payload:{action:"APPROVE",parentUserId:foreignParentId,classId,note:""}});
+  assert.equal(foreignApproval.statusCode,400,foreignApproval.body);
+  const adminBApproval=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/decision`,headers:adminB,
+    payload:{action:"APPROVE",parentUserId:foreignParentId,classId,note:""}});
+  assert.equal(adminBApproval.statusCode,409,adminBApproval.body);
+  const approved=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/decision`,headers:adminA,
+    payload:{action:"APPROVE",parentUserId:parentId,classId,note:"Verified"}});
+  assert.equal(approved.statusCode,200,approved.body);
+  const result=approved.json<{request:{status:string;approvedStudentId:string|null}}>().request;
+  assert.equal(result.status,"APPROVED");assert.ok(result.approvedStudentId);
+  const repeated=await app.inject({method:"POST",
+    url:`/v1/admin/registrations/${id}/decision`,headers:adminA,
+    payload:{action:"APPROVE",parentUserId:parentId,classId,note:""}});
+  assert.equal(repeated.statusCode,409);
+  const students=await app.inject({method:"GET",url:"/v1/admin/families",headers:adminA});
+  assert.equal(students.statusCode,200);
+  const family=students.json<{students:Array<{student:{id:string;studentCode:string}}>}>();
+  assert.equal(family.students.filter(x=>x.student.studentCode==="S-REG4-001").length,1);
+  assert.equal(family.students.find(x=>x.student.id===result.approvedStudentId)?.student.studentCode,"S-REG4-001");
+  const hidden=await app.inject({method:"GET",url:"/v1/admin/families",headers:staffHeaders});
+  assert.equal(hidden.statusCode,403);
 });

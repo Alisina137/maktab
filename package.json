@@ -77,7 +77,7 @@
     "verify:staff:phase1": "node scripts/verify-staff-phase1.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 1\" src/app.test.ts && pnpm --filter @maktablink/api exec tsx --test ../../packages/database/src/migration-chain.test.ts",
     "verify:staff:phase2": "node scripts/verify-staff-phase2.mjs",
     "verify:staff:phase3": "node scripts/verify-staff-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 3: directory filtering\" src/app.test.ts",
-    "verify:staff:phase4": "node scripts/verify-staff-phase4.mjs"
+    "verify:staff:phase4": "node scripts/verify-staff-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Staff Phase 4\" src/app.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
