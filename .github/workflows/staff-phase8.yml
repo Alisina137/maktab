@@ -1,0 +1,55 @@
+name: Staff portal regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/staff-phase8.yml"
+      - "apps/api/src/staff/**"
+      - "apps/api/src/app.ts"
+      - "apps/api/src/server.ts"
+      - "apps/web/app/staff/**"
+      - "apps/web/app/admin/(workspace)/staff-work/**"
+      - "apps/web/app/admin/admin-workspace.tsx"
+      - "packages/database/src/staff-*.ts"
+      - "packages/database/drizzle/**"
+      - "scripts/verify-staff-*.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  pull_request:
+    paths:
+      - "apps/api/src/staff/**"
+      - "apps/web/app/staff/**"
+      - "packages/database/src/staff-*.ts"
+      - "packages/database/drizzle/**"
+      - "scripts/verify-staff-*.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staff-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Staff Phase 1–8 regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - name: Install dependencies (lockfile required)
+        run: pnpm install --frozen-lockfile
+      - name: Validate all staff phases and TypeScript
+        run: pnpm verify:staff
