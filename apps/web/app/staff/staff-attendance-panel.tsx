@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import "./attendance.css";
 import { type AdminLocale } from "../admin/admin-i18n";
 import { staffAttendanceText } from "./staff-attendance-i18n";
-import { formatAdminHijriDate } from "../admin/admin-hijri-date-picker";
+import { AdminHijriDatePicker, formatAdminHijriDate } from "../admin/admin-hijri-date-picker";
 import { friendlyAdminError } from "../admin/admin-client";
 
 export type AttendanceMark = {
@@ -116,10 +116,10 @@ export function StaffAttendancePanel({locale,api}:Props){
         <section className="admin-panel staff-reg-queue">
           <h3>{t("Recorded attendance")}</h3>
           <form className="admin-form staff-attendance-filters" onSubmit={apply}>
-            <label>{t("From")}<input type="date" value={from} max={report?.today}
-              required onChange={e=>setFrom(e.target.value)}/></label>
-            <label>{t("To")}<input type="date" value={to} max={report?.today}
-              required onChange={e=>setTo(e.target.value)}/></label>
+            <label>{t("From")}<AdminHijriDatePicker locale={locale} today={report?.today} value={from}
+              required onChange={setFrom}/></label>
+            <label>{t("To")}<AdminHijriDatePicker locale={locale} today={report?.today} value={to}
+              required onChange={setTo}/></label>
             <button type="submit" className="admin-secondary" disabled={busy||from>to}>
               {t("Apply filters")}</button>
           </form>
