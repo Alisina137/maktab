@@ -5,6 +5,7 @@ const store=read("packages/database/src/account-store.ts");
 const api=read("apps/api/src/staff/routes.ts");
 const dashboard=read("apps/web/app/staff/dashboard/page.tsx");
 const tests=read("apps/api/src/app.test.ts");
+const databaseTests=read("packages/database/src/account-store.test.ts");
 const css=read("apps/web/app/globals.css");
 const locale=read("apps/web/app/admin/admin-i18n.ts");
 assert.ok(store.includes("safeStaffSearch?: boolean") &&
@@ -25,6 +26,8 @@ for(const key of ["setStatus","setSortBy","setOrder","setPageSize","setSelected"
  "Only basic directory fields are available"]) {
  assert.ok(dashboard.includes(key),"Missing staff Phase3 UI: "+key);
 }
+assert.ok(databaseTests.includes('"0028_staff_profiles_permissions.sql"'),
+ "Database directory test fixtures require staff profile migration");
 assert.ok(tests.includes("Staff Phase 3: directory filtering, privacy boundaries") &&
  tests.includes("Hidden status strings must never work as staff free-text search") &&
  tests.includes("Staff response must be redacted"));
