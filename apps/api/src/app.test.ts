@@ -7730,6 +7730,83 @@ test("Pilot Phase 2 coverage endpoints require a school admin and validate bound
   }
 });
 
+test("Pilot refinement Phase 5 school service checks are isolated and advisory", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "PILOT-SERVICE-A");
+  const schoolB = await provisionSchool(app, "PILOT-SERVICE-B");
+  const a = { authorization: "Bearer " + await bootstrapAdmin(app, schoolA) };
+  const b = { authorization: "Bearer " + await bootstrapAdmin(app, schoolB) };
+  const uri = "/v1/admin/pilot/service-health";
+
+  assert.equal((await app.inject({ method: "GET", url: uri })).statusCode, 401);
+  assert.equal((await app.inject({
+    method: "GET", url: uri + "?schoolId=" + schoolB, headers: a
+  })).statusCode, 400, "Report must reject caller-supplied school scope");
+
+  const aUser = (await client.query<{ id: string }>(
+    "SELECT id FROM users WHERE school_id=$1 AND role='SCHOOL_ADMIN' LIMIT 1", [schoolA]
+  )).rows[0]?.id;
+  assert.ok(aUser);
+
+  const now = Date.now();
+  const beforeTwoHours = new Date(now - 2 * 60 * 60_000).toISOString();
+  const current = new Date(now - 4 * 60_000).toISOString();
+  const recentWeek = new Date(now - 2 * 86_400_000).toISOString();
+
+  await client.query(`INSERT INTO notifications(id,school_id,user_id,type,title,message,
+    dedup_key,delivery_status,created_at) VALUES
+    ('20000000-0000-4000-8000-000000000051',$1,$2,'REMINDER','test','test','phase5-pending','PENDING',$3),
+    ('20000000-0000-4000-8000-000000000052',$1,$2,'REMINDER','test','test','phase5-failed','FAILED',$4)`,
+    [schoolA,aUser,beforeTwoHours,current]);
+  await client.query(`INSERT INTO pilot_support_tickets
+    (id,school_id,subject,description,category,priority,status) VALUES
+    ('20000000-0000-4000-8000-000000000053',$1,'Service issue','Needs platform review','TECHNICAL','CRITICAL','OPEN'),
+    ('20000000-0000-4000-8000-000000000054',$1,'Resolved','Completed issue','TECHNICAL','CRITICAL','RESOLVED')`,
+    [schoolA]);
+  await client.query(`INSERT INTO family_import_batches
+    (id,school_id,idempotency_key,row_count,status,created_at) VALUES
+    ('20000000-0000-4000-8000-000000000055',$1,
+     '20000000-0000-4000-8000-000000000056',1,'FAILED',$2)`,
+    [schoolA,recentWeek]);
+
+  const snapshot = await app.inject({ method: "GET", url: uri, headers: a });
+  assert.equal(snapshot.statusCode, 200, snapshot.body);
+  assert.equal(snapshot.headers["cache-control"], "no-store");
+  const first = snapshot.json<{
+    report: {
+      api: string; database: string; notificationQueue: {
+        pending: number; stalePending: number; failed: number; status: string;
+      };
+      support: { unresolved: number; unresolvedCritical: number; status: string };
+      imports: { failedLast7Days: number }; unverified: string[];
+    };
+    subscription: { status: string };
+  }>();
+  assert.equal(first.report.api, "responding");
+  assert.equal(first.report.database, "query_succeeded");
+  assert.deepEqual([first.report.notificationQueue.pending,
+    first.report.notificationQueue.stalePending,
+    first.report.notificationQueue.failed], [1, 1, 1]);
+  assert.deepEqual([first.report.support.unresolved,
+    first.report.support.unresolvedCritical], [1,1]);
+  assert.equal(first.report.imports.failedLast7Days, 1);
+  assert.equal(first.report.notificationQueue.status, "attention");
+  assert.equal(first.report.support.status, "attention");
+  assert.equal(first.report.unverified.includes("push_delivery"), true);
+  assert.equal(first.subscription.status, "TRIAL");
+  assert.equal(snapshot.body.includes("Needs platform review"), false,
+    "Ticket content must not leak into service reports");
+
+  const other = await app.inject({ method: "GET", url: uri, headers: b });
+  assert.equal(other.statusCode, 200, other.body);
+  const second = other.json<typeof first>();
+  assert.equal(second.report.notificationQueue.pending, 0);
+  assert.equal(second.report.notificationQueue.failed, 0);
+  assert.equal(second.report.support.unresolvedCritical, 0);
+  assert.equal(second.report.imports.failedLast7Days, 0);
+});
+
 test("Pilot refinement Phase 4 usage reporting is school-scoped and validates period", async (t) => {
   const { app, client } = await createTestApp();
   t.after(async () => { await app.close(); await client.close(); });
