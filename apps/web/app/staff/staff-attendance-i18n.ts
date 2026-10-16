@@ -81,5 +81,6 @@ const ps:Record<string,string>={
   "REJECTED":"رد شوی"
 };
 export function staffAttendanceText(locale:AdminLocale,key:string):string{
-  return (locale==="fa-AF"?fa:locale==="ps-AF"?ps:{})[key]??adminText(locale,key);
+  const messages:Record<string,string>=locale==="fa-AF"?fa:locale==="ps-AF"?ps:{};
+  return messages[key]??adminText(locale,key);
 }
