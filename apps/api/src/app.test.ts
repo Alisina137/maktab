@@ -7841,10 +7841,10 @@ test("Pilot refinement Phase 6 oversight timeline enforces school, filters, pagi
     VALUES ($1,$2,'NOT_APPROVED','operator','private operator comment',$3)`,
     [ids(6004),schoolA,recent]);
   await client.query(`INSERT INTO family_import_batches
-    (id,school_id,idempotency_key,row_count,status,reason,created_at)
-    VALUES ($1,$2,$3,1,'FAILED','confidential error',$4),
-      ($5,$2,$6,1,'REJECTED','old confidential error',$7),
-      ($8,$9,$10,1,'COMPLETED','private other school',$4)`,
+    (id,school_id,idempotency_key,entity_type,row_count,status,reason,created_at)
+    VALUES ($1,$2,$3,'PARENT',1,'FAILED','confidential error',$4),
+      ($5,$2,$6,'PARENT',1,'REJECTED','old confidential error',$7),
+      ($8,$9,$10,'PARENT',1,'COMPLETED','private other school',$4)`,
     [ids(6005),schoolA,ids(6006),days10,ids(6007),ids(6008),days100,
       ids(6009),schoolB,ids(6010)]);
 
@@ -7941,9 +7941,9 @@ test("Pilot refinement Phase 5 school service checks are isolated and advisory",
     ('20000000-0000-4000-8000-000000000054',$1,'Resolved','Completed issue','TECHNICAL','CRITICAL','RESOLVED')`,
     [schoolA]);
   await client.query(`INSERT INTO family_import_batches
-    (id,school_id,idempotency_key,row_count,status,created_at) VALUES
+    (id,school_id,idempotency_key,entity_type,row_count,status,created_at) VALUES
     ('20000000-0000-4000-8000-000000000055',$1,
-     '20000000-0000-4000-8000-000000000056',1,'FAILED',$2)`,
+     '20000000-0000-4000-8000-000000000056','PARENT',1,'FAILED',$2)`,
     [schoolA,recentWeek]);
 
   const snapshot = await app.inject({ method: "GET", url: uri, headers: a });
