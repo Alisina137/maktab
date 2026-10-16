@@ -9126,3 +9126,44 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
 .staff-permissions-form :is(input,select,button):focus-visible { outline: 3px solid #326bb7; outline-offset: 2px; }
 @media(max-width:620px) { .staff-permissions-form { gap: 11px; }
   .staff-permission-checkbox { min-height: 36px; } }
+
+
+/* Staff Phase 2: compact responsive job-aware workspace navigation and home. */
+.staff-workspace-nav { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px; border:1px solid #dbe5f2;
+  border-radius:14px; background:#fff; box-shadow:0 5px 18px rgba(25,61,95,.04); }
+.staff-workspace-nav button { flex:0 1 auto; border:1px solid #d5e1f0; border-radius:10px; background:transparent;
+  color:#34455d; font-weight:700; padding:12px 19px; cursor:pointer; min-height:44px; }
+.staff-workspace-nav button:hover { background:#f1f6fc; }
+.staff-workspace-nav button.staff-nav-active { background:#205aa2; color:#fff; border-color:#205aa2; }
+.staff-workspace-nav button:focus-visible { outline:3px solid #2f74d1; outline-offset:2px; }
+.staff-home { display:grid; gap:16px; min-width:0; }
+.staff-home-heading h2 { font-size:clamp(19px,2.5vw,24px); margin:5px 0; }
+.staff-home-heading p { margin:0; color:#5a6c83; line-height:1.65; }
+.staff-home-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.staff-home-card { padding:18px; border:1px solid #dae5f3; border-radius:15px; background:linear-gradient(135deg,#fff,#f6f9fe);
+  min-width:0; display:grid; gap:8px; overflow-wrap:anywhere; }
+.staff-home-card>span { color:#566987; font-size:12px; font-weight:700; }
+.staff-home-card>strong { font-size:clamp(16px,2vw,21px); color:#1c3657; }
+.staff-home-card>small { font-size:12px; color:#60728a; }
+.staff-home-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start; }
+.staff-home-section { padding:20px; min-width:0; }
+.staff-home-section h3 { margin:0 0 12px; font-size:18px; }
+.staff-home-section p { color:#5a6c83; line-height:1.6; }
+.staff-home-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.staff-home-actions button { min-height:44px; }
+.staff-home-responsibilities { list-style:none; padding:0; margin:0; display:grid; gap:7px; }
+.staff-home-responsibilities li { display:flex; justify-content:space-between; align-items:center; gap:10px;
+  border-bottom:1px solid #e5ebf4; padding:9px 0; }
+.staff-directory-layout { grid-template-columns:minmax(0,1fr); }
+.staff-settings-layout { grid-template-columns:minmax(0,1fr); max-width:950px; }
+.staff-settings-layout .staff-side { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+@media(max-width:850px) {
+  .staff-home-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .staff-home-columns,.staff-settings-layout .staff-side { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:620px) {
+  .staff-home-cards { grid-template-columns:minmax(0,1fr); }
+  .staff-workspace-nav { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  .staff-workspace-nav button { padding:10px 5px; font-size:12px; }
+  .staff-home-responsibilities li { flex-direction:column; align-items:flex-start; }
+}
