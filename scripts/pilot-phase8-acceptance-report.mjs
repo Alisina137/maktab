@@ -16,6 +16,20 @@ export const PHASE8_MANUAL_GATES = [
   "exact_sha_operator_signoff"
 ];
 
+
+/** Independently reviewed UI journeys: source assertions are not device QA. */
+export const PHASE8_SECTION_CHECKS = [
+  { id: "overview", journey: "Overview pulse, partial outage and refresh" },
+  { id: "readiness", journey: "School readiness, issue drilldowns and academic links" },
+  { id: "onboarding", journey: "Templates, safe imports, retries and history" },
+  { id: "adoption", journey: "Account denominators, reports and follow-ups" },
+  { id: "service", journey: "Notification, import and support issue triage" },
+  { id: "oversight", journey: "Tenant-safe event history, filters and pagination" },
+  { id: "subscription", journey: "Recorded access, expiry and renewal guidance" },
+  { id: "audit", journey: "Scoped filters, redacted exports and audit history" },
+  { id: "launch", journey: "Launch evidence, support threads and Step 20 NO-GO" }
+];
+
 const validSha = (sha) => typeof sha === "string" && /^[0-9a-f]{40}$/.test(sha);
 
 /** Fail closed. Passing CI tests does not satisfy independent pilot or production acceptance. */
@@ -41,7 +55,8 @@ export function buildPilotPhase8Report({
     phase8Review: "REQUIRES_MANUAL_ACCEPTANCE",
     productionDecision: "NO_GO",
     reason: "Automated source checks and tests do not establish real-device operation, backup restore, deployed infrastructure, security sign-off or permission to release.",
-    manualGates: PHASE8_MANUAL_GATES.map((id) => ({ id, status: "UNVERIFIED" }))
+    manualGates: PHASE8_MANUAL_GATES.map((id) => ({ id, status: "UNVERIFIED" })),
+    sectionChecks: PHASE8_SECTION_CHECKS.map((item) => ({ ...item, status: "UNVERIFIED" }))
   };
 }
 
