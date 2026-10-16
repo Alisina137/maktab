@@ -230,6 +230,18 @@ export type TranslationKey =
   | "teacher.navSchedule"
   | "teacher.navClasses"
   | "teacher.navWorkflows"
+  | "teacher.navWork"
+  | "teacher.navMore"
+  | "teacher.moreProfile"
+  | "teacher.moreAccountInfo"
+  | "teacher.moreUsername"
+  | "teacher.moreLanguage"
+  | "teacher.moreSchool"
+  | "teacher.moreBack"
+  | "teacher.moreHelp"
+  | "teacher.moreIntro"
+  | "teacher.classLearning"
+  | "teacher.classAttendance"
   | "teacher.periodCount"
   | "teacher.viewFullSchedule"
   | "teacher.viewAssignments"
@@ -796,6 +808,18 @@ const en: Record<TranslationKey, string> = {
   "teacher.navSchedule": "Schedule",
   "teacher.navClasses": "Classes",
   "teacher.navWorkflows": "Workflows",
+  "teacher.navWork": "Work",
+  "teacher.navMore": "More",
+  "teacher.moreProfile": "Profile & settings",
+  "teacher.moreAccountInfo": "Account information",
+  "teacher.moreUsername": "Username",
+  "teacher.moreLanguage": "Language",
+  "teacher.moreSchool": "School",
+  "teacher.moreBack": "Back to More",
+  "teacher.moreHelp": "School contact",
+  "teacher.moreIntro": "Announcements, account settings, and school support.",
+  "teacher.classLearning": "Learning",
+  "teacher.classAttendance": "Attendance",
   "teacher.periodCount": "Classes today",
   "teacher.viewFullSchedule": "View full weekly schedule",
   "teacher.viewAssignments": "View my classes and subjects",
@@ -1378,6 +1402,18 @@ const dari: Record<TranslationKey, string> = {
   "teacher.navSchedule": "تقسیم اوقات",
   "teacher.navClasses": "صنف‌ها",
   "teacher.navWorkflows": "فعالیت‌ها",
+  "teacher.navWork": "کارها",
+  "teacher.navMore": "بیشتر",
+  "teacher.moreProfile": "پروفایل و تنظیمات",
+  "teacher.moreAccountInfo": "معلومات حساب",
+  "teacher.moreUsername": "نام کاربری",
+  "teacher.moreLanguage": "زبان",
+  "teacher.moreSchool": "مکتب",
+  "teacher.moreBack": "بازگشت به بیشتر",
+  "teacher.moreHelp": "تماس با مکتب",
+  "teacher.moreIntro": "اعلان‌ها، تنظیمات حساب و راهنمایی مکتب.",
+  "teacher.classLearning": "آموزش",
+  "teacher.classAttendance": "حاضری",
   "teacher.periodCount": "دروس امروز",
   "teacher.viewFullSchedule": "دیدن تقسیم اوقات هفته",
   "teacher.viewAssignments": "دیدن صنف‌ها و مضامین من",
@@ -1960,6 +1996,18 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.navSchedule": "مهالویش",
   "teacher.navClasses": "ټولګي",
   "teacher.navWorkflows": "چارې",
+  "teacher.navWork": "چارې",
+  "teacher.navMore": "نور",
+  "teacher.moreProfile": "پروفایل او تنظیمات",
+  "teacher.moreAccountInfo": "د حساب معلومات",
+  "teacher.moreUsername": "کارن نوم",
+  "teacher.moreLanguage": "ژبه",
+  "teacher.moreSchool": "ښوونځی",
+  "teacher.moreBack": "بېرته نور ته",
+  "teacher.moreHelp": "د ښوونځي اړیکه",
+  "teacher.moreIntro": "اعلانونه، د حساب تنظیمات او د ښوونځي مرسته.",
+  "teacher.classLearning": "زده کړه",
+  "teacher.classAttendance": "حاضري",
   "teacher.periodCount": "د نن درسونه",
   "teacher.viewFullSchedule": "د اونۍ بشپړ مهالویش",
   "teacher.viewAssignments": "زما ټولګي او مضمونونه",
