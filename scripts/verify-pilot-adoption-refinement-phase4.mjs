@@ -46,7 +46,7 @@ assert.ok(api.includes('"/v1/admin/pilot/adoption"') &&
 assert.ok(navigation.includes('section: "adoption"') &&
   navigation.includes('href: "/admin/pilot/adoption"') &&
   page.includes('<PilotAdoptionPanel') &&
-  page.includes('if (section === "adoption") {'),
+  page.includes('if (section === "adoption" || section === "service" || section === "oversight") {'),
   "Route-backed tab must be independent of other readiness API calls");
 assert.ok(ui.includes('Authorization: `Bearer ${accessToken}`') &&
   ui.includes('new AbortController()') && ui.includes('return () => abort.abort()') &&
