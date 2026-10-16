@@ -8,6 +8,7 @@ import {
   readAdminLocale, saveAdminLocale, type AdminLocale
 } from "../../admin/admin-i18n";
 import { clearStaffSession, readStaffSession, storeStaffSession, type StaffSession } from "../staff-client";
+import { StaffHomePanel } from "../staff-home-panel";
 
 type StaffMe={user:{id:string;username:string;role:"SCHOOL_STAFF";status:string};
   school:{id:string;name:string;code:string};
@@ -20,6 +21,7 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
+  const [tab,setTab]=useState<"home"|"directory"|"settings">("home");
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -171,7 +173,20 @@ export default function StaffDashboard() {
           {profile.profile ? ` · ${t(profile.profile.position.replaceAll("_"," ").toLowerCase())}` : ""}
         </div>
       </section>
-      <div className="staff-workspace-grid">
+      <nav className="staff-workspace-nav" aria-label={t("Staff workspace navigation")}>
+        {([["home","Home"],...(canDirectory?[["directory","Directory"]]:[]),
+          ["settings","Profile & Settings"]] as string[][]).map(([key,label]) => (
+          <button type="button" key={key} className={tab===key?"staff-nav-active":""}
+            aria-pressed={tab===key} onClick={()=>setTab(key as typeof tab)}>{t(label)}</button>
+        ))}
+      </nav>
+      {tab==="home" ? <StaffHomePanel locale={locale} school={profile.school}
+        displayName={profile.profile?.fullName || profile.user.username}
+        position={profile.profile?.position ?? null}
+        department={profile.profile?.department ?? null}
+        permissions={profile.profile?.permissions ?? []}
+        onDirectory={()=>setTab("directory")} onSettings={()=>setTab("settings")}/> : null}
+      {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
         {canDirectory ? (
         <section className="admin-panel staff-directory">
           <div className="admin-section-header">
@@ -241,6 +256,8 @@ export default function StaffDashboard() {
             <p>{t("Ask your school administrator to assign the directory permission. Your staff account remains separate from the admin dashboard.")}</p>
           </section>
         )}
+      </div> : null}
+      {tab==="settings" ? <div className="staff-workspace-grid staff-settings-layout">
         <aside className="staff-side">
           <section className="admin-panel staff-security">
             <h2>{t("My staff account")}</h2>
@@ -276,7 +293,7 @@ export default function StaffDashboard() {
             {passwordNotice?<p role="status">{passwordNotice}</p>:null}
           </section>
         </aside>
-      </div>
+      </div> : null}
     </main>
   );
 }
