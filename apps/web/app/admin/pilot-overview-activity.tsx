@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminText, type AdminLocale } from "./admin-i18n";
-import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
+import { formatPilotTimestamp } from "./pilot-timestamp";
 
 type Activity = {
   id: string;
@@ -79,7 +79,7 @@ export function PilotOverviewActivity({ accessToken, locale }: {
                 <strong>{t(item.action.replace(/[._]/g, " "))}</strong>
                 <span>{t("Performed by")}: {item.actorUsername ?? t("System")}</span>
               </div>
-              <time dateTime={item.createdAt}>{formatAdminHijriDateTime(locale, item.createdAt)}</time>
+              <time dateTime={item.createdAt}>{formatPilotTimestamp(locale, item.createdAt)}</time>
             </li>
           ))}
         </ol>
