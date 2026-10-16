@@ -118,6 +118,22 @@ export const users = pgTable(
   ]
 );
 
+/** School-staff-specific identity and explicit, least-privilege grants.
+ * A staff user without a configured profile has NO operational permissions. */
+export const staffProfiles = pgTable("staff_profiles", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: uuid("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  fullName: varchar("full_name", { length: 160 }).notNull(),
+  employeeCode: varchar("employee_code", { length: 32 }),
+  position: varchar("position", { length: 40 }).notNull(),
+  department: varchar("department", { length: 100 }).notNull(),
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  uniqueIndex("staff_profiles_school_code_unique").on(table.schoolId, table.employeeCode),
+  index("staff_profiles_school_idx").on(table.schoolId)
+]);
+
 export const authSessions = pgTable(
   "auth_sessions",
   {
