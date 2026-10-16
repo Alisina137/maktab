@@ -57,6 +57,6 @@ for(const key of [
 for(const key of ["before, during, between","stale school day","direct lesson route"]){
   assert.ok(tests.includes(key),"Missing Phase 2 regression: "+key);
 }
-assert.ok(scripts["verify:teacher:phase2"]?.includes("teacher-today-model.test.ts"));
+assert.ok(scripts["verify:teacher:phase2"]?.includes("test-teacher-today-model.ts"));
 assert.ok(scripts["verify:teacher:phase2"]?.includes("verify:teacher:phase1"));
 console.log("Teacher Phase 2 source, school-local clock, direct class routing, UX and localization checks passed.");
