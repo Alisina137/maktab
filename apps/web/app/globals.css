@@ -8883,3 +8883,45 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-priority-row { flex-direction: column; align-items: flex-start; }
   .pilot-priority-filter { width: 100%; }
 }
+
+/* Pilot Operations improvements Phase 3 — safe onboarding flow and page-scoped import outcomes. */
+.pilot-import-plan { display: grid; gap: 16px; min-width: 0; }
+.pilot-import-plan .admin-section-header { align-items: flex-start; gap: 12px; }
+.pilot-import-plan .admin-section-header h3 { margin: 0 0 5px; }
+.pilot-import-plan .admin-section-header p { margin: 0; }
+.pilot-import-plan-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.pilot-import-plan-choice { min-width: 0; border: 1px solid var(--ml-color-border);
+  background: #fff; color: var(--ml-color-text-muted); border-radius: 12px;
+  padding: 12px; min-height: 43px; font-weight: 750; cursor: pointer; }
+.pilot-import-plan-choice-active, .pilot-import-plan-choice[aria-pressed="true"] {
+  border-color: #95b8ed; background: #ecf4ff; color: #234e8b; }
+.pilot-import-plan-details { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.pilot-import-plan-details > div { min-width: 0; padding: 14px; background: #f7faff;
+  border: 1px solid var(--ml-color-border); border-radius: 12px; }
+.pilot-import-plan-details strong { display: block; margin-bottom: 10px; }
+.pilot-import-plan-details code { display: block; overflow-wrap: anywhere; padding: 10px;
+  border-radius: 8px; border: 1px solid #d8e4f4; background: white; font-size: 12px;
+  white-space: normal; text-align: left; }
+.pilot-import-plan-details p { font-size: 12px; line-height: 1.6; }
+.pilot-import-plan-details ol { display: grid; gap: 10px; align-content: start;
+  list-style: none; margin: 0; padding: 0; }
+.pilot-import-plan-details li { display: flex; gap: 9px; align-items: center;
+  font-size: 13px; line-height: 1.5; }
+.pilot-import-plan-details .pilot-step-number { flex: 0 0 auto; }
+.pilot-import-plan button:focus-visible, .pilot-import-plan a:focus-visible {
+  outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+.pilot-import-page-insights { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
+.pilot-import-page-stat { min-width: 0; display: grid; gap: 7px; padding: 12px;
+  border: 1px solid var(--ml-color-border); border-radius: 11px; background: #f8fbff; }
+.pilot-import-page-stat > span { font-size: 11px; color: var(--ml-color-text-muted); line-height: 1.5; }
+.pilot-import-page-stat strong { font-size: 22px; font-variant-numeric: tabular-nums; color: #295a90; }
+#pilot-import-templates { scroll-margin-top: 24px; }
+@media (max-width: 900px) {
+  .pilot-import-page-insights { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 620px) {
+  .pilot-import-plan-types { grid-template-columns: 1fr; }
+  .pilot-import-plan-details { grid-template-columns: 1fr; }
+  .pilot-import-page-insights { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .pilot-import-plan .admin-section-header { flex-wrap: wrap; }
+}
