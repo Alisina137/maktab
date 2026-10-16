@@ -14,6 +14,15 @@ const JS_WEEKDAYS: readonly TeacherWeekday[] = [
   "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"
 ];
 
+/** School weekdays are Saturday-first in Dari/Pashto and Monday-first in
+ * English, consistent with the rest of the application's calendar rules. */
+export function teacherWeekdayOrder(mondayFirst: boolean, includeFriday = false): TeacherWeekday[] {
+  const ordered: TeacherWeekday[] = mondayFirst
+    ? ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+    : [...TEACHER_ALL_WEEKDAYS];
+  return includeFriday ? ordered : ordered.filter(day => day !== "FRIDAY");
+}
+
 export function teacherKabulWeekday(now: Date): TeacherWeekday | null {
   const clock = kabulTeacherClock(now);
   if (!clock) return null;
