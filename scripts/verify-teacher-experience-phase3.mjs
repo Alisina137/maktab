@@ -14,6 +14,7 @@ for(const key of [
  "TEACHER_SCHOOL_WEEKDAYS",'"SATURDAY", "SUNDAY", "MONDAY", "TUESDAY"',
  '"WEDNESDAY", "THURSDAY"','"FRIDAY"',
  "teacherKabulWeekday(now: Date)","kabulTeacherClock(now)",
+ "teacherWeekdayOrder(mondayFirst: boolean",
  "teacherShiftWeekday(", "teacherPeriodsForDay(",
  "startEndMinutes(a.startsAt)",
  "teacherSchedulePeriodState(",
@@ -75,7 +76,8 @@ for(const key of localeKeys){
     "Translate in English, Dari and Pashto: "+key);
 }
 for(const key of ["Kabul weekday","six standard teaching days",
-  "day filtering sorts","server-confirmed periods","cancelled","wrongSubject"]){
+  "day filtering sorts","server-confirmed periods","cancelled","wrongSubject",
+  "teacherWeekdayOrder(true,true)"]){
   assert.ok(test.includes(key),"Phase 3 regression missing: "+key);
 }
 assert.ok(pkg.scripts["verify:teacher:phase3"]?.includes("verify:teacher:phase2"));
