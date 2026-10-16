@@ -8969,3 +8969,111 @@ test("Admin Fees Phase 6 reporting routes restrict schools, reject bad filters a
   const unauth = await app.inject({method:"GET",url:"/v1/admin/fees/reports"});
   assert.equal(unauth.statusCode,401);
 });
+
+test("Standalone web staff role: first-login setup, scoped directory, and admin isolation", async(t) => {
+  const {app,client}=await createTestApp();
+  t.after(async()=>{await app.close();await client.close();});
+  const schoolA=await provisionSchool(app,"STAFF-WEB-A");
+  const schoolB=await provisionSchool(app,"STAFF-WEB-B");
+  const adminToken=await bootstrapAdmin(app,schoolA);
+  const adminB=await bootstrapAdmin(app,schoolB);
+  const adminHeaders={authorization:`Bearer ${adminToken}`};
+
+  const staffCreated=await app.inject({
+    method:"POST",url:"/v1/admin/users",headers:adminHeaders,
+    payload:{username:"frontdesk2026",role:"SCHOOL_STAFF"}
+  });
+  assert.equal(staffCreated.statusCode,201);
+  const created=staffCreated.json<{
+    user:{id:string;role:string;mustChangePassword:boolean};
+    temporaryPassword:string
+  }>();
+  assert.equal(created.user.role,"SCHOOL_STAFF");
+  assert.equal(created.user.mustChangePassword,true);
+
+  const studentA=await app.inject({
+    method:"POST",url:"/v1/admin/families/students",headers:adminHeaders,
+    payload:{username:"student_staff_a",fullName:"Student Alpha"}
+  });
+  // Schools with different enrollment workflows may reject this optional setup.
+  // Teacher accounts are universally creatable through admin provisioning.
+  const teacherA=await app.inject({
+    method:"POST",url:"/v1/admin/users",headers:adminHeaders,
+    payload:{username:"teacherstaffa",role:"TEACHER"}
+  });
+  assert.equal(teacherA.statusCode,201);
+  const teacherB=await app.inject({
+    method:"POST",url:"/v1/admin/users",
+    headers:{authorization:`Bearer ${adminB}`},
+    payload:{username:"teacherotherb",role:"TEACHER"}
+  });
+  assert.equal(teacherB.statusCode,201);
+  void studentA;
+
+  const wrongRole=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_ADMIN",
+      username:"frontdesk2026",password:created.temporaryPassword}});
+  assert.equal(wrongRole.statusCode,403);
+  const foreignSchool=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolB,expectedRole:"SCHOOL_STAFF",
+      username:"frontdesk2026",password:created.temporaryPassword}});
+  assert.equal(foreignSchool.statusCode,401);
+  const login=await app.inject({method:"POST",url:"/v1/auth/login",
+    payload:{schoolId:schoolA,expectedRole:"SCHOOL_STAFF",
+      username:"frontdesk2026",password:created.temporaryPassword}});
+  assert.equal(login.statusCode,200);
+  const initial=login.json<{accessToken:string;mustChangePassword:boolean}>();
+  assert.equal(initial.mustChangePassword,true);
+  const before=await app.inject({method:"GET",url:"/v1/staff/me",
+    headers:{authorization:`Bearer ${initial.accessToken}`}});
+  assert.equal(before.statusCode,403);
+  assert.equal(before.json<{error:string}>().error,"password_change_required");
+  const changed=await app.inject({method:"POST",url:"/v1/auth/change-temporary-password",
+    headers:{authorization:`Bearer ${initial.accessToken}`},
+    payload:{newPassword:"StaffFirstSetup2026!"}});
+  assert.equal(changed.statusCode,200);
+  const staffToken=changed.json<{accessToken:string;user:{role:string}}>();
+  assert.equal(staffToken.user.role,"SCHOOL_STAFF");
+  const headers={authorization:`Bearer ${staffToken.accessToken}`};
+  const me=await app.inject({method:"GET",url:"/v1/staff/me",headers});
+  assert.equal(me.statusCode,200);
+  assert.equal(me.headers["cache-control"],"no-store");
+  assert.equal(me.json<{user:{role:string};school:{id:string}}>().school.id,schoolA);
+
+  const forbidden=await app.inject({method:"GET",url:"/v1/admin/users",headers});
+  assert.equal(forbidden.statusCode,403);
+  const notAdmin=await app.inject({method:"POST",url:"/v1/admin/users",
+    headers,payload:{username:"staff-created",role:"SCHOOL_ADMIN"}});
+  assert.equal(notAdmin.statusCode,403);
+  const adminNotStaff=await app.inject({method:"GET",url:"/v1/staff/me",headers:adminHeaders});
+  assert.equal(adminNotStaff.statusCode,403);
+  const unauthed=await app.inject({method:"GET",url:"/v1/staff/directory?query=teacher"});
+  assert.equal(unauthed.statusCode,401);
+  const blankSearch=await app.inject({method:"GET",url:"/v1/staff/directory?query=a",headers});
+  assert.equal(blankSearch.statusCode,400);
+  const illegalRole=await app.inject({method:"GET",url:"/v1/staff/directory?query=teacher&group=SCHOOL_ADMIN",headers});
+  assert.equal(illegalRole.statusCode,400);
+  const found=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacher&group=TEACHER&page=1",headers});
+  assert.equal(found.statusCode,200);
+  assert.equal(found.headers["cache-control"],"no-store");
+  const search=found.json<{entries:Array<Record<string,unknown>>;total:number}>();
+  assert.equal(search.total,1);
+  assert.equal(search.entries.length,1);
+  assert.equal(search.entries[0]?.username,"teacherstaffa");
+  for (const hidden of ["passwordHash","schoolId","phone","email","refreshToken",
+    "accessToken","userId","id","lastLoginAt"]) {
+    assert.equal(Object.prototype.hasOwnProperty.call(search.entries[0],hidden),false,
+      "Staff must never receive private account data: "+hidden);
+  }
+  const cannotSeeOtherSchool=await app.inject({method:"GET",
+    url:"/v1/staff/directory?query=teacherotherb&group=TEACHER",headers});
+  assert.equal(cannotSeeOtherSchool.statusCode,200);
+  assert.equal(cannotSeeOtherSchool.json<{total:number}>().total,0);
+  const suspend=await app.inject({method:"POST",
+    url:`/v1/admin/users/${created.user.id}/suspend`,headers:adminHeaders,
+    payload:{reason:"Testing staff security"}});
+  assert.equal(suspend.statusCode,200);
+  const nowForbidden=await app.inject({method:"GET",url:"/v1/staff/me",headers});
+  assert.equal(nowForbidden.statusCode,403);
+});
