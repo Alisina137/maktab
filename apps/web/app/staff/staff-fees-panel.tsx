@@ -136,7 +136,12 @@ export function StaffFeesPanel({locale,canCollect,api}:Props){
       pendingPayment.current=null;setReceipt(result.receipt);
       setSelected(null);setAmount("");setReference("");
       setNotice(t("Payment recorded successfully. Receipt ready."));
-      await Promise.all([fetchInvoices(),fetchPayments()]);
+      // A post-payment refresh failure must never be presented as a failed payment.
+      const refreshed=await Promise.allSettled([fetchInvoices(),fetchPayments()]);
+      if(refreshed.some(item=>item.status==="rejected")){
+        setNotice(t("Payment recorded successfully. Receipt ready.")+" "+
+          t("Some lists could not refresh. Use Refresh to reload them."));
+      }
     }catch(err){
       // Preserve the retry key on ambiguous failure. Re-entering different
       // details creates a new key; the ledger rejects mismatched replays.
@@ -260,7 +265,7 @@ export function StaffFeesPanel({locale,canCollect,api}:Props){
           {payments?.payments.map(item=><article key={item.id} className="staff-fee-row staff-fees-transaction">
             <span><strong>{item.studentName} · #{item.invoiceNumber}</strong>
               <small>{item.studentCode} · {t(item.kind)} · {t(item.method.replaceAll("_"," "))}</small>
-              <small>{formatStamp(locale,item.recordedAt,payments.schoolTimezone)}</small></span>
+              <small>{formatStamp(locale,item.recordedAt,payments?.schoolTimezone??"Asia/Kabul")}</small></span>
             <span><strong>{money(locale,item.amount)}</strong>
               {item.kind==="PAYMENT"?<button type="button" className="admin-secondary"
                 disabled={busy} onClick={()=>void viewReceipt(item.id)}>{t("View receipt")}</button>:null}</span>
