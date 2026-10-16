@@ -10,6 +10,7 @@ import { PilotOverviewActivity } from "./pilot-overview-activity";
 import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
 import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
+import { PilotOversightPanel } from "./pilot-oversight-panel";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
@@ -214,6 +215,7 @@ export const PILOT_TABS = [
   { section: "onboarding", label: "Data onboarding", href: "/admin/pilot/onboarding" },
   { section: "adoption", label: "Usage & adoption", href: "/admin/pilot/adoption" },
   { section: "service", label: "Service health", href: "/admin/pilot/service" },
+  { section: "oversight", label: "Operations oversight", href: "/admin/pilot/oversight" },
   { section: "subscription", label: "Subscription", href: "/admin/pilot/subscription" },
   { section: "audit", label: "Audit & exports", href: "/admin/pilot/audit" },
   { section: "launch", label: "Launch & support", href: "/admin/pilot/launch" },
@@ -362,7 +364,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     }
     try {
       // Audit failure cannot hide subscription/readiness and vice versa.
-      if (section === "adoption" || section === "service") {
+      if (section === "adoption" || section === "service" || section === "oversight") {
         // Usage and service reports load independently; one failed endpoint
         // must never hide the other or show irrelevant subscription errors.
       } else if (section === "audit") {
@@ -842,6 +844,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
       {section === "service" ? (
         <PilotServiceHealthPanel key={accessToken} accessToken={accessToken} locale={locale} />
+      ) : null}
+      {section === "oversight" ? (
+        <PilotOversightPanel key={accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
 
       {section === "onboarding" && readiness ? (
