@@ -10,7 +10,7 @@ import type { TeacherAcademicsPayload, TeacherTodayPayload } from "./api";
 import { teacherTime12 } from "./teacher-hub-data";
 import { kabulTeacherClock } from "./teacher-today-model";
 import {
-  TEACHER_SCHOOL_WEEKDAYS, teacherKabulWeekday, teacherPeriodsForDay,
+  teacherWeekdayOrder, teacherKabulWeekday, teacherPeriodsForDay,
   teacherSchedulePeriodState, teacherShiftWeekday,
   type TeacherSchedulePeriod, type TeacherWeekday
 } from "./teacher-schedule-model";
@@ -83,10 +83,8 @@ export function TeacherSchedulePanel({
   const clock=kabulTeacherClock(now);
   const isToday=(weekday:TeacherWeekday)=>liveWeekday===weekday;
   const dayItems=teacherPeriodsForDay(academics,currentDay);
-  const weekDays:TeacherWeekday[]=[
-    ...TEACHER_SCHOOL_WEEKDAYS,
-    ...(teacherPeriodsForDay(academics,"FRIDAY").length?["FRIDAY" as const]:[])
-  ];
+  const weekDays=teacherWeekdayOrder(locale==="en",
+    teacherPeriodsForDay(academics,"FRIDAY").length>0);
   const toToday=()=>onSelectWeekday(liveWeekday??"SATURDAY");
   const allCount=weekDays.reduce((total,day)=>total+teacherPeriodsForDay(academics,day).length,0);
   return <View style={styles.card} testID="teacher-schedule-panel">
