@@ -34,3 +34,5 @@ export * from "./pilot-launch-store.js";
 export * from "./pilot-release-readiness.js";
 
 export * from "./staff-permissions.js";
+
+export * from "./registration-store.js";

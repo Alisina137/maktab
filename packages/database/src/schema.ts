@@ -1114,7 +1114,32 @@ export const pilotLaunchDecisionHistory = pgTable("pilot_launch_decision_history
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [index("pilot_launch_decision_history_school_idx").on(table.schoolId, table.createdAt)]);
 
+/** School-scoped staff intake; only an approved review creates a student. */
+export const registrationRequests = pgTable("staff_registration_requests", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull().references(()=>schools.id,{onDelete:"cascade"}),
+  createdBy: uuid("created_by").notNull().references(()=>users.id,{onDelete:"restrict"}),
+  fullName: varchar("full_name",{length:160}).notNull(),
+  studentCode: varchar("student_code",{length:32}).notNull(),
+  parentName: varchar("parent_name",{length:160}).notNull(),
+  academicYearId: uuid("academic_year_id").notNull().references(()=>academicYears.id,{onDelete:"restrict"}),
+  gradeLevelId: uuid("grade_level_id").notNull().references(()=>gradeLevels.id,{onDelete:"restrict"}),
+  documents: jsonb("documents").$type<{identityChecked:boolean;consentChecked:boolean;priorRecordChecked:boolean}>().notNull().default({identityChecked:false,consentChecked:false,priorRecordChecked:false}),
+  notes: varchar("notes",{length:1000}).notNull().default(""),
+  status: varchar("status",{length:24}).$type<"DRAFT"|"SUBMITTED"|"UNDER_REVIEW"|"APPROVED"|"REJECTED">().notNull().default("DRAFT"),
+  reviewedBy: uuid("reviewed_by").references(()=>users.id,{onDelete:"set null"}),
+  reviewNote: varchar("review_note",{length:1000}),
+  approvedStudentId: uuid("approved_student_id").references(()=>students.id,{onDelete:"restrict"}),
+  submittedAt: timestamp("submitted_at",{withTimezone:true}),
+  decidedAt: timestamp("decided_at",{withTimezone:true}),
+  createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+}, table=>[
+  index("staff_registration_school_status_idx").on(table.schoolId,table.status,table.updatedAt)
+]);
+
 export const databaseSchema = {
+  registrationRequests,
   pilotLaunchEvidence,
   pilotSupportTickets,
   pilotSupportUpdates,
@@ -1180,6 +1205,7 @@ export type Subject = typeof subjects.$inferSelect;
 export type ParentProfile = typeof parentProfiles.$inferSelect;
 export type AdminProfile = typeof adminProfiles.$inferSelect;
 export type Student = typeof students.$inferSelect;
+export type RegistrationRequest = typeof registrationRequests.$inferSelect;
 export type StudentClassHistory = typeof studentClassHistory.$inferSelect;
 export type TeacherProfile = typeof teacherProfiles.$inferSelect;
 export type TeacherAssignment = typeof teacherAssignments.$inferSelect;
