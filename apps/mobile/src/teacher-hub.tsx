@@ -11,7 +11,7 @@ import { nextTeacherPeriod, teacherTaskCounts, teacherTime12 } from "./teacher-h
 
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
-export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS" | "TASKS";
+export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "TASKS";
 
 function Action({
   label, icon, onPress, rtl
