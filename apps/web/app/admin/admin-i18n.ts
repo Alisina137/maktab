@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "No eligible records; coverage is not verified.": "هیچ مورد واجد شرایطی وجود ندارد؛ پوشش قابل تأیید نیست.",
   "School readiness worklist": "فهرست آمادگی مکتب",
   "Prioritize incomplete setup": "اولویت‌بندی تنظیمات ناقص",
   "Review blocking setup gaps before advisory coverage warnings.": "نواقص مهم تنظیمات را پیش از هشدارهای مشورتی بررسی کنید.",
@@ -2280,6 +2281,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "No eligible records; coverage is not verified.": "وړ ثبتونه نشته؛ پوښښ نه شي تاییدېدای.",
   "School readiness worklist": "د ښوونځي د چمتووالي لېست",
   "Prioritize incomplete setup": "نیمګړي تنظیمات په لومړیتوب کې ونیسئ",
   "Review blocking setup gaps before advisory coverage warnings.": "مهمې نیمګړتیاوې تر مشورتي خبرتیاوو وړاندې وڅېړئ.",
