@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Launch evidence & support": "مدارک راه‌اندازی و پشتیبانی",
+  "Track operator-reviewed pilot evidence and support requests separately from production acceptance.": "مدارک آزمایشی بررسی‌شده توسط مسئول و درخواست‌های پشتیبانی را جدا از تأیید انتشار نهایی پیگیری کنید.",
   "Get started": "آغاز کار",
   "Monitor": "نظارت",
   "Manage": "مدیریت",
@@ -2234,6 +2236,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Launch evidence & support": "د پیل شواهد او ملاتړ",
+  "Track operator-reviewed pilot evidence and support requests separately from production acceptance.": "د مسوول له خوا کتل شوي ازمایښتي شواهد او د ملاتړ غوښتنې د تولیدي تایید څخه جلا وڅارئ.",
   "Get started": "پیل",
   "Monitor": "څارنه",
   "Manage": "مدیریت",
