@@ -62,10 +62,14 @@ export default function StaffDashboard() {
         ...init.headers,Authorization:`Bearer ${value.session.accessToken}`
       },cache:"no-store"});
     }catch(cause){
-      if(cause && typeof cause==="object" && "status" in cause &&
-        [401,403,503].includes((cause as {status:number}).status)) {
-        // Never silently retain access on revocation, suspension, or cancelled subscription.
-        exit();
+      if(cause && typeof cause==="object" && "status" in cause) {
+        const failure=cause as {status:number;code?:string};
+        const sessionBlocked = [401,403,503].includes(failure.status) &&
+          !(path==="/v1/auth/change-password" &&
+            failure.status===401 && failure.code==="current_password_invalid");
+        // An incorrect current password is a form error, not a revoked session.
+        // Revoked, suspended and unavailable staff accounts still leave immediately.
+        if(sessionBlocked)exit();
       }
       throw cause;
     }
