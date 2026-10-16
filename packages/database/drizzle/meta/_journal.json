@@ -197,6 +197,13 @@
       "when": 1790817200000,
       "tag": "0027_admin_attendance_followups",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790825600000,
+      "tag": "0028_staff_profiles_permissions",
+      "breakpoints": true
     }
   ]
 }
