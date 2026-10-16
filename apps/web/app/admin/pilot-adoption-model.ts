@@ -27,10 +27,6 @@ export type AdoptionSummary = {
   followUps: AdoptionFollowUp[];
 };
 const roles = ["TEACHER", "PARENT", "STUDENT"] as const;
-const activityKeys = [
-  "homeworkPublished", "homeworkSubmissions", "attendanceClassDays",
-  "attendanceStudentMarks", "announcementsPublished"
-] as const;
 function object(input: unknown): Record<string, unknown> {
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new Error("Unexpected usage report.");
@@ -75,8 +71,13 @@ export function parseAdoptionReport(input: unknown, requestedWindow: AdoptionWin
       activatedPercent: percent(eligible, activated) };
   });
   const rawActivities = object(data.activities);
-  const activities = Object.fromEntries(activityKeys.map(key => [key, natural(rawActivities[key])]))
-    as AdoptionActivities;
+  const activities: AdoptionActivities = {
+    homeworkPublished: natural(rawActivities.homeworkPublished),
+    homeworkSubmissions: natural(rawActivities.homeworkSubmissions),
+    attendanceClassDays: natural(rawActivities.attendanceClassDays),
+    attendanceStudentMarks: natural(rawActivities.attendanceStudentMarks),
+    announcementsPublished: natural(rawActivities.announcementsPublished)
+  };
   return { window: requestedWindow, timeZone: "Asia/Kabul",
     startAt: data.startAt, endAt: data.endAt, roles: parsedRoles, activities };
 }
