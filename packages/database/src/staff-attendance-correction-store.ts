@@ -25,8 +25,9 @@ export interface StaffAttendanceCorrectionStore {
 }
 export function createStaffAttendanceCorrectionStore(db:FoundationDatabase):StaffAttendanceCorrectionStore {
   const conflict=(msg:string)=>new StaffAttendanceCorrectionError(409,msg);
-  async function mark(schoolId:string,attendanceId:string,studentId:string) {
-    const [row]=await db.select({
+  async function mark(schoolId:string,attendanceId:string,studentId:string,
+    reader:Pick<FoundationDatabase,"select">=db) {
+    const [row]=await reader.select({
       attendance:dailyAttendances,entry:studentAttendances,student:students
     }).from(studentAttendances).innerJoin(dailyAttendances,and(
       eq(dailyAttendances.id,studentAttendances.attendanceId),
@@ -37,7 +38,7 @@ export function createStaffAttendanceCorrectionStore(db:FoundationDatabase):Staf
         eq(studentAttendances.attendanceId,attendanceId),eq(studentAttendances.studentId,studentId)))
       .limit(1);
     if(!row)throw new StaffAttendanceCorrectionError(404,"Attendance mark not found.");
-    const [year]=await db.select({status:academicYears.status}).from(academicYears)
+    const [year]=await reader.select({status:academicYears.status}).from(academicYears)
       .where(and(eq(academicYears.id,row.attendance.academicYearId),
         eq(academicYears.schoolId,schoolId))).limit(1);
     if(year?.status!=="ACTIVE")throw conflict("Historical attendance is read-only.");
@@ -104,7 +105,8 @@ export function createStaffAttendanceCorrectionStore(db:FoundationDatabase):Staf
           eq(staffAttendanceCorrectionRequests.status,"PENDING"))).returning();
         if(!request)throw conflict("Request is no longer pending.");
         if(input.action==="APPROVE"){
-          const current=await mark(schoolId,request.attendanceId,request.studentId);
+          const current=await mark(schoolId,request.attendanceId,request.studentId,
+            tx as unknown as Pick<FoundationDatabase,"select">);
           if(current.entry.updatedAt.getTime()!==request.expectedUpdatedAt.getTime() ||
              current.entry.status!==request.originalStatus)
             throw conflict("Attendance has changed. Reject this request and request a new correction.");
