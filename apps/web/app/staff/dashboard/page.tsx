@@ -10,6 +10,7 @@ import {
 import { clearStaffSession, readStaffSession, storeStaffSession, type StaffSession } from "../staff-client";
 import { StaffHomePanel } from "../staff-home-panel";
 import { StaffRegistrationPanel } from "../staff-registration-panel";
+import { StaffAttendancePanel } from "../staff-attendance-panel";
 
 type StaffMe={user:{id:string;username:string;role:"SCHOOL_STAFF";status:string};
   school:{id:string;name:string;code:string};
@@ -22,7 +23,7 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
-  const [tab,setTab]=useState<"home"|"directory"|"registration"|"settings">("home");
+  const [tab,setTab]=useState<"home"|"directory"|"registration"|"attendance"|"settings">("home");
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -46,10 +47,12 @@ export default function StaffDashboard() {
   const t=(s:string)=>adminText(locale,s);
   const canDirectory=profile?.profile?.permissions?.includes("DIRECTORY_VIEW")===true;
   const canRegister=profile?.profile?.permissions?.includes("ENROLLMENT_REQUESTS")===true;
+  const canAttend=profile?.profile?.permissions?.includes("ATTENDANCE_REVIEW")===true;
   const tabs=[
     {id:"home" as const,label:"Home"},
     ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
     ...(canRegister?[{id:"registration" as const,label:"Registration"}]:[]),
+    ...(canAttend?[{id:"attendance" as const,label:"Attendance"}]:[]),
     {id:"settings" as const,label:"Profile & Settings"}
   ];
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
@@ -199,7 +202,9 @@ export default function StaffDashboard() {
         department={profile.profile?.department ?? null}
         permissions={profile.profile?.permissions ?? []}
         onDirectory={()=>setTab("directory")} onRegistrations={()=>setTab("registration")}
+        onAttendance={()=>setTab("attendance")}
         onSettings={()=>setTab("settings")}/> : null}
+      {tab==="attendance"&&canAttend?<StaffAttendancePanel locale={locale} api={authenticated}/>:null}
       {tab==="registration"&&canRegister?<StaffRegistrationPanel locale={locale}
         userId={profile.user.id} api={authenticated}/>:null}
       {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
