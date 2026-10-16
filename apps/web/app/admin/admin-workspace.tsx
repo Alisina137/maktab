@@ -67,6 +67,7 @@ const AdminWorkspaceContext = createContext<AdminWorkspaceContextValue | null>(n
 
 const navItems = [
   { href: "/admin/accounts", label: "Accounts" },
+  { href: "/admin/staff-work", label: "Staff work" },
   { href: "/admin/pilot", label: "Pilot operations" },
   { href: "/admin/communication", label: "Communication & fees" },
   { href: "/admin/learning", label: "Learning" },
@@ -79,6 +80,7 @@ const navItems = [
 // Loading states describe the current workspace, not implementation phases.
 const adminLoadingTextByRoute: Record<string, string> = {
   "/admin/accounts": "Loading accounts data…",
+  "/admin/staff-work": "Loading staff work…",
   "/admin/pilot": "Loading pilot operations data…",
   "/admin/pilot/adoption": "Loading usage & adoption data…",
   "/admin/pilot/service": "Loading service health data…",
@@ -112,6 +114,10 @@ const yearScopedRoutes = new Set([
 ]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {
+  "/admin/staff-work": {
+    title: "Staff tasks & communication review",
+    description: "Assign staff tasks and review staff-written communication drafts before publication."
+  },
   "/admin/accounts": {
     title: "School accounts",
     description: "Create school staff identities, review account status, reset temporary credentials, and manage access."
