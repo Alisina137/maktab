@@ -12,6 +12,7 @@ import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
 import { PilotOperationsNavigation, type PilotSection } from "./pilot-operations-navigation";
+import { PilotOperationsPulse } from "./pilot-operations-pulse";
 import { formatPilotTimestamp } from "./pilot-timestamp";
 export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
 import { PilotOperationalReadinessPanel } from "./pilot-operational-readiness-panel";
@@ -505,6 +506,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
 
 
       <PilotOperationsNavigation section={section} locale={locale} />
+      {section === "overview" ? (
+        <PilotOperationsPulse key={accessToken} accessToken={accessToken} locale={locale} />
+      ) : null}
 
       {loadError ? <div className="admin-error pilot-retry-alert" role="alert">
         <span>{loadError}</span>
