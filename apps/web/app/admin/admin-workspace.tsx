@@ -72,6 +72,7 @@ const navItems = [
   { href: "/admin/learning", label: "Learning" },
   { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/families", label: "Families" },
+  { href: "/admin/registrations", label: "Registrations" },
   { href: "/admin/academics", label: "Academics" }
 ] as const;
 
@@ -86,6 +87,7 @@ const adminLoadingTextByRoute: Record<string, string> = {
   "/admin/learning": "Loading learning data…",
   "/admin/attendance": "Loading attendance data…",
   "/admin/families": "Loading families data…",
+  "/admin/registrations": "Loading registration requests…",
   "/admin/academics": "Loading academics data…",
   "/admin/profile": "Loading administrator profile data…"
 };
@@ -137,6 +139,10 @@ const pageCopy: Record<string, { title: string; description: string }> = {
   "/admin/attendance": {
     title: "Attendance",
     description: "Review class attendance records and school-level attendance activity."
+  },
+  "/admin/registrations": {
+    title: "Enrollment approvals",
+    description: "Review student registration requests and approve valid family and class placement."
   },
   "/admin/families": {
     title: "Families",

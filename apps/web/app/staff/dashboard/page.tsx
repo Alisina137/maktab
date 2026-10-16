@@ -9,6 +9,7 @@ import {
 } from "../../admin/admin-i18n";
 import { clearStaffSession, readStaffSession, storeStaffSession, type StaffSession } from "../staff-client";
 import { StaffHomePanel } from "../staff-home-panel";
+import { StaffRegistrationPanel } from "../staff-registration-panel";
 
 type StaffMe={user:{id:string;username:string;role:"SCHOOL_STAFF";status:string};
   school:{id:string;name:string;code:string};
@@ -21,7 +22,7 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
-  const [tab,setTab]=useState<"home"|"directory"|"settings">("home");
+  const [tab,setTab]=useState<"home"|"directory"|"registration"|"settings">("home");
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -44,9 +45,11 @@ export default function StaffDashboard() {
   const [passwordNotice,setPasswordNotice]=useState("");
   const t=(s:string)=>adminText(locale,s);
   const canDirectory=profile?.profile?.permissions?.includes("DIRECTORY_VIEW")===true;
+  const canRegister=profile?.profile?.permissions?.includes("ENROLLMENT_REQUESTS")===true;
   const tabs=[
     {id:"home" as const,label:"Home"},
     ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
+    ...(canRegister?[{id:"registration" as const,label:"Registration"}]:[]),
     {id:"settings" as const,label:"Profile & Settings"}
   ];
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
@@ -179,7 +182,7 @@ export default function StaffDashboard() {
       <section className="staff-hero">
         <span className="eyebrow">{t("Staff workspace")}</span>
         <h1>{t("Welcome back")}, {profile.profile?.fullName || profile.user.username}</h1>
-        <p>{t("Find school records for front-desk assistance. Account creation, grades, fees and administrative settings remain administrator-only.")}</p>
+        <p>{t("Find school records and prepare permitted registration requests. Approval, grades, fees and administrative settings remain administrator-only.")}</p>
         <div className="staff-school-badge">{profile.school.name} · {profile.school.code}
           {profile.profile ? ` · ${t(profile.profile.position.replaceAll("_"," ").toLowerCase())}` : ""}
         </div>
@@ -195,7 +198,10 @@ export default function StaffDashboard() {
         position={profile.profile?.position ?? null}
         department={profile.profile?.department ?? null}
         permissions={profile.profile?.permissions ?? []}
-        onDirectory={()=>setTab("directory")} onSettings={()=>setTab("settings")}/> : null}
+        onDirectory={()=>setTab("directory")} onRegistrations={()=>setTab("registration")}
+        onSettings={()=>setTab("settings")}/> : null}
+      {tab==="registration"&&canRegister?<StaffRegistrationPanel locale={locale}
+        userId={profile.user.id} api={authenticated}/>:null}
       {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
         {canDirectory ? (
         <section className="admin-panel staff-directory">

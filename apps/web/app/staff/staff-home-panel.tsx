@@ -10,10 +10,10 @@ type StaffHomeProps = {
   department: string | null;
   permissions: string[];
   onDirectory: () => void;
+  onRegistrations: () => void;
   onSettings: () => void;
 };
 const PLANNED: Record<string,string> = {
-  ENROLLMENT_REQUESTS: "Registration requests",
   ATTENDANCE_REVIEW: "Attendance review",
   FEES_VIEW: "Fee records",
   FEES_COLLECT: "Payment collection",
@@ -27,6 +27,7 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
   permissions, onDirectory, onSettings}: StaffHomeProps) {
   const t = (label:string) => adminText(locale,label);
   const canDirectory = permissions.includes("DIRECTORY_VIEW");
+  const canRegister = permissions.includes("ENROLLMENT_REQUESTS");
   const planned = permissions.filter(p => p in PLANNED);
   return <section className="staff-home" aria-labelledby="staff-home-heading">
     <div className="staff-home-heading">
@@ -49,7 +50,7 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
       </article>
       <article className="staff-home-card">
         <span>{t("Available workspace")}</span>
-        <strong>{canDirectory ? t("School directory") : t("No active modules")}</strong>
+        <strong>{canRegister ? t("Registration requests") : canDirectory ? t("School directory") : t("No active modules")}</strong>
         <small>{t("Only enabled workflows appear as actions.")}</small>
       </article>
     </div>
@@ -60,6 +61,8 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
         <div className="staff-home-actions">
           {canDirectory ? <button className="admin-primary" type="button"
             onClick={onDirectory}>{t("Search school directory")}</button> : null}
+          {canRegister?<button className="admin-primary" type="button"
+            onClick={onRegistrations}>{t("New registration")}</button>:null}
           <button className="admin-secondary" type="button"
             onClick={onSettings}>{t("My profile & security")}</button>
         </div>
