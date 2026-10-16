@@ -93,6 +93,14 @@ export function registerStaffWorkflowRoutes(
     return {tasks:await workflow.listTasks(actor.user.schoolId),
       staff:await workflow.listStaffDirectory(actor.user.schoolId)};
   });
+  app.post<{Params:{id:string}}>("/v1/admin/staff-work/tasks/:id/cancel",async(request,reply)=>{
+    reply.header("cache-control","no-store");
+    const actor=await requireSchoolAdmin(request,reply,accounts);if(!actor)return;
+    try{
+      const {id}=idParam.parse(request.params);
+      return {task:await workflow.cancelTask(actor.user.schoolId,actor.user.id,id)};
+    }catch(error){return sendError(reply,error);}
+  });
   app.post("/v1/admin/staff-work/tasks",async(request,reply)=>{
     reply.header("cache-control","no-store");
     const actor=await requireSchoolAdmin(request,reply,accounts);if(!actor)return;
