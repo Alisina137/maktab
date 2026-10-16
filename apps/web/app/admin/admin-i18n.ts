@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Staff work": "کارهای کارمندان",
+  "Staff tasks & communication review": "وظایف کارمندان و بررسی پیام‌ها",
+  "Loading staff work…": "کارهای کارمندان بارگذاری می‌شود…",
   "Registration": "ثبت‌نام",
   "Student registration": "ثبت‌نام شاگرد",
   "Registration & enrollment requests": "درخواست‌های ثبت‌نام و شمولیت",
@@ -2555,6 +2558,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Staff work": "د کارکوونکو چارې",
+  "Staff tasks & communication review": "د کارکوونکو دندې او د پیغامونو ارزونه",
+  "Loading staff work…": "د کارکوونکو چارې پورته کېږي…",
   "Registration": "ثبت‌نام",
   "Student registration": "د زده کوونکي نوم‌لیکنه",
   "Registration & enrollment requests": "د نوم‌لیکنې او شاملېدو غوښتنې",
