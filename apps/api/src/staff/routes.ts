@@ -10,6 +10,10 @@ import { requireSchoolAdmin } from "../users/routes.js";
 const searchSchema = z.object({
   query: z.string().trim().min(2).max(80),
   group: z.enum(["STUDENT", "PARENT", "TEACHER"]).default("STUDENT"),
+  status: z.enum(["ALL","ACTIVE","INVITED","SUSPENDED","ARCHIVED"]).default("ALL"),
+  sortBy: z.enum(["name","username"]).default("name"),
+  order: z.enum(["asc","desc"]).default("asc"),
+  pageSize: z.coerce.number().int().refine(value=>[10,20].includes(value)).default(10),
   page: z.coerce.number().int().min(1).max(1000).default(1)
 }).strict();
 
@@ -106,8 +110,9 @@ export function registerStaffRoutes(app: FastifyInstance, accounts: AccountStore
     try {
       const filter=searchSchema.parse(request.query);
       const result=await accounts.searchUserDirectory(context.user.schoolId,{
-        query:filter.query,group:filter.group,status:"ALL",highlight:"ALL",
-        sortBy:"name",order:"asc",page:filter.page,pageSize:10
+        query:filter.query,group:filter.group,status:filter.status,highlight:"ALL",
+        sortBy:filter.sortBy,order:filter.order,page:filter.page,pageSize:filter.pageSize,
+        safeStaffSearch:true
       });
       // Important: do not serialize full User records (password hash, session,
       // profile phone, family relationships) to this staff-only directory.
@@ -121,7 +126,7 @@ export function registerStaffRoutes(app: FastifyInstance, accounts: AccountStore
             role:entry.user.role,
             status:entry.user.status
           })),
-        total:result.total,page:result.page,pages:result.pages,pageSize:10
+        total:result.total,page:result.page,pages:result.pages,pageSize:result.pageSize
       };
     } catch(error) {
       if(error instanceof ZodError)
