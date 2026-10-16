@@ -22,8 +22,9 @@ assert.ok(api.includes('context.user.role !== "SCHOOL_STAFF"') &&
   api.includes("requireAccess(request, reply, accounts)") &&
   api.includes("context.user.schoolId") &&
   api.includes('group: z.enum(["STUDENT", "PARENT", "TEACHER"])'));
-assert.ok(!api.includes("safeUser(entry.user)") && !api.includes("passwordHash")===false,
-  "Staff API must not return full users or password material.");
+assert.ok(!api.includes("safeUser(entry.user)") && !api.includes("passwordHash:entry") &&
+  !api.includes("phone:entry") && !api.includes("email:entry"),
+  "Staff API must not return full users or private contacts.");
 assert.ok(api.includes("fullName:entry.profile.fullName") &&
   api.includes("username:entry.user.username") &&
   api.includes("status:entry.user.status"));
