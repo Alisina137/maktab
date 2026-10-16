@@ -25,6 +25,7 @@ export interface BuildAppOptions {
   accountStore: AccountStore;
   academicStore: AcademicStore;
   familyStore: FamilyStore;
+  registrationStore?: RegistrationStore;
   attendanceStore: AttendanceStore;
   learningStore: LearningStore;
   learningExtensionsStore?: LearningExtensionsStore;
@@ -92,7 +93,7 @@ export function buildApp(options: BuildAppOptions) {
     passwordVerificationSecret: options.passwordVerificationSecret
   });
   registerUserRoutes(app, options.accountStore);
-  registerStaffRoutes(app, options.accountStore);
+  registerStaffRoutes(app, options.accountStore, options.registrationStore);
   registerAcademicRoutes(app, options.accountStore, options.academicStore);
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
   registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);

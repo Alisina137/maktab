@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { STAFF_PERMISSIONS, STAFF_POSITIONS,
+import { RegistrationError, type RegistrationStore, STAFF_PERMISSIONS, STAFF_POSITIONS,
   hasStaffPermission, type AccountStore } from "@maktablink/database";
 import { z, ZodError } from "zod";
 import { requireAccess } from "../auth/routes.js";
@@ -51,7 +51,7 @@ async function requireStaff(request: FastifyRequest, reply: FastifyReply, accoun
   return context;
 }
 
-export function registerStaffRoutes(app: FastifyInstance, accounts: AccountStore) {
+export function registerStaffRoutes(app: FastifyInstance, accounts: AccountStore, registrations?: RegistrationStore) {
   // Administrator-only staff profile management. This never inherits admin
   // privileges for staff users and cannot cross school boundaries.
   app.get<{Params:{userId:string}}>("/v1/admin/staff/:userId/profile", async(request, reply) => {
@@ -134,4 +134,127 @@ export function registerStaffRoutes(app: FastifyInstance, accounts: AccountStore
       throw error;
     }
   });
+
+  // Phase 4: permissions are enforced on every staff read and write. Staff can
+  // prepare records, never create accounts or approve final enrollment.
+  if (registrations) {
+    const details = z.object({
+      fullName: z.string().trim().min(2).max(160),
+      studentCode: z.string().trim().min(2).max(32).regex(/^[A-Za-z0-9_-]+$/),
+      parentName: z.string().trim().min(2).max(160),
+      academicYearId: z.string().uuid(),gradeLevelId:z.string().uuid(),
+      documents:z.object({
+        identityChecked:z.boolean(),consentChecked:z.boolean(),priorRecordChecked:z.boolean()
+      }).strict(),
+      notes:z.string().trim().max(1000).default("")
+    }).strict();
+    const statusQuery=z.object({
+      status:z.enum(["DRAFT","SUBMITTED","UNDER_REVIEW","APPROVED","REJECTED"]).optional()
+    }).strict();
+    const idParam=z.object({id:z.string().uuid()}).strict();
+    const approval=z.discriminatedUnion("action",[
+      z.object({action:z.literal("APPROVE"),parentUserId:z.string().uuid(),
+        classId:z.string().uuid(),note:z.string().trim().max(1000).default("")}).strict(),
+      z.object({action:z.literal("REJECT"),note:z.string().trim().min(3).max(1000)}).strict()
+    ]);
+    function handleRegistrationError(reply:FastifyReply,error:unknown) {
+      if(error instanceof ZodError)return reply.code(400).send({
+        error:"validation_error",issues:error.issues,message:"Check the registration fields."});
+      if(error instanceof RegistrationError)return reply.code(error.statusCode).send({
+        error:"registration_error",message:error.message});
+      throw error;
+    }
+    async function enrollmentStaff(request:FastifyRequest,reply:FastifyReply) {
+      const ctx=await requireStaff(request,reply,accounts);
+      if(!ctx)return null;
+      const profile=await accounts.getStaffProfile(ctx.user.schoolId,ctx.user.id);
+      if(!hasStaffPermission(profile?.permissions,"ENROLLMENT_REQUESTS")) {
+        await reply.code(403).send({error:"permission_denied",message:"Enrollment permission required."});
+        return null;
+      }
+      return ctx;
+    }
+    app.get("/v1/staff/registrations/options",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await enrollmentStaff(request,reply);if(!ctx)return;
+      return registrations.getOptions(ctx.user.schoolId);
+    });
+    app.get("/v1/staff/registrations",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await enrollmentStaff(request,reply);if(!ctx)return;
+      try{return {requests:await registrations.list(ctx.user.schoolId,statusQuery.parse(request.query).status)};}
+      catch(error){return handleRegistrationError(reply,error);}
+    });
+    app.post("/v1/staff/registrations",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await enrollmentStaff(request,reply);if(!ctx)return;
+      try{
+        const row=await registrations.create(ctx.user.schoolId,ctx.user.id,details.parse(request.body));
+        await accounts.writeAudit({schoolId:ctx.user.schoolId,actorUserId:ctx.user.id,
+          action:"registration.draft_created",entityType:"registration_request",entityId:row.id});
+        return reply.code(201).send({request:row});
+      }catch(error){return handleRegistrationError(reply,error);}
+    });
+    app.put<{Params:{id:string}}>("/v1/staff/registrations/:id",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await enrollmentStaff(request,reply);if(!ctx)return;
+      try{
+        const {id}=idParam.parse(request.params);
+        const row=await registrations.update(ctx.user.schoolId,id,ctx.user.id,details.parse(request.body));
+        await accounts.writeAudit({schoolId:ctx.user.schoolId,actorUserId:ctx.user.id,
+          action:"registration.draft_edited",entityType:"registration_request",entityId:id});
+        return {request:row};
+      }catch(error){return handleRegistrationError(reply,error);}
+    });
+    app.post<{Params:{id:string}}>("/v1/staff/registrations/:id/submit",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await enrollmentStaff(request,reply);if(!ctx)return;
+      try{
+        const {id}=idParam.parse(request.params);
+        const row=await registrations.submit(ctx.user.schoolId,id,ctx.user.id);
+        await accounts.writeAudit({schoolId:ctx.user.schoolId,actorUserId:ctx.user.id,
+          action:"registration.submitted",entityType:"registration_request",entityId:id});
+        return {request:row};
+      }catch(error){return handleRegistrationError(reply,error);}
+    });
+
+    // Final review remains with the school administrator, who must select
+    // an existing in-school parent and an active-year class.
+    app.get("/v1/admin/registrations",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await requireSchoolAdmin(request,reply,accounts);if(!ctx)return;
+      try{return {requests:await registrations.list(ctx.user.schoolId,statusQuery.parse(request.query).status)};}
+      catch(error){return handleRegistrationError(reply,error);}
+    });
+    app.get("/v1/admin/registrations/options",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await requireSchoolAdmin(request,reply,accounts);if(!ctx)return;
+      return registrations.getOptions(ctx.user.schoolId);
+    });
+    app.post<{Params:{id:string}}>("/v1/admin/registrations/:id/review",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await requireSchoolAdmin(request,reply,accounts);if(!ctx)return;
+      try{
+        const {id}=idParam.parse(request.params);
+        const row=await registrations.startReview(ctx.user.schoolId,id,ctx.user.id);
+        await accounts.writeAudit({schoolId:ctx.user.schoolId,actorUserId:ctx.user.id,
+          action:"registration.review_started",entityType:"registration_request",entityId:id});
+        return {request:row};
+      }catch(error){return handleRegistrationError(reply,error);}
+    });
+    app.post<{Params:{id:string}}>("/v1/admin/registrations/:id/decision",async(request,reply)=>{
+      reply.header("cache-control","no-store");
+      const ctx=await requireSchoolAdmin(request,reply,accounts);if(!ctx)return;
+      try{
+        const {id}=idParam.parse(request.params);
+        const row=await registrations.decide(ctx.user.schoolId,id,ctx.user.id,approval.parse(request.body));
+        await accounts.writeAudit({schoolId:ctx.user.schoolId,actorUserId:ctx.user.id,
+          action:row.status==="APPROVED"?"registration.approved":"registration.rejected",
+          entityType:"registration_request",entityId:id,
+          metadata:{studentId:row.approvedStudentId,status:row.status}});
+        return {request:row};
+      }catch(error){return handleRegistrationError(reply,error);}
+    });
+  }
+
 }
