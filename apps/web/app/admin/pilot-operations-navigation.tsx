@@ -22,6 +22,17 @@ export type PilotSection = (typeof PILOT_TABS)[number]["section"];
 export function isPilotSection(value: string): value is PilotSection {
   return PILOT_TABS.some((tab) => tab.section === value);
 }
+export const PILOT_SECTION_DESCRIPTIONS: Record<PilotSection, string> = {
+  overview: "Current school signals and safe next checks before launch.",
+  readiness: "Review setup checks and outstanding school configuration gaps.",
+  onboarding: "Validate imports, prepare accounts and review school-only import history.",
+  adoption: "Compare eligible accounts with recorded recent sign-ins.",
+  service: "Review recorded notification, support and import issues.",
+  oversight: "Inspect a privacy-safe timeline of school operations.",
+  subscription: "Review subscription access and renewal details.",
+  audit: "Review administrative activity and school-scoped exports.",
+  launch: "Manage support tickets, launch evidence and independent release checks."
+};
 const groups = [
   { id: "START", label: "Get started" },
   { id: "MONITOR", label: "Monitor" },

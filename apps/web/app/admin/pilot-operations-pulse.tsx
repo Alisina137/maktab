@@ -5,9 +5,9 @@ import Link from "next/link";
 import { adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import {
   parsePulseAdoption, parsePulseService, parsePulseRelease,
-  pulseSignInCoverage, pulseAlertCount,
+  pulseSignInCoverage, pulseAlertCount, pilotPulseActions,
   type PilotPulseAdoption, type PilotPulseService, type PilotPulseRelease,
-  type PilotPulseSnapshot
+  type PilotPulseSnapshot, type PilotPulseAction
 } from "./pilot-operations-pulse-model";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -57,6 +57,23 @@ export function PilotOperationsPulse({ accessToken, locale }: {
 
   const coverage = pulseSignInCoverage(snapshot?.adoption ?? null);
   const alerts = pulseAlertCount(snapshot?.service ?? null);
+  const actions = pilotPulseActions(snapshot);
+  const labels: Record<PilotPulseAction["kind"], { title: string; detail: string }> = {
+    SERVICE_ALERTS: { title: "Review recorded service alerts",
+      detail: "{count} recorded warning observations need review. Categories may overlap." },
+    SERVICE_UNAVAILABLE: { title: "Service health is unverified",
+      detail: "The service report is unavailable. Missing evidence is not a healthy result." },
+    SIGN_IN_GAP: { title: "Review sign-in coverage",
+      detail: "{signedIn} of {eligible} eligible accounts have a latest login within 7 days." },
+    ADOPTION_NO_COHORT: { title: "Prepare eligible accounts",
+      detail: "No eligible accounts were found for usage coverage. Review data onboarding." },
+    ADOPTION_UNAVAILABLE: { title: "Usage data is unverified",
+      detail: "Recent sign-in coverage is unavailable. Unknown is not zero usage." },
+    MANUAL_RELEASE: { title: "Independent release checks are required",
+      detail: "Production remains NO-GO until independent release evidence is verified." },
+    RELEASE_UNAVAILABLE: { title: "Release evidence is unverified",
+      detail: "Release status could not be verified. Never assume production approval." }
+  };
 
   return (
     <section className="pilot-pulse" aria-labelledby="pilot-pulse-title">
@@ -105,6 +122,27 @@ export function PilotOperationsPulse({ accessToken, locale }: {
           <span className="pilot-pulse-card-action">{t("Operations oversight")} ↗</span>
         </Link>
       </div>
+      {!loading && snapshot ? (
+        <section className="pilot-action-center" aria-labelledby="pilot-action-center-title">
+          <div className="pilot-action-center-heading">
+            <div><h3 id="pilot-action-center-title">{t("Recommended next checks")}</h3>
+              <p>{t("Read-only follow-ups based on school data, not production approval.")}</p></div>
+          </div>
+          <ul className="pilot-action-list">
+            {actions.map((action) => (
+              <li key={action.kind} className={`pilot-action pilot-action-${action.severity}`}>
+                <div><strong>{t(labels[action.kind].title)}</strong>
+                  <p>{adminFormat(locale, labels[action.kind].detail, {
+                    count: action.count ?? 0, signedIn: action.signedIn ?? 0, eligible: action.eligible ?? 0
+                  })}</p></div>
+                <Link href={action.href} className="pilot-action-link">
+                  {t("Open section")} <span aria-hidden="true">↗</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </section>
   );
 }

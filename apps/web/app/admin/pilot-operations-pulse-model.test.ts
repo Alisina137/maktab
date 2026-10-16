@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   parsePulseAdoption, parsePulseService, parsePulseRelease,
-  pulseAlertCount, pulseSignInCoverage
+  pulseAlertCount, pulseSignInCoverage, pilotPulseActions
 } from "./pilot-operations-pulse-model.js";
 
 const teachers = { role: "TEACHER", eligible: 5, signedIn: 3 };
@@ -62,4 +62,39 @@ test("Phase 8: production status never becomes GO through malformed or unverifie
     { productionDecision: "NO_GO", missingExternalGates: null },
     { productionDecision: "NO_GO", missingExternalGates: [false] }
   ]) assert.throws(() => parsePulseRelease(bad));
+});
+
+test("Pilot improvements Phase 1: unavailable reports never imply readiness", () => {
+  assert.deepEqual(pilotPulseActions(null), []);
+  const actions = pilotPulseActions({adoption: null, service: null, release: null, failed: 3});
+  assert.deepEqual(actions.map(a => a.kind),
+    ["SERVICE_UNAVAILABLE", "ADOPTION_UNAVAILABLE", "RELEASE_UNAVAILABLE"]);
+  assert.ok(actions.every(a => a.severity === "unverified"));
+});
+test("Pilot improvements Phase 1: recorded alerts, sign-in coverage and release gate", () => {
+  const actions = pilotPulseActions({
+    adoption: parsePulseAdoption({roles}),
+    service: parsePulseService({report: {
+      notificationQueue: {stalePending: 2, failed: 1},
+      support: {unresolvedCritical: 1}, imports: {failedLast7Days: 1}
+    }}),
+    release: parsePulseRelease({productionDecision: "NO_GO", missingExternalGates: ["restore"]}),
+    failed: 0
+  });
+  assert.deepEqual(actions.map(a => a.kind), ["SERVICE_ALERTS", "SIGN_IN_GAP", "MANUAL_RELEASE"]);
+  assert.equal(actions[0]?.count, 5);
+  assert.deepEqual([actions[1]?.signedIn, actions[1]?.eligible], [12, 30]);
+  assert.equal(actions[2]?.href, "/admin/pilot/launch");
+});
+test("Pilot improvements Phase 1: zero alerts and zero eligible accounts are not a production pass", () => {
+  const actions = pilotPulseActions({
+    adoption: parsePulseAdoption({roles: roles.map(r => ({...r, eligible: 0, signedIn: 0}))}),
+    service: parsePulseService({report: {
+      notificationQueue: {stalePending: 0, failed: 0},
+      support: {unresolvedCritical: 0}, imports: {failedLast7Days: 0}
+    }}),
+    release: parsePulseRelease({productionDecision: "NO_GO", missingExternalGates: []}),
+    failed: 0
+  });
+  assert.deepEqual(actions.map(a => a.kind), ["ADOPTION_NO_COHORT", "MANUAL_RELEASE"]);
 });

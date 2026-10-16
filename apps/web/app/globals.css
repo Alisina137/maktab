@@ -8834,3 +8834,23 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
 @media (max-width: 940px) { .pilot-pulse-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 620px) { .pilot-pulse-grid { grid-template-columns: minmax(0,1fr); } }
+
+/* Pilot improvement phase 1: contextual, responsive next-check cards. */
+.pilot-action-center { display: grid; gap: 12px; min-width: 0; padding: 17px;
+  border: 1px solid var(--ml-color-border); border-radius: 15px; background: #fff; }
+.pilot-action-center-heading h3 { margin: 0 0 5px; font-size: 17px; }
+.pilot-action-center-heading p { margin: 0; font-size: 12px; line-height: 1.6;
+  color: var(--ml-color-text-muted); }
+.pilot-action-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pilot-action { min-width: 0; display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 12px 14px; border: 1px solid #dce5f0;
+  border-inline-start: 4px solid #6387b6; border-radius: 10px; background: #f9fbff; }
+.pilot-action-attention { border-inline-start-color: #bb6a34; background: #fffbf6; }
+.pilot-action-unverified { border-inline-start-color: #847c95; background: #fcfbff; }
+.pilot-action strong { display: block; font-size: 13px; }
+.pilot-action p { margin: 5px 0 0; color: var(--ml-color-text-muted); font-size: 12px;
+  line-height: 1.55; overflow-wrap: anywhere; }
+.pilot-action-link { flex: 0 0 auto; font-size: 12px; font-weight: 750;
+  color: var(--ml-color-brand-strong); text-underline-offset: 3px; }
+.pilot-action-link:focus-visible { outline: 3px solid var(--ml-color-brand); outline-offset: 3px; }
+@media (max-width: 620px) { .pilot-action { align-items: flex-start; flex-direction: column; gap: 7px; } }

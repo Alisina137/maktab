@@ -11,7 +11,7 @@ import { PilotOnboardingGuide } from "./pilot-onboarding-guide";
 import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
-import { PilotOperationsNavigation, type PilotSection } from "./pilot-operations-navigation";
+import { PilotOperationsNavigation, PILOT_SECTION_DESCRIPTIONS, type PilotSection } from "./pilot-operations-navigation";
 import { PilotOperationsPulse } from "./pilot-operations-pulse";
 import { formatPilotTimestamp } from "./pilot-timestamp";
 export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
@@ -491,11 +491,9 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
     <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">{t("Phase 8 · Pilot Readiness")}</span>
+          <span className="eyebrow">{t("Operations workspace")}</span>
           <h2 id="pilot-readiness-title">{t("Pilot operations")}</h2>
-          <p>
-            {t("Review onboarding checks, subscription access, audit history, safe school export, and import templates.")}
-          </p>
+          <p>{t(PILOT_SECTION_DESCRIPTIONS[section])}</p>
         </div>
         {(["overview", "readiness", "onboarding", "subscription", "audit"] as PilotSection[])
           .includes(section) ? (
