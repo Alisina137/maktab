@@ -2,21 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
+import { parsePilotReleaseResult, pilotReleaseSummary, type PilotReleaseResult } from "./pilot-release-readiness-model";
 
-type ReleaseCheck = { id: string; name: string; status: "UNVERIFIED" | "NO_GO" };
-type ReleaseResult = {
-  productionDecision: "NO_GO";
-  policy: string;
-  setupReady: boolean;
-  recordedPilotApproval: boolean;
-  effectivePilotApproval: boolean;
-  evidenceVerified: number;
-  evidenceRequired: number;
-  openCriticalTickets: number;
-  checks: ReleaseCheck[];
-  missingExternalGates: string[];
-  summary: string;
-};
+type ReleaseResult = PilotReleaseResult;
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export function PilotReleaseReadinessPanel({
@@ -39,7 +27,8 @@ export function PilotReleaseReadinessPanel({
         });
         const data = await response.json().catch(() => null);
         if (!response.ok) throw new Error(data?.message ?? "Release readiness could not be loaded.");
-        if (!controller.signal.aborted) setResult(data as ReleaseResult);
+        const verified = parsePilotReleaseResult(data);
+        if (!controller.signal.aborted) setResult(verified);
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(adminErrorText(locale, cause, "Release readiness could not be loaded."));
@@ -95,6 +84,11 @@ export function PilotReleaseReadinessPanel({
           <p>{adminFormat(locale, "{count} external release gates remain unverified", {
             count: result.missingExternalGates.length
           })}</p>
+          <p className="pilot-security-note" role="status">
+            {adminFormat(locale, "{count} of 20 manual release checks remain unverified.", {
+              count: pilotReleaseSummary(result).unverified
+            })}
+          </p>
           <details className="pilot-phase7-checks">
             <summary>{t("View all 20 release acceptance steps")}</summary>
             <div role="list" className="pilot-phase7-list">
