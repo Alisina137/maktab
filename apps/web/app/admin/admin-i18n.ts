@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Scheduler, push delivery, backup restore and historical uptime were not verified by this report.": "این گزارش اجرای زمان‌بند، تحویل پیام، بازیابی نسخه پشتیبان و سابقه دسترسی را تأیید نمی‌کند.",
   "Independent infrastructure checks are outstanding": "بررسی مستقل زیربنا هنوز انجام نشده است",
   "Investigate failed imports": "بررسی واردسازی‌های ناموفق",
   "Failed import batches recorded in the last seven days.": "واردسازی‌های ناموفق طی هفت روز اخیر ثبت شده‌اند.",
@@ -2348,6 +2349,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Scheduler, push delivery, backup restore and historical uptime were not verified by this report.": "دا راپور مهالویش، پیغام رسونه، بیک اپ او د خدمت مخکینی دوام نه تاییدوي.",
   "Independent infrastructure checks are outstanding": "د زیربنا خپلواکې کتنې لا پاتې دي",
   "Investigate failed imports": "ناکام واردونې وڅېړئ",
   "Failed import batches recorded in the last seven days.": "په تېرو اوو ورځو کې ناکامې واردونې ثبت شوې دي.",
