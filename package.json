@@ -66,7 +66,7 @@
     "verify:admin-attendance:phase5": "node scripts/verify-admin-attendance-phase5.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Negaran submits daily attendance once\" src/app.test.ts",
     "verify:admin-attendance:phase6": "node scripts/verify-admin-attendance-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-admin-attendance-phase6-csv.test.ts && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Negaran submits daily attendance once\" src/app.test.ts",
     "verify:admin-attendance:phase7": "node scripts/verify-admin-attendance-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Negaran submits daily attendance once\" src/app.test.ts",
-    "verify:pilot:improvements:phase2": "pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-readiness-priority-model.test.ts"
+    "verify:pilot:improvements:phase2": "pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-readiness-priority-model.test.ts && pnpm --filter @maktablink/api exec tsx --test ../../apps/web/app/admin/pilot-operational-readiness-model.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
