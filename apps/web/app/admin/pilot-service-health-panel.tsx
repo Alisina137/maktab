@@ -81,7 +81,12 @@ export function PilotServiceHealthPanel({ accessToken, locale }: {
         <>
           <p className="pilot-security-note">
             {t("Last checked")}: <time dateTime={data.report.evaluatedAt}>
-              {formatAdminHijriDateTime(locale, data.report.evaluatedAt, "Asia/Kabul")}
+              {locale === "en"
+                ? new Intl.DateTimeFormat("en-US", {
+                    dateStyle: "medium", timeStyle: "short", hour12: true,
+                    timeZone: "Asia/Kabul"
+                  }).format(new Date(data.report.evaluatedAt))
+                : formatAdminHijriDateTime(locale, data.report.evaluatedAt, "Asia/Kabul")}
             </time> · {t("Reporting timezone: Asia/Kabul")}
           </p>
           <div className="pilot-service-grid">
