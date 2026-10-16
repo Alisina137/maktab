@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminAttendanceAudit } from "./admin-attendance-audit";
+import { AdminStaffAttendanceRequests } from "./admin-staff-attendance-requests";
 import { AdminAttendanceFollowups } from "./admin-attendance-followups";
 import { AdminAttendanceAnalytics } from "./admin-attendance-analytics";
 import { AdminAttendanceMonitoring } from "./admin-attendance-monitoring";
@@ -393,6 +394,10 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
           {activeTab === "REPORTS" ? <AdminAttendanceAnalytics
             accessToken={accessToken} academicYearId={selectedAcademicYearId}
             schoolToday={schoolToday} locale={locale} classes={classes}/> : null}
+
+          {activeTab === "STAFF_REQUESTS" ? <AdminStaffAttendanceRequests
+            accessToken={accessToken} locale={locale}
+            onApproved={()=>{if(appliedFilters)void loadReport(appliedFilters);}} /> : null}
 
           {activeTab === "AUDIT" ? <AdminAttendanceAudit
             accessToken={accessToken} academicYearId={selectedAcademicYearId}
