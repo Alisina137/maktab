@@ -305,7 +305,9 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           teacherPhone: teacherProfiles.phone,
           employeeCode: teacherProfiles.employeeCode,
           studentFullName: students.fullName,
-          studentCode: students.studentCode
+          studentCode: students.studentCode,
+          staffFullName: staffProfiles.fullName,
+          staffEmployeeCode: staffProfiles.employeeCode
         })
         .from(users)
         .leftJoin(
@@ -320,6 +322,8 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           students,
           and(eq(students.userId, users.id), eq(students.schoolId, schoolId))
         )
+        .leftJoin(staffProfiles, and(eq(staffProfiles.userId, users.id),
+          eq(staffProfiles.schoolId, schoolId)))
         .where(eq(users.schoolId, schoolId))
         .orderBy(users.username);
 
@@ -332,6 +336,8 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
               ? { fullName: row.teacherFullName, phone: row.teacherPhone, code: row.employeeCode }
               : row.user.role === "STUDENT"
                 ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
+                : row.user.role === "SCHOOL_STAFF"
+                ? { fullName: row.staffFullName, phone: null, code: row.staffEmployeeCode }
                 : { fullName: null, phone: null, code: null }
       }));
     },
@@ -343,6 +349,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           when 'PARENT' then ${parentProfiles.fullName}
           when 'TEACHER' then ${teacherProfiles.fullName}
           when 'STUDENT' then ${students.fullName}
+          when 'SCHOOL_STAFF' then ${staffProfiles.fullName}
           else null
         end, ${users.username}
       )`;
@@ -357,6 +364,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         case ${users.role}
           when 'TEACHER' then ${teacherProfiles.employeeCode}
           when 'STUDENT' then ${students.studentCode}
+          when 'SCHOOL_STAFF' then ${staffProfiles.employeeCode}
           else null
         end, ''
       )`;
@@ -391,11 +399,15 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         teacherPhone: teacherProfiles.phone,
         employeeCode: teacherProfiles.employeeCode,
         studentFullName: students.fullName,
-        studentCode: students.studentCode
+        studentCode: students.studentCode,
+        staffFullName: staffProfiles.fullName,
+        staffEmployeeCode: staffProfiles.employeeCode
       }).from(users)
         .leftJoin(parentProfiles, and(eq(parentProfiles.userId, users.id), eq(parentProfiles.schoolId, schoolId)))
         .leftJoin(teacherProfiles, and(eq(teacherProfiles.userId, users.id), eq(teacherProfiles.schoolId, schoolId)))
-        .leftJoin(students, and(eq(students.userId, users.id), eq(students.schoolId, schoolId)));
+        .leftJoin(students, and(eq(students.userId, users.id), eq(students.schoolId, schoolId)))
+        .leftJoin(staffProfiles, and(eq(staffProfiles.userId, users.id),
+          eq(staffProfiles.schoolId, schoolId)));
       const sortField = input.sortBy === "name" ? nameExpr :
         input.sortBy === "role" ? users.role :
         input.sortBy === "status" ? users.status :
@@ -409,6 +421,8 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           .leftJoin(parentProfiles, and(eq(parentProfiles.userId, users.id), eq(parentProfiles.schoolId, schoolId)))
           .leftJoin(teacherProfiles, and(eq(teacherProfiles.userId, users.id), eq(teacherProfiles.schoolId, schoolId)))
           .leftJoin(students, and(eq(students.userId, users.id), eq(students.schoolId, schoolId)))
+          .leftJoin(staffProfiles, and(eq(staffProfiles.userId, users.id),
+            eq(staffProfiles.schoolId, schoolId)))
           .where(where),
         db.select({
           total: count(),
@@ -433,7 +447,9 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
               ? { fullName: row.teacherFullName, phone: row.teacherPhone, code: row.employeeCode }
               : row.user.role === "STUDENT"
                 ? { fullName: row.studentFullName, phone: null, code: row.studentCode }
-                : { fullName: null, phone: null, code: null }
+                : row.user.role === "SCHOOL_STAFF"
+                  ? { fullName: row.staffFullName, phone: null, code: row.staffEmployeeCode }
+                  : { fullName: null, phone: null, code: null }
         })),
         total,
         page: input.page,
