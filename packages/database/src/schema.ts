@@ -1191,7 +1191,7 @@ export const staffMessageDrafts = pgTable("staff_message_drafts", {
   audienceScope: varchar("audience_scope",{length:16}).$type<"SCHOOL"|"ROLE">().notNull().default("SCHOOL"),
   audienceRole: varchar("audience_role",{length:16}).$type<"TEACHER"|"PARENT"|"STUDENT">(),
   status: varchar("status",{length:16}).$type<"DRAFT"|"SUBMITTED"|"APPROVED"|"REJECTED">().notNull().default("DRAFT"),
-  reviewedBy: uuid("reviewed_by"),
+  reviewedBy: uuid("reviewed_by").references(()=>users.id,{onDelete:"set null"}),
   reviewNote: varchar("review_note",{length:500}),
   reviewedAt: timestamp("reviewed_at",{withTimezone:true}),
   createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
@@ -1199,9 +1199,7 @@ export const staffMessageDrafts = pgTable("staff_message_drafts", {
 }, table => [
   index("staff_message_review_idx").on(table.schoolId,table.status,table.createdAt),
   foreignKey({name:"staff_message_author_school_fk",columns:[table.schoolId,table.createdBy],
-    foreignColumns:[users.schoolId,users.id]}).onDelete("cascade"),
-  foreignKey({name:"staff_message_reviewer_school_fk",columns:[table.schoolId,table.reviewedBy],
-    foreignColumns:[users.schoolId,users.id]}).onDelete("set null")
+    foreignColumns:[users.schoolId,users.id]}).onDelete("cascade")
 ]);
 
 export const staffWorkspacePreferences = pgTable("staff_workspace_preferences", {
