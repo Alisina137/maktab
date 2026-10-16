@@ -10,7 +10,7 @@ const staff=read("apps/web/app/staff/staff-registration-panel.tsx");
 const admin=read("apps/web/app/admin/(workspace)/registrations/page.tsx");
 const css=read("apps/web/app/globals.css");
 const home=read("apps/web/app/staff/staff-home-panel.tsx");
-assert.equal(journal.entries.at(-1).tag,"0029_staff_registration_requests");
+assert.equal(journal.entries[29]?.tag,"0029_staff_registration_requests");
 for(const key of ["CHECK (\"status\" IN","staff_registration_pending_code_unique","staff_registration_approved_student_unique"])
   assert.ok(sql.includes(key),"Migration safety requirement: "+key);
 for(const key of ["eq(registrationRequests.schoolId,schoolId)","eq(registrationRequests.status,\"DRAFT\")",
@@ -24,7 +24,7 @@ for(const key of ["ENROLLMENT_REQUESTS","requireSchoolAdmin","details.parse(requ
   'reply.header("cache-control","no-store")'])
   assert.ok(api.includes(key),"Registration endpoint guard: "+key);
 assert.ok(dashboard.includes("canRegister")&&dashboard.includes("StaffRegistrationPanel"));
-assert.ok(home.includes("onRegistrations, onSettings"));
+assert.ok(home.includes("onRegistrations, onAttendance, onSettings"));
 assert.ok(staff.includes("Submit for review")&&staff.includes("identityChecked"));
 assert.ok(admin.includes("Approve & enroll")&&admin.includes("Reject application"));
 assert.ok(css.includes(".staff-reg-columns"));
