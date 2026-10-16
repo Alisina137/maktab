@@ -9186,3 +9186,60 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .staff-directory .staff-search { grid-template-columns:minmax(0,1fr); }
   .staff-record-details .pilot-detail-grid { grid-template-columns:minmax(0,1fr); }
 }
+
+
+/* Staff Phase 4: intake and administrator review share quiet, spacious,
+   keyboard-friendly layouts; work on RTL and smaller screens. */
+.staff-reg-layout { display:grid; gap:16px; min-width:0; }
+.staff-reg-overview { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:16px;
+  padding:22px; border:1px solid #dce8f4; border-radius:17px;
+  background:linear-gradient(110deg,#f2f7fd,#fff); }
+.staff-reg-overview h2 { margin:6px 0 8px; font-size:clamp(19px,2.4vw,25px); color:#1b385b; }
+.staff-reg-overview p { margin:0; max-width:580px; color:#5b7088; line-height:1.6; }
+.staff-reg-counts { display:flex; flex-wrap:wrap; gap:9px; }
+.staff-reg-counts strong { display:grid; gap:4px; min-width:85px; padding:10px 15px;
+  border:1px solid #d7e5f3; border-radius:12px; color:#245899; background:#fff;
+  font-size:22px; font-variant-numeric:tabular-nums; }
+.staff-reg-counts small { font-size:11px; font-weight:600; color:#61748b; }
+.staff-reg-columns { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);
+  gap:16px; align-items:start; min-width:0; }
+.staff-reg-form,.staff-reg-queue { padding:20px; min-width:0; display:grid; gap:14px; }
+.staff-reg-form h3,.staff-reg-queue h3 { font-size:18px; margin:0 0 6px; }
+.staff-reg-form .admin-section-header p,.staff-reg-queue .admin-section-header p { margin:0; color:#64758c; }
+.staff-reg-fields { gap:14px; }
+.staff-reg-fields :is(input,select,textarea),.staff-reg-queue select,
+.staff-reg-decision :is(input,select,textarea) { width:100%; max-width:100%; }
+.staff-reg-two { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.staff-reg-checklist { display:grid; gap:8px; border:1px solid #dce6f1; border-radius:12px;
+  padding:14px 16px; margin:0; min-width:0; background:#f9fbff; }
+.staff-reg-checklist legend { padding:0 6px; color:#29456e; font-weight:750; }
+.staff-reg-checklist small { color:#5b718c; line-height:1.55; }
+.staff-reg-check { display:flex; align-items:center; gap:10px; font-weight:500; line-height:1.5; cursor:pointer; }
+.staff-reg-check input { width:18px!important; height:18px; flex:0 0 auto; accent-color:#2768b0; }
+.staff-reg-items { display:grid; gap:9px; max-height:570px; overflow:auto; padding:2px; }
+.staff-reg-item { display:flex; align-items:center; justify-content:space-between; gap:10px;
+  width:100%; padding:14px; font:inherit; text-align:start; cursor:pointer;
+  border:1px solid #e0e7f0; border-radius:12px; background:#fff; color:#213755; }
+.staff-reg-item:hover,.staff-reg-item-active { background:#f1f6fd; border-color:#6694c4; }
+.staff-reg-item span:first-child { min-width:0; display:grid; gap:4px; overflow-wrap:anywhere; }
+.staff-reg-item small { color:#6b7b91; font-size:12px; }
+.staff-reg-item .pilot-badge { flex:0 0 auto; }
+.staff-reg-detail { padding:15px; border-radius:12px; background:#f6f9fd; border:1px solid #e3ebf4; }
+.staff-reg-detail h4 { margin:0 0 10px; font-size:15px; }
+.staff-reg-detail p { color:#556b87; margin:7px 0; line-height:1.5; overflow-wrap:anywhere; }
+.staff-reg-submit { padding:14px; border:1px solid #d8e7f5; border-radius:12px; background:#f5f9ff; }
+.staff-reg-submit p { color:#4c6688; margin:0 0 12px; }
+.staff-reg-success { border-radius:10px; padding:12px 15px; color:#135e3c; background:#e9f7ef; border:1px solid #c5e8d6; }
+.staff-reg-decision { border-top:1px solid #e4ebf3; padding-top:15px; }
+.staff-reg-decision-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.staff-reg-form :is(button,input,select,textarea):focus-visible,
+.staff-reg-queue :is(button,input,select):focus-visible { outline:3px solid #3978c5; outline-offset:2px; }
+@media(max-width:850px) { .staff-reg-columns { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:550px) {
+  .staff-reg-two { grid-template-columns:minmax(0,1fr); }
+  .staff-reg-counts { width:100%; }
+  .staff-reg-counts strong { flex:1; }
+  .staff-workspace-nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .staff-reg-overview,.staff-reg-form,.staff-reg-queue { padding:16px; }
+  .staff-reg-item { align-items:flex-start; flex-wrap:wrap; }
+}

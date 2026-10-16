@@ -24,7 +24,7 @@ const PLANNED: Record<string,string> = {
 /** Informational home only: assigned future permissions must never imply an
  * operational feature, existing record count or completed task. */
 export function StaffHomePanel({locale, school, displayName, position, department,
-  permissions, onDirectory, onSettings}: StaffHomeProps) {
+  permissions, onDirectory, onRegistrations, onSettings}: StaffHomeProps) {
   const t = (label:string) => adminText(locale,label);
   const canDirectory = permissions.includes("DIRECTORY_VIEW");
   const canRegister = permissions.includes("ENROLLMENT_REQUESTS");
