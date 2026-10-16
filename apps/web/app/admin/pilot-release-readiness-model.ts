@@ -48,10 +48,11 @@ export function parsePilotReleaseResult(raw: unknown): PilotReleaseResult {
     evidenceRequired > 0 && evidenceVerified === evidenceRequired && openCriticalTickets === 0;
   if (data.effectivePilotApproval !== effectivePilotApproval)
     throw new Error("Contradictory pilot approval.");
-  if (!Array.isArray(data.missingExternalGates) ||
-      data.missingExternalGates.length !== REQUIRED_EXTERNAL_GATES.length ||
-      new Set(data.missingExternalGates).size !== REQUIRED_EXTERNAL_GATES.length ||
-      !REQUIRED_EXTERNAL_GATES.every(gate => data.missingExternalGates.includes(gate)))
+  const missingExternalGates = data.missingExternalGates;
+  if (!Array.isArray(missingExternalGates) ||
+      missingExternalGates.length !== REQUIRED_EXTERNAL_GATES.length ||
+      new Set(missingExternalGates).size !== REQUIRED_EXTERNAL_GATES.length ||
+      !REQUIRED_EXTERNAL_GATES.every(gate => missingExternalGates.includes(gate)))
     throw new Error("Incomplete independent release gates.");
   if (!Array.isArray(data.checks) || data.checks.length !== 20)
     throw new Error("Incomplete Step 20 release checklist.");
