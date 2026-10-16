@@ -89,7 +89,7 @@ export function PilotReleaseReadinessPanel({
               count: pilotReleaseSummary(result).unverified
             })}
           </p>
-          <details className="pilot-phase7-checks">
+          <details className="pilot-phase7-checks" data-release-decision={result.productionDecision}>
             <summary>{t("View all 20 release acceptance steps")}</summary>
             <div role="list" className="pilot-phase7-list">
               {result.checks.map((check) => (
