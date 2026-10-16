@@ -44,6 +44,11 @@ export default function StaffDashboard() {
   const [passwordNotice,setPasswordNotice]=useState("");
   const t=(s:string)=>adminText(locale,s);
   const canDirectory=profile?.profile?.permissions?.includes("DIRECTORY_VIEW")===true;
+  const tabs=[
+    {id:"home" as const,label:"Home"},
+    ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
+    {id:"settings" as const,label:"Profile & Settings"}
+  ];
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
@@ -180,10 +185,9 @@ export default function StaffDashboard() {
         </div>
       </section>
       <nav className="staff-workspace-nav" aria-label={t("Staff workspace navigation")}>
-        {([["home","Home"],...(canDirectory?[["directory","Directory"]]:[]),
-          ["settings","Profile & Settings"]] as string[][]).map(([key,label]) => (
-          <button type="button" key={key} className={tab===key?"staff-nav-active":""}
-            aria-pressed={tab===key} onClick={()=>setTab(key as typeof tab)}>{t(label)}</button>
+        {tabs.map(item => (
+          <button type="button" key={item.id} className={tab===item.id?"staff-nav-active":""}
+            aria-pressed={tab===item.id} onClick={()=>setTab(item.id)}>{t(item.label)}</button>
         ))}
       </nav>
       {tab==="home" ? <StaffHomePanel locale={locale} school={profile.school}
@@ -289,7 +293,7 @@ export default function StaffDashboard() {
                   <div><dt>{t("Username")}</dt><dd>{selected.username}</dd></div>
                   <div><dt>{t("Role")}</dt><dd>{t(selected.role)}</dd></div>
                   <div><dt>{t("Status")}</dt><dd>{t(selected.status)}</dd></div>
-                  <div><dt>{t("School code")}</dt><dd>{selected.code || "—"}</dd></div>
+                  <div><dt>{t("Record code")}</dt><dd>{selected.code || "—"}</dd></div>
                 </dl>
                 <p className="pilot-security-note">{t("Only basic directory fields are available. Contacts, family links, grades and fees require separate approved permissions.")}</p>
               </section> : null}
