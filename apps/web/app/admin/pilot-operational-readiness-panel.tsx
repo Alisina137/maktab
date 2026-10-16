@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
+import { validateOperationalSummary } from "./pilot-operational-readiness-model";
 
 type MetricKey = "teacher_overlap" | "class_overlap" | "assignment_gap" | "invalid_period";
 type Metric = {
@@ -64,7 +65,7 @@ export function PilotOperationalReadinessPanel({ accessToken, locale, compact = 
     setSummary(null); setError(""); setLoading(true);
     setSelected(null); setIssues(null); setOffset(0);
     void request<Operational>(accessToken, "/v1/admin/pilot/readiness/operational", abort.signal)
-      .then((data) => { if (!abort.signal.aborted) setSummary(data); })
+      .then((data) => { if (!abort.signal.aborted) setSummary(validateOperationalSummary(data)); })
       .catch((cause) => { if (!abort.signal.aborted) setError(
         adminErrorText(locale, cause, "Operational checks could not be loaded.")
       ); })
