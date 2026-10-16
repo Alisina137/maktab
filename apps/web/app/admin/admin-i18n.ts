@@ -10,6 +10,20 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Enter a name or code to find accounts in your school.": "برای یافتن حساب‌ها نام یا کد را بنویسید.",
+  "matching school records": "حساب مطابق در مکتب",
+  "No matching records in your school.": "در مکتب شما معلومات مطابق پیدا نشد.",
+  "Directory pages": "صفحات فهرست",
+  "This is a limited lookup, not an administrator directory. Private contacts and student family relationships are not shown.": "این جستجو محدود است و فهرست مدیر نیست. شماره‌های خصوصی و روابط خانوادگی شاگردان نشان داده نمی‌شود.",
+  "My staff account": "حساب کارمندی من",
+  "Password updated successfully.": "رمز عبور با موفقیت تغییر کرد.",
+  "Could not change password.": "تغییر رمز عبور ممکن نشد.",
+  "Checking staff access…": "در حال بررسی دسترسی کارمند…",
+  "Staff access is unavailable.": "دسترسی کارمند در دسترس نیست.",
+  "Back to staff sign in": "بازگشت به ورود کارمندان",
+  "Could not search school records.": "جستجوی اطلاعات مکتب ممکن نشد.",
+  "Update password": "تغییر رمز عبور",
+  "Create a staff account for the separate web staff portal at /staff. Give the staff member their username and temporary password; they must change it at first sign-in. Staff cannot access the administrator dashboard.": "حساب کارمند را برای پورتال وب /staff بسازید. نام کاربری و رمز موقت را بدهید؛ کارمند باید هنگام ورود نخست رمز را تغییر دهد. دسترسی به داشبورد مدیر ندارد.",
   "School Staff Portal": "پورتال کارمندان مکتب",
   "Staff-only web access": "دسترسی ویژهٔ کارمندان در وب",
   "Welcome to your school staff workspace.": "به فضای کاری کارمندان مکتب خوش آمدید.",
@@ -2412,6 +2426,20 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Enter a name or code to find accounts in your school.": "په خپل ښوونځي کې د حساب موندلو لپاره نوم یا کوډ ولیکئ.",
+  "matching school records": "د ښوونځي سمون لرونکي ریکارډونه",
+  "No matching records in your school.": "ستاسو په ښوونځي کې سمون لرونکي ریکارډونه نشته.",
+  "Directory pages": "د لړلیک پاڼې",
+  "This is a limited lookup, not an administrator directory. Private contacts and student family relationships are not shown.": "دا محدود لټون دی، اداري لړلیک نه دی. شخصي اړیکې او کورنۍ تړاوونه نه ښودل کېږي.",
+  "My staff account": "زما د کارکوونکي حساب",
+  "Password updated successfully.": "پټنوم په بریالیتوب بدل شو.",
+  "Could not change password.": "پټنوم بدل نه شو.",
+  "Checking staff access…": "د کارکوونکي لاسرسی کتل کېږي…",
+  "Staff access is unavailable.": "د کارکوونکي لاسرسی نشته.",
+  "Back to staff sign in": "د کارکوونکو ننوتلو ته بېرته",
+  "Could not search school records.": "د ښوونځي ریکارډونه ونه لټول شول.",
+  "Update password": "پټنوم بدل کړئ",
+  "Create a staff account for the separate web staff portal at /staff. Give the staff member their username and temporary password; they must change it at first sign-in. Staff cannot access the administrator dashboard.": "د /staff جلا وېب پورټل لپاره حساب جوړ کړئ. کارن نوم او لنډمهاله پټنوم ورکړئ؛ په لومړي ننوتلو کې یې باید بدل کړي. اداري ډشبورډ ته لاسرسی نه لري.",
   "School Staff Portal": "د ښوونځي کارکوونکو پورټل",
   "Staff-only web access": "یوازې د کارکوونکو وېب لاسرسی",
   "Welcome to your school staff workspace.": "د ښوونځي د کارکوونکو کاري برخې ته ښه راغلاست.",
