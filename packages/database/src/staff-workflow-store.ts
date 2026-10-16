@@ -16,6 +16,7 @@ export interface StaffWorkflowStore {
   createTask(schoolId:string,adminId:string,input:{
     assignedTo:string;title:string;details:string;priority:"LOW"|"NORMAL"|"HIGH";dueDate?:string|null;
   }):Promise<StaffTaskRow>;
+  cancelTask(schoolId:string,adminId:string,id:string):Promise<StaffTaskRow>;
   changeTask(schoolId:string,staffId:string,id:string,input:{
     status:"TODO"|"IN_PROGRESS"|"DONE";expectedUpdatedAt:string;
   }):Promise<StaffTaskRow>;
@@ -94,6 +95,23 @@ export function createStaffWorkflowStore(db:FoundationDatabase):StaffWorkflowSto
         await notify(tx,schoolId,task.assignedTo,`staff-task:${task.id}`,
           "New assigned task",task.title,"/staff/dashboard");
         return task;
+      });
+    },
+    async cancelTask(schoolId,adminId,id){
+      return db.transaction(async tx=>{
+        const [current]=await tx.select().from(staffWorkTasks).where(and(
+          eq(staffWorkTasks.id,id),eq(staffWorkTasks.schoolId,schoolId))).limit(1).for("update");
+        if(!current)throw notFound();
+        if(current.status==="CANCELLED")throw fail("This task has already been cancelled.");
+        const [updated]=await tx.update(staffWorkTasks).set({
+          status:"CANCELLED",completedAt:null,updatedAt:nextDate(current.updatedAt)
+        }).where(and(eq(staffWorkTasks.schoolId,schoolId),eq(staffWorkTasks.id,id),
+          eq(staffWorkTasks.updatedAt,current.updatedAt))).returning();
+        if(!updated)throw fail("Task changed during cancellation.");
+        await audit(tx,schoolId,adminId,"staff_task.cancelled","staff_task",id);
+        await notify(tx,schoolId,current.assignedTo,`staff-task-cancelled:${id}`,
+          "Task cancelled",current.title,"/staff/dashboard");
+        return updated;
       });
     },
     async changeTask(schoolId,staffId,id,input){
