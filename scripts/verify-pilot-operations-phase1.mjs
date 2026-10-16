@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const src = read("apps/web/app/admin/pilot-readiness-panel.tsx");
+const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
 const root = read("apps/web/app/admin/(workspace)/pilot/page.tsx");
 const launchUi = read("apps/web/app/admin/pilot-launch-support-panel.tsx");
 const launchRoutes = read("apps/api/src/pilot/launch-routes.ts");
@@ -19,16 +20,18 @@ for (const [section, href] of [
   ["audit", "/admin/pilot/audit"],
   ["launch", "/admin/pilot/launch"]
 ]) {
-  assert.ok(src.includes('section: "' + section + '"') && src.includes('href: "' + href + '"'),
+  assert.ok(navigation.includes('section: "' + section + '"') && navigation.includes('href: "' + href + '"'),
     "Missing route-backed section: " + section);
 }
 assert.ok(root.includes('section="overview"'), "Default Pilot Operations section must be Overview");
 assert.ok(nested.includes("isPilotSection(section)") && nested.includes("useParams"), "Dynamic route must validate sections");
 assert.ok(workspace.includes('item.href === "/admin/pilot" && pathname.startsWith("/admin/pilot/")'),
   "Main navigation must highlight Pilot Operations child routes");
-assert.ok(src.includes('aria-current={section === item.section ? "page" : undefined}') &&
-  src.includes("scrollIntoView({ block: \"nearest\", inline: \"nearest\" })"),
-  "Active tab must be semantically selected and scrolled into view");
+assert.ok(navigation.includes('aria-current={section === tab.section ? "page" : undefined}') &&
+  navigation.includes("nav.scrollBy({") &&
+  !navigation.includes("scrollIntoView(") &&
+  src.includes("<PilotOperationsNavigation section={section} locale={locale} />"),
+  "Active tab must be semantically selected and revealed horizontally without jumping the whole page");
 assert.ok(src.includes("requestVersion.current") && src.includes("version !== requestVersion.current"),
   "Stale requests must not overwrite selected session data");
 assert.ok((src.includes("readiness.checks.filter((check) => check.passed).length") || src.includes("currentReadiness.checks.filter((check) => check.passed).length")) &&
