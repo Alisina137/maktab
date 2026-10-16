@@ -17,6 +17,7 @@ import { registerPilotLaunchRoutes } from "./pilot/launch-routes.js";
 import { registerPlatformRoutes } from "./platform/routes.js";
 import { registerPublicRoutes } from "./public/routes.js";
 import { registerUserRoutes } from "./users/routes.js";
+import { registerStaffRoutes } from "./staff/routes.js";
 import { ApiMetrics } from "./observability.js";
 
 export interface BuildAppOptions {
@@ -91,6 +92,7 @@ export function buildApp(options: BuildAppOptions) {
     passwordVerificationSecret: options.passwordVerificationSecret
   });
   registerUserRoutes(app, options.accountStore);
+  registerStaffRoutes(app, options.accountStore);
   registerAcademicRoutes(app, options.accountStore, options.academicStore);
   registerFamilyRoutes(app, options.accountStore, options.academicStore, options.familyStore);
   registerAttendanceRoutes(app, options.accountStore, options.attendanceStore);
