@@ -107,7 +107,7 @@ export default function StaffDashboard() {
           if(refreshFlight.current===operation)refreshFlight.current=null;
         });
       }
-      try{value=await refreshFlight.current;}
+      try{value=await refreshFlight.current!;}
       catch{exit();throw Error("Your staff session has expired.");}
     }
     try{
