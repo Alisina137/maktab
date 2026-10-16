@@ -12,11 +12,10 @@ type StaffHomeProps = {
   onDirectory: () => void;
   onRegistrations: () => void;
   onAttendance: () => void;
+  onFees: () => void;
   onSettings: () => void;
 };
 const PLANNED: Record<string,string> = {
-  FEES_VIEW: "Fee records",
-  FEES_COLLECT: "Payment collection",
   TASKS_VIEW: "Assigned tasks",
   COMMUNICATION_DRAFT: "Communication drafts",
   REPORTS_VIEW: "Operational reports"
@@ -24,11 +23,12 @@ const PLANNED: Record<string,string> = {
 /** Informational home only: assigned future permissions must never imply an
  * operational feature, existing record count or completed task. */
 export function StaffHomePanel({locale, school, displayName, position, department,
-  permissions, onDirectory, onRegistrations, onAttendance, onSettings}: StaffHomeProps) {
+  permissions, onDirectory, onRegistrations, onAttendance, onFees, onSettings}: StaffHomeProps) {
   const t = (label:string) => adminText(locale,label);
   const canDirectory = permissions.includes("DIRECTORY_VIEW");
   const canRegister = permissions.includes("ENROLLMENT_REQUESTS");
   const canAttend = permissions.includes("ATTENDANCE_REVIEW");
+  const canFees = permissions.includes("FEES_VIEW") || permissions.includes("FEES_COLLECT");
   const planned = permissions.filter(p => p in PLANNED);
   return <section className="staff-home" aria-labelledby="staff-home-heading">
     <div className="staff-home-heading">
@@ -51,7 +51,7 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
       </article>
       <article className="staff-home-card">
         <span>{t("Available workspace")}</span>
-        <strong>{canRegister ? t("Registration requests") : canAttend ? t("Attendance") : canDirectory ? t("School directory") : t("No active modules")}</strong>
+        <strong>{canRegister ? t("Registration requests") : canAttend ? t("Attendance") : canFees ? t("Fees") : canDirectory ? t("School directory") : t("No active modules")}</strong>
         <small>{t("Only enabled workflows appear as actions.")}</small>
       </article>
     </div>
@@ -66,6 +66,8 @@ export function StaffHomePanel({locale, school, displayName, position, departmen
             onClick={onRegistrations}>{t("New registration")}</button>:null}
           {canAttend?<button className="admin-primary" type="button"
             onClick={onAttendance}>{t("Review attendance")}</button>:null}
+          {canFees?<button className="admin-primary" type="button"
+            onClick={onFees}>{t("Fees")}</button>:null}
           <button className="admin-secondary" type="button"
             onClick={onSettings}>{t("My profile & security")}</button>
         </div>
