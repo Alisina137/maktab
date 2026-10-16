@@ -130,6 +130,9 @@ jobs:
       - name: Phase 7 release and cross-role acceptance guard
         run: pnpm verify:pilot:phase7
 
+      - name: Phase 8 Pilot Operations consolidated acceptance and fail-closed regression
+        run: pnpm verify:pilot:phase8
+
       - name: Parent three-language and resilience regressions
         run: |
           pnpm verify:parent-localization
@@ -178,6 +181,21 @@ jobs:
         with:
           name: attendance-phase7-manual-no-go
           path: ${{ runner.temp }}/maktablink-attendance-phase7-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Preserve Pilot Operations Phase 8 exact-commit manual acceptance as NO-GO
+        if: always()
+        run: node scripts/pilot-phase8-acceptance-report.mjs --output "$RUNNER_TEMP/maktablink-pilot-phase8-no-go.json"
+        env:
+          PILOT_PHASE8_CI_JOB_STATUS: ${{ job.status }}
+
+      - name: Upload Pilot Operations Phase 8 acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-pilot-acceptance-no-go
+          path: ${{ runner.temp }}/maktablink-pilot-phase8-no-go.json
           if-no-files-found: warn
           retention-days: 30
 
