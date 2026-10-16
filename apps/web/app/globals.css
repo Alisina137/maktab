@@ -9054,3 +9054,54 @@ html .admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) :is(h1, h2, h3, h4) {
   .pilot-subscription-action { align-items: flex-start; flex-direction: column; }
   .pilot-subscription-threshold-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+/* Standalone role-separated school staff web workspace. */
+.staff-shell { max-width: 1320px; margin: 0 auto; padding: clamp(16px,3vw,36px); display: grid; gap: 22px; min-height: 100vh; }
+.staff-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 22px; }
+.staff-header-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.staff-header-brand div { display: grid; gap: 3px; }
+.staff-header-brand strong { font-size: 20px; }
+.staff-header-brand small { color: var(--ml-color-text-muted); font-size: 12px; }
+.staff-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.staff-header-actions label { display: grid; gap: 6px; font-size: 12px; }
+.staff-header-actions select { padding: 9px 12px; background: #fff; border: 1px solid #ced9e7; border-radius: 8px; }
+.staff-hero { padding: clamp(22px,4vw,42px); background: linear-gradient(120deg,#eff5fc,#f9fbff);
+  border: 1px solid #d9e5f3; border-radius: 20px; }
+.staff-hero h1 { margin: 8px 0 10px; font-size: clamp(24px,3.5vw,34px); }
+.staff-hero p { margin: 0; line-height: 1.7; max-width: 720px; color: var(--ml-color-text-muted); }
+.staff-school-badge { margin-top: 16px; display: inline-flex; padding: 9px 14px; border-radius: 18px;
+  font-weight: 750; background: #fff; border: 1px solid #d9e2f0; }
+.staff-workspace-grid { display: grid; grid-template-columns: minmax(0,2fr) minmax(280px,1fr);
+  align-items: start; gap: 18px; }
+.staff-directory, .staff-security { padding: 22px; min-width: 0; }
+.staff-directory h2, .staff-security h2 { font-size: 19px; margin: 3px 0 9px; }
+.staff-side { display: grid; gap: 18px; }
+.staff-search { display: grid; grid-template-columns: minmax(130px,1fr) minmax(180px,2fr) auto;
+  align-items: end; gap: 12px; margin: 20px 0; }
+.staff-search label { display: grid; min-width: 0; gap: 8px; font-weight: 650; font-size: 13px; }
+.staff-search input, .staff-search select { width: 100%; min-width: 0; border: 1px solid #cbd6e4;
+  border-radius: 10px; background: #fff; padding: 11px 12px; }
+.staff-search button { min-height: 43px; }
+.staff-empty { border-radius: 12px; padding: 22px; border: 1px dashed #a9bdd8;
+  background: #f8fbff; font-size: 13px; color: #4f6077; }
+.staff-lookup-list { display: grid; gap: 8px; }
+.staff-lookup-row { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px; border: 1px solid #d9e4f1; background: #f9fbff; border-radius: 11px; min-width: 0; }
+.staff-lookup-row > div { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.staff-lookup-row strong { font-size: 13px; }
+.staff-lookup-row small { font-size: 12px; color: #62738b; }
+.staff-pages { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 14px 0; }
+.staff-security .admin-form { display: grid; gap: 14px; }
+.staff-security .admin-form label { display: grid; gap: 7px; }
+.staff-shell button:focus-visible,.staff-shell input:focus-visible,.staff-shell select:focus-visible {
+  outline: 3px solid #326bb7; outline-offset: 2px;
+}
+@media(max-width:850px) { .staff-workspace-grid { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:620px) {
+  .staff-shell { padding: 12px; }
+  .staff-header { align-items: flex-start; }
+  .staff-header-actions { width: 100%; justify-content: space-between; }
+  .staff-search { grid-template-columns: minmax(0,1fr); }
+  .staff-pages { flex-wrap: wrap; }
+  .staff-directory,.staff-security { padding: 15px; }
+}
