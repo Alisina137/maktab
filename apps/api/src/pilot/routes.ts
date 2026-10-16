@@ -54,6 +54,13 @@ const operationalIssueQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(1_000_000).default(0)
 }).strict();
 
+const oversightQuerySchema = z.object({
+  window: z.enum(["7d", "30d", "90d"]).default("30d"),
+  kind: z.enum(["ALL", "SUPPORT", "EVIDENCE", "DECISION", "IMPORT", "EXPORT"]).default("ALL"),
+  limit: z.coerce.number().int().min(1).max(30).default(15),
+  offset: z.coerce.number().int().min(0).max(50_000).default(0)
+}).strict();
+
 const adoptionQuerySchema = z.object({
   window: z.enum(["today", "7d", "30d"]).default("7d")
 }).strict();
@@ -84,6 +91,25 @@ export function registerPilotRoutes(
 
   // No raw infrastructure metrics, cross-tenant counts, credentials or billing writes.
   // This is a point-in-time school snapshot, not proof of platform uptime.
+  // Timeline events are minimal allowlisted descriptors without notes, actors,
+  // student data, or private export payloads; school is auth-derived only.
+  app.get("/v1/admin/pilot/oversight", async (request, reply) => {
+    const context = await requireSchoolAdmin(request, reply, accounts);
+    if (!context) return;
+    let options: z.infer<typeof oversightQuerySchema>;
+    try {
+      options = oversightQuerySchema.parse(request.query);
+    } catch (error) {
+      if (error instanceof ZodError) return reply.code(400).send({
+        error: "validation_error", message: "Invalid oversight timeline filters.",
+        issues: error.issues
+      });
+      throw error;
+    }
+    reply.header("cache-control", "no-store");
+    return pilot.listOversightEvents(context.user.schoolId, options);
+  });
+
   app.get("/v1/admin/pilot/service-health", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
