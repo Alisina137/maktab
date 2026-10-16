@@ -29,6 +29,11 @@ export default function StaffDashboard() {
   const [working,setWorking]=useState(false);
   const [message,setMessage]=useState("");
   const [group,setGroup]=useState<Group>("STUDENT");
+  const [status,setStatus]=useState<"ALL"|"ACTIVE"|"INVITED"|"SUSPENDED"|"ARCHIVED">("ALL");
+  const [sortBy,setSortBy]=useState<"name"|"username">("name");
+  const [order,setOrder]=useState<"asc"|"desc">("asc");
+  const [pageSize,setPageSize]=useState<10|20>(10);
+  const [selected,setSelected]=useState<Match|null>(null);
   const [query,setQuery]=useState("");
   const [submitted,setSubmitted]=useState("");
   const [page,setPage]=useState(1);
@@ -101,15 +106,16 @@ export default function StaffDashboard() {
   useEffect(()=>{
     if(!submitted)return;
     let active=true;
-    setWorking(true);setDirectory(null);setMessage("");
-    const params=new URLSearchParams({query:submitted,group,page:String(page)});
+    setWorking(true);setDirectory(null);setMessage("");setSelected(null);
+    const params=new URLSearchParams({query:submitted,group,status,sortBy,order,
+      pageSize:String(pageSize),page:String(page)});
     void authenticated<Directory>("/v1/staff/directory?"+params).then(data=>{
       if(active)setDirectory(data);
     }).catch(cause=>{
       if(active)setMessage(friendlyAdminError(cause,"Could not search school records.",locale));
     }).finally(()=>{if(active)setWorking(false);});
     return()=>{active=false;};
-  },[submitted,group,page,authenticated,locale]);
+  },[submitted,group,status,sortBy,order,pageSize,page,authenticated,locale]);
 
   async function signOut(){
     const value=current.current;exit();
@@ -211,9 +217,42 @@ export default function StaffDashboard() {
                 onChange={e=>setQuery(e.target.value)}
                 placeholder={t("Enter at least two characters")} required/>
             </label>
-            <button className="admin-primary" disabled={working || query.trim().length<2}>
-              {t(working?"Searching…":"Find records")}
-            </button>
+            <label>{t("Account status")}
+              <select value={status} onChange={e=>{setStatus(e.target.value as typeof status);setPage(1);}}>
+                <option value="ALL">{t("All statuses")}</option>
+                <option value="ACTIVE">{t("Active")}</option>
+                <option value="INVITED">{t("Invited")}</option>
+                <option value="SUSPENDED">{t("Suspended")}</option>
+                <option value="ARCHIVED">{t("Archived")}</option>
+              </select>
+            </label>
+            <label>{t("Sort by")}
+              <select value={sortBy} onChange={e=>{setSortBy(e.target.value as typeof sortBy);setPage(1);}}>
+                <option value="name">{t("Full name")}</option>
+                <option value="username">{t("Username")}</option>
+              </select>
+            </label>
+            <label>{t("Order")}
+              <select value={order} onChange={e=>{setOrder(e.target.value as typeof order);setPage(1);}}>
+                <option value="asc">{t("Ascending")}</option>
+                <option value="desc">{t("Descending")}</option>
+              </select>
+            </label>
+            <label>{t("Results per page")}
+              <select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value) as 10|20);setPage(1);}}>
+                <option value={10}>10</option><option value={20}>20</option>
+              </select>
+            </label>
+            <div className="staff-directory-actions">
+              <button type="submit" className="admin-primary" disabled={working || query.trim().length<2}>
+                {t(working?"Searching…":"Find records")}
+              </button>
+              <button type="button" className="admin-secondary"
+                onClick={()=>{setQuery("");setSubmitted("");setStatus("ALL");setSortBy("name");setOrder("asc");
+                  setGroup("STUDENT");setPageSize(10);setPage(1);setSelected(null);setDirectory(null);setMessage("");}}>
+                {t("Clear filters")}
+              </button>
+            </div>
           </form>
           {message?<p className="admin-error" role="alert">{message}</p>:null}
           {working?<p role="status">{t("Searching school records…")}</p>:null}
@@ -228,14 +267,32 @@ export default function StaffDashboard() {
               {directory.entries.length?(
                 <div className="staff-lookup-list">
                   {directory.entries.map(row=>(
-                    <article key={row.role+row.username} className="staff-lookup-row">
-                      <div><strong>{row.fullName}</strong>
-                        <small>@{row.username}{row.code?" · "+row.code:""}</small></div>
+                    <button key={row.role+row.username} type="button" className="staff-lookup-row staff-lookup-button"
+                      onClick={()=>setSelected(current=>current?.username===row.username?null:row)}
+                      aria-expanded={selected?.username===row.username}>
+                      <span className="staff-lookup-ident"><strong>{row.fullName}</strong>
+                        <small>@{row.username}{row.code?" · "+row.code:""}</small></span>
                       <span className="pilot-badge">{t(row.status)}</span>
-                    </article>
+                      <span aria-hidden="true">↗</span>
+                    </button>
                   ))}
                 </div>
               ):<p>{t("No matching records in your school.")}</p>}
+              {selected ? <section className="staff-record-details admin-panel" aria-label={t("Account details")}>
+                <div className="admin-section-header">
+                  <div><span className="eyebrow">{t("Read-only school record")}</span>
+                    <h3>{selected.fullName}</h3></div>
+                  <button type="button" className="admin-secondary"
+                    onClick={()=>setSelected(null)}>{t("Close")}</button>
+                </div>
+                <dl className="pilot-detail-grid">
+                  <div><dt>{t("Username")}</dt><dd>{selected.username}</dd></div>
+                  <div><dt>{t("Role")}</dt><dd>{t(selected.role)}</dd></div>
+                  <div><dt>{t("Status")}</dt><dd>{t(selected.status)}</dd></div>
+                  <div><dt>{t("School code")}</dt><dd>{selected.code || "—"}</dd></div>
+                </dl>
+                <p className="pilot-security-note">{t("Only basic directory fields are available. Contacts, family links, grades and fees require separate approved permissions.")}</p>
+              </section> : null}
               <nav className="staff-pages" aria-label={t("Directory pages")}>
                 <button className="admin-secondary" type="button" disabled={working||page<=1}
                   onClick={()=>setPage(x=>Math.max(1,x-1))}>{t("Previous")}</button>
