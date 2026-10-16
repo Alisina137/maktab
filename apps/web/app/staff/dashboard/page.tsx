@@ -100,10 +100,12 @@ export default function StaffDashboard() {
     }catch(cause){
       if(cause && typeof cause==="object" && "status" in cause) {
         const failure=cause as {status:number;code?:string};
-        const sessionBlocked = [401,403,503].includes(failure.status) &&
+        const sessionBlocked = (failure.status===401 || failure.status===503 ||
+          (failure.status===403 && failure.code!=="permission_denied")) &&
           !(path==="/v1/auth/change-password" &&
             failure.status===401 && failure.code==="current_password_invalid");
-        // An incorrect current password is a form error, not a revoked session.
+        // Permission denied is a page-level error, not an expired session.
+        // An incorrect current password is also a form error, not a revoked session.
         // Revoked, suspended and unavailable staff accounts still leave immediately.
         if(sessionBlocked)exit();
       }
