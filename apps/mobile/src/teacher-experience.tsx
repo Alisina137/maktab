@@ -15,6 +15,7 @@ import { api, type TeacherTodayPayload, type TeacherAcademicsPayload, type Admin
 import { TeacherTodayInsights, TeacherInboxModal, type TeacherWorkflowSection } from "./teacher-hub";
 import { notificationDestination } from "./notification-destination";
 import { teacherTime12 } from "./teacher-hub-data";
+import { teacherAssignmentForPeriod, type TodayPeriod } from "./teacher-today-model";
 import { TeacherClassDetailPage, type TeacherClassSection, type TeacherClassLearningSection } from "./teacher-class-detail";
 import { TeacherMorePanel, type TeacherMoreSection } from "./teacher-more";
 import { TeacherLearningPanel } from "./learning-ui";
@@ -247,6 +248,23 @@ export function TeacherExperience({
     }
     onScrollTop();
   }
+  function openTodayLesson(period: TodayPeriod) {
+    // Only the server-authorized class/subject assignment may be opened.
+    // An outdated timetable falls back to the class list, not another subject.
+    const assignment = teacherAssignmentForPeriod(period, academics);
+    if (assignment) {
+      if (selectedAssignmentId !== assignment.assignmentId) {
+        setClassSection("OVERVIEW");
+        setClassLearningSection("HOMEWORK");
+      }
+      setSelectedAssignmentId(assignment.assignmentId);
+    } else {
+      setSelectedAssignmentId(null);
+      setClassSection("OVERVIEW");
+    }
+    onSelect("CLASSES");
+    onScrollTop();
+  }
   // An external notification must open its nested destination, not the
   // previously selected Work or More subtab.
   useEffect(() => {
@@ -283,79 +301,27 @@ export function TeacherExperience({
       </View>
 
       {tab === "TODAY" ? (
-        <>
-          <TeacherTodayInsights
-            today={today}
-            learning={hubLearning}
-            learningReady={hubReady.learning}
-            announcements={hubAnnouncements}
-            announcementsReady={hubReady.announcements}
-            notifications={hubNotifications}
-            locale={locale}
-            textDirection={textDirection}
-            onSchedule={() => onSelect("SCHEDULE")}
-            onClasses={() => onSelect("CLASSES")}
-            onHomework={() => goToWorkflow("HOMEWORK")}
-            onGrades={() => goToWorkflow("GRADES")}
-            onAnnouncements={() => goToWorkflow("ANNOUNCEMENTS")}
-            onNotifications={openInbox}
-            onAttendance={onAttendance}
-            onRetry={() => setHubRefresh((value) => value + 1)}
-          />
-          <Pressable accessibilityRole="button" style={[styles.actionRow, rtl && styles.rowRtl]}
-            onPress={() => goToWorkflow("TASKS")}>
-            <Ionicons name="checkbox-outline" color={tokens.color.brandStrong} size={22} />
-            <Text style={[styles.itemTitle, styles.flex, textDirection]}>
-              {translate(locale, "productivity.title")}
-            </Text>
-            <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted}/>
-          </Pressable>
-          <View style={styles.card}>
-            <SectionHeading icon="today-outline" title={translate(locale, "teacher.todayTitle")} rtl={rtl} textDirection={textDirection} />
-            <Text style={[styles.date, textDirection]}>
-              {today ? `${formatLocalizedDate(today.date, locale)} · ${weekdayLabels[today.weekday as keyof typeof weekdayLabels] ? translate(locale, weekdayLabels[today.weekday as keyof typeof weekdayLabels]) : today.weekday}` : "—"}
-            </Text>
-            {!todayReady ? <LoadingCard locale={locale} /> : (
-              <>
-                <Text style={[styles.muted, textDirection]}>
-                  {translate(locale, "teacher.periodCount")}: {formatLocalizedNumber(todaySchedule.length, locale)}
-                </Text>
-                {todaySchedule.map((item) => <PeriodRow key={item.id} item={{ ...item, weekday: today?.weekday as Period["weekday"] }} locale={locale} textDirection={textDirection} rtl={rtl} />)}
-                {todaySchedule.length === 0 ? <Empty message={translate(locale, "teacher.noClassesToday")} rtl={rtl} textDirection={textDirection} /> : null}
-                <Pressable accessibilityRole="button" style={styles.link} onPress={() => onSelect("SCHEDULE")}>
-                  <Text style={styles.linkText}>{translate(locale, "teacher.viewFullSchedule")}</Text>
-                  <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} color={tokens.color.brandStrong} size={18} />
-                </Pressable>
-              </>
-            )}
-          </View>
-          <View style={styles.card}>
-            <SectionHeading icon="checkmark-done-outline" title={translate(locale, "teacher.supervisedClass")} rtl={rtl} textDirection={textDirection} />
-            {!todayReady ? <LoadingCard locale={locale} /> : (
-              <>
-                {activeSupervisions.map((item) => (
-                  <Pressable key={item.assignmentId} accessibilityRole="button"
-                    accessibilityLabel={`${item.className} · ${translate(locale, statusKey(item.attendanceStatus))}`}
-                    onPress={() => today && onAttendance(item.classId, today.date)}
-                    style={({ pressed }) => [styles.actionRow, rtl && styles.rowRtl, pressed && styles.pressed]}
-                  >
-                    <Ionicons name="people-outline" color={tokens.color.brandStrong} size={20} />
-                    <View style={styles.flex}>
-                      <Text style={[styles.itemTitle, textDirection]}>{item.className}</Text>
-                      <Text style={[styles.muted, textDirection]}>{translate(locale, statusKey(item.attendanceStatus))}</Text>
-                    </View>
-                    <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} color={tokens.color.textMuted} size={18} />
-                  </Pressable>
-                ))}
-                {activeSupervisions.length === 0 ? <Empty message={translate(locale, "teacher.noSupervisedClass")} rtl={rtl} textDirection={textDirection} /> : null}
-              </>
-            )}
-          </View>
-          <Pressable onPress={() => onSelect("CLASSES")} accessibilityRole="button" style={styles.link}>
-            <Text style={styles.linkText}>{translate(locale, "teacher.viewAssignments")}</Text>
-            <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} color={tokens.color.brandStrong} size={18} />
-          </Pressable>
-        </>
+        <TeacherTodayInsights
+          today={today}
+          todayReady={todayReady}
+          learning={hubLearning}
+          learningReady={hubReady.learning}
+          announcements={hubAnnouncements}
+          announcementsReady={hubReady.announcements}
+          notifications={hubNotifications}
+          locale={locale}
+          textDirection={textDirection}
+          onSchedule={() => onSelect("SCHEDULE")}
+          onClasses={() => onSelect("CLASSES")}
+          onOpenLesson={openTodayLesson}
+          onHomework={() => goToWorkflow("HOMEWORK")}
+          onGrades={() => goToWorkflow("GRADES")}
+          onTasks={() => goToWorkflow("TASKS")}
+          onAnnouncements={() => goToWorkflow("ANNOUNCEMENTS")}
+          onNotifications={openInbox}
+          onAttendance={onAttendance}
+          onRetry={() => { onRetry(); setHubRefresh(v => v + 1); }}
+        />
       ) : null}
 
       {tab === "SCHEDULE" ? (
