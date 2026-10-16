@@ -81,6 +81,8 @@ export interface UserDirectoryQuery {
   order: "asc" | "desc";
   page: number;
   pageSize: number;
+  /** Staff directory must not look up users by sensitive hidden fields. */
+  safeStaffSearch?: boolean;
 }
 
 export interface UserDirectoryPage {
@@ -384,10 +386,12 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         conditions.push(or(
           ilike(users.username, pattern),
           ilike(nameExpr, pattern),
-          ilike(phoneExpr, pattern),
+          ...(!input.safeStaffSearch ? [ilike(phoneExpr, pattern)] : []),
           ilike(codeExpr, pattern),
-          ilike(sql<string>`${users.role}::text`, pattern),
-          ilike(sql<string>`${users.status}::text`, pattern)
+          ...(!input.safeStaffSearch ? [
+            ilike(sql<string>`${users.role}::text`, pattern),
+            ilike(sql<string>`${users.status}::text`, pattern)
+          ] : [])
         )!);
       }
       const where = and(...conditions)!;
