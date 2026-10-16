@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgEnum,
+  primaryKey,
   pgTable,
   text,
   timestamp,
@@ -1157,7 +1158,68 @@ export const staffAttendanceCorrectionRequests = pgTable("staff_attendance_corre
   decidedAt:timestamp("decided_at",{withTimezone:true})
 },table=>[index("staff_attendance_requests_school_status_idx").on(table.schoolId,table.status,table.createdAt)]);
 
+
+/** Phase 7: staff can update only their assigned task state; assignment is administrator-owned. */
+export const staffWorkTasks = pgTable("staff_work_tasks", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull(),
+  assignedTo: uuid("assigned_to").notNull(),
+  createdBy: uuid("created_by").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  details: varchar("details", { length: 2000 }).notNull().default(""),
+  priority: varchar("priority", { length: 12 }).$type<"LOW" | "NORMAL" | "HIGH">().notNull().default("NORMAL"),
+  status: varchar("status", { length: 20 }).$type<"TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED">().notNull().default("TODO"),
+  dueDate: date("due_date"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, table => [
+  index("staff_work_assignee_idx").on(table.schoolId, table.assignedTo, table.status, table.dueDate),
+  foreignKey({ name:"staff_work_assignee_school_fk", columns:[table.schoolId, table.assignedTo],
+    foreignColumns:[users.schoolId,users.id] }).onDelete("cascade"),
+  foreignKey({ name:"staff_work_creator_school_fk", columns:[table.schoolId, table.createdBy],
+    foreignColumns:[users.schoolId,users.id] }).onDelete("restrict")
+]);
+
+/** Staff authored copy is never a published announcement until an administrator publishes separately. */
+export const staffMessageDrafts = pgTable("staff_message_drafts", {
+  id: uuid("id").primaryKey(),
+  schoolId: uuid("school_id").notNull(),
+  createdBy: uuid("created_by").notNull(),
+  title: varchar("title", {length:160}).notNull(),
+  content: text("content").notNull(),
+  audienceScope: varchar("audience_scope",{length:16}).$type<"SCHOOL"|"ROLE">().notNull().default("SCHOOL"),
+  audienceRole: varchar("audience_role",{length:16}).$type<"TEACHER"|"PARENT"|"STUDENT">(),
+  status: varchar("status",{length:16}).$type<"DRAFT"|"SUBMITTED"|"APPROVED"|"REJECTED">().notNull().default("DRAFT"),
+  reviewedBy: uuid("reviewed_by"),
+  reviewNote: varchar("review_note",{length:500}),
+  reviewedAt: timestamp("reviewed_at",{withTimezone:true}),
+  createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+}, table => [
+  index("staff_message_review_idx").on(table.schoolId,table.status,table.createdAt),
+  foreignKey({name:"staff_message_author_school_fk",columns:[table.schoolId,table.createdBy],
+    foreignColumns:[users.schoolId,users.id]}).onDelete("cascade"),
+  foreignKey({name:"staff_message_reviewer_school_fk",columns:[table.schoolId,table.reviewedBy],
+    foreignColumns:[users.schoolId,users.id]}).onDelete("set null")
+]);
+
+export const staffWorkspacePreferences = pgTable("staff_workspace_preferences", {
+  schoolId: uuid("school_id").notNull(),
+  userId: uuid("user_id").notNull(),
+  showNotificationBadge: boolean("show_notification_badge").notNull().default(true),
+  compactTaskView: boolean("compact_task_view").notNull().default(false),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+}, table => [
+  primaryKey({columns:[table.schoolId,table.userId]}),
+  foreignKey({name:"staff_workspace_owner_fk",columns:[table.schoolId,table.userId],
+    foreignColumns:[users.schoolId,users.id]}).onDelete("cascade")
+]);
+
 export const databaseSchema = {
+  staffWorkTasks,
+  staffMessageDrafts,
+  staffWorkspacePreferences,
   staffAttendanceCorrectionRequests,
   registrationRequests,
   pilotLaunchEvidence,
@@ -1265,3 +1327,7 @@ export type PilotSupportUpdate = typeof pilotSupportUpdates.$inferSelect;
 export type PilotLaunchDecision = typeof pilotLaunchDecisions.$inferSelect;
 
 export type StaffAttendanceCorrectionRequest = typeof staffAttendanceCorrectionRequests.$inferSelect;
+
+export type StaffWorkTask = typeof staffWorkTasks.$inferSelect;
+export type StaffMessageDraft = typeof staffMessageDrafts.$inferSelect;
+export type StaffWorkspacePreference = typeof staffWorkspacePreferences.$inferSelect;
