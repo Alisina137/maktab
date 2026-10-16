@@ -20,7 +20,7 @@ for(const tab of expectedTabs){
 assert.ok(!app.includes('"WORKFLOWS"')&&!teacher.includes('"WORKFLOWS"'),
   "Old Workflows route must not remain active.");
 assert.ok(teacher.includes('tab === "MORE"')&&teacher.includes('tab === "WORK"'));
-assert.ok(teacher.includes('onLocaleChange={onLocaleChange}'),
+assert.ok(teacher.includes('onChangeLocale={onLocaleChange}'),
   "More preferences must reach the application's persisted language setting.");
 assert.ok(app.includes('onLocaleChange={chooseLocale}'));
 assert.ok(more.includes("supportedLocales.map("));
