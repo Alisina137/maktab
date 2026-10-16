@@ -83,7 +83,7 @@ export function importPageInsights(page: ImportHistoryPage): ImportPageInsights 
     importedRows: page.rows.reduce((sum, row) => sum + row.importedCount, 0),
     rejectedRows: page.rows.reduce((sum, row) => sum + row.rejectedCount, 0),
     rowStart: page.rows.length ? page.offset + 1 : 0,
-    rowEnd: page.offset + page.rows.length,
+    rowEnd: page.rows.length ? page.offset + page.rows.length : 0,
     morePages: page.hasMore
   };
 }
