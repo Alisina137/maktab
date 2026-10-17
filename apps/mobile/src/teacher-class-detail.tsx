@@ -47,12 +47,14 @@ export function TeacherClassDetailPage({
   const [detail, setDetail] = useState<TeacherClassDetailPayload | null>(null);
   const [ready, setReady] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [attendanceView,setAttendanceView]=useState<"TODAY"|"HISTORY"|"NOTICES">("TODAY");
   const requestId = useRef(0);
 
   useEffect(() => {
     const id = ++requestId.current;
     setDetail(null);
     setReady(false);
+    setAttendanceView("TODAY");
     void api.teacherClassDetail(accessToken, assignmentId).then((result) => {
       if (id === requestId.current) setDetail(result);
     }).catch((error: unknown) => {
@@ -174,7 +176,28 @@ export function TeacherClassDetailPage({
           ) : null}
           {section === "ATTENDANCE" && detail.canSuperviseToday ? (
             <View style={styles.stack}>
-              <View style={styles.card}>
+              <View style={[styles.learningTabs,rtl&&styles.rtl]} accessibilityRole="tablist"
+                testID="teacher-supervision-tabs">
+                {([
+                  ["TODAY","teacher.supervisionToday","checkmark-done-outline"],
+                  ["HISTORY","attendance.historyTitle","calendar-outline"],
+                  ["NOTICES","communication.classAnnouncement","megaphone-outline"]
+                ] as Array<[typeof attendanceView,TranslationKey,keyof typeof Ionicons.glyphMap]>)
+                  .map(([id,label,icon])=>
+                    <Pressable key={id} accessibilityRole="tab"
+                      accessibilityLabel={translate(locale,label)}
+                      accessibilityState={{selected:attendanceView===id}}
+                      onPress={()=>{setAttendanceView(id);onScrollTop();}}
+                      style={[styles.attendanceTab,attendanceView===id&&styles.activeTab]}>
+                      <Ionicons name={icon} size={17} color={attendanceView===id?
+                        tokens.color.brandStrong:tokens.color.textMuted}/>
+                      <Text numberOfLines={2} style={[styles.tabLabel,
+                        attendanceView===id&&styles.activeLabel]}>
+                        {translate(locale,label)}
+                      </Text>
+                    </Pressable>)}
+              </View>
+              {attendanceView==="TODAY"?<View style={styles.card}>
                 <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.classSupervision")}</Text>
                 <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.supervisionHint")}</Text>
                 {supervision ? (
@@ -187,8 +210,8 @@ export function TeacherClassDetailPage({
                 ) : (
                   <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.supervisionUnavailable")}</Text>
                 )}
-              </View>
-              {supervision ? (
+              </View>:null}
+              {attendanceView==="HISTORY"&&supervision ? (
                 <NegaranHistoryPanel
                   accessToken={accessToken}
                   classId={current.classId}
@@ -200,7 +223,7 @@ export function TeacherClassDetailPage({
                   onError={onError}
                 />
               ) : null}
-              {supervision ? <CommunicationPanel key={`supervised-${assignmentId}-${reconnectEpoch}`}
+              {attendanceView==="NOTICES"&&supervision ? <CommunicationPanel key={`supervised-${assignmentId}-${reconnectEpoch}`}
                 accessToken={accessToken} mode="TEACHER" teacherSection="ANNOUNCEMENTS"
                 supervisedClasses={[{ classId: current.classId, classCode: current.classCode, className: current.className }]}
                 locale={locale} textDirection={textDirection} onError={onError} onNotice={onNotice} /> : null}
@@ -230,6 +253,9 @@ const styles = StyleSheet.create({
   learningTabs: { flexDirection: "row", gap: 10, padding: 3, borderRadius: 13, backgroundColor: "#f2f5fc" },
   learningTab: { flex: 1, minHeight: 46, gap: 6, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "#e1e7f0", borderRadius: 11, padding: 8 },
   activeTab: { backgroundColor: "#eaf2ff", borderColor: "#a0c1f3" },
+  attendanceTab:{flex:1,minHeight:58,alignItems:"center",justifyContent:"center",
+    gap:5,borderRadius:11,borderWidth:1,borderColor:"#e1e7f0",
+    backgroundColor:"#fff",paddingHorizontal:5},
   tabLabel: { fontSize: 11, fontWeight: "700", color: tokens.color.textMuted, textAlign: "center" },
   activeLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
   listRow: { borderTopWidth: 1, borderTopColor: "#edf0f4", paddingTop: 8, gap: 5 },
