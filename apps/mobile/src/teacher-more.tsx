@@ -81,7 +81,7 @@ export function TeacherMorePanel({
       <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.workflowAnnouncements")}</Text>
       {announcementContent}
     </View>:null}
-    {section==="PROFILE"?><>
+    {section==="PROFILE"?<>
       <View style={styles.profileHero} testID="teacher-profile-summary">
         <View style={[styles.heroRow,rtl&&styles.rtl]}>
           <View style={styles.avatar}><Ionicons name="person-outline" size={29} color={tokens.color.brandStrong}/></View>
