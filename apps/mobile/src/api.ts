@@ -140,6 +140,23 @@ export interface TeacherClassDetailPayload {
   }>;
   today: string;
   canSuperviseToday: boolean;
+  insights: {
+    homeworkDrafts: number;
+    homeworkPublished: number;
+    homeworkSubmitted: number;
+    homeworkExpected: number;
+    examSheets: number;
+    examGradesRecorded: number;
+    examGradesExpected: number;
+    studentProgress: Array<{
+      studentId: string;
+      examsRecorded: number;
+      examsAvailable: number;
+      averageExamPercent: number | null;
+      homeworkSubmitted: number;
+      homeworkAvailable: number;
+    }>;
+  };
 }
 
 export interface TeacherTaskPayload {
