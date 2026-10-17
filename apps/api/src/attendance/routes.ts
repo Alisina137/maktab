@@ -95,6 +95,27 @@ async function requireParent(
   return context;
 }
 
+async function requireStudent(
+  request: Parameters<typeof requireAccess>[0],
+  reply: Parameters<typeof requireAccess>[1],
+  accounts: AccountStore
+) {
+  const context=await requireAccess(request,reply,accounts);
+  if(!context)return null;
+  if(context.user.mustChangePassword){
+    await reply.code(403).send({
+      error:"password_change_required",
+      message:"Change the temporary password before accessing student attendance."
+    });
+    return null;
+  }
+  if(context.user.role!=="STUDENT"){
+    await reply.code(403).send({error:"forbidden",message:"Student access is required."});
+    return null;
+  }
+  return context;
+}
+
 const attendanceSheetQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
@@ -294,6 +315,23 @@ export function registerAttendanceRoutes(
       } catch (error) {
         return sendAttendanceError(reply, error);
       }
+    }
+  );
+
+  // Student access is read-only and derived from their authenticated account.
+  // It accepts no studentId, classId or schoolId to prevent cross-user lookup.
+  app.get<{Querystring:{from?:string;to?:string}}>(
+    "/v1/student/attendance", async(request,reply)=>{
+      const context=await requireStudent(request,reply,accounts);
+      if(!context)return;
+      try{
+        const query=parentAttendanceQuerySchema.parse(request.query);
+        const today=await attendance.getSchoolToday(context.user.schoolId);
+        const days=await attendance.getStudentAttendance(
+          context.user.schoolId,context.user.id,query.from,query.to);
+        reply.header("cache-control","no-store");
+        return {today,days};
+      }catch(error){return sendAttendanceError(reply,error);}
     }
   );
 
