@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import type {
   AcademicYearStatus,
   CreateAcademicYearInput,
@@ -28,6 +28,8 @@ import {
   dailyAttendances,
   examSubjects,
   exams,
+  gradeRecords,
+  homeworkSubmissions,
   gradeLevels,
   homeworks,
   negaranAssignments,
@@ -109,6 +111,24 @@ export interface TeacherClassDetail {
   }>;
   today: string;
   canSuperviseToday: boolean;
+  /** Assignment-scoped insights; no student contact, family or other subjects exposed. */
+  insights: {
+    homeworkDrafts: number;
+    homeworkPublished: number;
+    homeworkSubmitted: number;
+    homeworkExpected: number;
+    examSheets: number;
+    examGradesRecorded: number;
+    examGradesExpected: number;
+    studentProgress: Array<{
+      studentId: string;
+      examsRecorded: number;
+      examsAvailable: number;
+      averageExamPercent: number | null;
+      homeworkSubmitted: number;
+      homeworkAvailable: number;
+    }>;
+  };
 }
 
 export interface ClassTimetableView {
@@ -487,7 +507,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicNotFoundError("Active teaching assignment not found.");
       }
 
-      const [roster, schedule, settings] = await Promise.all([
+      const [roster, schedule, settings, homeworkRows, examRows] = await Promise.all([
         db.select({
           id: students.id,
           fullName: students.fullName,
@@ -513,7 +533,31 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         db.select({ timezone: schoolSettings.timezone })
           .from(schoolSettings)
           .where(eq(schoolSettings.schoolId, schoolId))
-          .limit(1)
+          .limit(1),
+        // All analytics remain inside the authorized ACTIVE assignment's
+        // school, class, subject and academic-year scope.
+        db.select({ id: homeworks.id, status: homeworks.status })
+          .from(homeworks).where(and(
+            eq(homeworks.schoolId, schoolId),
+            eq(homeworks.teacherUserId, teacherUserId),
+            eq(homeworks.assignmentId, assignmentId),
+            eq(homeworks.academicYearId, assignment.academicYearId),
+            eq(homeworks.classId, assignment.classId),
+            eq(homeworks.subjectId, assignment.subjectId)
+          )),
+        db.select({ id: examSubjects.id, maxScore: examSubjects.maxScore })
+          .from(examSubjects)
+          .innerJoin(exams, and(
+            eq(exams.id, examSubjects.examId),
+            eq(exams.schoolId, examSubjects.schoolId),
+            eq(exams.academicYearId, assignment.academicYearId)
+          ))
+          .where(and(
+            eq(examSubjects.schoolId, schoolId),
+            eq(examSubjects.classId, assignment.classId),
+            eq(examSubjects.subjectId, assignment.subjectId),
+            inArray(exams.status, ["IN_PROGRESS", "RESULTS_READY", "PUBLISHED", "ARCHIVED"])
+          ))
       ]);
       const timezone = settings[0]?.timezone ?? "Asia/Kabul";
       const parts = new Intl.DateTimeFormat("en-US", {
@@ -534,7 +578,72 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           or(isNull(negaranAssignments.endDate), gte(negaranAssignments.endDate, today))
         )).limit(1);
 
-      return { assignment, students: roster, schedule, today, canSuperviseToday: !!supervision };
+      // Draft homework cannot be submitted, and archived/closed homework is
+      // not an active class obligation. Avoid bogus completion percentages.
+      const visibleHomeworkIds = homeworkRows
+        .filter(row => row.status === "PUBLISHED")
+        .map(row => row.id);
+      const [submittedRows, recordedRows] = await Promise.all([
+        visibleHomeworkIds.length
+          ? db.select({ homeworkId: homeworkSubmissions.homeworkId, studentId: homeworkSubmissions.studentId })
+            .from(homeworkSubmissions).where(and(
+              eq(homeworkSubmissions.schoolId, schoolId),
+              inArray(homeworkSubmissions.homeworkId, visibleHomeworkIds)
+            ))
+          : Promise.resolve([] as Array<{ homeworkId: string; studentId: string }>),
+        examRows.length
+          ? db.select({
+              studentId: gradeRecords.studentId, examSubjectId: gradeRecords.examSubjectId,
+              score: gradeRecords.score
+            }).from(gradeRecords).where(and(
+              eq(gradeRecords.schoolId, schoolId),
+              inArray(gradeRecords.examSubjectId, examRows.map(row => row.id))
+            ))
+          : Promise.resolve([] as Array<{ studentId: string; examSubjectId: string; score: number }>)
+      ]);
+      const activeStudentIds = new Set(roster.map(student => student.id));
+      const submissionsByStudent = new Map<string, Set<string>>();
+      for (const row of submittedRows) {
+        if (!activeStudentIds.has(row.studentId)) continue;
+        const current = submissionsByStudent.get(row.studentId) ?? new Set<string>();
+        current.add(row.homeworkId);
+        submissionsByStudent.set(row.studentId, current);
+      }
+      const examMax = new Map(examRows.map(row => [row.id, row.maxScore]));
+      const gradesByStudent = new Map<string, Array<number>>();
+      for (const grade of recordedRows) {
+        if (!activeStudentIds.has(grade.studentId)) continue;
+        const maximum = examMax.get(grade.examSubjectId);
+        if (maximum === undefined || maximum <= 0 || grade.score < 0 || grade.score > maximum) continue;
+        const current = gradesByStudent.get(grade.studentId) ?? [];
+        current.push(100 * grade.score / maximum);
+        gradesByStudent.set(grade.studentId, current);
+      }
+      const progress = roster.map(student => {
+        const scores = gradesByStudent.get(student.id) ?? [];
+        return {
+          studentId: student.id,
+          examsRecorded: scores.length,
+          examsAvailable: examRows.length,
+          averageExamPercent: scores.length
+            ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+            : null,
+          homeworkSubmitted: submissionsByStudent.get(student.id)?.size ?? 0,
+          homeworkAvailable: visibleHomeworkIds.length
+        };
+      });
+      const insights = {
+        homeworkDrafts: homeworkRows.filter(row => row.status === "DRAFT").length,
+        homeworkPublished: visibleHomeworkIds.length,
+        homeworkSubmitted: progress.reduce((sum, row) => sum + row.homeworkSubmitted, 0),
+        homeworkExpected: visibleHomeworkIds.length * roster.length,
+        examSheets: examRows.length,
+        examGradesRecorded: progress.reduce((sum, row) => sum + row.examsRecorded, 0),
+        examGradesExpected: examRows.length * roster.length,
+        studentProgress: progress
+      };
+      return { assignment, students: roster, schedule, today,
+        canSuperviseToday: !!supervision, insights };
     },
 
     async getClassTimetable(schoolId, academicYearId, classId) {
