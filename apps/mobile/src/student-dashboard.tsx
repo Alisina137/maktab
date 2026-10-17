@@ -15,6 +15,7 @@ import {
   studentLessonFocus, studentSchoolClock, studentTodayLessons
 } from "./student-home-model";
 import {studentTimeRange12} from "./student-timetable-model";
+import {studentVisibleResults} from "./student-results-model";
 
 type Direction={textAlign:"left"|"right";writingDirection:"ltr"|"rtl"};
 type Icon=keyof typeof Ionicons.glyphMap;
@@ -83,7 +84,7 @@ export function StudentDashboard({
   const today=studentTodayLessons(timetable,now);
   const focus=studentLessonFocus(timetable,now);
   const homeworks=studentHomeworkOverview(learning?.homework??[],submissions,now);
-  const academic=studentAcademicOverview(learning?.results??[]);
+  const academic=studentAcademicOverview(studentVisibleResults(learning));
   const latest=academic.latest;
   const schoolUpdate=studentLatestAnnouncement(announcements,student?.classId??null);
   const unread=notifications.filter(item=>!item.readAt).length;
