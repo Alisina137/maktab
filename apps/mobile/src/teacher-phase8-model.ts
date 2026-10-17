@@ -14,7 +14,7 @@ export function teacherInboxList(
   const term=normalize(search);
   const size=Number.isSafeInteger(limit)?Math.max(0,Math.min(limit,100)):30;
   return notifications.filter(item=>
-    (filter==="ALL"||(filter==="UNREAD"?!item.readAt:!!item.readAt)) &&
+    (filter==="ALL"||(filter==="UNREAD"&&!item.readAt)||(filter==="READ"&&!!item.readAt)) &&
     (!term||[item.title,item.message,item.type].some(text=>normalize(text).includes(term)))
   ).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id))
     .slice(0,size);
