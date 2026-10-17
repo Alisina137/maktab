@@ -36,7 +36,7 @@ function MenuLink({label,description,icon,rtl,textDirection,locale,badge,onPress
 
 export function StudentMorePanel({
   locale,textDirection,fullName,username,studentCode,className,academicYear,schoolName,
-  unreadCount,contact,onOpenUpdates,onLocaleChange,onLogout
+  unreadCount,contact,onOpenUpdates,onOpenRecords,onLocaleChange,onLogout
 }:{
   locale:SupportedLocale;
   textDirection:Direction;
@@ -44,6 +44,7 @@ export function StudentMorePanel({
   className:string|null;academicYear:string|null;schoolName:string;
   unreadCount:number;contact:AdminContactPayload|null;
   onOpenUpdates:(tab:Destination)=>void;
+  onOpenRecords:(tab:"ATTENDANCE"|"FEES")=>void;
   onLocaleChange:(locale:SupportedLocale)=>void;onLogout:()=>void;
 }) {
   const rtl=getDirection(locale)==="rtl";
@@ -69,6 +70,18 @@ export function StudentMorePanel({
             <Text style={styles.statLabel}>{translate(locale,key)}</Text>
           </View>)}
       </View>
+    </View>
+    <View style={styles.card} testID="student-more-records">
+      <Text style={[styles.heading,textDirection]}>{translate(locale,"student.recordsTitle")}</Text>
+      <Text style={[styles.description,textDirection]}>{translate(locale,"student.recordsHint")}</Text>
+      <MenuLink icon="calendar-outline" label={translate(locale,"student.attendanceTitle")}
+        description={translate(locale,"student.attendanceHint")}
+        rtl={rtl} textDirection={textDirection} locale={locale}
+        onPress={()=>onOpenRecords("ATTENDANCE")}/>
+      <MenuLink icon="wallet-outline" label={translate(locale,"student.feeTitle")}
+        description={translate(locale,"student.feeHint")}
+        rtl={rtl} textDirection={textDirection} locale={locale}
+        onPress={()=>onOpenRecords("FEES")}/>
     </View>
     <View style={styles.card}>
       <Text style={[styles.heading,textDirection]}>{translate(locale,"student.moreSchoolUpdates")}</Text>
