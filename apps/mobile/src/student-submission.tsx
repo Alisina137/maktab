@@ -85,25 +85,33 @@ export function StudentSubmissionPanel({
     finally{setBusy(false);}
   }
   async function pick() {
-    setBusy(true);
+    if(!canSubmit||busy)return;
+    setBusy(true);setMessage(null);
     try {
       const result=await pickAndUploadLearningFile(accessToken);
-      if(result){setFileId(result.id);setFileName(result.fileName);}
+      if(result){touched.current=true;setFileId(result.id);
+        setFileName(result.fileName);setDirty(true);}
     }catch{setMessage("learning.fileUploadFailed");}
     finally{setBusy(false);}
   }
   async function submit() {
-    if(expired || !answer.trim()&&!fileId){setMessage("learning.submissionInvalid");return;}
-    setBusy(true);
+    if(submitting.current||busy||!restored)return;
+    if(!canSubmit){setMessage("student.hwCannotVerify");return;}
+    if(!answer.trim()&&!fileId){setMessage("learning.submissionInvalid");return;}
+    if(answer.length>STUDENT_DRAFT_MAX_CHARS){
+      setMessage("student.hwAnswerTooLong");return;
+    }
+    submitting.current=true;setBusy(true);setMessage(null);
     try {
       const result=await api.submitStudentHomework(accessToken,homework.id,answer.trim(),fileId);
-      setSubmission(result.submission);
+      await writeQueue.current.catch(()=>{});
+      await clearStudentHomeworkDraft(draftKey).catch(()=>{});
+      setDirty(false);
       onSubmitted?.(result.submission);
-      setMessage("learning.submissionSaved");
+      setMessage("student.hwSubmissionConfirmed");
     } catch {setMessage("learning.submissionFailed");}
-    finally{setBusy(false);}
+    finally{setBusy(false);submitting.current=false;}
   }
-  const canSubmit=!expired&&(!submission||submission.status==="REVISION_REQUESTED");
   return (
     <View style={styles.stack} testID="student-homework-submission">
       <Pressable accessibilityRole="button" onPress={()=>open?setOpen(false):void load()} style={styles.action}>
