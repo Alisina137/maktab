@@ -42,5 +42,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify teacher Phases 1–3, mobile TypeScript, Kabul clock and timetable
-        run: pnpm verify:teacher:phase3
+      - name: Verify teacher Phases 1–4, mobile TypeScript, clock, timetable and class progress
+        run: pnpm verify:teacher:phase4
