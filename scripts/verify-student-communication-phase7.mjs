@@ -16,7 +16,7 @@ for(const value of [
  "STUDENT_INBOX_PAGE_SIZE=20","studentVisibleAnnouncements(",
  "studentFilterAnnouncements(","studentVisibleNotifications(",
  "studentFilterNotifications(","studentNotificationTopic(",
- "studentNotificationUnread(","studentInboxPage(",
+ "studentNotificationUnread(","studentInboxPage<T>(",
  'item.audienceRole==="STUDENT"','item.classId===classId',
  "item.archivedAt",'item.deliveryStatus==="PENDING"'
 ])assert.ok(model.includes(value),"Student Phase 7 model missing "+value);
