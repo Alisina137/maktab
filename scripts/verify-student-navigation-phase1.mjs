@@ -55,5 +55,6 @@ assert.ok(pkg.scripts["verify:student:phase1"]?.includes("test-student-navigatio
 assert.ok(workflow.includes("run: pnpm verify:student:phase1") ||
   workflow.includes("run: pnpm verify:student:phase2") ||
   workflow.includes("run: pnpm verify:student:phase3") ||
-  workflow.includes("run: pnpm verify:student:phase4"));
+  workflow.includes("run: pnpm verify:student:phase4") ||
+  workflow.includes("run: pnpm verify:student:phase5"));
 console.log("Student Phase 1 navigation, More, RTL, language, safe deep-links and test guards passed.");
