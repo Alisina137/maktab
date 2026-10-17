@@ -268,7 +268,7 @@ export function TeacherLearningPanel(props: CommonProps & {
       setAttachmentUrl("");
       setAttachmentFileId(null);setAttachmentName("");
       setScheduleDate("");setScheduleTime("");
-      await load();
+      await load(undefined,true);
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
@@ -293,12 +293,12 @@ export function TeacherLearningPanel(props: CommonProps & {
           ? translate(locale, "learning.homeworkPublished")
           : translate(locale, "learning.homeworkUpdated")
       );
-      await load();
+      await load(undefined,true);
     } catch (cause) {
       if (cause instanceof ApiRequestError && cause.code === "learning_conflict") {
         // Another session or scheduled publisher may have advanced this item.
         // Refresh the canonical state instead of encouraging repeated stale taps.
-        await load();
+        await load(undefined,true);
         onError("learning.statusChanged");
       } else {
         const failure = appErrorFromCause(cause);
@@ -367,7 +367,7 @@ export function TeacherLearningPanel(props: CommonProps & {
       setScoreDraft(saved.scores);
       setRemarkDraft(saved.remarks);
       onNotice(translate(locale, "learning.marksSaved"));
-      await load();
+      await load(undefined,true);
     } catch (cause) {
       const failure = appErrorFromCause(cause);
       onError(failure.key, failure.kind);
@@ -424,7 +424,7 @@ export function TeacherLearningPanel(props: CommonProps & {
   }
   if (!view) {
     return (
-      <Pressable accessibilityRole="button" onPress={() => void load()}
+      <Pressable accessibilityRole="button" onPress={() => void load(undefined,true)}
         style={styles.card}>
         <Ionicons name="refresh-outline" size={22} color={tokens.color.brandStrong} />
         <Text style={[styles.muted, textDirection]}>{translate(locale, "action.retry")}</Text>
@@ -554,7 +554,7 @@ export function TeacherLearningPanel(props: CommonProps & {
           <View style={[styles.headingRow,rtl&&styles.rowRtl]}>
             <Text style={[styles.editorTitle,styles.flex,textDirection]}>{translate(locale,"teacher.homeworkRecords")}</Text>
             <Pressable accessibilityRole="button" disabled={busy} style={styles.smallButton}
-              onPress={()=>void load()}>
+              onPress={()=>void load(undefined,true)}>
               <Text style={styles.smallButtonText}>{translate(locale,"learning.submissionRefresh")}</Text>
             </Pressable>
           </View>
