@@ -101,7 +101,7 @@ export function studentSubjectPerformance(
     const latestPercent=Math.round(recent[0]!.grade.score/recent[0]!.examSubject.maxScore*100);
     const previousPercent=recent[1]
       ?Math.round(recent[1].grade.score/recent[1].examSubject.maxScore*100):null;
-    const trend=previousPercent===null?"NEW":latestPercent>previousPercent?"UP":
+    const trend:StudentSubjectPerformance["trend"]=previousPercent===null?"NEW":latestPercent>previousPercent?"UP":
       latestPercent<previousPercent?"DOWN":"SAME";
     return {subjectId,name:recent[0]!.subjectName,score,maxScore,
       percent:Math.round(score/maxScore*100),publishedMarks:recent.length,
