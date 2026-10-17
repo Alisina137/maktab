@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { tokens } from "@maktablink/design-tokens";
-import { translate, type SupportedLocale, type TranslationKey } from "@maktablink/localization";
+import { formatLocalizedDate, formatLocalizedNumber, translate, type SupportedLocale, type TranslationKey } from "@maktablink/localization";
 import { api, type HomeworkPayload, type HomeworkSubmissionPayload } from "./api";
 import { pickAndUploadLearningFile, shareLearningFile } from "./learning-files";
 import {
@@ -112,49 +112,92 @@ export function StudentSubmissionPanel({
     } catch {setMessage("learning.submissionFailed");}
     finally{setBusy(false);submitting.current=false;}
   }
+  const statusKey:Record<HomeworkSubmissionPayload["status"],TranslationKey>={
+    SUBMITTED:"student.hwSubmitted",REVIEWED:"student.hwReviewed",
+    REVISION_REQUESTED:"student.hwNeedsRevision"
+  };
   return (
     <View style={styles.stack} testID="student-homework-submission">
-      <Pressable accessibilityRole="button" onPress={()=>open?setOpen(false):void load()} style={styles.action}>
-        <Text style={styles.actionText}>{translate(locale,open?"learning.hideSubmissions":"learning.studentSubmitAction")}</Text>
+      <Pressable accessibilityRole="button" onPress={()=>setOpen(value=>!value)}
+        style={styles.action}>
+        <Text style={styles.actionText}>{translate(locale,open?"learning.hideSubmissions":
+          submission?"student.hwViewSubmission":"learning.studentSubmitAction")}</Text>
       </Pressable>
       {busy&&<ActivityIndicator color={tokens.color.brandStrong}/>}
-      {open&&(
-        <View style={styles.card}>
-          {submission&&(
-            <>
-              <Text style={[styles.title,textDirection]}>{translate(locale,"learning.submissionStatus")}: {submission.status}</Text>
-              {!!submission.feedback&&<Text style={[styles.text,textDirection]}>{submission.feedback}</Text>}
-              {!!submission.attachmentFileId&&(
-                <Pressable accessibilityRole="button" onPress={()=>
-                  void shareLearningFile(accessToken,submission.attachmentFileId!).catch(()=>setMessage("learning.submissionFailed"))}>
-                  <Text style={styles.actionText}>{translate(locale,"learning.openAttachment")}</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-          {canSubmit&&(
-            <>
-              <TextInput multiline editable={!busy} value={answer} onChangeText={setAnswer}
-                placeholder={translate(locale,"learning.studentAnswer")}
-                style={[styles.input,textDirection]}/>
-              <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void pick()} style={styles.action}>
-                <Text style={styles.actionText}>{translate(locale,"learning.selectDeviceFile")}</Text>
-              </Pressable>
-              {fileName?<Text style={[styles.text,textDirection]}>{fileName}</Text>:null}
-              <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void submit()} style={styles.primary}>
-                <Text style={styles.primaryText}>{translate(locale,"learning.studentSubmitAction")}</Text>
-              </Pressable>
-            </>
-          )}
-          {expired&&!submission&&<Text style={[styles.text,textDirection]}>{translate(locale,"learning.submissionClosed")}</Text>}
-          {message&&<Text style={[styles.text,textDirection]}>{translate(locale,message)}</Text>}
-        </View>
-      )}
+      {open&&<View style={styles.card}>
+        {submission?<View style={styles.stack}>
+          <Text style={[styles.title,textDirection]}>
+            {translate(locale,"learning.submissionStatus")}:
+            {" "}{translate(locale,statusKey[submission.status])}
+          </Text>
+          <Text style={[styles.text,textDirection]}>
+            {translate(locale,"student.hwSubmittedOn")}: {formatLocalizedDate(submission.submittedAt,locale)}
+          </Text>
+          {submission.feedback?<View style={styles.feedback}>
+            <Text style={[styles.title,textDirection]}>{translate(locale,"student.hwTeacherFeedback")}</Text>
+            <Text style={[styles.text,textDirection]}>{submission.feedback}</Text>
+          </View>:null}
+          {submission.attachmentFileId?<Pressable accessibilityRole="button"
+            onPress={()=>void shareLearningFile(accessToken,submission.attachmentFileId!)
+              .catch(()=>setMessage("learning.submissionFailed"))} style={styles.action}>
+            <Text style={styles.actionText}>{translate(locale,"learning.openAttachment")}</Text>
+          </Pressable>:null}
+        </View>:null}
+        {!submissionsVerified?<View style={styles.stack}>
+          <Text style={[styles.text,textDirection]}>{translate(locale,"student.hwCannotVerify")}</Text>
+          <Pressable accessibilityRole="button" disabled={busy}
+            onPress={()=>void refresh()} style={styles.action}>
+            <Text style={styles.actionText}>{translate(locale,"student.hwRetry")}</Text>
+          </Pressable>
+        </View>:null}
+        {canSubmit?<View style={styles.stack}>
+          <Text style={[styles.title,textDirection]}>
+            {translate(locale,submission?.status==="REVISION_REQUESTED"?
+              "student.hwResubmit":"student.hwWriteAnswer")}
+          </Text>
+          <TextInput multiline editable={!busy&&restored} value={answer}
+            maxLength={STUDENT_DRAFT_MAX_CHARS} testID="student-homework-answer"
+            onChangeText={value=>{touched.current=true;setAnswer(value);setDirty(true);}}
+            placeholder={translate(locale,"learning.studentAnswer")}
+            style={[styles.input,textDirection]}/>
+          <Text style={[styles.text,textDirection]}>
+            {formatLocalizedNumber(answer.length,locale)} / {formatLocalizedNumber(STUDENT_DRAFT_MAX_CHARS,locale)}
+          </Text>
+          <View style={styles.buttons}>
+            <Pressable accessibilityRole="button" disabled={busy||!restored}
+              onPress={()=>void pick()} style={styles.action}>
+              <Text style={styles.actionText}>{translate(locale,"learning.selectDeviceFile")}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={busy||!restored}
+              onPress={()=>void saveDraft()} style={styles.action}>
+              <Text style={styles.actionText}>{translate(locale,"student.hwSaveDraft")}</Text>
+            </Pressable>
+          </View>
+          {fileName?<View style={styles.buttons}>
+            <Text style={[styles.text,textDirection]}>{fileName}</Text>
+            <Pressable accessibilityRole="button" onPress={()=>{
+              setFileId(null);setFileName("");setDirty(true);
+            }}><Text style={styles.actionText}>{translate(locale,"student.hwRemoveFile")}</Text></Pressable>
+          </View>:null}
+          <Pressable accessibilityRole="button" testID="student-homework-submit"
+            disabled={busy||!restored||(!answer.trim()&&!fileId)}
+            onPress={()=>void submit()}
+            style={[styles.primary,(busy||!restored||(!answer.trim()&&!fileId))&&styles.disabled]}>
+            <Text style={styles.primaryText}>{translate(locale,submission?.status==="REVISION_REQUESTED"?
+              "student.hwResubmit":"learning.studentSubmitAction")}</Text>
+          </Pressable>
+        </View>:null}
+        {expired&&submissionsVerified&&!submission?
+          <Text style={[styles.text,textDirection]}>{translate(locale,"learning.submissionClosed")}</Text>:null}
+        {message?<Text accessibilityRole="alert" style={[styles.text,textDirection]}>
+          {translate(locale,message)}
+        </Text>:null}
+      </View>}
     </View>
   );
 }
 const styles=StyleSheet.create({
- stack:{gap:9},card:{gap:10,padding:12,borderRadius:12,backgroundColor:"#f6f9fe"},
+ stack:{gap:9},buttons:{flexDirection:"row",flexWrap:"wrap",gap:8,alignItems:"center"},feedback:{padding:10,backgroundColor:"#fff",borderRadius:10,gap:5},disabled:{opacity:0.5},card:{gap:10,padding:12,borderRadius:12,backgroundColor:"#f6f9fe"},
  title:{fontSize:13,fontWeight:"800",color:tokens.color.text},text:{fontSize:12,color:tokens.color.text},
  action:{minHeight:44,padding:10,borderRadius:12,backgroundColor:"#e8f3ff",justifyContent:"center",alignItems:"center"},
  actionText:{fontSize:12,fontWeight:"800",color:tokens.color.brandStrong},
