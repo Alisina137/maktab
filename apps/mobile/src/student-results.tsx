@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -55,11 +55,12 @@ function Trend({item,locale,textDirection}:{
   </View>;
 }
 export function StudentResultsContent({
-  learning,ready,locale,textDirection,onTabChange
+  learning,ready,locale,textDirection,onTabChange,onRefresh
 }:{
   learning:LearnerAcademicPayload|null;ready:boolean;
   locale:SupportedLocale;textDirection:Direction;
   onTabChange?:()=>void;
+  onRefresh?:()=>Promise<boolean>;
 }) {
   const rtl=getDirection(locale)==="rtl";
   const [tab,setTab]=useState<StudentResultsTab>("EXAMS");
@@ -67,6 +68,15 @@ export function StudentResultsContent({
   const [examType,setExamType]=useState<string|null>(null);
   const [query,setQuery]=useState("");
   const [expandedExam,setExpandedExam]=useState<string|null>(null);
+  const [refreshing,setRefreshing]=useState(false);
+  const [refreshError,setRefreshError]=useState(false);
+  async function refresh() {
+    if(refreshing||!onRefresh)return;
+    setRefreshing(true);setRefreshError(false);
+    try {setRefreshError(!(await onRefresh()));}
+    catch {setRefreshError(true);}
+    finally {setRefreshing(false);}
+  }
   if(!ready&&!learning)return <View style={styles.loadingCard}>
     <View style={styles.loadingLineWide}/><View style={styles.loadingLineShort}/>
   </View>;
@@ -83,6 +93,21 @@ export function StudentResultsContent({
   const count=(n:number)=>formatLocalizedNumber(n,locale);
   const percent=(n:number)=>`${count(n)}%`;
   return <View style={styles.stack} testID="student-results-phase5">
+    <View style={[styles.refreshRow,rtl&&styles.rtl]}>
+      <Text style={[styles.muted,styles.flex,textDirection]}>
+        {translate(locale,"student.resHistoryScope")}
+      </Text>
+      <Pressable accessibilityRole="button" testID="student-results-refresh"
+        disabled={refreshing||!onRefresh} onPress={()=>void refresh()}
+        style={[styles.refreshButton,refreshing&&styles.refreshDisabled]}>
+        {refreshing?<ActivityIndicator size="small" color={tokens.color.brandStrong}/>:
+          <Ionicons name="refresh-outline" size={17} color={tokens.color.brandStrong}/>}
+        <Text style={styles.refreshText}>{translate(locale,"student.resRefresh")}</Text>
+      </Pressable>
+    </View>
+    {refreshError?<Text accessibilityRole="alert" style={[styles.warning,textDirection]}>
+      {translate(locale,"student.resRefreshFailed")}
+    </Text>:null}
     <View style={[styles.tabBar,rtl&&styles.rtl]} accessibilityRole="tablist">
       {studentResultsTabs.map(next=><Pressable key={next}
         testID={`student-results-tab-${next.toLowerCase()}`}
@@ -267,6 +292,13 @@ export function StudentResultsContent({
 }
 const styles=StyleSheet.create({
   stack:{gap:13},rtl:{flexDirection:"row-reverse"},flex:{flex:1,minWidth:0},
+  refreshRow:{flexDirection:"row",alignItems:"center",gap:10},
+  refreshButton:{minHeight:42,paddingHorizontal:10,borderRadius:11,
+    borderWidth:1,borderColor:"#c9daed",backgroundColor:"#f4f8ff",
+    flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6},
+  refreshText:{color:tokens.color.brandStrong,fontWeight:"800",fontSize:11.5},
+  refreshDisabled:{opacity:0.6},
+  warning:{fontSize:12,color:"#99441c",padding:10,borderRadius:10,backgroundColor:"#fff5e8"},
   tabBar:{flexDirection:"row",backgroundColor:"#edf2f9",padding:4,gap:4,borderRadius:15},
   tab:{flex:1,minHeight:44,alignItems:"center",justifyContent:"center",borderRadius:12},
   tabSelected:{backgroundColor:"#fff",borderWidth:1,borderColor:"#c9d9ee"},
