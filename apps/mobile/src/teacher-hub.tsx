@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -9,6 +9,7 @@ import {
 import type { AnnouncementPayload, ParentNotification, TeacherLearningPayload, TeacherTodayPayload } from "./api";
 import { teacherTaskCounts, teacherTime12 } from "./teacher-hub-data";
 import { teacherDayTimeline, type TodayPeriod } from "./teacher-today-model";
+import { teacherInboxList, teacherUnreadCount, teacherAnnouncementPreview, type TeacherInboxFilter } from "./teacher-phase8-model";
 
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -222,7 +223,7 @@ export function TeacherTodayInsights({
 
 export function TeacherInboxModal({
   open, locale, notifications, announcements, notificationsReady, announcementsReady,
-  textDirection, onClose, onMarkRead, onMarkAllRead, onRetry, onOpenNotification
+  notificationsError, announcementsError, actionBusy, textDirection, onClose, onMarkRead, onMarkAllRead, onRetry, onOpenNotification
 }: {
   open: boolean;
   locale: SupportedLocale;
@@ -230,6 +231,9 @@ export function TeacherInboxModal({
   announcements: AnnouncementPayload[];
   notificationsReady: boolean;
   announcementsReady: boolean;
+  notificationsError?: boolean;
+  announcementsError?: boolean;
+  actionBusy?: boolean;
   textDirection: Direction;
   onClose: () => void;
   onMarkRead: (id: string) => void;
@@ -238,9 +242,14 @@ export function TeacherInboxModal({
   onOpenNotification: (item: ParentNotification) => void;
 }) {
   const rtl = getDirection(locale) === "rtl";
-  const unreadCount = notifications.filter((item) => !item.readAt).length;
-  const [onlyUnread, setOnlyUnread] = useState(false);
-  const listed = notifications.filter((item) => !onlyUnread || !item.readAt);
+  const unreadCount=teacherUnreadCount(notifications);
+  const [filter,setFilter]=useState<TeacherInboxFilter>("ALL");
+  const [search,setSearch]=useState("");
+  const [limit,setLimit]=useState(30);
+  useEffect(()=>{if(!open){setFilter("ALL");setSearch("");setLimit(30);}},[open]);
+  const listed=teacherInboxList(notifications,filter,search,limit);
+  const available=teacherInboxList(notifications,filter,search,100).length;
+  const announcementPreview=teacherAnnouncementPreview(announcements);
   return (
     <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
@@ -258,24 +267,35 @@ export function TeacherInboxModal({
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.inboxScroll}>
-            <View style={[styles.inboxFooter, rtl && styles.rowRtl]}>
-              <Text style={[styles.heading, styles.flex, textDirection]}>{translate(locale, "notifications.title")}</Text>
-              <Pressable accessibilityRole="button"
-                accessibilityState={{ selected: onlyUnread }}
-                onPress={() => setOnlyUnread((old) => !old)} style={styles.readButton}>
-                <Text style={styles.actionText}>
-                  {translate(locale, onlyUnread ? "teacher.allNotifications" : "teacher.onlyUnread")}
-                </Text>
-              </Pressable>
+            <View style={[styles.inboxFooter,rtl&&styles.rowRtl]}>
+              <Text style={[styles.heading,styles.flex,textDirection]}>{translate(locale,"notifications.title")}</Text>
+              <Text style={[styles.muted,textDirection]}>{formatLocalizedNumber(available,locale)}</Text>
             </View>
+            <TextInput testID="teacher-inbox-search" value={search} onChangeText={value=>{
+              setSearch(value);setLimit(30);
+            }} placeholder={translate(locale,"teacher.inboxSearch")}
+              autoCapitalize="none" style={[styles.inboxSearch,textDirection]}/>
+            <View style={[styles.inboxFilters,rtl&&styles.rowRtl]} accessibilityRole="tablist">
+              {(["ALL","UNREAD","READ"] as TeacherInboxFilter[]).map(next=>
+                <Pressable key={next} accessibilityRole="tab"
+                  accessibilityState={{selected:filter===next}}
+                  onPress={()=>{setFilter(next);setLimit(30);}}
+                  style={[styles.readButton,filter===next&&styles.inboxFilterSelected]}>
+                  <Text style={styles.actionText}>{translate(locale,next==="ALL"?
+                    "teacher.allNotifications":next==="UNREAD"?"teacher.onlyUnread":"teacher.inboxRead")}</Text>
+                </Pressable>)}
+            </View>
+            {notificationsError?<Text style={[styles.hubWarning,textDirection]}>
+              {translate(locale,notifications.length?"teacher.hubStale":"teacher.hubUnavailable")}
+            </Text>:null}
             {unreadCount > 0 ? (
-              <Pressable accessibilityRole="button" onPress={onMarkAllRead} style={styles.readButton}>
+              <Pressable accessibilityRole="button" disabled={actionBusy} onPress={onMarkAllRead} style={[styles.readButton,actionBusy&&styles.dim]}>
                 <Text style={styles.actionText}>{translate(locale, "teacher.markAllRead")}</Text>
               </Pressable>
             ) : null}
             {!notificationsReady ? <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
               : listed.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noNotifications")}</Text>
-              : [...listed].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 30).map((item) => (
+              : listed.map((item) => (
                 <View style={[styles.inboxItem, !item.readAt && styles.inboxUnread]} key={item.id}>
                   <Pressable accessibilityRole="button" accessibilityLabel={item.title}
                     onPress={() => onOpenNotification(item)}>
@@ -285,17 +305,24 @@ export function TeacherInboxModal({
                   <View style={[styles.inboxFooter, rtl && styles.rowRtl]}>
                     <Text style={styles.inboxDate}>{formatLocalizedDate(item.createdAt, locale)}</Text>
                     {!item.readAt ? (
-                      <Pressable accessibilityRole="button" onPress={() => onMarkRead(item.id)} style={styles.readButton}>
+                      <Pressable accessibilityRole="button" disabled={actionBusy} onPress={() => onMarkRead(item.id)} style={[styles.readButton,actionBusy&&styles.dim]}>
                         <Text style={styles.actionText}>{translate(locale, "teacher.markRead")}</Text>
                       </Pressable>
                     ) : null}
                   </View>
                 </View>
               ))}
+            {available>listed.length?<Pressable accessibilityRole="button" style={styles.readButton}
+              onPress={()=>setLimit(value=>Math.min(100,value+30))}>
+              <Text style={styles.actionText}>{translate(locale,"teacher.inboxShowMore")}</Text>
+            </Pressable>:null}
+            {announcementsError?<Text style={[styles.hubWarning,textDirection]}>
+              {translate(locale,announcements.length?"teacher.hubStale":"teacher.hubUnavailable")}
+            </Text>:null}
             <Text style={[styles.heading, textDirection]}>{translate(locale, "teacher.latestAnnouncements")}</Text>
             {!announcementsReady ? <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
               : announcements.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noAnnouncements")}</Text>
-              : [...announcements].sort((a, b) => b.publishAt.localeCompare(a.publishAt)).slice(0, 10).map((item) => (
+              : announcementPreview.map((item) => (
                 <View style={styles.inboxItem} key={item.id}>
                   <Text style={[styles.nextTitle, textDirection]}>{item.title}</Text>
                   <Text style={[styles.muted, textDirection]}>{item.content}</Text>
@@ -357,5 +384,11 @@ const styles = StyleSheet.create({
   inboxUnread: { borderColor: "#a9c9ef", backgroundColor: "#f3f8ff" },
   inboxFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   inboxDate: { color: tokens.color.textMuted, fontSize: 11.5 },
-  readButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 11, backgroundColor: "#e9f2ff", borderRadius: 10 }
+  readButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 11, backgroundColor: "#e9f2ff", borderRadius: 10 },
+  inboxSearch:{minHeight:44,borderWidth:1,borderColor:"#d7e1f2",borderRadius:11,
+    paddingHorizontal:12,backgroundColor:"#fafcff",color:tokens.color.text},
+  inboxFilters:{flexDirection:"row",flexWrap:"wrap",gap:7},
+  inboxFilterSelected:{borderWidth:1,borderColor:tokens.color.brandStrong},
+  hubWarning:{fontSize:12,color:"#ad4933",fontWeight:"700"},
+  dim:{opacity:0.45}
 });
