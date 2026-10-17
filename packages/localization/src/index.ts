@@ -557,6 +557,31 @@ export type TranslationKey =
   | "student.scheduleNoMatchingTeachers"
   | "student.scheduleNoTeachers"
   | "student.scheduleUnavailable"
+  | "student.hwToDo"
+  | "student.hwOverdue"
+  | "student.hwSubmitted"
+  | "student.hwNeedsRevision"
+  | "student.hwReviewed"
+  | "student.hwClosed"
+  | "student.hwCompleted"
+  | "student.hwDueToday"
+  | "student.hwDueTomorrow"
+  | "student.hwCannotVerify"
+  | "student.hwRetry"
+  | "student.hwSearch"
+  | "student.hwAllSubjects"
+  | "student.hwNoMatching"
+  | "student.hwDraftUnavailable"
+  | "student.hwDraftSaved"
+  | "student.hwAnswerTooLong"
+  | "student.hwSubmissionConfirmed"
+  | "student.hwViewSubmission"
+  | "student.hwSubmittedOn"
+  | "student.hwTeacherFeedback"
+  | "student.hwResubmit"
+  | "student.hwWriteAnswer"
+  | "student.hwSaveDraft"
+  | "student.hwRemoveFile"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1286,6 +1311,31 @@ const en: Record<TranslationKey, string> = {
   "student.scheduleNoMatchingTeachers": "No matching teachers or subjects.",
   "student.scheduleNoTeachers": "No teachers assigned in your timetable yet.",
   "student.scheduleUnavailable": "Your timetable is unavailable. Reconnect to load your class schedule.",
+  "student.hwToDo": "To do",
+  "student.hwOverdue": "Overdue",
+  "student.hwSubmitted": "Submitted",
+  "student.hwNeedsRevision": "Revision",
+  "student.hwReviewed": "Reviewed",
+  "student.hwClosed": "Closed",
+  "student.hwCompleted": "Completed",
+  "student.hwDueToday": "Due today",
+  "student.hwDueTomorrow": "Due tomorrow",
+  "student.hwCannotVerify": "Submission status could not be verified. Reconnect before submitting to avoid duplicates.",
+  "student.hwRetry": "Retry",
+  "student.hwSearch": "Search homework or subject",
+  "student.hwAllSubjects": "All subjects",
+  "student.hwNoMatching": "No homework matches these filters.",
+  "student.hwDraftUnavailable": "Could not save your draft on this device. Copy your answer before leaving.",
+  "student.hwDraftSaved": "Draft saved securely on this device.",
+  "student.hwAnswerTooLong": "Answer exceeds the 10,000-character limit.",
+  "student.hwSubmissionConfirmed": "Homework submitted successfully.",
+  "student.hwViewSubmission": "View submission",
+  "student.hwSubmittedOn": "Submitted on",
+  "student.hwTeacherFeedback": "Teacher feedback",
+  "student.hwResubmit": "Submit revision",
+  "student.hwWriteAnswer": "Your answer",
+  "student.hwSaveDraft": "Save draft",
+  "student.hwRemoveFile": "Remove attachment",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -2031,6 +2081,31 @@ const dari: Record<TranslationKey, string> = {
   "student.scheduleNoMatchingTeachers": "استاد یا مضمون مطابق یافت نشد.",
   "student.scheduleNoTeachers": "هنوز استادی در تقسیم اوقات صنف شما تعیین نشده است.",
   "student.scheduleUnavailable": "تقسیم اوقات شما در دسترس نیست. برای دریافت برنامه درسی دوباره وصل شوید.",
+  "student.hwToDo": "برای انجام",
+  "student.hwOverdue": "گذشته از موعد",
+  "student.hwSubmitted": "سپرده‌شده",
+  "student.hwNeedsRevision": "نیازمند اصلاح",
+  "student.hwReviewed": "بررسی‌شده",
+  "student.hwClosed": "بسته‌شده",
+  "student.hwCompleted": "تکمیل‌شده",
+  "student.hwDueToday": "مهلت امروز",
+  "student.hwDueTomorrow": "مهلت فردا",
+  "student.hwCannotVerify": "وضعیت سپردن کارخانگی تأیید نشد. پیش از سپردن دوباره وصل شوید تا از ارسال تکراری جلوگیری شود.",
+  "student.hwRetry": "تلاش دوباره",
+  "student.hwSearch": "جستجوی کارخانگی یا مضمون",
+  "student.hwAllSubjects": "همه مضامین",
+  "student.hwNoMatching": "کارخانگی مطابق فیلترها پیدا نشد.",
+  "student.hwDraftUnavailable": "ذخیرۀ پیش‌نویس در دستگاه ممکن نشد. پیش از خروج پاسخ خود را کاپی کنید.",
+  "student.hwDraftSaved": "پیش‌نویس به‌صورت مصون در این دستگاه ذخیره شد.",
+  "student.hwAnswerTooLong": "پاسخ از حد ۱۰٬۰۰۰ نویسه بیشتر است.",
+  "student.hwSubmissionConfirmed": "کارخانگی با موفقیت سپرده شد.",
+  "student.hwViewSubmission": "دیدن پاسخ سپرده‌شده",
+  "student.hwSubmittedOn": "تاریخ سپردن",
+  "student.hwTeacherFeedback": "نظر استاد",
+  "student.hwResubmit": "سپردن اصلاحیه",
+  "student.hwWriteAnswer": "پاسخ شما",
+  "student.hwSaveDraft": "ذخیرۀ پیش‌نویس",
+  "student.hwRemoveFile": "حذف ضمیمه",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2776,6 +2851,31 @@ const pashto: Record<TranslationKey, string> = {
   "student.scheduleNoMatchingTeachers": "اړوند ښوونکی یا مضمون ونه موندل شو.",
   "student.scheduleNoTeachers": "ستاسو د ټولګي په مهال‌وېش کې لا ښوونکی نه دی ټاکل شوی.",
   "student.scheduleUnavailable": "ستاسو مهال‌وېش شتون نه لري. د درسونو مهال‌وېش لپاره بېرته ونښلئ.",
+  "student.hwToDo": "د ترسره کولو لپاره",
+  "student.hwOverdue": "له نېټې تېر",
+  "student.hwSubmitted": "سپارل شوی",
+  "student.hwNeedsRevision": "سمون ته اړتیا لري",
+  "student.hwReviewed": "کتل شوی",
+  "student.hwClosed": "تړل شوی",
+  "student.hwCompleted": "بشپړ شوی",
+  "student.hwDueToday": "نن وروستۍ نېټه",
+  "student.hwDueTomorrow": "سبا وروستۍ نېټه",
+  "student.hwCannotVerify": "د سپارلو حالت نه دی تایید شوی. د تکراري سپارلو د مخنیوي لپاره بېرته ونښلئ.",
+  "student.hwRetry": "بیا هڅه",
+  "student.hwSearch": "کورنۍ دنده یا مضمون ولټوئ",
+  "student.hwAllSubjects": "ټول مضمونونه",
+  "student.hwNoMatching": "له دې فلټرونو سره کورنۍ دنده ونه موندل شوه.",
+  "student.hwDraftUnavailable": "مسوده په دې وسیله کې خوندي نه شوه. له وتلو مخکې خپل ځواب کاپي کړئ.",
+  "student.hwDraftSaved": "مسوده په دې وسیله کې په خوندي ډول ثبت شوه.",
+  "student.hwAnswerTooLong": "ځواب له ۱۰٬۰۰۰ تورو زیات دی.",
+  "student.hwSubmissionConfirmed": "کورنۍ دنده په بریالیتوب وسپارل شوه.",
+  "student.hwViewSubmission": "سپارل شوی ځواب وګورئ",
+  "student.hwSubmittedOn": "د سپارلو نېټه",
+  "student.hwTeacherFeedback": "د ښوونکي نظر",
+  "student.hwResubmit": "اصلاح شوی ځواب سپارل",
+  "student.hwWriteAnswer": "ستاسو ځواب",
+  "student.hwSaveDraft": "مسوده خوندي کړئ",
+  "student.hwRemoveFile": "ضمیمه لرې کړئ",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
