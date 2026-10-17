@@ -1073,10 +1073,10 @@ export const api = {
     });
   },
 
-  studentHome(accessToken: string) {
+  studentHome(accessToken: string, fresh = false) {
     return request<LearnerAcademicPayload>("/v1/student/home", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   submitDailyAttendance(
