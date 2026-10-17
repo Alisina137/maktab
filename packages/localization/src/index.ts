@@ -637,6 +637,25 @@ export type TranslationKey =
   | "student.feeNoPayments"
   | "student.feeNoInvoices"
   | "student.feeContactSchool"
+  | "student.inboxAll"
+  | "student.inboxUnread"
+  | "student.inboxRead"
+  | "student.inboxSchool"
+  | "student.inboxAcademics"
+  | "student.inboxAttendance"
+  | "student.inboxFees"
+  | "student.inboxClass"
+  | "student.inboxStudent"
+  | "student.inboxSearch"
+  | "student.inboxRefresh"
+  | "student.inboxLoadError"
+  | "student.inboxRetry"
+  | "student.inboxRefreshFailed"
+  | "student.inboxMarkFailed"
+  | "student.inboxMarkAll"
+  | "student.inboxItems"
+  | "student.inboxNoMatching"
+  | "student.inboxLoadMore"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1446,6 +1465,25 @@ const en: Record<TranslationKey, string> = {
   "student.feeNoPayments": "No payments recorded.",
   "student.feeNoInvoices": "No invoices match this view.",
   "student.feeContactSchool": "These figures come from the school ledger. For payments, refunds or corrections, contact the school.",
+  "student.inboxAll": "All",
+  "student.inboxUnread": "Unread",
+  "student.inboxRead": "Read",
+  "student.inboxSchool": "School",
+  "student.inboxAcademics": "Academics",
+  "student.inboxAttendance": "Attendance",
+  "student.inboxFees": "Fees",
+  "student.inboxClass": "Class",
+  "student.inboxStudent": "Students",
+  "student.inboxSearch": "Search announcements or notifications",
+  "student.inboxRefresh": "Refresh",
+  "student.inboxLoadError": "Messages could not be loaded. Check your connection and retry.",
+  "student.inboxRetry": "Try again",
+  "student.inboxRefreshFailed": "Refresh failed. Your previously loaded messages remain available.",
+  "student.inboxMarkFailed": "Could not update notification status. Retry.",
+  "student.inboxMarkAll": "Mark all as read",
+  "student.inboxItems": "items",
+  "student.inboxNoMatching": "No messages match these filters.",
+  "student.inboxLoadMore": "Show more",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -2271,6 +2309,25 @@ const dari: Record<TranslationKey, string> = {
   "student.feeNoPayments": "هیچ پرداختی ثبت نشده است.",
   "student.feeNoInvoices": "بلی مطابق این بخش وجود ندارد.",
   "student.feeContactSchool": "این ارقام از دفتر حساب مکتب است. برای پرداخت، بازپرداخت یا اصلاح با مکتب تماس بگیرید.",
+  "student.inboxAll": "همه",
+  "student.inboxUnread": "خوانده‌نشده",
+  "student.inboxRead": "خوانده‌شده",
+  "student.inboxSchool": "مکتب",
+  "student.inboxAcademics": "درس‌ها",
+  "student.inboxAttendance": "حاضری",
+  "student.inboxFees": "فیس‌ها",
+  "student.inboxClass": "صنف",
+  "student.inboxStudent": "شاگردان",
+  "student.inboxSearch": "جستجوی اعلان یا اطلاعیه",
+  "student.inboxRefresh": "تازه‌سازی",
+  "student.inboxLoadError": "پیام‌ها بارگذاری نشد. اتصال خود را بررسی و دوباره تلاش کنید.",
+  "student.inboxRetry": "تلاش دوباره",
+  "student.inboxRefreshFailed": "تازه‌سازی انجام نشد. پیام‌های قبلی همچنان در دسترس اند.",
+  "student.inboxMarkFailed": "تغییر وضعیت اطلاعیه ممکن نشد. دوباره تلاش کنید.",
+  "student.inboxMarkAll": "همه را خوانده‌شده بسازید",
+  "student.inboxItems": "مورد",
+  "student.inboxNoMatching": "پیامی مطابق فیلترها یافت نشد.",
+  "student.inboxLoadMore": "نمایش بیشتر",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -3096,6 +3153,25 @@ const pashto: Record<TranslationKey, string> = {
   "student.feeNoPayments": "هیڅ ورکړه نه ده ثبت شوې.",
   "student.feeNoInvoices": "په دې برخه کې بل نشته.",
   "student.feeContactSchool": "دا شمېرې د ښوونځي له حسابونو څخه دي. د ورکړې، بېرته ورکولو یا سمون لپاره له ښوونځي سره اړیکه ونیسئ.",
+  "student.inboxAll": "ټول",
+  "student.inboxUnread": "نه لوستل شوي",
+  "student.inboxRead": "لوستل شوي",
+  "student.inboxSchool": "ښوونځی",
+  "student.inboxAcademics": "زده‌کړې",
+  "student.inboxAttendance": "حاضري",
+  "student.inboxFees": "فیسونه",
+  "student.inboxClass": "ټولګی",
+  "student.inboxStudent": "زده کوونکي",
+  "student.inboxSearch": "خبرتیا یا اعلان ولټوئ",
+  "student.inboxRefresh": "تازه کول",
+  "student.inboxLoadError": "پیغامونه پورته نه شول. خپله اړیکه وڅېړئ او بیا هڅه وکړئ.",
+  "student.inboxRetry": "بیا هڅه",
+  "student.inboxRefreshFailed": "تازه کول ناکام شول. مخکې پورته شوي پیغامونه شته.",
+  "student.inboxMarkFailed": "د خبرتیا حالت بدل نه شو. بیا هڅه وکړئ.",
+  "student.inboxMarkAll": "ټول لوستل شوي وټاکئ",
+  "student.inboxItems": "توکي",
+  "student.inboxNoMatching": "له دې فلټرونو سره پیغام ونه موندل شو.",
+  "student.inboxLoadMore": "نور ښکاره کړئ",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
