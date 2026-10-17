@@ -18,7 +18,7 @@ for(const value of [
  "studentFilterNotifications(","studentNotificationTopic(",
  "studentNotificationUnread(","studentInboxPage(",
  'item.audienceRole==="STUDENT"','item.classId===classId',
- "item.archivedAt","item.deliveryStatus==="PENDING""
+ "item.archivedAt",'item.deliveryStatus==="PENDING"'
 ])assert.ok(model.includes(value),"Student Phase 7 model missing "+value);
 for(const value of [
  'testID="student-inbox-phase7"','testID="student-inbox-search"',
