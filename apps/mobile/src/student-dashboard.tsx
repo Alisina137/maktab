@@ -3,7 +3,7 @@ import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from "
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
-  formatLocalizedDate, formatLocalizedNumber, formatLocalizedTimeRange,
+  formatLocalizedDate, formatLocalizedNumber,
   getDirection, localizeDigits, translate, type SupportedLocale, type TranslationKey
 } from "@maktablink/localization";
 import type {
@@ -14,6 +14,7 @@ import {
   studentAcademicOverview, studentHomeworkOverview, studentLatestAnnouncement,
   studentLessonFocus, studentSchoolClock, studentTodayLessons
 } from "./student-home-model";
+import {studentTimeRange12} from "./student-timetable-model";
 
 type Direction={textAlign:"left"|"right";writingDirection:"ltr"|"rtl"};
 type Icon=keyof typeof Ionicons.glyphMap;
@@ -161,7 +162,7 @@ export function StudentDashboard({
               translate(locale,focus.state==="DONE"?"student.homeLessonsFinished":
                 "student.noClassesToday")}</Text>
             {lesson?<Text style={[styles.muted,textDirection]}>
-              {formatLocalizedTimeRange(lesson.period.startsAt,lesson.period.endsAt,locale)}
+              {studentTimeRange12(lesson.period.startsAt,lesson.period.endsAt,locale)}
               {" · "}{lesson.teacherName}
             </Text>:null}
             {today.length>0?<Text style={[styles.meta,textDirection]}>
