@@ -44,5 +44,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify teacher Phases 1–5, including homework and submission queues
-        run: pnpm verify:teacher:phase5
+      - name: Verify teacher Phases 1–6, including exams and continuous assessments
+        run: pnpm verify:teacher:phase6
