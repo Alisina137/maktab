@@ -524,6 +524,27 @@ export type TranslationKey =
   | "student.moreSettings"
   | "student.moreLanguage"
   | "student.moreHelp"
+  | "student.homeCurrentLesson"
+  | "student.homeNextLesson"
+  | "student.homeLessonsFinished"
+  | "student.homeAtGlance"
+  | "student.homeClassesToday"
+  | "student.homePendingHomework"
+  | "student.homeDueToday"
+  | "student.homeSubmissionUnknown"
+  | "student.homeSchedule"
+  | "student.homeDataUnavailable"
+  | "student.homeLessonsDone"
+  | "student.homeUpcomingTasks"
+  | "student.homeNearestDeadline"
+  | "student.homeOverdue"
+  | "student.homeRevisions"
+  | "student.homeReviewedWork"
+  | "student.homeAcademicProgress"
+  | "student.homePublishedAverage"
+  | "student.homePublishedMarks"
+  | "student.homeFocusSubject"
+  | "student.homeSchoolUpdates"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1220,6 +1241,27 @@ const en: Record<TranslationKey, string> = {
   "student.moreSettings": "Preferences",
   "student.moreLanguage": "App language",
   "student.moreHelp": "Help & support",
+  "student.homeCurrentLesson": "Current lesson",
+  "student.homeNextLesson": "Next lesson",
+  "student.homeLessonsFinished": "Classes finished for today",
+  "student.homeAtGlance": "Today at a glance",
+  "student.homeClassesToday": "Classes today",
+  "student.homePendingHomework": "Homework to do",
+  "student.homeDueToday": "Due today",
+  "student.homeSubmissionUnknown": "Homework submission status could not be verified. Reconnect to see pending counts.",
+  "student.homeSchedule": "Today's classes",
+  "student.homeDataUnavailable": "Unable to load this section. Check your connection and retry.",
+  "student.homeLessonsDone": "classes finished",
+  "student.homeUpcomingTasks": "Upcoming homework",
+  "student.homeNearestDeadline": "Next deadline",
+  "student.homeOverdue": "Overdue",
+  "student.homeRevisions": "Needs revision",
+  "student.homeReviewedWork": "Reviewed homework",
+  "student.homeAcademicProgress": "Academic progress",
+  "student.homePublishedAverage": "Average of published marks",
+  "student.homePublishedMarks": "Published marks",
+  "student.homeFocusSubject": "Lowest current subject average",
+  "student.homeSchoolUpdates": "School updates",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -1932,6 +1974,27 @@ const dari: Record<TranslationKey, string> = {
   "student.moreSettings": "تنظیمات",
   "student.moreLanguage": "زبان برنامه",
   "student.moreHelp": "کمک و پشتیبانی",
+  "student.homeCurrentLesson": "درس جاری",
+  "student.homeNextLesson": "درس بعدی",
+  "student.homeLessonsFinished": "درس‌های امروز تمام شده‌اند",
+  "student.homeAtGlance": "خلاصۀ امروز",
+  "student.homeClassesToday": "درس‌های امروز",
+  "student.homePendingHomework": "کارخانگی‌های باقی‌مانده",
+  "student.homeDueToday": "موعد امروز",
+  "student.homeSubmissionUnknown": "وضعیت سپردن کارخانگی تأیید نشد. برای دیدن تعداد باقی‌مانده دوباره وصل شوید.",
+  "student.homeSchedule": "درس‌های امروز",
+  "student.homeDataUnavailable": "بارگذاری این بخش ممکن نیست. اتصال خود را بررسی و دوباره تلاش کنید.",
+  "student.homeLessonsDone": "درس تکمیل‌شده",
+  "student.homeUpcomingTasks": "کارخانگی‌های پیش‌رو",
+  "student.homeNearestDeadline": "نزدیک‌ترین مهلت",
+  "student.homeOverdue": "گذشته از موعد",
+  "student.homeRevisions": "نیازمند اصلاح",
+  "student.homeReviewedWork": "کارخانگی‌های بررسی‌شده",
+  "student.homeAcademicProgress": "پیشرفت درسی",
+  "student.homePublishedAverage": "اوسط نمرات نشرشده",
+  "student.homePublishedMarks": "نمرات نشرشده",
+  "student.homeFocusSubject": "مضمون با پایین‌ترین اوسط کنونی",
+  "student.homeSchoolUpdates": "اطلاعات مکتب",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2644,6 +2707,27 @@ const pashto: Record<TranslationKey, string> = {
   "student.moreSettings": "تنظیمات",
   "student.moreLanguage": "د اپ ژبه",
   "student.moreHelp": "مرسته او ملاتړ",
+  "student.homeCurrentLesson": "روان درس",
+  "student.homeNextLesson": "راتلونکی درس",
+  "student.homeLessonsFinished": "د نن ورځې درسونه پای ته رسېدلي",
+  "student.homeAtGlance": "د نن ورځې لنډیز",
+  "student.homeClassesToday": "د نن ورځې درسونه",
+  "student.homePendingHomework": "پاتې کورنۍ دندې",
+  "student.homeDueToday": "نن یې وروستۍ نېټه ده",
+  "student.homeSubmissionUnknown": "د کورنۍ دندې د سپارلو حالت ونه تایید شو. د پاتې دندو د شمېر لپاره بېرته ونښلئ.",
+  "student.homeSchedule": "د نن ورځې درسونه",
+  "student.homeDataUnavailable": "دا برخه نشي پورته کېدای. خپله اړیکه وڅېړئ او بیا هڅه وکړئ.",
+  "student.homeLessonsDone": "بشپړ شوي درسونه",
+  "student.homeUpcomingTasks": "راتلونکې کورنۍ دندې",
+  "student.homeNearestDeadline": "تر ټولو نږدې وروستۍ نېټه",
+  "student.homeOverdue": "له ټاکلې نېټې اوښتي",
+  "student.homeRevisions": "سمون ته اړتیا لري",
+  "student.homeReviewedWork": "کتل شوې کورنۍ دندې",
+  "student.homeAcademicProgress": "د زده‌کړې پرمختګ",
+  "student.homePublishedAverage": "د خپرو شوو نمرو اوسط",
+  "student.homePublishedMarks": "خپرې شوې نمرې",
+  "student.homeFocusSubject": "تر ټولو ټیټ اوسنی د مضمون اوسط",
+  "student.homeSchoolUpdates": "د ښوونځي خبرتیاوې",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
