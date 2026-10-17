@@ -524,6 +524,16 @@ export type TranslationKey =
   | "student.moreSettings"
   | "student.moreLanguage"
   | "student.moreHelp"
+  | "student.profileUsername"
+  | "student.profileEnrollment"
+  | "student.profileSchoolCode"
+  | "student.profileSchoolLocation"
+  | "student.profileManaged"
+  | "student.profileRefresh"
+  | "student.profileSecurity"
+  | "student.profileSecurityHint"
+  | "student.profilePasswordSaved"
+  | "student.profilePasswordFailed"
   | "student.homeCurrentLesson"
   | "student.homeNextLesson"
   | "student.homeLessonsFinished"
@@ -1352,6 +1362,16 @@ const en: Record<TranslationKey, string> = {
   "student.moreSettings": "Preferences",
   "student.moreLanguage": "App language",
   "student.moreHelp": "Help & support",
+  "student.profileUsername": "Username",
+  "student.profileEnrollment": "Enrollment & school",
+  "student.profileSchoolCode": "School code",
+  "student.profileSchoolLocation": "Location",
+  "student.profileManaged": "Your school manages official student details. Contact the school to correct them.",
+  "student.profileRefresh": "Refresh",
+  "student.profileSecurity": "Account security",
+  "student.profileSecurityHint": "Change your password. Use letters, numbers and a symbol (minimum 8 characters).",
+  "student.profilePasswordSaved": "Password updated successfully.",
+  "student.profilePasswordFailed": "Could not change password. Check your current password and connection.",
   "student.homeCurrentLesson": "Current lesson",
   "student.homeNextLesson": "Next lesson",
   "student.homeLessonsFinished": "Classes finished for today",
@@ -2196,6 +2216,16 @@ const dari: Record<TranslationKey, string> = {
   "student.moreSettings": "تنظیمات",
   "student.moreLanguage": "زبان برنامه",
   "student.moreHelp": "کمک و پشتیبانی",
+  "student.profileUsername": "نام کاربری",
+  "student.profileEnrollment": "شمولیت و مکتب",
+  "student.profileSchoolCode": "کود مکتب",
+  "student.profileSchoolLocation": "موقعیت",
+  "student.profileManaged": "معلومات رسمی شاگرد توسط مکتب مدیریت می‌شود. برای اصلاح آن با مکتب تماس بگیرید.",
+  "student.profileRefresh": "تازه‌سازی",
+  "student.profileSecurity": "امنیت حساب",
+  "student.profileSecurityHint": "رمز عبور را تغییر دهید. حداقل ۸ نویسه با حرف انگلیسی، عدد و یک نشانه استفاده کنید.",
+  "student.profilePasswordSaved": "رمز عبور با موفقیت تغییر کرد.",
+  "student.profilePasswordFailed": "تغییر رمز ممکن نشد. رمز فعلی و اتصال انترنت را بررسی کنید.",
   "student.homeCurrentLesson": "درس جاری",
   "student.homeNextLesson": "درس بعدی",
   "student.homeLessonsFinished": "درس‌های امروز تمام شده‌اند",
@@ -3040,6 +3070,16 @@ const pashto: Record<TranslationKey, string> = {
   "student.moreSettings": "تنظیمات",
   "student.moreLanguage": "د اپ ژبه",
   "student.moreHelp": "مرسته او ملاتړ",
+  "student.profileUsername": "کارن نوم",
+  "student.profileEnrollment": "شمولیت او ښوونځی",
+  "student.profileSchoolCode": "د ښوونځي کوډ",
+  "student.profileSchoolLocation": "ځای",
+  "student.profileManaged": "د زده کوونکي رسمي معلومات ښوونځی سمبالوي. د سمون لپاره له ښوونځي سره اړیکه ونیسئ.",
+  "student.profileRefresh": "تازه کول",
+  "student.profileSecurity": "د حساب امنیت",
+  "student.profileSecurityHint": "پټنوم بدل کړئ. لږ تر لږه ۸ توري، شمېرې او یوه ځانګړې نښه وکاروئ.",
+  "student.profilePasswordSaved": "پټنوم په بریالیتوب بدل شو.",
+  "student.profilePasswordFailed": "پټنوم بدل نه شو. اوسنی پټنوم او انټرنټ وڅېړئ.",
   "student.homeCurrentLesson": "روان درس",
   "student.homeNextLesson": "راتلونکی درس",
   "student.homeLessonsFinished": "د نن ورځې درسونه پای ته رسېدلي",
