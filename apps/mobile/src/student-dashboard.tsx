@@ -16,6 +16,7 @@ import {
 } from "./student-home-model";
 import {studentTimeRange12} from "./student-timetable-model";
 import {studentVisibleResults} from "./student-results-model";
+import {studentNotificationUnread} from "./student-communication-model";
 
 type Direction={textAlign:"left"|"right";writingDirection:"ltr"|"rtl"};
 type Icon=keyof typeof Ionicons.glyphMap;
@@ -87,7 +88,7 @@ export function StudentDashboard({
   const academic=studentAcademicOverview(studentVisibleResults(learning));
   const latest=academic.latest;
   const schoolUpdate=studentLatestAnnouncement(announcements,student?.classId??null);
-  const unread=notifications.filter(item=>!item.readAt).length;
+  const unread=studentNotificationUnread(notifications);
   const loadingTimetable=!timetableReady&&!timetable;
   const loadingAcademic=!learningReady&&!learning;
   const unknownHomework=loadingAcademic||!submissionsReady||submissions===null;
