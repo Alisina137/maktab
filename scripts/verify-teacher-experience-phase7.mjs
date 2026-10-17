@@ -63,5 +63,6 @@ for(const needle of ["validates actual Gregorian lesson dates",
   assert.ok(tests.includes(needle),"Tests missing "+needle);
 assert.ok(pkg.scripts["verify:teacher:phase7"]?.includes("verify:teacher:phase6"));
 assert.ok(pkg.scripts["verify:teacher:phase7"]?.includes("test-teacher-phase7-model.ts"));
-assert.ok(ci.includes("run: pnpm verify:teacher:phase7"));
+assert.ok(ci.includes("run: pnpm verify:teacher:phase7") ||
+  ci.includes("run: pnpm verify:teacher:phase8"));
 console.log("Teacher Phase 7 model, UI role restrictions, live data, locales and regressions verified.");
