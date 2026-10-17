@@ -16,6 +16,8 @@ import { TeacherSchedulePanel, type TeacherScheduleView } from "./teacher-schedu
 import type { TeacherSchedulePeriod, TeacherWeekday } from "./teacher-schedule-model";
 import { teacherAssignmentForPeriod, type TodayPeriod } from "./teacher-today-model";
 import { TeacherClassDetailPage, type TeacherClassSection, type TeacherClassLearningSection } from "./teacher-class-detail";
+import { TeacherClassesPanel } from "./teacher-classes";
+import type { TeacherAssignment, TeacherClassesFilter } from "./teacher-classes-model";
 import { TeacherMorePanel, type TeacherMoreSection } from "./teacher-more";
 import { TeacherLearningPanel } from "./learning-ui";
 import { TeacherTasksPanel } from "./teacher-tasks";
@@ -124,13 +126,12 @@ export function TeacherExperience({
   externalNavigation?: { id: number; target: "HOMEWORK" | "GRADES" | "ANNOUNCEMENTS" } | null;
 }) {
   const rtl = getDirection(locale) === "rtl";
-  const statusKey = (status: "PENDING" | "SUBMITTED") =>
-    status === "PENDING" ? "attendance.pending" : "attendance.submitted";
   const assignments = academics?.assignmentDetails ?? [];
-  const uniqueClassCount = new Set(assignments.map((item) => item.classId)).size;
   const activeSupervisions = today?.supervisedClasses ?? [];
   const [workflowSection, setWorkflowSection] = useState<TeacherWorkflowSection>("HOMEWORK");
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [classQuery, setClassQuery] = useState("");
+  const [classFilter, setClassFilter] = useState<TeacherClassesFilter>("ALL");
   const [scheduleView, setScheduleView] = useState<TeacherScheduleView>("DAY");
   const [scheduleWeekday, setScheduleWeekday] = useState<TeacherWeekday | null>(null);
   const [classSection, setClassSection] = useState<TeacherClassSection>("OVERVIEW");
@@ -237,6 +238,14 @@ export function TeacherExperience({
     onSelect("CLASSES");
     onScrollTop();
   }
+  function openClassAssignment(item: TeacherAssignment) {
+    if (selectedAssignmentId !== item.assignmentId) {
+      setClassSection("OVERVIEW");
+      setClassLearningSection("HOMEWORK");
+    }
+    setSelectedAssignmentId(item.assignmentId);
+    onScrollTop();
+  }
   function openScheduleLesson(period: TeacherSchedulePeriod) {
     // Same school-authorized class and subject guard as the Today shortcut.
     openTodayLesson(period);
@@ -335,57 +344,23 @@ export function TeacherExperience({
             onScrollTop={onScrollTop}
           />
         ) : (
-        <>
-          <View style={styles.card}>
-            <SectionHeading icon="book-outline" title={translate(locale, "teacher.myAssignments")} rtl={rtl} textDirection={textDirection} />
-            {!academicsReady ? <LoadingCard locale={locale} /> : (
-              <>
-                <Text style={[styles.muted, textDirection]}>
-                  {formatLocalizedNumber(uniqueClassCount, locale)} {translate(locale, "teacher.classesCount")} · {formatLocalizedNumber(assignments.length, locale)} {translate(locale, "teacher.subjectsCount")}
-                </Text>
-                {assignments.map((item) => (
-                  <Pressable key={item.assignmentId} accessibilityRole="button"
-                    accessibilityLabel={`${item.className} · ${item.subjectName}`}
-                    onPress={() => { if (selectedAssignmentId !== item.assignmentId) {
-                      setClassSection("OVERVIEW"); setClassLearningSection("HOMEWORK");
-                    } setSelectedAssignmentId(item.assignmentId); onScrollTop(); }}
-                    style={({ pressed }) => [styles.actionRow, rtl && styles.rowRtl, pressed && styles.pressed]}>
-                    <Ionicons name="book-outline" color={tokens.color.brandStrong} size={20} />
-                    <View style={styles.flex}>
-                      <Text style={[styles.itemTitle, textDirection]}>{item.className} · {item.classCode}</Text>
-                      <Text style={[styles.muted, textDirection]}>{item.subjectName}</Text>
-                    </View>
-                    <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} color={tokens.color.textMuted} size={18} />
-                  </Pressable>
-                ))}
-                {assignments.length === 0 ? <Empty message={translate(locale, "teacher.noAssignments")} rtl={rtl} textDirection={textDirection} /> : null}
-              </>
-            )}
-          </View>
-          <View style={styles.card}>
-            <SectionHeading icon="shield-checkmark-outline" title={translate(locale, "teacher.supervisedClass")} rtl={rtl} textDirection={textDirection} />
-            <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.negaranHint")}</Text>
-            {!todayReady ? <LoadingCard locale={locale} /> : (
-              <>
-                {activeSupervisions.map((item) => (
-                  <Pressable key={item.assignmentId}
-                    accessibilityRole="button"
-                    onPress={() => today && onAttendance(item.classId, today.date)}
-                    style={({ pressed }) => [styles.actionRow, rtl && styles.rowRtl, pressed && styles.pressed]}
-                  >
-                    <Ionicons name="checkmark-circle-outline" color={tokens.color.brandStrong} size={20} />
-                    <View style={styles.flex}>
-                      <Text style={[styles.itemTitle, textDirection]}>{item.className} · {item.classCode}</Text>
-                      <Text style={[styles.muted, textDirection]}>{translate(locale, statusKey(item.attendanceStatus))}</Text>
-                    </View>
-                    <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} color={tokens.color.textMuted} size={18} />
-                  </Pressable>
-                ))}
-                {activeSupervisions.length === 0 ? <Empty message={translate(locale, "teacher.noSupervisedClass")} rtl={rtl} textDirection={textDirection} /> : null}
-              </>
-            )}
-          </View>
-        </>
+          <TeacherClassesPanel
+            academics={academics}
+            academicsReady={academicsReady}
+            learning={hubLearning}
+            learningReady={hubReady.learning}
+            today={today}
+            todayReady={todayReady}
+            query={classQuery}
+            onQuery={setClassQuery}
+            filter={classFilter}
+            onFilter={setClassFilter}
+            locale={locale}
+            textDirection={textDirection}
+            onOpenAssignment={openClassAssignment}
+            onOpenAttendance={onAttendance}
+            onRetry={onRetry}
+          />
         )
       ) : null}
 
