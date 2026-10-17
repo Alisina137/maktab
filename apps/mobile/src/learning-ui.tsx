@@ -4,6 +4,7 @@ import {
   Alert,
   Linking,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -32,8 +33,11 @@ import { appErrorFromCause, type AppErrorKind } from "./error-message";
 import { HomeworkDueDatePicker } from "./homework-date-picker";
 import { pickAndUploadLearningFile, shareLearningFile } from "./learning-files";
 import { TeacherSubmissionReview } from "./teacher-submissions";
+import { homeworkDeadline, teacherHomeworkList, teacherHomeworkOverview,
+  type HomeworkDeadlineFilter } from "./teacher-homework-model";
+import { teacherTime12 } from "./teacher-hub-data";
 import { TeacherContinuousAssessmentPanel } from "./teacher-assessments";
-import { filterHomework, gradeDraftsFromSheet, gradeProgress, homeworkDueAt, homeworkDueFields, pendingGradeEntries } from "./learning-workflow";
+import { gradeDraftsFromSheet, gradeProgress, homeworkDueAt, homeworkDueFields, pendingGradeEntries } from "./learning-workflow";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -78,6 +82,8 @@ export function TeacherLearningPanel(props: CommonProps & {
   const [scheduleTime, setScheduleTime] = useState("");
   const [homeworkQuery, setHomeworkQuery] = useState("");
   const [homeworkStatus, setHomeworkStatus] = useState<HomeworkStatus | "ALL">("ALL");
+  const [homeworkAssignmentFilter,setHomeworkAssignmentFilter] = useState("ALL");
+  const [homeworkDeadlineFilter,setHomeworkDeadlineFilter] = useState<HomeworkDeadlineFilter>("ALL");
   const [gradeQuery, setGradeQuery] = useState("");
   const [missingMarksOnly, setMissingMarksOnly] = useState(false);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
@@ -396,7 +402,10 @@ export function TeacherLearningPanel(props: CommonProps & {
       : view.examSubjects, [view, assignmentContext?.academicYearId,
           assignmentContext?.classId, assignmentContext?.subjectId]);
 
-  const listedHomeworks = filterHomework(visibleHomeworks, homeworkQuery, homeworkStatus);
+  const homeworkNow=Date.now();
+  const homeworkStats=teacherHomeworkOverview(visibleHomeworks,homeworkNow);
+  const listedHomeworks=teacherHomeworkList(visibleHomeworks,visibleAssignments,
+    homeworkQuery,homeworkStatus,homeworkAssignmentFilter,homeworkDeadlineFilter,homeworkNow);
   const gradeCounts = gradeSheet ? gradeProgress(gradeSheet) : null;
   const visibleGradeStudents = gradeSheet?.students.filter((item) =>
     (!missingMarksOnly || !item.grade) &&
@@ -541,7 +550,61 @@ export function TeacherLearningPanel(props: CommonProps & {
           <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noAssignments")}</Text>
         )}
 
-        <View style={styles.list}>
+        <View style={styles.list} testID="teacher-homework-workload">
+          <View style={[styles.headingRow,rtl&&styles.rowRtl]}>
+            <Text style={[styles.editorTitle,styles.flex,textDirection]}>{translate(locale,"teacher.homeworkRecords")}</Text>
+            <Pressable accessibilityRole="button" disabled={busy} style={styles.smallButton}
+              onPress={()=>void load()}>
+              <Text style={styles.smallButtonText}>{translate(locale,"learning.submissionRefresh")}</Text>
+            </Pressable>
+          </View>
+          <View style={[styles.workload,rtl&&styles.rowRtl]}>
+            {([
+              ["learning.homework",homeworkStats.total],
+              ["teacher.statusDraft",homeworkStats.drafts],
+              ["teacher.statusPublished",homeworkStats.published],
+              ["teacher.homeworkDueSoon",homeworkStats.dueSoon],
+              ["teacher.homeworkPastDue",homeworkStats.overdue]
+            ] as Array<[TranslationKey,number]>).map(([label,total])=>
+              <View key={label} style={styles.workloadCell}>
+                <Text style={styles.workloadNumber}>{formatLocalizedNumber(total,locale)}</Text>
+                <Text style={styles.workloadLabel}>{translate(locale,label)}</Text>
+              </View>)}
+          </View>
+          <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.homeworkSubmissionHint")}</Text>
+          {!assignmentContext&&visibleAssignments.length>1?<View style={styles.filterGroup}>
+            <Text style={[styles.label,textDirection]}>{translate(locale,"teacher.homeworkChooseClass")}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[styles.horizontalChips,rtl&&styles.rowRtl]}>
+              {[{assignmentId:"ALL",subjectName:translate(locale,"teacher.homeworkAllClasses"),classCode:""},
+                ...visibleAssignments].map(assignment=><Pressable key={assignment.assignmentId}
+                accessibilityRole="button" accessibilityState={{selected:homeworkAssignmentFilter===assignment.assignmentId}}
+                onPress={()=>setHomeworkAssignmentFilter(assignment.assignmentId)}
+                style={[styles.chip,homeworkAssignmentFilter===assignment.assignmentId&&styles.chipActive]}>
+                <Text style={homeworkAssignmentFilter===assignment.assignmentId?styles.chipTextActive:styles.chipText}>
+                  {assignment.subjectName}{assignment.classCode?" · "+assignment.classCode:""}
+                </Text>
+              </Pressable>)}
+            </ScrollView>
+          </View>:null}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.horizontalChips,rtl&&styles.rowRtl]}>
+            {(["ALL","DUE_SOON","OVERDUE"] as const).map(next=>
+              <Pressable key={next} accessibilityRole="button"
+                accessibilityState={{selected:homeworkDeadlineFilter===next}}
+                onPress={()=>setHomeworkDeadlineFilter(next)}
+                style={[styles.chip,homeworkDeadlineFilter===next&&styles.chipActive]}>
+                <Text style={homeworkDeadlineFilter===next?styles.chipTextActive:styles.chipText}>
+                  {translate(locale,next==="ALL"?"teacher.homeworkDeadlineAll":
+                    next==="DUE_SOON"?"teacher.homeworkDueSoon":"teacher.homeworkPastDue")}
+                </Text>
+              </Pressable>)}
+          </ScrollView>
+          {(homeworkQuery||homeworkStatus!=="ALL"||homeworkAssignmentFilter!=="ALL"||homeworkDeadlineFilter!=="ALL")?
+            <Pressable accessibilityRole="button" onPress={()=>{
+              setHomeworkQuery("");setHomeworkStatus("ALL");
+              setHomeworkAssignmentFilter("ALL");setHomeworkDeadlineFilter("ALL");
+            }}><Text style={styles.linkText}>{translate(locale,"teacher.homeworkClearFilters")}</Text></Pressable>:null}
           <TextInput testID="teacher-homework-search"
             value={homeworkQuery} onChangeText={setHomeworkQuery}
             placeholder={translate(locale, "learning.searchHomework")}
@@ -571,7 +634,7 @@ export function TeacherLearningPanel(props: CommonProps & {
                 <View style={styles.flex}>
                   <Text style={[styles.itemTitle, textDirection]}>{homework.title}</Text>
                   <Text style={[styles.muted, textDirection]}>
-                    {translate(locale, homework.status === "DRAFT" ? "teacher.statusDraft" : homework.status === "PUBLISHED" ? "teacher.statusPublished" : homework.status === "CLOSED" ? "teacher.statusClosed" : "teacher.statusArchived")} · {translate(locale, "learning.due")} {formatLocalizedDate(homework.dueAt, locale)}
+                    {translate(locale, homework.status === "DRAFT" ? "teacher.statusDraft" : homework.status === "PUBLISHED" ? "teacher.statusPublished" : homework.status === "CLOSED" ? "teacher.statusClosed" : "teacher.statusArchived")} · {translate(locale, "learning.due")} {formatLocalizedDate(homework.dueAt, locale)} · {teacherTime12(homeworkDueFields(homework.dueAt).time)}
                   </Text>
                 </View>
                 <View style={styles.actions}>
@@ -593,6 +656,15 @@ export function TeacherLearningPanel(props: CommonProps & {
                   ) : null}
                 </View>
               </View>
+              <Text style={[styles.muted,textDirection]}>
+                {visibleAssignments.find(a=>a.assignmentId===homework.assignmentId)?.subjectName ?? ""} · {
+                  visibleAssignments.find(a=>a.assignmentId===homework.assignmentId)?.classCode ?? ""}
+              </Text>
+              {homeworkDeadline(homework,homeworkNow)!=="ALL"?<Text
+                style={[styles.urgency,homeworkDeadline(homework,homeworkNow)==="OVERDUE"&&styles.urgencyOverdue,textDirection]}>
+                {translate(locale,homeworkDeadline(homework,homeworkNow)==="OVERDUE"?
+                  "teacher.homeworkPastDue":"teacher.homeworkDueSoon")}
+              </Text>:null}
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
               {homework.scheduledAt ? (
                 <Text style={[styles.muted,textDirection]}>
@@ -911,6 +983,15 @@ const styles = StyleSheet.create({
   smallButtonText: { color: tokens.color.brandStrong, fontSize: 11.5, fontWeight: "800" },
   actions: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   list: { gap: 10 },
+  filterGroup:{gap:6},
+  horizontalChips:{flexDirection:"row",gap:7,paddingBottom:4},
+  workload:{flexDirection:"row",flexWrap:"wrap",gap:7},
+  workloadCell:{flexGrow:1,minWidth:"29%",backgroundColor:"#f0f5ff",borderRadius:12,
+    alignItems:"center",padding:9,gap:4},
+  workloadNumber:{fontSize:19,color:tokens.color.brandStrong,fontWeight:"900"},
+  workloadLabel:{fontSize:11,color:tokens.color.textMuted,fontWeight:"700",textAlign:"center"},
+  urgency:{fontSize:12,fontWeight:"800",color:tokens.color.brandStrong},
+  urgencyOverdue:{color:"#b44432"},
   listItem: { borderTopWidth: 1, borderTopColor: "#edf0f5", paddingTop: 10, gap: 5 },
   examRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#edf0f5" },
   gradeRow: { gap: 7, paddingTop: 9, borderTopWidth: 1, borderTopColor: "#edf0f5" },
