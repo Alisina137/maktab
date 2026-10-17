@@ -126,123 +126,111 @@ function HomeworkCard({
   );
 }
 
-function HomeworkSection({
-  title,
-  items,
-  locale,
-  textDirection,
-  accessToken,
-  onSubmitted
-}: {
-  title: string;
-  items: HomeworkItem[];
-  accessToken: string;
-  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
-  locale: SupportedLocale;
-  textDirection: TextDirectionStyle;
-}) {
-  const rtl = getDirection(locale) === "rtl";
-  if (items.length === 0) return null;
-
-  return (
-    <View style={styles.section}>
-      <View style={[styles.sectionHeading, rtl && styles.rowRtl]}>
-        <Text style={[styles.sectionTitle, textDirection]}>{title}</Text>
-        <View style={styles.countPill}>
-          <Text style={styles.countText}>{formatLocalizedNumber(items.length, locale)}</Text>
-        </View>
-      </View>
-
-      {items.map((item) => (
-        <HomeworkCard
-          key={item.homework.id}
-          item={item}
-          onSubmitted={onSubmitted}
-          accessToken={accessToken}
-          locale={locale}
-          textDirection={textDirection}
-        />
-      ))}
-    </View>
-  );
-}
-
 export function StudentHomeworkContent({
-  learning,
-  ready,
-  locale,
-  textDirection,
-  accessToken,
-  onSubmitted
-}: {
-  learning: LearnerAcademicPayload | null;
-  accessToken: string;
-  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
-  ready: boolean;
-  locale: SupportedLocale;
-  textDirection: TextDirectionStyle;
+  learning,ready,locale,textDirection,accessToken,onSubmitted,
+  submissions,submissionsReady,onRefresh
+}:{
+  learning:LearnerAcademicPayload|null;accessToken:string;ready:boolean;
+  locale:SupportedLocale;textDirection:TextDirectionStyle;
+  onSubmitted?:(submission:HomeworkSubmissionPayload)=>void;
+  submissions:HomeworkSubmissionPayload[]|null;submissionsReady:boolean;
+  onRefresh?:()=>Promise<boolean>;
 }) {
-  if (!ready && !learning) {
-    return (
-      <View style={styles.loadingCard}>
-        <View style={styles.loadingLineWide} />
-        <View style={styles.loadingLineShort} />
-      </View>
-    );
+  const rtl=getDirection(locale)==="rtl";
+  const [tab,setTab]=useState<HomeworkStudentTab>("TO_DO");
+  const [subject,setSubject]=useState<string|null>(null);
+  const [search,setSearch]=useState("");
+  const [now,setNow]=useState(()=>new Date());
+  useEffect(()=>{
+    const timer=setInterval(()=>setNow(new Date()),60_000);
+    return ()=>clearInterval(timer);
+  },[]);
+  const rows=studentHomeworkRows(learning?.homework??[],submissions,now);
+  const subjects=studentHomeworkSubjects(rows);
+  const counts=studentHomeworkCounts(rows);
+  const filtered=studentHomeworkFilter(rows,{tab,subject,query:search});
+  const verified=submissionsReady&&submissions!==null;
+  const [refreshing,setRefreshing]=useState(false);
+
+  async function refresh() {
+    if(refreshing||!onRefresh)return false;
+    setRefreshing(true);
+    try{return await onRefresh();}
+    finally{setRefreshing(false);}
   }
-
-  const now = Date.now();
-  const all = [...(learning?.homework ?? [])].sort(
-    (a, b) => new Date(a.homework.dueAt).getTime() - new Date(b.homework.dueAt).getTime()
-  );
-  const upcoming = all.filter(
-    (item) =>
-      item.homework.status === "PUBLISHED" &&
-      new Date(item.homework.dueAt).getTime() >= now
-  );
-  const past = all
-    .filter(
-      (item) =>
-        item.homework.status === "CLOSED" ||
-        new Date(item.homework.dueAt).getTime() < now
-    )
-    .sort(
-      (a, b) => new Date(b.homework.dueAt).getTime() - new Date(a.homework.dueAt).getTime()
-    );
-
-  if (all.length === 0) {
-    return (
-      <View style={styles.emptyCard}>
-        <View style={styles.emptyIcon}>
-          <Ionicons name="document-text-outline" size={24} color={tokens.color.textMuted} />
-        </View>
-        <Text style={[styles.emptyText, textDirection]}>
-          {translate(locale, "student.noHomework")}
+  if(!ready&&!learning)return <View style={styles.loadingCard}>
+    <View style={styles.loadingLineWide}/>
+    <View style={styles.loadingLineShort}/>
+  </View>;
+  if(!learning)return <View style={styles.emptyCard}>
+    <Ionicons name="cloud-offline-outline" size={26} color={tokens.color.textMuted}/>
+    <Text style={[styles.emptyText,textDirection]}>{translate(locale,"student.homeDataUnavailable")}</Text>
+  </View>;
+  return <View style={styles.stack} testID="student-homework-phase4">
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      contentContainerStyle={[styles.tabScroll,rtl&&styles.rowRtl]}>
+      {studentHomeworkTabs.map(next=>
+        <Pressable key={next} accessibilityRole="tab"
+          testID={`student-homework-tab-${next.toLowerCase()}`}
+          accessibilityState={{selected:tab===next}}
+          onPress={()=>setTab(next)}
+          style={[styles.tab,tab===next&&styles.selectedTab]}>
+          <Text style={[styles.tabText,tab===next&&styles.selectedTabText]}>
+            {translate(locale,tabKeys[next])}
+          </Text>
+          <View style={[styles.countPill,tab===next&&styles.countPillSelected]}>
+            <Text style={styles.countText}>{formatLocalizedNumber(counts[next],locale)}</Text>
+          </View>
+        </Pressable>)}
+    </ScrollView>
+    {!verified?<View style={styles.warningBanner}>
+      <Text style={[styles.emptyText,textDirection]}>
+        {translate(locale,"student.hwCannotVerify")}
+      </Text>
+      <Pressable accessibilityRole="button" disabled={refreshing}
+        onPress={()=>void refresh()} style={styles.refreshButton}>
+        <Text style={styles.attachmentText}>{translate(locale,"student.hwRetry")}</Text>
+      </Pressable>
+    </View>:null}
+    <TextInput value={search} onChangeText={setSearch}
+      testID="student-homework-search" autoCapitalize="none"
+      placeholder={translate(locale,"student.hwSearch")}
+      style={[styles.searchInput,textDirection]}/>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      contentContainerStyle={[styles.subjectScroll,rtl&&styles.rowRtl]}>
+      <Pressable accessibilityRole="button"
+        accessibilityState={{selected:subject===null}}
+        onPress={()=>setSubject(null)}
+        style={[styles.subjectChip,subject===null&&styles.subjectSelected]}>
+        <Text style={[styles.subjectChipText,subject===null&&styles.subjectSelectedText]}>
+          {translate(locale,"student.hwAllSubjects")}
         </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.stack}>
-      <HomeworkSection
-        title={translate(locale, "student.upcomingHomework")}
-        items={upcoming}
-        onSubmitted={onSubmitted}
-        accessToken={accessToken}
-        locale={locale}
-        textDirection={textDirection}
-      />
-      <HomeworkSection
-        title={translate(locale, "student.pastHomework")}
-        items={past}
-        onSubmitted={onSubmitted}
-        accessToken={accessToken}
-        locale={locale}
-        textDirection={textDirection}
-      />
+      </Pressable>
+      {subjects.map(name=><Pressable key={name} accessibilityRole="button"
+        accessibilityState={{selected:subject===name}}
+        onPress={()=>setSubject(name)}
+        style={[styles.subjectChip,subject===name&&styles.subjectSelected]}>
+        <Text style={[styles.subjectChipText,subject===name&&styles.subjectSelectedText]}>
+          {name}
+        </Text>
+      </Pressable>)}
+    </ScrollView>
+    <View style={[styles.sectionHeading,rtl&&styles.rowRtl]}>
+      <Text style={[styles.sectionTitle,textDirection]}>{translate(locale,tabKeys[tab])}</Text>
+      <Text style={styles.countText}>{formatLocalizedNumber(filtered.length,locale)}</Text>
     </View>
-  );
+    {filtered.length?filtered.map(row=><HomeworkCard key={row.item.homework.id}
+      item={row.item} row={row} accessToken={accessToken} studentId={learning.student.id}
+      locale={locale} textDirection={textDirection}
+      submissionsVerified={verified} onRefresh={refresh} onSubmitted={onSubmitted}/>):
+      <View style={styles.emptyCard}>
+        <Ionicons name="document-text-outline" size={24} color={tokens.color.textMuted}/>
+        <Text style={[styles.emptyText,textDirection]}>
+          {rows.length===0?translate(locale,"student.noHomework"):
+            translate(locale,"student.hwNoMatching")}
+        </Text>
+      </View>}
+  </View>;
 }
 
 const styles = StyleSheet.create({
