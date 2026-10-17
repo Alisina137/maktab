@@ -76,6 +76,7 @@ import { StudentTimetableAgenda } from "./src/student-timetable";
 import { StudentHomeworkContent } from "./src/student-homework";
 import { StudentResultsContent } from "./src/student-results";
 import { StudentCommunicationContent, type StudentCommunicationTab } from "./src/student-communication";
+import { studentNotificationUnread } from "./src/student-communication-model";
 import { StudentBottomNavigation, type StudentTab } from "./src/student-navigation";
 import {
   studentDestination, studentTabForScreen, studentReturnScreen,
@@ -2217,10 +2218,10 @@ function AppContent() {
               }}
               style={styles.studentHeaderBell}>
               <Ionicons name="notifications-outline" size={21} color={tokens.color.brandStrong}/>
-              {studentNotifications.some(item=>!item.readAt)?<View style={styles.studentBellBadge}>
+              {studentNotificationUnread(studentNotifications)>0?<View style={styles.studentBellBadge}>
                 <Text style={styles.studentBellBadgeText}>
-                  {studentNotifications.filter(item=>!item.readAt).length>99?"99+":
-                    formatLocalizedNumber(studentNotifications.filter(item=>!item.readAt).length,locale)}
+                  {studentNotificationUnread(studentNotifications)>99?"99+":
+                    formatLocalizedNumber(studentNotificationUnread(studentNotifications),locale)}
                 </Text>
               </View>:null}
             </Pressable>:null}
@@ -3134,7 +3135,7 @@ function AppContent() {
               className={studentTimetable?.classSection.name ?? null}
               academicYear={studentTimetable?.academicYear.name ?? null}
               schoolName={school?.name ?? ""}
-              unreadCount={studentNotifications.filter(item=>!item.readAt).length}
+              unreadCount={studentNotificationUnread(studentNotifications)}
               contact={adminContact}
               onOpenUpdates={(tab)=>{
                 setStudentFocusedAnnouncementId(null);
