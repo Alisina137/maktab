@@ -3173,6 +3173,9 @@ function AppContent() {
               ready={studentLearningReady}
               locale={locale}
               textDirection={textDirection}
+              onTabChange={()=>onboardingScrollRef.current?.scrollTo({
+                y:0,animated:!reduceMotion
+              })}
             />
           </View>
         ) : null}
