@@ -124,8 +124,7 @@ export function teacherAssessmentChanges(
     if(!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||
       Number(value)>max||remark.length>500)return {entries:[],invalid:true};
     if(row.score?.score!==Number(value)||(row.score?.remark??"")!==remark){
-      entries.push({studentId:row.student.id,score:Number(value),
-        ...(remark?{remark}:{})});
+      entries.push({studentId:row.student.id,score:Number(value),remark});
     }
   }
   return {entries,invalid:false};
