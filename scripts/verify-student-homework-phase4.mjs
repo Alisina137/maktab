@@ -75,6 +75,8 @@ for(const phrase of [
 ])assert.ok(tests.includes(phrase),"Phase 4 model coverage missing "+phrase);
 assert.ok(pkg.scripts["verify:student:phase4"]?.includes("verify:student:phase3"));
 assert.ok(pkg.scripts["verify:student:phase4"]?.includes("test-student-homework-phase4.ts"));
-assert.ok(workflow.includes("run: pnpm verify:student:phase4"));
-assert.ok(ci.includes("run: pnpm verify:student:phase4"));
+assert.ok(workflow.includes("run: pnpm verify:student:phase4") ||
+  workflow.includes("run: pnpm verify:student:phase5"));
+assert.ok(ci.includes("run: pnpm verify:student:phase4") ||
+  ci.includes("run: pnpm verify:student:phase5"));
 console.log("Student Phase 4 authenticated homework tabs, filters, encrypted drafts and submission checks verified.");
