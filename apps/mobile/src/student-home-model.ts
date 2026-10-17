@@ -132,7 +132,10 @@ export function studentAcademicOverview(results:readonly StudentResultItem[]) {
     focusPercent:lowest?Math.round(lowest.score/lowest.max*100):null
   };
 }
-export function studentLatestAnnouncement(announcements:readonly AnnouncementPayload[]) {
-  return [...announcements].filter(item=>!item.archivedAt).sort((a,b)=>
-    b.publishAt.localeCompare(a.publishAt)||b.id.localeCompare(a.id))[0]??null;
+export function studentLatestAnnouncement(
+  announcements:readonly AnnouncementPayload[],classId:string|null
+) {
+  return [...announcements].filter(item=>!item.archivedAt&&
+    (item.audienceScope!=="CLASS"||(classId!==null&&item.classId===classId)))
+    .sort((a,b)=>b.publishAt.localeCompare(a.publishAt)||b.id.localeCompare(a.id))[0]??null;
 }
