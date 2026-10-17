@@ -286,6 +286,7 @@ function AppContent() {
     announcements: 0, fees: 0, notifications: 0
   });
   const studentHomeLoadRequestId = useRef(0);
+  const studentSubmissionVersion = useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
   const parentHomeRef = useRef<ParentHomePayload | null>(null);
@@ -649,8 +650,7 @@ function AppContent() {
       setStudentTimetableReady(false);
       setStudentLearning(null);
       setStudentLearningReady(false);
-      setStudentSubmissions(null);
-      setStudentSubmissionsReady(false);
+      studentSubmissionVersion.current += 1;
       setStudentSubmissions(null);
       setStudentSubmissionsReady(false);
       setStudentAnnouncements([]);
@@ -1215,6 +1215,7 @@ function AppContent() {
     // Academic and communication read failures are independent. A failing
     // notification service must not trap the Student timetable/homework in a
     // permanent loading state. Authorization failures remain authoritative.
+    const submissionVersion=studentSubmissionVersion.current;
     const [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult] =
       await Promise.allSettled([
         api.studentTimetable(accessToken),
@@ -1242,9 +1243,11 @@ function AppContent() {
     setStudentTimetableReady(true);
     if (learningResult.status === "fulfilled") setStudentLearning(learningResult.value);
     setStudentLearningReady(true);
-    setStudentSubmissions(submissionsResult.status==="fulfilled"
-      ? submissionsResult.value.submissions.map(row=>row.submission):null);
-    setStudentSubmissionsReady(true);
+    if(submissionVersion===studentSubmissionVersion.current){
+      setStudentSubmissions(submissionsResult.status==="fulfilled"
+        ? submissionsResult.value.submissions.map(row=>row.submission):null);
+      setStudentSubmissionsReady(true);
+    }
     if (announcementResult.status === "fulfilled") setStudentAnnouncements(announcementResult.value.announcements);
     if (notificationResult.status === "fulfilled") setStudentNotifications(notificationResult.value.notifications);
     setStudentCommunicationReady(true);
@@ -3104,9 +3107,35 @@ function AppContent() {
               ready={studentLearningReady}
               locale={locale}
               textDirection={textDirection}
+              submissions={studentSubmissions}
+              submissionsReady={studentSubmissionsReady}
+              onRefresh={async()=>{
+                const active=sessionRef.current;
+                if(active?.accessToken!==session.accessToken||
+                  active.user.id!==session.user.id)return false;
+                const version=++studentSubmissionVersion.current;
+                try {
+                  const result=await api.studentHomeworkSubmissions(session.accessToken);
+                  if(sessionRef.current?.accessToken!==session.accessToken||
+                    sessionRef.current?.user.id!==session.user.id||
+                    version!==studentSubmissionVersion.current)return false;
+                  setStudentSubmissions(result.submissions.map(row=>row.submission));
+                  setStudentSubmissionsReady(true);
+                  return true;
+                }catch(cause){
+                  if(sessionRef.current?.accessToken===session.accessToken&&
+                    version===studentSubmissionVersion.current){
+                    setStudentSubmissions(null);
+                    setStudentSubmissionsReady(true);
+                    showCause(cause);
+                  }
+                  return false;
+                }
+              }}
               onSubmitted={(submitted)=>{
                 if(sessionRef.current?.accessToken!==session.accessToken||
                   submitted.studentId!==studentLearning?.student.id)return;
+                studentSubmissionVersion.current += 1;
                 setStudentSubmissions(current=>{
                   const updated=(current??[]).filter(item=>item.homeworkId!==submitted.homeworkId);
                   return [...updated,submitted];
