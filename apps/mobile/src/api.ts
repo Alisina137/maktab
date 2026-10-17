@@ -676,7 +676,9 @@ export const api = {
   },
   studentHomeworkSubmissions(accessToken: string) {
     return request<{ submissions: Array<{ submission: HomeworkSubmissionPayload }> }>(
-      "/v1/student/homework/submissions", { headers: { Authorization: `Bearer ${accessToken}` } });
+      "/v1/student/homework/submissions",
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { cache: false });
   },
   submitStudentHomework(accessToken: string, homeworkId: string, answer: string, attachmentFileId: string | null) {
     return request<{ submission: HomeworkSubmissionPayload }>(
