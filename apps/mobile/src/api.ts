@@ -815,10 +815,10 @@ export const api = {
     });
   },
 
-  notifications(accessToken: string) {
+  notifications(accessToken: string, fresh = false) {
     return request<{ notifications: ParentNotification[] }>("/v1/notifications", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   markNotificationRead(accessToken: string, notificationId: string) {
