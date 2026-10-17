@@ -919,6 +919,9 @@ function AppContent() {
   }
 
   function clearOperationalHomeData() {
+    // Invalidate student reads/submission refreshes before switching accounts.
+    studentHomeLoadRequestId.current += 1;
+    studentSubmissionVersion.current += 1;
     // Stop in-flight reads before clearing child/account data.
     pendingParentNotificationRef.current = null;
     resetParentNotificationFocus();
