@@ -25,7 +25,7 @@ for(const value of [
  'testID="student-inbox-refresh"','testID="student-inbox-mark-all"',
  'testID="student-inbox-more"','studentReadFilters','studentTopicFilters',
  'studentAnnouncementFilters','studentFilterAnnouncements(announcements',
- 'studentFilterNotifications(notifications','studentInboxPage(',
+ 'studentFilterNotifications(notifications','studentInboxPage<AnnouncementPayload|ParentNotification>(',
  'onMarkRead(id)','onMarkAllRead()','onOpenNotification(item)',
  'student.inboxLoadError','student.inboxNoMatching',
  'student.inboxRefreshFailed','student.inboxMarkFailed'
