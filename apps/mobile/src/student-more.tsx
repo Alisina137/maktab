@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { StudentPasswordSettings } from "./student-profile-security";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -36,13 +37,17 @@ function MenuLink({label,description,icon,rtl,textDirection,locale,badge,onPress
 
 export function StudentMorePanel({
   locale,textDirection,fullName,username,studentCode,className,academicYear,schoolName,
-  unreadCount,contact,onOpenUpdates,onOpenRecords,onLocaleChange,onLogout
+  schoolCode,schoolLocation,unreadCount,contact,onOpenUpdates,onOpenRecords,
+  onRefresh,onChangePassword,onLocaleChange,onLogout
 }:{
   locale:SupportedLocale;
   textDirection:Direction;
   fullName:string|null;username:string;studentCode:string|null;
   className:string|null;academicYear:string|null;schoolName:string;
+  schoolCode:string|null;schoolLocation:string|null;
   unreadCount:number;contact:AdminContactPayload|null;
+  onRefresh:()=>Promise<void>;
+  onChangePassword:(current:string,next:string)=>Promise<boolean>;
   onOpenUpdates:(tab:Destination)=>void;
   onOpenRecords:(tab:"ATTENDANCE"|"FEES")=>void;
   onLocaleChange:(locale:SupportedLocale)=>void;onLogout:()=>void;
@@ -59,6 +64,18 @@ export function StudentMorePanel({
           <Text style={[styles.description,textDirection]}>{translate(locale,"student.moreProfileHint")}</Text>
         </View>
       </View>
+      <View style={[styles.profileMeta,rtl&&styles.rtl]}>
+        <View style={styles.flex}>
+          <Text style={[styles.metaLabel,textDirection]}>{translate(locale,"student.profileUsername")}</Text>
+          <Text style={[styles.metaValue,textDirection]}>{username}</Text>
+        </View>
+        <Pressable testID="student-phase8-refresh" accessibilityRole="button"
+          accessibilityLabel={translate(locale,"student.profileRefresh")}
+          onPress={()=>void onRefresh()} style={styles.refresh}>
+          <Ionicons name="refresh-outline" size={18} color={tokens.color.brandStrong}/>
+          <Text style={styles.refreshLabel}>{translate(locale,"student.profileRefresh")}</Text>
+        </Pressable>
+      </View>
       <View style={[styles.profileStats,rtl&&styles.rtl]}>
         {([
           ["student.studentCode",studentCode?localizeDigits(studentCode,locale):"—"],
@@ -69,6 +86,21 @@ export function StudentMorePanel({
             <Text style={styles.statValue} numberOfLines={2}>{value}</Text>
             <Text style={styles.statLabel}>{translate(locale,key)}</Text>
           </View>)}
+      </View>
+    </View>
+    <View style={styles.card} testID="student-phase8-enrollment">
+      <Text style={[styles.heading,textDirection]}>{translate(locale,"student.profileEnrollment")}</Text>
+      <View style={styles.infoRow}>
+        <Text style={[styles.infoLabel,textDirection]}>{translate(locale,"student.profileSchoolCode")}</Text>
+        <Text style={[styles.infoValue,textDirection]}>{schoolCode?localizeDigits(schoolCode,locale):"—"}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={[styles.infoLabel,textDirection]}>{translate(locale,"student.profileSchoolLocation")}</Text>
+        <Text style={[styles.infoValue,textDirection]}>{schoolLocation??"—"}</Text>
+      </View>
+      <View style={[styles.managed,rtl&&styles.rtl]}>
+        <Ionicons name="shield-checkmark-outline" size={18} color={tokens.color.brandStrong}/>
+        <Text style={[styles.description,styles.flex,textDirection]}>{translate(locale,"student.profileManaged")}</Text>
       </View>
     </View>
     <View style={styles.card} testID="student-more-records">
@@ -109,12 +141,19 @@ export function StudentMorePanel({
         </Pressable>)}
       </View>
     </View>
+    <StudentPasswordSettings key={username} locale={locale}
+      onChangePassword={onChangePassword}/>
     <View style={styles.card}>
       <Text style={[styles.heading,textDirection]}>{translate(locale,"student.moreHelp")}</Text>
       <AdminContactCard contact={contact} locale={locale}/>
     </View>
-    <Pressable accessibilityRole="button" onPress={onLogout}
-      style={[styles.logout,rtl&&styles.rtl]}>
+    <Pressable accessibilityRole="button" onPress={()=>{
+      Alert.alert(translate(locale,"parent.moreLogoutTitle"),
+        translate(locale,"parent.moreLogoutConfirm"),[
+          {text:translate(locale,"action.back"),style:"cancel"},
+          {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
+        ]);
+    }} style={[styles.logout,rtl&&styles.rtl]}>
       <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
       <Text style={styles.logoutText}>{translate(locale,"auth.logout")}</Text>
     </Pressable>
@@ -130,6 +169,18 @@ const styles=StyleSheet.create({
     justifyContent:"center",backgroundColor:"#dbeaff"},
   profileName:{fontSize:17,fontWeight:"900",color:tokens.color.text},
   profileStats:{flexDirection:"row",gap:7,flexWrap:"wrap"},
+  profileMeta:{flexDirection:"row",alignItems:"center",gap:10},
+  metaLabel:{fontSize:11,color:tokens.color.textMuted},
+  metaValue:{fontSize:13,fontWeight:"800",color:tokens.color.text},
+  refresh:{flexDirection:"row",alignItems:"center",gap:5,
+    padding:10,borderRadius:12,backgroundColor:"#fff",borderWidth:1,borderColor:"#d6e4f7"},
+  refreshLabel:{fontSize:11,fontWeight:"800",color:tokens.color.brandStrong},
+  infoRow:{flexDirection:"row",justifyContent:"space-between",gap:12,
+    paddingVertical:8,borderTopWidth:1,borderTopColor:"#edf1f7"},
+  infoLabel:{flex:1,fontSize:12,color:tokens.color.textMuted},
+  infoValue:{flex:1,fontSize:12,fontWeight:"800",color:tokens.color.text,textAlign:"right"},
+  managed:{flexDirection:"row",alignItems:"center",gap:8,backgroundColor:"#f0f6ff",
+    padding:10,borderRadius:12},
   profileStat:{flexGrow:1,minWidth:"29%",padding:9,alignItems:"center",
     justifyContent:"center",gap:5,backgroundColor:"#fff",borderRadius:12},
   statValue:{fontSize:13,fontWeight:"900",color:tokens.color.brandStrong,textAlign:"center"},
