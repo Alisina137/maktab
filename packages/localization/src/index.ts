@@ -257,6 +257,18 @@ export type TranslationKey =
   | "teacher.noticeNoMatch"
   | "teacher.noticeShowLess"
   | "teacher.noticeShowAll"
+  | "teacher.profileTeacherRole"
+  | "teacher.profileAssignedSubjects"
+  | "teacher.profileClasses"
+  | "teacher.profileWeeklyPeriods"
+  | "teacher.profileSupervised"
+  | "teacher.profileEmployeeCode"
+  | "teacher.profileVerifiedDetails"
+  | "teacher.inboxSearch"
+  | "teacher.inboxRead"
+  | "teacher.inboxShowMore"
+  | "teacher.hubStale"
+  | "teacher.hubUnavailable"
   | "teacher.classStudents"
   | "teacher.classSupervision"
   | "teacher.backToClasses"
@@ -934,6 +946,18 @@ const en: Record<TranslationKey, string> = {
   "teacher.noticeNoMatch": "No announcements match these filters.",
   "teacher.noticeShowLess": "Show fewer",
   "teacher.noticeShowAll": "Show all announcements",
+  "teacher.profileTeacherRole": "Teacher account",
+  "teacher.profileAssignedSubjects": "Assigned subjects",
+  "teacher.profileClasses": "Classes",
+  "teacher.profileWeeklyPeriods": "Weekly lessons",
+  "teacher.profileSupervised": "Supervised classes",
+  "teacher.profileEmployeeCode": "Employee code",
+  "teacher.profileVerifiedDetails": "School-issued account details are read-only. Contact school administration for corrections.",
+  "teacher.inboxSearch": "Search notifications",
+  "teacher.inboxRead": "Read",
+  "teacher.inboxShowMore": "Show more notifications",
+  "teacher.hubStale": "Connection interrupted. Showing previous data; refresh to retry.",
+  "teacher.hubUnavailable": "Unable to load from the server. Check your connection and retry.",
   "teacher.classStudents": "Students",
   "teacher.classSupervision": "Supervision",
   "teacher.backToClasses": "Back to my classes",
@@ -1627,6 +1651,18 @@ const dari: Record<TranslationKey, string> = {
   "teacher.noticeNoMatch": "اعلانی مطابق این فیلتر وجود ندارد.",
   "teacher.noticeShowLess": "نمایش کمتر",
   "teacher.noticeShowAll": "نمایش همه اعلانات",
+  "teacher.profileTeacherRole": "حساب معلم",
+  "teacher.profileAssignedSubjects": "مضامین تعیین‌شده",
+  "teacher.profileClasses": "صنف‌ها",
+  "teacher.profileWeeklyPeriods": "درس‌های هفتگی",
+  "teacher.profileSupervised": "صنف‌های تحت نظارت",
+  "teacher.profileEmployeeCode": "کود کارمند",
+  "teacher.profileVerifiedDetails": "معلومات حساب که توسط مکتب صادر شده فقط قابل مشاهده است. برای اصلاح به اداره مکتب مراجعه کنید.",
+  "teacher.inboxSearch": "جستجوی اطلاعیه‌ها",
+  "teacher.inboxRead": "خوانده‌شده",
+  "teacher.inboxShowMore": "نمایش اطلاعیه‌های بیشتر",
+  "teacher.hubStale": "اتصال قطع شده است. معلومات قبلی نمایش داده می‌شود؛ برای تلاش دوباره تازه‌سازی کنید.",
+  "teacher.hubUnavailable": "دریافت معلومات از سرور ممکن نیست. اتصال خود را بررسی و دوباره تلاش کنید.",
   "teacher.classStudents": "شاگردان",
   "teacher.classSupervision": "نظارت",
   "teacher.backToClasses": "بازگشت به صنف‌ها",
@@ -2320,6 +2356,18 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.noticeNoMatch": "له دې چاڼ سره سم اعلان نشته.",
   "teacher.noticeShowLess": "لږ وښایئ",
   "teacher.noticeShowAll": "ټول اعلانونه وښایئ",
+  "teacher.profileTeacherRole": "د ښوونکي حساب",
+  "teacher.profileAssignedSubjects": "ګومارل شوي مضمونونه",
+  "teacher.profileClasses": "ټولګي",
+  "teacher.profileWeeklyPeriods": "د اونۍ درسونه",
+  "teacher.profileSupervised": "تر څارنې لاندې ټولګي",
+  "teacher.profileEmployeeCode": "د کارکوونکي کوډ",
+  "teacher.profileVerifiedDetails": "د ښوونځي له لوري ورکړل شوي د حساب معلومات یوازې د لوستلو وړ دي. د سمون لپاره ادارې سره اړیکه ونیسئ.",
+  "teacher.inboxSearch": "خبرتیاوې ولټوئ",
+  "teacher.inboxRead": "لوستل شوې",
+  "teacher.inboxShowMore": "نورې خبرتیاوې وښایئ",
+  "teacher.hubStale": "اړیکه پرې شوې ده. پخواني معلومات ښکاري؛ د بیا هڅې لپاره تازه کړئ.",
+  "teacher.hubUnavailable": "له سرور څخه د معلوماتو ترلاسه کول ممکن نه دي. اړیکه وڅېړئ او بیا هڅه وکړئ.",
   "teacher.classStudents": "زده کوونکي",
   "teacher.classSupervision": "څارنه",
   "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
