@@ -1847,11 +1847,17 @@ function AppContent() {
     } else if (destination === "PARENT_FEES") { setParentTab("MORE"); setParentMoreTab("FEES"); }
     else if (destination === "PARENT_HOME") setParentTab("HOME");
     else if (destination === "STUDENT_ANNOUNCEMENTS") {
-      setStudentDetailReturnScreen("home");
+      setStudentDetailReturnScreen(screen==="student-communication"?
+        studentDetailReturnScreen:studentReturnScreen(screen));
+      const announcementId=notification.metadata.announcementId;
+      setStudentFocusedAnnouncementId(typeof announcementId==="string"&&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(announcementId)
+          ? announcementId:null);
       setStudentCommunicationTab("ANNOUNCEMENTS");
       setScreen("student-communication");
     } else if (destination === "STUDENT_HOMEWORK") setScreen("student-homework");
     else if (destination === "STUDENT_RESULTS") setScreen("student-results");
+    else if (destination === "STUDENT_ATTENDANCE") setScreen("student-attendance");
     else if (destination === "STUDENT_HOME") setScreen("home");
     else if (destination.startsWith("TEACHER_")) {
       if (destination === "TEACHER_TODAY") setTeacherTab("TODAY");
@@ -3127,6 +3133,7 @@ function AppContent() {
               unreadCount={studentNotifications.filter(item=>!item.readAt).length}
               contact={adminContact}
               onOpenUpdates={(tab)=>{
+                setStudentFocusedAnnouncementId(null);
                 setStudentDetailReturnScreen("student-more");
                 setStudentCommunicationTab(tab);
                 setNotice(null);setAppError(null);
@@ -3369,7 +3376,12 @@ function AppContent() {
               locale={locale}
               textDirection={textDirection}
               onSelectTab={setStudentCommunicationTab}
-              onMarkRead={(notificationId) => void readNotification(notificationId)}
+              onMarkRead={markStudentInboxRead}
+              onMarkAllRead={markStudentInboxAllRead}
+              onRefresh={refreshStudentInbox}
+              announcementStatus={studentInboxStatus.announcements}
+              notificationStatus={studentInboxStatus.notifications}
+              focusedAnnouncementId={studentFocusedAnnouncementId}
               onOpenNotification={openNotification}
             />
           </View>
