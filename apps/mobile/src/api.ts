@@ -763,6 +763,14 @@ export const api = {
     }, { cache: false });
   },
 
+  changeStudentPassword(accessToken: string, currentPassword: string, newPassword: string) {
+    return request<SessionPayload>("/v1/auth/change-password", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ currentPassword, newPassword })
+    }, { cache: false });
+  },
+
   refresh(refreshToken: string) {
     return request<SessionPayload>(
       "/v1/auth/refresh",
