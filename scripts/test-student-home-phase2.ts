@@ -59,7 +59,7 @@ test("Student Phase 2 uses Kabul-local date for weekday and deadlines",()=>{
   assert.deepEqual(studentTodayLessons(timetable,now).map(x=>x.period.id),["first","next"]);
 });
 test("Student Phase 2 identifies current, next and completed classes without inventing active lesson",()=>{
-  assert.equal(studentLessonFocus(timetable,at("2026-10-17","04:30")).state,"NEXT");
+  assert.equal(studentLessonFocus(timetable,at("2026-10-17","04:15")).state,"NEXT");
   const current=studentLessonFocus(timetable,at("2026-10-17","04:45"));
   assert.equal(current.state,"CURRENT");
   assert.equal(current.period?.period.id,"next");
