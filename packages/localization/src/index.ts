@@ -545,6 +545,18 @@ export type TranslationKey =
   | "student.homePublishedMarks"
   | "student.homeFocusSubject"
   | "student.homeSchoolUpdates"
+  | "student.scheduleToday"
+  | "student.scheduleWeek"
+  | "student.scheduleTeachers"
+  | "student.scheduleInProgress"
+  | "student.scheduleCompleted"
+  | "student.scheduleUpcoming"
+  | "student.scheduleTeacherDirectory"
+  | "student.scheduleWeeklyLessons"
+  | "student.scheduleSearchTeachers"
+  | "student.scheduleNoMatchingTeachers"
+  | "student.scheduleNoTeachers"
+  | "student.scheduleUnavailable"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1262,6 +1274,18 @@ const en: Record<TranslationKey, string> = {
   "student.homePublishedMarks": "Published marks",
   "student.homeFocusSubject": "Lowest current subject average",
   "student.homeSchoolUpdates": "School updates",
+  "student.scheduleToday": "Today",
+  "student.scheduleWeek": "Week",
+  "student.scheduleTeachers": "Teachers",
+  "student.scheduleInProgress": "In progress",
+  "student.scheduleCompleted": "Finished",
+  "student.scheduleUpcoming": "Upcoming",
+  "student.scheduleTeacherDirectory": "My subject teachers",
+  "student.scheduleWeeklyLessons": "weekly lessons",
+  "student.scheduleSearchTeachers": "Search teacher or subject",
+  "student.scheduleNoMatchingTeachers": "No matching teachers or subjects.",
+  "student.scheduleNoTeachers": "No teachers assigned in your timetable yet.",
+  "student.scheduleUnavailable": "Your timetable is unavailable. Reconnect to load your class schedule.",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -1995,6 +2019,18 @@ const dari: Record<TranslationKey, string> = {
   "student.homePublishedMarks": "نمرات نشرشده",
   "student.homeFocusSubject": "مضمون با پایین‌ترین اوسط کنونی",
   "student.homeSchoolUpdates": "اطلاعات مکتب",
+  "student.scheduleToday": "امروز",
+  "student.scheduleWeek": "هفته",
+  "student.scheduleTeachers": "استادان",
+  "student.scheduleInProgress": "در حال برگزاری",
+  "student.scheduleCompleted": "تمام‌شده",
+  "student.scheduleUpcoming": "پیش‌رو",
+  "student.scheduleTeacherDirectory": "استادان مضامین من",
+  "student.scheduleWeeklyLessons": "درس در هفته",
+  "student.scheduleSearchTeachers": "جستجوی استاد یا مضمون",
+  "student.scheduleNoMatchingTeachers": "استاد یا مضمون مطابق یافت نشد.",
+  "student.scheduleNoTeachers": "هنوز استادی در تقسیم اوقات صنف شما تعیین نشده است.",
+  "student.scheduleUnavailable": "تقسیم اوقات شما در دسترس نیست. برای دریافت برنامه درسی دوباره وصل شوید.",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2728,6 +2764,18 @@ const pashto: Record<TranslationKey, string> = {
   "student.homePublishedMarks": "خپرې شوې نمرې",
   "student.homeFocusSubject": "تر ټولو ټیټ اوسنی د مضمون اوسط",
   "student.homeSchoolUpdates": "د ښوونځي خبرتیاوې",
+  "student.scheduleToday": "نن",
+  "student.scheduleWeek": "اونۍ",
+  "student.scheduleTeachers": "ښوونکي",
+  "student.scheduleInProgress": "روان درس",
+  "student.scheduleCompleted": "پای ته رسېدلی",
+  "student.scheduleUpcoming": "راتلونکی",
+  "student.scheduleTeacherDirectory": "زما د مضمونونو ښوونکي",
+  "student.scheduleWeeklyLessons": "په اونۍ کې درسونه",
+  "student.scheduleSearchTeachers": "ښوونکی یا مضمون ولټوئ",
+  "student.scheduleNoMatchingTeachers": "اړوند ښوونکی یا مضمون ونه موندل شو.",
+  "student.scheduleNoTeachers": "ستاسو د ټولګي په مهال‌وېش کې لا ښوونکی نه دی ټاکل شوی.",
+  "student.scheduleUnavailable": "ستاسو مهال‌وېش شتون نه لري. د درسونو مهال‌وېش لپاره بېرته ونښلئ.",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
