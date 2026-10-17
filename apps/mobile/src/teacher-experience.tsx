@@ -154,6 +154,7 @@ export function TeacherExperience({
   currentScope.current=activeScope;
   const lastResume=useRef(0);
   const notificationWrites=useRef(new Set<string>());
+  const notificationVersion=useRef(0);
   const allReadWrite=useRef(false);
   const hubScoped=hubOwner===activeScope;
   const visibleLearning=hubScoped?hubLearning:null;
@@ -192,9 +193,11 @@ export function TeacherExperience({
       setHubFailures({learning:false,announcements:false,notifications:false});
       setHubOwner(activeScope);
       notificationWrites.current.clear();
+      notificationVersion.current++;
       allReadWrite.current=false;
       setHubActionBusy(false);
     }
+    const notificationSnapshot=notificationVersion.current;
     const read=async()=>{
       const [learning,announcements,notifications]=await Promise.allSettled([
         api.teacherLearning(accessToken,true),
@@ -204,7 +207,8 @@ export function TeacherExperience({
       if(hubRequestId.current!==requestId||currentScope.current!==activeScope)return;
       if(learning.status==="fulfilled")setHubLearning(learning.value);
       if(announcements.status==="fulfilled")setHubAnnouncements(announcements.value.announcements);
-      if(notifications.status==="fulfilled")setHubNotifications(notifications.value.notifications);
+      if(notifications.status==="fulfilled" && notificationSnapshot===notificationVersion.current)
+        setHubNotifications(notifications.value.notifications);
       setHubFailures({learning:learning.status==="rejected",
         announcements:announcements.status==="rejected",
         notifications:notifications.status==="rejected"});
@@ -215,13 +219,16 @@ export function TeacherExperience({
   },[activeScope,reconnectEpoch,hubRefresh]);
 
   async function markAllTeacherNotificationsRead() {
-    if(allReadWrite.current||hubActionBusy||!hubScoped)return;
+    if(allReadWrite.current||notificationWrites.current.size>0||!hubScoped)return;
     const token=accessToken,scope=activeScope;
-    allReadWrite.current=true;setHubActionBusy(true);
+    allReadWrite.current=true;notificationVersion.current++;
+    setHubActionBusy(true);
     try{
       await api.teacherMarkAllNotificationsRead(token);
       if(currentToken.current!==token||currentScope.current!==scope)return;
       const now=new Date().toISOString();
+      notificationVersion.current++;
+      notificationVersion.current++;
       setHubNotifications(current=>current.map(item=>item.readAt?item:{...item,readAt:now}));
       setHubRefresh(count=>count+1);
     }catch(cause){
@@ -241,6 +248,7 @@ export function TeacherExperience({
     if(!hubScoped||allReadWrite.current||notificationWrites.current.has(notificationId))return;
     const token=accessToken;
     notificationWrites.current.add(notificationId);
+    notificationVersion.current++;
     setHubActionBusy(true);
     try {
       const result=await api.markNotificationRead(token,notificationId);
