@@ -1,25 +1,40 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { tokens } from "@maktablink/design-tokens";
 import { translate, type SupportedLocale, type TranslationKey } from "@maktablink/localization";
 import { api, type HomeworkPayload, type HomeworkSubmissionPayload } from "./api";
 import { pickAndUploadLearningFile, shareLearningFile } from "./learning-files";
+import {
+  readStudentHomeworkDraft,writeStudentHomeworkDraft,clearStudentHomeworkDraft,
+  studentDraftKey,STUDENT_DRAFT_MAX_CHARS
+} from "./student-homework-draft";
+import { studentHomeworkCanSubmit, type HomeworkRow } from "./student-homework-model";
 
 export function StudentSubmissionPanel({
-  homework, accessToken, locale, textDirection, onSubmitted
+  homework, accessToken, locale, textDirection, onSubmitted, row, studentId, submissionsVerified, onRefresh
 }: {
   homework: HomeworkPayload; accessToken: string; locale: SupportedLocale;
   textDirection: {textAlign:"right"|"left";writingDirection:"rtl"|"ltr"};
   onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
+  row:HomeworkRow;studentId:string;submissionsVerified:boolean;
+  onRefresh?:()=>Promise<boolean>;
 }) {
   const [open,setOpen]=useState(false);
-  const [submission,setSubmission]=useState<HomeworkSubmissionPayload|null>(null);
+  const submission=row.submission;
+  const draftKey=useMemo(()=>studentDraftKey(homework.schoolId,studentId,homework.id),
+    [homework.schoolId,studentId,homework.id]);
+  const [restored,setRestored]=useState(false);
+  const [dirty,setDirty]=useState(false);
+  const writeQueue=useRef<Promise<void>>(Promise.resolve());
+  const submitting=useRef(false);
+  const touched=useRef(false);
   const [answer,setAnswer]=useState("");
   const [fileId,setFileId]=useState<string|null>(null);
   const [fileName,setFileName]=useState("");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState<TranslationKey|null>(null);
-  const expired = homework.status!=="PUBLISHED" || new Date(homework.dueAt).getTime() < Date.now();
+  const expired = !row.canSubmit;
+  const canSubmit=studentHomeworkCanSubmit(row,submissionsVerified);
 
   async function load() {
     setBusy(true);
