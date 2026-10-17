@@ -82,7 +82,7 @@ export function studentHomeworkOverview(
   const upcoming=sorted.find(item=>Date.parse(item.homework.dueAt)>=stamp)??null;
   const overdue=sorted.filter(item=>Date.parse(item.homework.dueAt)<stamp);
   const dueToday=sorted.filter(item=>studentDueDay(item.homework.dueAt)===day);
-  const actionable=submissions===null?null:active.filter(needsAction).length;
+  const actionable=submissions===null?null:active.filter(item=>needsAction(item)&&Date.parse(item.homework.dueAt)>=stamp).length;
   const reviewed=submissions===null?null:active.filter(item=>
     byHomework.get(item.homework.id)?.status==="REVIEWED").length;
   const submitted=submissions===null?null:active.filter(item=>
