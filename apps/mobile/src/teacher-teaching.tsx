@@ -90,9 +90,6 @@ export function TeacherTeachingPanel({
     setView(null);
     setReport(null);
     reportGeneration.current++;
-    clearForm();
-    setLessonSearch("");setLessonFilter("ALL");
-    setUnitSearch("");setUnitFilter("ALL");
     void api.teacherTeaching(accessToken, assignmentId)
       .then((result) => { if (generation.current === id) setView(result); })
       .catch((error: unknown) => {
@@ -102,6 +99,13 @@ export function TeacherTeachingPanel({
       }).finally(() => { if (generation.current === id) setReady(true); });
     return () => { generation.current += 1; reportGeneration.current++; };
   }, [accessToken, assignmentId, reconnectEpoch, refresh]);
+
+  useEffect(()=>{
+    setEditId(null);setLessonDate("");setTopic("");setObjective("");
+    setMaterials("");setNotes("");setUnitId(null);
+    setLessonSearch("");setLessonFilter("ALL");
+    setUnitSearch("");setUnitFilter("ALL");
+  },[accessToken,assignmentId]);
 
   function clearForm() {
     setEditId(null); setLessonDate(""); setTopic(""); setObjective("");
