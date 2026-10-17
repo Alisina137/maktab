@@ -540,6 +540,18 @@ export type TranslationKey =
   | "learning.markReviewed"
   | "learning.requestRevision"
   | "learning.feedbackSaved"
+  | "learning.submissionAll"
+  | "learning.submissionPending"
+  | "learning.submissionReviewed"
+  | "learning.submissionRevision"
+  | "learning.submissionMissing"
+  | "learning.submissionSubmitted"
+  | "learning.submissionMissingUnknown"
+  | "learning.submissionSearch"
+  | "learning.submissionNoMatch"
+  | "learning.submissionRefresh"
+  | "learning.reviewQueue"
+  | "learning.submissionNotSubmitted"
   | "learning.continuousAssessments"
   | "learning.assessmentHint"
   | "learning.assessmentTitle"
@@ -1163,6 +1175,18 @@ const en: Record<TranslationKey, string> = {
   "learning.markReviewed": "Mark reviewed",
   "learning.requestRevision": "Request revision",
   "learning.feedbackSaved": "Feedback saved.",
+  "learning.submissionAll": "All",
+  "learning.submissionPending": "To review",
+  "learning.submissionReviewed": "Reviewed",
+  "learning.submissionRevision": "Revision requested",
+  "learning.submissionMissing": "Not submitted",
+  "learning.submissionSubmitted": "Submitted",
+  "learning.submissionMissingUnknown": "Student roster unavailable. Missing-submission count is unknown; refresh to retry.",
+  "learning.submissionSearch": "Search student name or code",
+  "learning.submissionNoMatch": "No submissions match this filter.",
+  "learning.submissionRefresh": "Refresh",
+  "learning.reviewQueue": "Submission review queue",
+  "learning.submissionNotSubmitted": "No submission from this student.",
   "learning.continuousAssessments": "Continuous assessments",
   "learning.assessmentHint": "Quizzes and classwork are separate from official exam grades.",
   "learning.assessmentTitle": "Assessment title",
@@ -1802,6 +1826,18 @@ const dari: Record<TranslationKey, string> = {
   "learning.markReviewed": "تأیید بررسی",
   "learning.requestRevision": "درخواست اصلاح",
   "learning.feedbackSaved": "نظر ثبت شد.",
+  "learning.submissionAll": "همه",
+  "learning.submissionPending": "در انتظار بررسی",
+  "learning.submissionReviewed": "بررسی‌شده",
+  "learning.submissionRevision": "درخواست اصلاح",
+  "learning.submissionMissing": "تسلیم‌نشده",
+  "learning.submissionSubmitted": "تسلیم‌شده",
+  "learning.submissionMissingUnknown": "فهرست شاگردان در دسترس نیست. شمار تسلیم‌نشده‌ها نامعلوم است؛ برای تلاش دوباره تازه‌سازی کنید.",
+  "learning.submissionSearch": "جستجوی نام یا کود شاگرد",
+  "learning.submissionNoMatch": "تسلیمی مطابق این فیلتر یافت نشد.",
+  "learning.submissionRefresh": "تازه‌سازی",
+  "learning.reviewQueue": "فهرست بررسی تسلیمی‌ها",
+  "learning.submissionNotSubmitted": "این شاگرد هنوز پاسخ تسلیم نکرده است.",
   "learning.continuousAssessments": "ارزیابی‌های دوامدار",
   "learning.assessmentHint": "کوئیز و کار صنفی از نمرات رسمی امتحان جدا هستند.",
   "learning.assessmentTitle": "عنوان ارزیابی",
@@ -2441,6 +2477,18 @@ const pashto: Record<TranslationKey, string> = {
   "learning.markReviewed": "کتل شوې نښه کول",
   "learning.requestRevision": "د سمون غوښتنه",
   "learning.feedbackSaved": "نظر خوندي شو.",
+  "learning.submissionAll": "ټولې",
+  "learning.submissionPending": "د کتنې په تمه",
+  "learning.submissionReviewed": "کتل شوې",
+  "learning.submissionRevision": "د سمون غوښتنه",
+  "learning.submissionMissing": "نه دي سپارل شوي",
+  "learning.submissionSubmitted": "سپارل شوي",
+  "learning.submissionMissingUnknown": "د زده کوونکو نوملړ نشته. د نه سپارل شوو شمېر نامعلوم دی؛ د بیا هڅې لپاره تازه کړئ.",
+  "learning.submissionSearch": "د زده کوونکي نوم یا کوډ ولټوئ",
+  "learning.submissionNoMatch": "له دې فلټر سره سمې سپارنې نشته.",
+  "learning.submissionRefresh": "تازه کول",
+  "learning.reviewQueue": "د سپارنو د کتنې لېست",
+  "learning.submissionNotSubmitted": "دې زده کوونکي تر اوسه ځواب نه دی سپارلی.",
   "learning.continuousAssessments": "دوامدارې ارزونې",
   "learning.assessmentHint": "کوېزونه او ټولګیز کارونه له رسمي ازموینو جلا دي.",
   "learning.assessmentTitle": "د ارزونې سرلیک",
