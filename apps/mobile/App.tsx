@@ -83,6 +83,7 @@ import {
   type StudentPrimaryScreen
 } from "./src/student-navigation-model";
 import { StudentMorePanel } from "./src/student-more";
+import {studentPasswordChangeAllowed,studentPasswordResultBelongsToSession} from "./src/student-profile-model";
 import { StudentAttendanceContent } from "./src/student-attendance";
 import { StudentFeesContent } from "./src/student-fees";
 import { ParentBottomNavigation, type ParentTab } from "./src/parent-navigation";
@@ -1230,7 +1231,7 @@ function AppContent() {
     }
   }
 
-  async function loadStudentHomeData(accessToken: string, requestId: number) {
+  async function loadStudentHomeData(accessToken: string, requestId: number, fresh = false) {
     // Academic and communication read failures are independent. A failing
     // notification service must not trap the Student timetable/homework in a
     // permanent loading state. Authorization failures remain authoritative.
@@ -1238,14 +1239,16 @@ function AppContent() {
     const inboxVersion=studentInboxVersion.current;
     const [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult] =
       await Promise.allSettled([
-        api.studentTimetable(accessToken),
-        api.studentHome(accessToken),
-        api.announcements(accessToken),
-        api.notifications(accessToken),
+        api.studentTimetable(accessToken, fresh),
+        api.studentHome(accessToken, fresh),
+        api.announcements(accessToken, fresh),
+        api.notifications(accessToken, fresh),
         api.studentHomeworkSubmissions(accessToken)
       ] as const);
 
-    if (requestId !== studentHomeLoadRequestId.current) return;
+    if (requestId !== studentHomeLoadRequestId.current ||
+        logoutInProgressRef.current || sessionRef.current?.accessToken !== accessToken ||
+        sessionRef.current.user.role !== "STUDENT") return;
 
     const results = [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult];
     const authoritativeFailure = results.find(
@@ -1966,6 +1969,14 @@ function AppContent() {
       sessionRefreshPromiseRef.current = null;
       setSessionRefreshHandler(null);
       setSession(null);
+      // Reject any in-flight student requests before a new account can sign in.
+      studentHomeLoadRequestId.current += 1;
+      studentInboxVersion.current += 1;
+      studentSubmissionVersion.current += 1;
+      setStudentSubmissions(null);
+      setStudentSubmissionsReady(false);
+      setStudentInboxStatus({announcements:"loading",notifications:"loading"});
+      setStudentFocusedAnnouncementId(null);
       parentHomeRequestId.current += 1;
       parentNotificationsRequestId.current += 1;
       parentChildLoadRequestId.current += 1;
@@ -2047,6 +2058,53 @@ function AppContent() {
       ].includes(cause.code ?? "")) showCause(cause);
       return false;
     }
+  }
+
+
+  async function changeStudentAccountPassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const active = sessionRef.current;
+    const activeSchool = schoolRef.current;
+    if (logoutInProgressRef.current || !active || !activeSchool ||
+        !studentPasswordChangeAllowed(active, activeSchool, screen,
+          studentEnrollmentUnavailable) ||
+        parentPasswordValidation(currentPassword, newPassword, newPassword)) return false;
+    try {
+      const changed = await api.changeStudentPassword(
+        active.accessToken, currentPassword, newPassword
+      );
+      // Changing credentials invalidates the old session epoch. Never install
+      // late responses from another user, role, school or concurrent refresh.
+      if (logoutInProgressRef.current ||
+          !studentPasswordResultBelongsToSession(
+            sessionRef.current, active, schoolRef.current, activeSchool, changed
+          )) return false;
+      studentHomeLoadRequestId.current += 1;
+      studentInboxVersion.current += 1;
+      studentSubmissionVersion.current += 1;
+      sessionRef.current = changed;
+      setSession(changed);
+      setReadCacheScope(`${activeSchool.id}:${changed.user.id}`);
+      await saveStoredSession({ auth: changed, school: activeSchool }).catch(() => {
+        // The in-memory session is still authorized; storage failure requires sign-in next launch.
+      });
+      return true;
+    } catch (cause) {
+      if (cause instanceof ApiRequestError && [
+        "account_suspended", "account_unavailable", "session_invalid",
+        "school_service_unavailable", "password_change_required"
+      ].includes(cause.code ?? "")) showCause(cause);
+      return false;
+    }
+  }
+
+  async function refreshStudentProfile(): Promise<void> {
+    const active = sessionRef.current;
+    const activeSchool = schoolRef.current;
+    if (logoutInProgressRef.current ||
+        !studentPasswordChangeAllowed(active, activeSchool, screen,
+          studentEnrollmentUnavailable) || !active) return;
+    const requestId = ++studentHomeLoadRequestId.current;
+    await loadStudentHomeData(active.accessToken, requestId, true);
   }
 
   function chooseLocale(value: SupportedLocale) {
@@ -3131,6 +3189,7 @@ function AppContent() {
         !studentEnrollmentUnavailable ? (
           <View style={styles.section}>
             <StudentMorePanel
+              key={session.user.id}
               locale={locale}
               textDirection={textDirection}
               fullName={studentTimetable?.student.fullName ?? studentLearning?.student.fullName ?? null}
@@ -3139,7 +3198,11 @@ function AppContent() {
               className={studentTimetable?.classSection.name ?? null}
               academicYear={studentTimetable?.academicYear.name ?? null}
               schoolName={school?.name ?? ""}
+              schoolCode={school?.code ?? null}
+              schoolLocation={[school?.city,school?.province].filter(Boolean).join(" · ") || null}
               unreadCount={studentNotificationUnread(studentNotifications)}
+              onRefresh={refreshStudentProfile}
+              onChangePassword={changeStudentAccountPassword}
               contact={adminContact}
               onOpenUpdates={(tab)=>{
                 setStudentFocusedAnnouncementId(null);
