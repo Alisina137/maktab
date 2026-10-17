@@ -705,7 +705,7 @@ export const api = {
     return request<{ assessments: ContinuousAssessmentPayload[] }>(
       `/v1/teacher/assignments/${encodeURIComponent(assignmentId)}/assessments`, {
         headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      }, { cache: false });
   },
   createTeacherAssessment(accessToken: string, input: {
     assignmentId: string; title: string; category: ContinuousAssessmentPayload["category"];
@@ -719,7 +719,7 @@ export const api = {
     return request<ContinuousAssessmentSheetPayload>(
       `/v1/teacher/assessments/${encodeURIComponent(assessmentId)}`, {
         headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      }, { cache: false });
   },
   saveTeacherAssessmentScores(accessToken: string, assessmentId: string,
     entries: Array<{ studentId: string; score: number; remark?: string }>) {
@@ -1035,10 +1035,10 @@ export const api = {
     });
   },
 
-  gradeSheet(accessToken: string, examSubjectId: string) {
-    return request<GradeSheetPayload>(`/v1/teacher/exam-subjects/${examSubjectId}/grades`, {
+  gradeSheet(accessToken: string, examSubjectId: string, fresh = false) {
+    return request<GradeSheetPayload>(`/v1/teacher/exam-subjects/${encodeURIComponent(examSubjectId)}/grades`, {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   saveDraftGrades(
