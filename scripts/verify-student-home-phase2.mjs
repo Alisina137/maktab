@@ -68,5 +68,6 @@ assert.ok(packageJson.scripts["verify:student:phase2"]?.includes("test-student-h
 assert.ok(workflow.includes("run: pnpm verify:student:phase2") ||
   workflow.includes("run: pnpm verify:student:phase3") ||
   workflow.includes("run: pnpm verify:student:phase4") ||
-  workflow.includes("run: pnpm verify:student:phase5"));
+  workflow.includes("run: pnpm verify:student:phase5") ||
+  workflow.includes("run: pnpm verify:student:phase6"));
 console.log("Student Phase 2: school-local lessons, published grades, authenticated submission status and 3 locales verified.");
