@@ -43,5 +43,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify student Phases 1–7, including inbox filters and notification read-state
-        run: pnpm verify:student:phase7
+      - name: Verify student Phases 1–8, including secure profile and session regression
+        run: pnpm verify:student:phase8
