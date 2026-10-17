@@ -165,8 +165,8 @@ jobs:
       - name: Teacher Phases 1–8 final account and notification regression
         run: pnpm verify:teacher:phase8
 
-      - name: Student Phases 1–5 published-results and academic performance regression
-        run: pnpm verify:student:phase5
+      - name: Student Phases 1–6 attendance, fees and academic regression
+        run: pnpm verify:student:phase6
 
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
