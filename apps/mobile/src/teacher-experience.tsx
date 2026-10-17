@@ -22,7 +22,8 @@ import { TeacherMorePanel, type TeacherMoreSection } from "./teacher-more";
 import { TeacherLearningPanel } from "./learning-ui";
 import { TeacherTasksPanel } from "./teacher-tasks";
 import { CommunicationPanel } from "./communication-ui";
-import type { AppErrorKind } from "./error-message";
+import { appErrorFromCause, type AppErrorKind } from "./error-message";
+import { teacherProfileSummary, teacherUnreadCount } from "./teacher-phase8-model";
 
 export type TeacherTab = "TODAY" | "SCHEDULE" | "CLASSES" | "WORK" | "MORE";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
@@ -144,12 +145,28 @@ export function TeacherExperience({
   const [hubReady, setHubReady] = useState({ learning: false, announcements: false, notifications: false });
   const [hubRefresh, setHubRefresh] = useState(0);
   const hubRequestId = useRef(0);
+  const activeScope=`${schoolId}:${teacherUserId}:${accessToken}`;
+  const [hubOwner,setHubOwner]=useState(activeScope);
+  const [hubFailures,setHubFailures]=useState({learning:false,announcements:false,notifications:false});
+  const [hubActionBusy,setHubActionBusy]=useState(false);
   const currentToken = useRef(accessToken);
+  const lastResume=useRef(0);
+  const notificationWrites=useRef(new Set<string>());
+  const allReadWrite=useRef(false);
+  const hubScoped=hubOwner===activeScope;
+  const visibleLearning=hubScoped?hubLearning:null;
+  const visibleAnnouncements=hubScoped?hubAnnouncements:[];
+  const visibleNotifications=hubScoped?hubNotifications:[];
+  const visibleReady=hubScoped?hubReady:{learning:false,announcements:false,notifications:false};
+  const visibleFailures=hubScoped?hubFailures:{learning:false,announcements:false,notifications:false};
   const previousTab = useRef(tab);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") setHubRefresh((value) => value + 1);
+      if (state === "active" && Date.now()-lastResume.current>30_000) {
+        lastResume.current=Date.now();
+        setHubRefresh(value=>value+1);
+      }
     });
     return () => subscription.remove();
   }, []);
@@ -162,52 +179,80 @@ export function TeacherExperience({
   }, [tab]);
 
   useEffect(() => {
-    const requestId = ++hubRequestId.current;
-    currentToken.current = accessToken;
-    // Keep last successful data visible while a refresh is in flight.
-    // A single failed ngrok request must not erase an otherwise valid inbox.
-    const read = async () => {
-      const [learning, announcements, notifications] = await Promise.allSettled([
-        api.teacherLearning(accessToken),
-        api.announcements(accessToken),
-        api.notifications(accessToken)
+    const requestId=++hubRequestId.current;
+    currentToken.current=accessToken;
+    const belongs=hubOwner===activeScope;
+    if(!belongs){
+      setHubLearning(null);
+      setHubAnnouncements([]);
+      setHubNotifications([]);
+      setHubReady({learning:false,announcements:false,notifications:false});
+      setHubFailures({learning:false,announcements:false,notifications:false});
+      setHubOwner(activeScope);
+      notificationWrites.current.clear();
+      allReadWrite.current=false;
+      setHubActionBusy(false);
+    }
+    const read=async()=>{
+      const [learning,announcements,notifications]=await Promise.allSettled([
+        api.teacherLearning(accessToken,true),
+        api.announcements(accessToken,true),
+        api.notifications(accessToken,true)
       ] as const);
-      if (hubRequestId.current !== requestId) return;
-      if (learning.status === "fulfilled") setHubLearning(learning.value);
-      if (announcements.status === "fulfilled") setHubAnnouncements(announcements.value.announcements);
-      if (notifications.status === "fulfilled") setHubNotifications(notifications.value.notifications);
-      setHubReady({ learning: true, announcements: true, notifications: true });
+      if(hubRequestId.current!==requestId||currentToken.current!==accessToken)return;
+      if(learning.status==="fulfilled")setHubLearning(learning.value);
+      if(announcements.status==="fulfilled")setHubAnnouncements(announcements.value.announcements);
+      if(notifications.status==="fulfilled")setHubNotifications(notifications.value.notifications);
+      setHubFailures({learning:learning.status==="rejected",
+        announcements:announcements.status==="rejected",
+        notifications:notifications.status==="rejected"});
+      setHubReady({learning:true,announcements:true,notifications:true});
     };
     void read();
-    return () => { hubRequestId.current += 1; };
-  }, [accessToken, reconnectEpoch, hubRefresh]);
+    return()=>{hubRequestId.current+=1;};
+  },[activeScope,reconnectEpoch,hubRefresh]);
 
   async function markAllTeacherNotificationsRead() {
-    try {
-      await api.teacherMarkAllNotificationsRead(accessToken);
-      const now = new Date().toISOString();
-      setHubNotifications((items) => items.map((item) => item.readAt ? item : { ...item, readAt: now }));
-      setHubRefresh((count) => count + 1);
-    } catch {
-      // Never pretend an offline or unauthorized update was successful.
+    if(allReadWrite.current||hubActionBusy||!hubScoped)return;
+    const token=accessToken,scope=activeScope;
+    allReadWrite.current=true;setHubActionBusy(true);
+    try{
+      await api.teacherMarkAllNotificationsRead(token);
+      if(currentToken.current!==token||scope!==activeScope)return;
+      const now=new Date().toISOString();
+      setHubNotifications(current=>current.map(item=>item.readAt?item:{...item,readAt:now}));
+      setHubRefresh(count=>count+1);
+    }catch(cause){
+      if(currentToken.current===token) {
+        const failure=appErrorFromCause(cause);
+        onError(failure.key,failure.kind);
+      }
+    }finally{
+      if(currentToken.current===token){allReadWrite.current=false;setHubActionBusy(false);}
     }
   }
-
   function openInbox() {
     setInboxOpen(true);
-    setHubRefresh((count) => count + 1);
+    setHubRefresh(count=>count+1);
   }
-
-  async function markTeacherNotificationRead(notificationId: string) {
+  async function markTeacherNotificationRead(notificationId:string) {
+    if(!hubScoped||allReadWrite.current||notificationWrites.current.has(notificationId))return;
+    const token=accessToken;
+    notificationWrites.current.add(notificationId);
+    setHubActionBusy(true);
     try {
-      const token = accessToken;
-      const result = await api.markNotificationRead(token, notificationId);
-      if (currentToken.current !== token) return;
-      setHubNotifications((current) => current.map((item) =>
-        item.id === notificationId ? result.notification : item
-      ));
-    } catch {
-      // Leave the notification unread so it can be acknowledged after reconnect.
+      const result=await api.markNotificationRead(token,notificationId);
+      if(currentToken.current!==token)return;
+      setHubNotifications(current=>current.map(item=>
+        item.id===notificationId?result.notification:item));
+    }catch(cause){
+      if(currentToken.current===token){
+        const failure=appErrorFromCause(cause);
+        onError(failure.key,failure.kind);
+      }
+    }finally{
+      notificationWrites.current.delete(notificationId);
+      if(currentToken.current===token)setHubActionBusy(notificationWrites.current.size>0);
     }
   }
 
@@ -258,7 +303,8 @@ export function TeacherExperience({
     else setWorkflowSection(externalNavigation.target);
   }, [externalNavigation?.id]);
 
-  const unreadCount = hubNotifications.filter((item) => !item.readAt).length;
+  const unreadCount=teacherUnreadCount(visibleNotifications);
+  const profile=teacherProfileSummary(today,academics);
 
   return (
     <View style={styles.stack}>
@@ -289,11 +335,11 @@ export function TeacherExperience({
         <TeacherTodayInsights
           today={today}
           todayReady={todayReady}
-          learning={hubLearning}
-          learningReady={hubReady.learning}
-          announcements={hubAnnouncements}
-          announcementsReady={hubReady.announcements}
-          notifications={hubNotifications}
+          learning={visibleLearning}
+          learningReady={visibleReady.learning}
+          announcements={visibleAnnouncements}
+          announcementsReady={visibleReady.announcements}
+          notifications={visibleNotifications}
           locale={locale}
           textDirection={textDirection}
           onSchedule={() => onSelect("SCHEDULE")}
@@ -441,6 +487,7 @@ export function TeacherExperience({
           schoolName={schoolName}
           username={username}
           fullName={today?.teacher.fullName ?? username}
+          profile={profile}
           unreadCount={unreadCount}
           locale={locale}
           textDirection={textDirection}
@@ -472,9 +519,12 @@ export function TeacherExperience({
         locale={locale}
         notifications={hubNotifications}
         announcements={hubAnnouncements}
-        notificationsReady={hubReady.notifications}
+        notificationsReady={visibleReady.notifications}
         announcementsReady={hubReady.announcements}
         textDirection={textDirection}
+        notificationsError={visibleFailures.notifications}
+        announcementsError={visibleFailures.announcements}
+        actionBusy={hubActionBusy}
         onClose={() => setInboxOpen(false)}
         onMarkRead={(notificationId) => void markTeacherNotificationRead(notificationId)}
         onOpenNotification={(item) => {
