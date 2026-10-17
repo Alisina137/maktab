@@ -223,6 +223,22 @@ export type TranslationKey =
   | "teacher.homeworkAllClasses"
   | "teacher.homeworkDeadlineAll"
   | "teacher.homeworkClearFilters"
+  | "teacher.gradeUnsavedTitle"
+  | "teacher.gradeUnsavedHint"
+  | "teacher.gradeDiscard"
+  | "teacher.gradeSearchAssessments"
+  | "teacher.gradeNoAssessmentsMatch"
+  | "teacher.gradeRecorded"
+  | "teacher.gradeMissing"
+  | "teacher.gradeAverage"
+  | "teacher.gradePrivateDraft"
+  | "teacher.gradeUnsaved"
+  | "teacher.gradeInvalidDraft"
+  | "teacher.gradeSearchExams"
+  | "teacher.gradeOpen"
+  | "teacher.gradeReadOnly"
+  | "teacher.gradeExamCount"
+  | "teacher.gradeNoExamsMatch"
   | "teacher.classStudents"
   | "teacher.classSupervision"
   | "teacher.backToClasses"
@@ -866,6 +882,22 @@ const en: Record<TranslationKey, string> = {
   "teacher.homeworkAllClasses": "All my classes",
   "teacher.homeworkDeadlineAll": "Any deadline",
   "teacher.homeworkClearFilters": "Clear homework filters",
+  "teacher.gradeUnsavedTitle": "Unsaved marks",
+  "teacher.gradeUnsavedHint": "You have unsaved mark changes. Discard them and open another sheet?",
+  "teacher.gradeDiscard": "Discard changes",
+  "teacher.gradeSearchAssessments": "Search assessments",
+  "teacher.gradeNoAssessmentsMatch": "No assessments match this search.",
+  "teacher.gradeRecorded": "Recorded marks",
+  "teacher.gradeMissing": "Missing marks",
+  "teacher.gradeAverage": "Recorded average",
+  "teacher.gradePrivateDraft": "Teacher-only working marks. Official results are published by the school.",
+  "teacher.gradeUnsaved": "Unsaved changes",
+  "teacher.gradeInvalidDraft": "Check missing or invalid score entries before saving.",
+  "teacher.gradeSearchExams": "Search exams by name or type",
+  "teacher.gradeOpen": "Open for marking",
+  "teacher.gradeReadOnly": "Read-only",
+  "teacher.gradeExamCount": "exam subjects",
+  "teacher.gradeNoExamsMatch": "No exams match this subject or filter.",
   "teacher.classStudents": "Students",
   "teacher.classSupervision": "Supervision",
   "teacher.backToClasses": "Back to my classes",
@@ -1525,6 +1557,22 @@ const dari: Record<TranslationKey, string> = {
   "teacher.homeworkAllClasses": "همهٔ صنف‌هایم",
   "teacher.homeworkDeadlineAll": "هر موعد",
   "teacher.homeworkClearFilters": "پاک‌کردن فیلترهای کارخانگی",
+  "teacher.gradeUnsavedTitle": "نمرات ذخیره‌نشده",
+  "teacher.gradeUnsavedHint": "نمرات تغییر‌یافته ذخیره نشده‌اند. تغییرات کنار گذاشته شده و جدول دیگری باز شود؟",
+  "teacher.gradeDiscard": "کنارگذاشتن تغییرات",
+  "teacher.gradeSearchAssessments": "جستجوی ارزیابی‌ها",
+  "teacher.gradeNoAssessmentsMatch": "ارزیابی مطابق جستجو یافت نشد.",
+  "teacher.gradeRecorded": "نمرات ثبت‌شده",
+  "teacher.gradeMissing": "نمرات باقی‌مانده",
+  "teacher.gradeAverage": "میانگین نمرات ثبت‌شده",
+  "teacher.gradePrivateDraft": "نمرات کاری فقط برای معلم است. نتایج رسمی توسط مکتب نشر می‌شود.",
+  "teacher.gradeUnsaved": "تغییرات ذخیره‌نشده",
+  "teacher.gradeInvalidDraft": "پیش از ذخیره، نمرات نامعتبر یا خالی را بررسی کنید.",
+  "teacher.gradeSearchExams": "جستجوی امتحان با نام یا نوع",
+  "teacher.gradeOpen": "باز برای درج نمره",
+  "teacher.gradeReadOnly": "فقط نمایش",
+  "teacher.gradeExamCount": "مضمون امتحانی",
+  "teacher.gradeNoExamsMatch": "امتحانی مطابق این مضمون یا فیلتر یافت نشد.",
   "teacher.classStudents": "شاگردان",
   "teacher.classSupervision": "نظارت",
   "teacher.backToClasses": "بازگشت به صنف‌ها",
@@ -2184,6 +2232,22 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.homeworkAllClasses": "زما ټول ټولګي",
   "teacher.homeworkDeadlineAll": "هر موعد",
   "teacher.homeworkClearFilters": "د کورنۍ دندو چاڼونه پاک کړئ",
+  "teacher.gradeUnsavedTitle": "نه خوندي شوې نمرې",
+  "teacher.gradeUnsavedHint": "تاسو نمرې بدلې کړې خو نه مو دي خوندي کړي. بدلونونه پرېږدئ او بل جدول پرانیزئ؟",
+  "teacher.gradeDiscard": "بدلونونه پرېښودل",
+  "teacher.gradeSearchAssessments": "ارزونې ولټوئ",
+  "teacher.gradeNoAssessmentsMatch": "له دې لټون سره سمه ارزونه نشته.",
+  "teacher.gradeRecorded": "ثبت شوې نمرې",
+  "teacher.gradeMissing": "پاتې نمرې",
+  "teacher.gradeAverage": "د ثبت شوو نمرو منځنۍ کچه",
+  "teacher.gradePrivateDraft": "دا یوازې د ښوونکي کاري نمرې دي. رسمي پایلې ښوونځی خپروي.",
+  "teacher.gradeUnsaved": "نه خوندي شوي بدلونونه",
+  "teacher.gradeInvalidDraft": "له خوندي کولو مخکې ناسمې یا تشې نمرې وڅېړئ.",
+  "teacher.gradeSearchExams": "د ازموینو نوم یا ډول ولټوئ",
+  "teacher.gradeOpen": "د نمرو لپاره پرانیستی",
+  "teacher.gradeReadOnly": "یوازې لوستل",
+  "teacher.gradeExamCount": "ازموینې مضمونونه",
+  "teacher.gradeNoExamsMatch": "له دې مضمون یا چاڼ سره سمه ازموینه نشته.",
   "teacher.classStudents": "زده کوونکي",
   "teacher.classSupervision": "څارنه",
   "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
