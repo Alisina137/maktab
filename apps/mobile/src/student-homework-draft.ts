@@ -1,7 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 
 export const STUDENT_DRAFT_MAX_CHARS=10_000;
-const CHUNK_SIZE=650;
+// 420 UTF-16 code units remain below SecureStore's typical byte limit even for emoji.
+const CHUNK_SIZE=420;
 const MAX_CHUNKS=Math.ceil(STUDENT_DRAFT_MAX_CHARS/CHUNK_SIZE);
 type Manifest={version:1;slot:0|1;chunks:number};
 export type StudentHomeworkDraft={answer:string;fileId:string|null;fileName:string};
