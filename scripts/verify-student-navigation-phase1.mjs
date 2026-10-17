@@ -53,5 +53,6 @@ assert.ok(tests.includes("round-trips each tab"));
 assert.ok(tests.includes("child pages are not mistaken"));
 assert.ok(pkg.scripts["verify:student:phase1"]?.includes("test-student-navigation-phase1.ts"));
 assert.ok(workflow.includes("run: pnpm verify:student:phase1") ||
-  workflow.includes("run: pnpm verify:student:phase2"));
+  workflow.includes("run: pnpm verify:student:phase2") ||
+  workflow.includes("run: pnpm verify:student:phase3"));
 console.log("Student Phase 1 navigation, More, RTL, language, safe deep-links and test guards passed.");
