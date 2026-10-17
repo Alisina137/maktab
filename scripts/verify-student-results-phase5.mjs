@@ -28,6 +28,9 @@ for(const marker of [
   "student.resNoMatching", "student.resPublishedAverage"
 ])assert.ok(view.includes(marker),"Phase 5 results UI missing "+marker);
 assert.ok(app.includes('<StudentResultsContent'));
+assert.ok(view.includes('testID="student-results-refresh"'));
+assert.ok(app.includes("api.studentHome(session.accessToken,true)"));
+assert.ok(api.includes("studentHome(accessToken: string, fresh = false)"));
 assert.ok(api.includes("examSubject: {")&&api.includes("publishedAt: string | null;"));
 const keys=[
  "student.resExams","student.resPerformance","student.resHistory",
@@ -36,7 +39,8 @@ const keys=[
  "student.resAllTypes","student.resNoMatching","student.resSubjectBreakdown",
  "student.resWeightedExplanation","student.resImproving","student.resDeclining",
  "student.resStable","student.resFirstMark","student.resLatestMark",
- "student.resPreviousMark","student.resHistoryScope","student.resScorePercent"
+ "student.resPreviousMark","student.resHistoryScope","student.resScorePercent",
+ "student.resRefresh","student.resRefreshFailed"
 ];
 for(const key of keys){
   assert.ok(i18n.includes('  | "'+key+'"'),"Phase 5 missing translation type "+key);
