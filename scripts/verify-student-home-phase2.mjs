@@ -19,7 +19,7 @@ for(const key of [
   'submission.status==="REVISION_REQUESTED"',
   'item.grade.status==="PUBLISHED"',
   'item.exam.status==="ARCHIVED"',
-  'item.audienceScope!=="CLASS"'
+  'item.audienceScope==="ROLE"&&item.audienceRole==="STUDENT"'
 ])assert.ok(model.includes(key),"Student Phase 2 model missing "+key);
 for(const key of [
   'testID="student-home-dashboard-phase2"',
