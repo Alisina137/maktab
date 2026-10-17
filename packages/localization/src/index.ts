@@ -517,6 +517,13 @@ export type TranslationKey =
   | "student.unreadNotifications"
   | "student.noUnreadNotifications"
   | "student.viewTimetable"
+  | "student.navTimetable"
+  | "student.moreSchoolUpdates"
+  | "student.moreSchoolUpdatesHint"
+  | "student.moreProfileHint"
+  | "student.moreSettings"
+  | "student.moreLanguage"
+  | "student.moreHelp"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1206,6 +1213,13 @@ const en: Record<TranslationKey, string> = {
   "student.unreadNotifications": "Unread notifications",
   "student.noUnreadNotifications": "You're all caught up",
   "student.viewTimetable": "View timetable",
+  "student.navTimetable": "Timetable",
+  "student.moreSchoolUpdates": "School updates",
+  "student.moreSchoolUpdatesHint": "Announcements and notifications from your school.",
+  "student.moreProfileHint": "Your official student account",
+  "student.moreSettings": "Preferences",
+  "student.moreLanguage": "App language",
+  "student.moreHelp": "Help & support",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -1911,6 +1925,13 @@ const dari: Record<TranslationKey, string> = {
   "student.unreadNotifications": "اعلان‌های ناخوانده",
   "student.noUnreadNotifications": "اعلان ناخوانده‌ای ندارید",
   "student.viewTimetable": "دیدن تقسیم اوقات",
+  "student.navTimetable": "تقسیم اوقات",
+  "student.moreSchoolUpdates": "اطلاعات مکتب",
+  "student.moreSchoolUpdatesHint": "اعلانات و اطلاعیه‌های مکتب شما.",
+  "student.moreProfileHint": "حساب رسمی شاگرد",
+  "student.moreSettings": "تنظیمات",
+  "student.moreLanguage": "زبان برنامه",
+  "student.moreHelp": "کمک و پشتیبانی",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2616,6 +2637,13 @@ const pashto: Record<TranslationKey, string> = {
   "student.unreadNotifications": "نه لوستل شوې خبرتیاوې",
   "student.noUnreadNotifications": "ټولې خبرتیاوې مو لوستې دي",
   "student.viewTimetable": "مهالویش وګورئ",
+  "student.navTimetable": "مهال وېش",
+  "student.moreSchoolUpdates": "د ښوونځي خبرتیاوې",
+  "student.moreSchoolUpdatesHint": "ستاسو د ښوونځي اعلانونه او خبرتیاوې.",
+  "student.moreProfileHint": "ستاسو رسمي زده‌کوونکي حساب",
+  "student.moreSettings": "تنظیمات",
+  "student.moreLanguage": "د اپ ژبه",
+  "student.moreHelp": "مرسته او ملاتړ",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
