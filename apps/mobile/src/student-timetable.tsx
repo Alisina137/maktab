@@ -61,10 +61,11 @@ function Empty({locale,textDirection,message,icon="calendar-clear-outline"}:{
 }
 
 export function StudentTimetableAgenda({
-  timetable,ready,locale,textDirection
+  timetable,ready,locale,textDirection,onViewChange
 }:{
   timetable:StudentTimetablePayload|null;ready:boolean;
   locale:SupportedLocale;textDirection:Direction;
+  onViewChange?:()=>void;
 }) {
   const rtl=getDirection(locale)==="rtl";
   const [view,setView]=useState<StudentTimetableView>("TODAY");
@@ -113,7 +114,8 @@ export function StudentTimetableAgenda({
       {(["TODAY","WEEK","TEACHERS"] as StudentTimetableView[]).map(tab=>
         <Pressable key={tab} accessibilityRole="tab"
           accessibilityState={{selected:tab===view}}
-          onPress={()=>setView(tab)} testID={`student-timetable-tab-${tab.toLowerCase()}`}
+          onPress={()=>{if(view!==tab){setView(tab);onViewChange?.();}}}
+          testID={`student-timetable-tab-${tab.toLowerCase()}`}
           style={[styles.tab,tab===view&&styles.activeTab]}>
           <Text style={[styles.tabText,tab===view&&styles.activeTabText]}>
             {translate(locale,tab==="TODAY"?"student.scheduleToday":
