@@ -1302,10 +1302,12 @@ function AppContent() {
       setStudentAnnouncements(announcements.value.announcements);
     if(notifications.status==="fulfilled")
       setStudentNotifications(notifications.value.notifications);
-    setStudentInboxStatus({
-      announcements:announcements.status==="fulfilled"?"ready":"error",
-      notifications:notifications.status==="fulfilled"?"ready":"error"
-    });
+    setStudentInboxStatus(previous=>({
+      announcements:announcements.status==="fulfilled"?"ready":
+        previous.announcements==="ready"?"ready":"error",
+      notifications:notifications.status==="fulfilled"?"ready":
+        previous.notifications==="ready"?"ready":"error"
+    }));
     setStudentCommunicationReady(true);
     const fail=[announcements,notifications].find(item=>item.status==="rejected");
     if(fail?.status==="rejected"&&fail.reason instanceof ApiRequestError&&
@@ -3372,7 +3374,7 @@ function AppContent() {
             <StudentCommunicationContent
               announcements={studentAnnouncements}
               notifications={studentNotifications}
-              classId={studentTimetable?.student.classId ?? null}
+              classId={studentTimetable?.student.classId ?? studentLearning?.student.classId ?? null}
               ready={studentCommunicationReady}
               activeTab={studentCommunicationTab}
               locale={locale}
