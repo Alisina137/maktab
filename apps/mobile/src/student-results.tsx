@@ -146,10 +146,10 @@ export function StudentResultsContent({
         {translate(locale,"student.resExams")} · {count(groups.length)}
       </Text>
       {groups.map(group=>{
-        const expanded=expandedExam===null||expandedExam===group.id;
+        const expanded=expandedExam===group.id;
         return <View key={group.id} style={styles.card}>
           <Pressable accessibilityRole="button" accessibilityState={{expanded}}
-            onPress={()=>setExpandedExam(expanded? "NONE":group.id)}
+            onPress={()=>setExpandedExam(expanded?null:group.id)}
             style={[styles.row,rtl&&styles.rtl]}>
             <View style={styles.flex}>
               <Text style={[styles.name,textDirection]}>{group.name}</Text>
