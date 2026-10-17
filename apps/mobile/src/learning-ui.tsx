@@ -99,10 +99,10 @@ export function TeacherLearningPanel(props: CommonProps & {
     };
   }, [accessToken, assignmentContext?.assignmentId, assignmentContext?.classId, assignmentContext?.subjectId]);
 
-  async function load(requestId = ++loadRequestId.current) {
+  async function load(requestId = ++loadRequestId.current, fresh = false) {
     setBusy(true);
     try {
-      const result = await api.teacherLearning(accessToken);
+      const result = await api.teacherLearning(accessToken, fresh);
       if (requestId !== loadRequestId.current) return;
       setView(result);
       const visible = assignmentContext
