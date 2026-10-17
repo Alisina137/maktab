@@ -162,8 +162,8 @@ jobs:
       - name: Parent Experience Phase 7 cross-account, session epoch and Android evidence gates
         run: pnpm verify:parent:phase7
 
-      - name: Teacher Phases 1–7 teacher workflow regression
-        run: pnpm verify:teacher:phase7
+      - name: Teacher Phases 1–8 final account and notification regression
+        run: pnpm verify:teacher:phase8
 
       - name: Development API and public ngrok readiness regression
         run: pnpm verify:dev-api
