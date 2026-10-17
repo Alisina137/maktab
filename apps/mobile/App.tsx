@@ -41,6 +41,7 @@ import {
   type AttendanceStatus,
   type FeeInvoiceViewPayload,
   type LearnerAcademicPayload,
+  type HomeworkSubmissionPayload,
   type ParentAttendanceDay,
   type ParentHomePayload,
   type ParentNotification,
@@ -244,6 +245,8 @@ function AppContent() {
   const [studentTimetableReady, setStudentTimetableReady] = useState(false);
   const [studentLearning, setStudentLearning] = useState<LearnerAcademicPayload | null>(null);
   const [studentLearningReady, setStudentLearningReady] = useState(false);
+  const [studentSubmissions,setStudentSubmissions]=useState<HomeworkSubmissionPayload[]|null>(null);
+  const [studentSubmissionsReady,setStudentSubmissionsReady]=useState(false);
   const [studentAnnouncements, setStudentAnnouncements] = useState<AnnouncementPayload[]>([]);
   const [studentNotifications, setStudentNotifications] = useState<ParentNotification[]>([]);
   const [studentCommunicationTab, setStudentCommunicationTab] = useState<StudentCommunicationTab>("ANNOUNCEMENTS");
@@ -646,6 +649,10 @@ function AppContent() {
       setStudentTimetableReady(false);
       setStudentLearning(null);
       setStudentLearningReady(false);
+      setStudentSubmissions(null);
+      setStudentSubmissionsReady(false);
+      setStudentSubmissions(null);
+      setStudentSubmissionsReady(false);
       setStudentAnnouncements([]);
       setStudentNotifications([]);
       setStudentCommunicationReady(false);
@@ -939,6 +946,8 @@ function AppContent() {
     setStudentTimetableReady(false);
     setStudentLearning(null);
     setStudentLearningReady(false);
+    setStudentSubmissions(null);
+    setStudentSubmissionsReady(false);
     setStudentAnnouncements([]);
     setStudentNotifications([]);
     setStudentCommunicationReady(false);
@@ -1206,17 +1215,18 @@ function AppContent() {
     // Academic and communication read failures are independent. A failing
     // notification service must not trap the Student timetable/homework in a
     // permanent loading state. Authorization failures remain authoritative.
-    const [timetableResult, learningResult, announcementResult, notificationResult] =
+    const [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult] =
       await Promise.allSettled([
         api.studentTimetable(accessToken),
         api.studentHome(accessToken),
         api.announcements(accessToken),
-        api.notifications(accessToken)
+        api.notifications(accessToken),
+        api.studentHomeworkSubmissions(accessToken)
       ] as const);
 
     if (requestId !== studentHomeLoadRequestId.current) return;
 
-    const results = [timetableResult, learningResult, announcementResult, notificationResult];
+    const results = [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult];
     const authoritativeFailure = results.find(
       (result) =>
         result.status === "rejected" &&
@@ -1232,6 +1242,9 @@ function AppContent() {
     setStudentTimetableReady(true);
     if (learningResult.status === "fulfilled") setStudentLearning(learningResult.value);
     setStudentLearningReady(true);
+    setStudentSubmissions(submissionsResult.status==="fulfilled"
+      ? submissionsResult.value.submissions.map(row=>row.submission):null);
+    setStudentSubmissionsReady(true);
     if (announcementResult.status === "fulfilled") setStudentAnnouncements(announcementResult.value.announcements);
     if (notificationResult.status === "fulfilled") setStudentNotifications(notificationResult.value.notifications);
     setStudentCommunicationReady(true);
@@ -2958,6 +2971,8 @@ function AppContent() {
               timetableReady={studentTimetableReady}
               learning={studentLearning}
               learningReady={studentLearningReady}
+              submissions={studentSubmissions}
+              submissionsReady={studentSubmissionsReady}
               announcements={studentAnnouncements}
               notifications={studentNotifications}
               communicationReady={studentCommunicationReady}
