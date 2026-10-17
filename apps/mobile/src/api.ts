@@ -1080,10 +1080,10 @@ export const api = {
     });
   },
 
-  studentTimetable(accessToken: string) {
+  studentTimetable(accessToken: string, fresh = false) {
     return request<StudentTimetablePayload>("/v1/student/timetable", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, {cache: !fresh});
   },
 
   studentHome(accessToken: string, fresh = false) {
