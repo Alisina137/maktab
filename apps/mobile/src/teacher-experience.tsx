@@ -150,6 +150,8 @@ export function TeacherExperience({
   const [hubFailures,setHubFailures]=useState({learning:false,announcements:false,notifications:false});
   const [hubActionBusy,setHubActionBusy]=useState(false);
   const currentToken = useRef(accessToken);
+  const currentScope=useRef(activeScope);
+  currentScope.current=activeScope;
   const lastResume=useRef(0);
   const notificationWrites=useRef(new Set<string>());
   const allReadWrite=useRef(false);
@@ -199,7 +201,7 @@ export function TeacherExperience({
         api.announcements(accessToken,true),
         api.notifications(accessToken,true)
       ] as const);
-      if(hubRequestId.current!==requestId||currentToken.current!==accessToken)return;
+      if(hubRequestId.current!==requestId||currentScope.current!==activeScope)return;
       if(learning.status==="fulfilled")setHubLearning(learning.value);
       if(announcements.status==="fulfilled")setHubAnnouncements(announcements.value.announcements);
       if(notifications.status==="fulfilled")setHubNotifications(notifications.value.notifications);
@@ -218,7 +220,7 @@ export function TeacherExperience({
     allReadWrite.current=true;setHubActionBusy(true);
     try{
       await api.teacherMarkAllNotificationsRead(token);
-      if(currentToken.current!==token||scope!==activeScope)return;
+      if(currentToken.current!==token||currentScope.current!==scope)return;
       const now=new Date().toISOString();
       setHubNotifications(current=>current.map(item=>item.readAt?item:{...item,readAt:now}));
       setHubRefresh(count=>count+1);
@@ -242,7 +244,7 @@ export function TeacherExperience({
     setHubActionBusy(true);
     try {
       const result=await api.markNotificationRead(token,notificationId);
-      if(currentToken.current!==token)return;
+      if(currentToken.current!==token||currentScope.current!==activeScope)return;
       setHubNotifications(current=>current.map(item=>
         item.id===notificationId?result.notification:item));
     }catch(cause){
@@ -393,8 +395,8 @@ export function TeacherExperience({
           <TeacherClassesPanel
             academics={academics}
             academicsReady={academicsReady}
-            learning={hubLearning}
-            learningReady={hubReady.learning}
+            learning={visibleLearning}
+            learningReady={visibleReady.learning}
             today={today}
             todayReady={todayReady}
             query={classQuery}
@@ -517,10 +519,10 @@ export function TeacherExperience({
       <TeacherInboxModal
         open={inboxOpen}
         locale={locale}
-        notifications={hubNotifications}
-        announcements={hubAnnouncements}
+        notifications={visibleNotifications}
+        announcements={visibleAnnouncements}
         notificationsReady={visibleReady.notifications}
-        announcementsReady={hubReady.announcements}
+        announcementsReady={visibleReady.announcements}
         textDirection={textDirection}
         notificationsError={visibleFailures.notifications}
         announcementsError={visibleFailures.announcements}
