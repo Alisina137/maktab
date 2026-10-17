@@ -610,7 +610,8 @@ export function TeacherLearningPanel(props: CommonProps & {
             placeholder={translate(locale, "learning.searchHomework")}
             style={[styles.input, textDirection]} autoCapitalize="none"
           />
-          <View style={[styles.chips, rtl && styles.rowRtl]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.horizontalChips,rtl&&styles.rowRtl]}>
             {(["ALL", "DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"] as const).map((status) => (
               <Pressable key={status} accessibilityRole="button"
                 accessibilityState={{ selected: homeworkStatus === status }}
@@ -624,7 +625,7 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
           <Text style={[styles.muted, textDirection]}>
             {formatLocalizedNumber(listedHomeworks.length, locale)} / {formatLocalizedNumber(visibleHomeworks.length, locale)}
           </Text>
@@ -668,7 +669,7 @@ export function TeacherLearningPanel(props: CommonProps & {
               <Text style={[styles.body, textDirection]}>{homework.content}</Text>
               {homework.scheduledAt ? (
                 <Text style={[styles.muted,textDirection]}>
-                  {translate(locale,"learning.schedulePublication")}: {formatLocalizedDate(homework.scheduledAt,locale)} · {homeworkDueFields(homework.scheduledAt).time}
+                  {translate(locale,"learning.schedulePublication")}: {formatLocalizedDate(homework.scheduledAt,locale)} · {teacherTime12(homeworkDueFields(homework.scheduledAt).time)}
                 </Text>
               ) : null}
               {homework.attachmentFileId ? (
