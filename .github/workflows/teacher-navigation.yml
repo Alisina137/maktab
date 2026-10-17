@@ -44,5 +44,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify teacher Phases 1–7, teaching attendance and communication
-        run: pnpm verify:teacher:phase7
+      - name: Verify teacher Phases 1–8, including secure inbox, profile, resilience
+        run: pnpm verify:teacher:phase8
