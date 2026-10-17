@@ -13,6 +13,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
   formatLocalizedDate,
+  formatLocalizedNumber,
   getDirection,
   translate,
   type SupportedLocale,
