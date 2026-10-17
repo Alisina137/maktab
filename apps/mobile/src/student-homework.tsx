@@ -152,6 +152,10 @@ export function StudentHomeworkContent({
   const verified=submissionsReady&&submissions!==null;
   const [refreshing,setRefreshing]=useState(false);
 
+  function handleSubmitted(submission:HomeworkSubmissionPayload){
+    setTab("SUBMITTED");
+    onSubmitted?.(submission);
+  }
   async function refresh() {
     if(refreshing||!onRefresh)return false;
     setRefreshing(true);
@@ -218,11 +222,15 @@ export function StudentHomeworkContent({
     <View style={[styles.sectionHeading,rtl&&styles.rowRtl]}>
       <Text style={[styles.sectionTitle,textDirection]}>{translate(locale,tabKeys[tab])}</Text>
       <Text style={styles.countText}>{formatLocalizedNumber(filtered.length,locale)}</Text>
+      <Pressable accessibilityRole="button" disabled={refreshing}
+        onPress={()=>void refresh()} style={styles.refreshButton}>
+        <Text style={styles.attachmentText}>{translate(locale,"student.hwRetry")}</Text>
+      </Pressable>
     </View>
     {filtered.length?filtered.map(row=><HomeworkCard key={row.item.homework.id}
       item={row.item} row={row} accessToken={accessToken} studentId={learning.student.id}
       locale={locale} textDirection={textDirection}
-      submissionsVerified={verified} onRefresh={refresh} onSubmitted={onSubmitted}/>):
+      submissionsVerified={verified} onRefresh={refresh} onSubmitted={handleSubmitted}/>):
       <View style={styles.emptyCard}>
         <Ionicons name="document-text-outline" size={24} color={tokens.color.textMuted}/>
         <Text style={[styles.emptyText,textDirection]}>
