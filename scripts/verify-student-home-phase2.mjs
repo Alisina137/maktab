@@ -66,5 +66,6 @@ for(const phrase of [
 assert.ok(packageJson.scripts["verify:student:phase2"]?.includes("verify:student:phase1"));
 assert.ok(packageJson.scripts["verify:student:phase2"]?.includes("test-student-home-phase2.ts"));
 assert.ok(workflow.includes("run: pnpm verify:student:phase2") ||
-  workflow.includes("run: pnpm verify:student:phase3"));
+  workflow.includes("run: pnpm verify:student:phase3") ||
+  workflow.includes("run: pnpm verify:student:phase4"));
 console.log("Student Phase 2: school-local lessons, published grades, authenticated submission status and 3 locales verified.");
