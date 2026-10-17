@@ -4,10 +4,13 @@ import {
   ATTENDANCE_TABS, attendanceRate, studentAttendancePreviews
 } from "../apps/web/app/admin/attendance-workspace-model.ts";
 
-test("attendance navigation keeps six stable unique user-facing sections", () => {
-  assert.deepEqual(ATTENDANCE_TABS.map(tab => tab.id),
+test("attendance navigation preserves six core sections and the staff request queue", () => {
+  const ids = ATTENDANCE_TABS.map(tab => tab.id);
+  assert.deepEqual(ids.slice(0, 6),
     ["OVERVIEW","REGISTERS","STUDENTS","FOLLOWUPS","REPORTS","AUDIT"]);
-  assert.equal(new Set(ATTENDANCE_TABS.map(tab => tab.label)).size,6);
+  assert.deepEqual(ids.slice(6), ["STAFF_REQUESTS"]);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(new Set(ATTENDANCE_TABS.map(tab => tab.label)).size, ids.length);
   assert.ok(ATTENDANCE_TABS.every(tab => !/phase/i.test(tab.label)));
 });
 
