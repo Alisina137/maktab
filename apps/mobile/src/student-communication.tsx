@@ -95,7 +95,8 @@ export function StudentCommunicationContent({
   const unread=studentNotificationUnread(notifications);
   const isAnnouncements=activeTab==="ANNOUNCEMENTS";
   const status=isAnnouncements?announcementStatus:notificationStatus;
-  const visible=studentInboxPage(isAnnouncements?announcementItems:notificationItems,
+  const visible=studentInboxPage<AnnouncementPayload|ParentNotification>(
+    isAnnouncements?announcementItems:notificationItems,
     page,(row)=>row.id,isAnnouncements?focusedAnnouncementId:null);
   const hasMore=visible.hasMore;
 
