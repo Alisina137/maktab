@@ -3176,6 +3176,27 @@ function AppContent() {
               onTabChange={()=>onboardingScrollRef.current?.scrollTo({
                 y:0,animated:!reduceMotion
               })}
+              onRefresh={async()=>{
+                const active=sessionRef.current;
+                if(active?.accessToken!==session.accessToken||
+                  active.user.id!==session.user.id)return false;
+                const epoch=studentHomeLoadRequestId.current;
+                try {
+                  const refreshed=await api.studentHome(session.accessToken,true);
+                  if(sessionRef.current?.accessToken!==session.accessToken||
+                    sessionRef.current?.user.id!==session.user.id||
+                    epoch!==studentHomeLoadRequestId.current)return false;
+                  if(studentLearning?.student.id&&refreshed.student.id!==studentLearning.student.id)
+                    return false;
+                  setStudentLearning(refreshed);
+                  setStudentLearningReady(true);
+                  return true;
+                }catch(cause){
+                  if(sessionRef.current?.accessToken===session.accessToken&&
+                    epoch===studentHomeLoadRequestId.current)showCause(cause);
+                  return false;
+                }
+              }}
             />
           </View>
         ) : null}
