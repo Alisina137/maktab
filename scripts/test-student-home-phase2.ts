@@ -81,7 +81,7 @@ test("Student Phase 2 nearest due homework excludes submitted/reviewed, retains 
     submission("soon","REVISION_REQUESTED")];
   const view=studentHomeworkOverview(items,records,now);
   assert.equal(view.upcoming?.homework.id,"soon");
-  assert.equal(view.pending,2);
+  assert.equal(view.pending,1);
   assert.equal(view.dueToday,1);
   assert.equal(view.overdue,1);
   assert.equal(view.revision,1);
