@@ -51,6 +51,8 @@ for(const phrase of ["authorized published valid grades","weighted subject trend
 assert.ok(tests.includes(phrase),"Phase 5 test coverage missing "+phrase);
 assert.ok(pkg.scripts["verify:student:phase5"]?.includes("verify:student:phase4"));
 assert.ok(pkg.scripts["verify:student:phase5"]?.includes("test-student-results-phase5.ts"));
-assert.ok(workflow.includes("run: pnpm verify:student:phase5"));
-assert.ok(ci.includes("run: pnpm verify:student:phase5"));
+assert.ok(workflow.includes("run: pnpm verify:student:phase5") ||
+  workflow.includes("run: pnpm verify:student:phase6"));
+assert.ok(ci.includes("run: pnpm verify:student:phase5") ||
+  ci.includes("run: pnpm verify:student:phase6"));
 console.log("Student Phase 5 published-only scores, academic analysis, history, three locales and regressions verified.");
