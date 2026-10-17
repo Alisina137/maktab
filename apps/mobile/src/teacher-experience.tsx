@@ -333,6 +333,19 @@ export function TeacherExperience({
         </Pressable>
       </View>
 
+      {tab === "TODAY" && hubScoped && (visibleFailures.learning||
+        visibleFailures.announcements||visibleFailures.notifications) ? (
+        <Pressable testID="teacher-hub-recovery" accessibilityRole="button"
+          onPress={()=>setHubRefresh(value=>value+1)}
+          style={[styles.retry,rtl&&styles.rowRtl]}>
+          <Ionicons name="cloud-offline-outline" size={19} color={tokens.color.brandStrong}/>
+          <Text style={[styles.muted,styles.flex,textDirection]}>
+            {translate(locale,(visibleLearning||visibleAnnouncements.length||visibleNotifications.length)
+              ?"teacher.hubStale":"teacher.hubUnavailable")}
+          </Text>
+          <Ionicons name="refresh-outline" size={19} color={tokens.color.brandStrong}/>
+        </Pressable>
+      ) : null}
       {tab === "TODAY" ? (
         <TeacherTodayInsights
           today={today}
