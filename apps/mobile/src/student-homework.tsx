@@ -1,4 +1,5 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { shareLearningFile } from "./learning-files";
 import { StudentSubmissionPanel } from "./student-submission";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -11,6 +12,11 @@ import {
   type SupportedLocale
 } from "@maktablink/localization";
 import type { LearnerAcademicPayload, HomeworkSubmissionPayload } from "./api";
+import {
+  studentHomeworkRows,studentHomeworkFilter,studentHomeworkSubjects,
+  studentHomeworkCounts,studentHomeworkDeadlineState,studentHomeworkTabs,
+  type HomeworkRow,type HomeworkStudentTab,type HomeworkStudentState
+} from "./student-homework-model";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -18,21 +24,32 @@ type TextDirectionStyle = {
 };
 
 type HomeworkItem = LearnerAcademicPayload["homework"][number];
+const stateKeys:Record<HomeworkStudentState,import("@maktablink/localization").TranslationKey>={
+  TO_DO:"student.hwToDo",OVERDUE:"student.hwOverdue",
+  SUBMITTED:"student.hwSubmitted",REVISION:"student.hwNeedsRevision",
+  REVIEWED:"student.hwReviewed",CLOSED:"student.hwClosed"
+};
+const tabKeys:Record<HomeworkStudentTab,import("@maktablink/localization").TranslationKey>={
+  TO_DO:"student.hwToDo",SUBMITTED:"student.hwSubmitted",
+  REVISION:"student.hwNeedsRevision",COMPLETED:"student.hwCompleted"
+};
 
 function HomeworkCard({
   item,
   locale,
   textDirection,
   accessToken,
-  onSubmitted
+  onSubmitted, row, studentId, submissionsVerified, onRefresh
 }: {
-  item: HomeworkItem;
+  item: HomeworkItem;row:HomeworkRow;studentId:string;
+  submissionsVerified:boolean;onRefresh?:()=>Promise<boolean>;
   accessToken: string;
   onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
   const rtl = getDirection(locale) === "rtl";
+  const deadlineState=studentHomeworkDeadlineState(item.homework.dueAt);
 
   async function openAttachment() {
     if (item.homework.attachmentFileId) {
@@ -72,6 +89,16 @@ function HomeworkCard({
         </Text>
       </View>
 
+      <View style={[styles.statusRow,rtl&&styles.rowRtl]}>
+        <Text style={[styles.statusBadge,row.state==="OVERDUE"&&styles.alertBadge,
+          row.state==="REVISION"&&styles.alertBadge]}>
+          {translate(locale,stateKeys[row.state])}
+        </Text>
+        {(deadlineState==="TODAY"||deadlineState==="TOMORROW")&&
+          (row.state==="TO_DO"||row.state==="REVISION")?
+          <Text style={styles.deadlineBadge}>{translate(locale,deadlineState==="TODAY"?
+            "student.hwDueToday":"student.hwDueTomorrow")}</Text>:null}
+      </View>
       <Text style={[styles.instructions, textDirection]}>{item.homework.content}</Text>
 
       {item.homework.attachmentUrl || item.homework.attachmentFileId ? (
@@ -92,7 +119,9 @@ function HomeworkCard({
         </Pressable>
       ) : null}
       <StudentSubmissionPanel homework={item.homework} accessToken={accessToken}
-        locale={locale} textDirection={textDirection} onSubmitted={onSubmitted}/>
+        locale={locale} textDirection={textDirection} onSubmitted={onSubmitted}
+        studentId={studentId} row={row} submissionsVerified={submissionsVerified}
+        onRefresh={onRefresh}/>
     </View>
   );
 }
