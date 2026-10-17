@@ -403,8 +403,10 @@ export function TeacherLearningPanel(props: CommonProps & {
           assignmentContext?.classId, assignmentContext?.subjectId]);
 
   const homeworkNow=Date.now();
-  const homeworkStats=teacherHomeworkOverview(visibleHomeworks,homeworkNow);
-  const listedHomeworks=teacherHomeworkList(visibleHomeworks,visibleAssignments,
+  const assignedHomeworks=teacherHomeworkList(visibleHomeworks,visibleAssignments,
+    "","ALL","ALL","ALL",homeworkNow);
+  const homeworkStats=teacherHomeworkOverview(assignedHomeworks,homeworkNow);
+  const listedHomeworks=teacherHomeworkList(assignedHomeworks,visibleAssignments,
     homeworkQuery,homeworkStatus,homeworkAssignmentFilter,homeworkDeadlineFilter,homeworkNow);
   const gradeCounts = gradeSheet ? gradeProgress(gradeSheet) : null;
   const visibleGradeStudents = gradeSheet?.students.filter((item) =>
@@ -627,7 +629,7 @@ export function TeacherLearningPanel(props: CommonProps & {
             ))}
           </ScrollView>
           <Text style={[styles.muted, textDirection]}>
-            {formatLocalizedNumber(listedHomeworks.length, locale)} / {formatLocalizedNumber(visibleHomeworks.length, locale)}
+            {formatLocalizedNumber(listedHomeworks.length, locale)} / {formatLocalizedNumber(assignedHomeworks.length, locale)}
           </Text>
           {listedHomeworks.map((homework) => (
             <View key={homework.id} style={styles.listItem}>
