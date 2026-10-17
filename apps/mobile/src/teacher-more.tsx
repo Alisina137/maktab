@@ -8,6 +8,7 @@ import {
 } from "@maktablink/localization";
 import { AdminContactCard } from "./admin-contact-card";
 import type { AdminContactPayload } from "./api";
+import type { teacherProfileSummary } from "./teacher-phase8-model";
 
 export type TeacherMoreSection = "HOME" | "ANNOUNCEMENTS" | "PROFILE";
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
@@ -20,7 +21,7 @@ const languageNames: Record<SupportedLocale, string> = {
 };
 
 export function TeacherMorePanel({
-  section, schoolName, username, fullName, unreadCount, locale, textDirection,
+  section, schoolName, username, fullName, profile, unreadCount, locale, textDirection,
   contact, onSectionChange, onNotifications, onChangeLocale, onLogout,
   announcementContent
 }: {
@@ -28,6 +29,7 @@ export function TeacherMorePanel({
   schoolName: string;
   username: string;
   fullName: string;
+  profile: ReturnType<typeof teacherProfileSummary>;
   unreadCount: number;
   locale: SupportedLocale;
   textDirection: Direction;
@@ -79,7 +81,27 @@ export function TeacherMorePanel({
       <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.workflowAnnouncements")}</Text>
       {announcementContent}
     </View>:null}
-    {section==="PROFILE"?<>
+    {section==="PROFILE"?><>
+      <View style={styles.profileHero} testID="teacher-profile-summary">
+        <View style={[styles.heroRow,rtl&&styles.rtl]}>
+          <View style={styles.avatar}><Ionicons name="person-outline" size={29} color={tokens.color.brandStrong}/></View>
+          <View style={styles.flex}>
+            <Text style={[styles.heading,textDirection]}>{profile.fullName||fullName||username}</Text>
+            <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.profileTeacherRole")} · {schoolName}</Text>
+          </View>
+        </View>
+        <View style={[styles.stats,rtl&&styles.rtl]}>
+          {([
+            ["teacher.profileAssignedSubjects",profile.assignments],
+            ["teacher.profileClasses",profile.classes],
+            ["teacher.profileWeeklyPeriods",profile.weeklyPeriods],
+            ["teacher.profileSupervised",profile.supervisionClasses]
+          ] as Array<[TranslationKey,number|null]>).map(([key,value])=><View key={key} style={styles.stat}>
+            <Text style={styles.statNumber}>{value===null?"—":formatLocalizedNumber(value,locale)}</Text>
+            <Text style={styles.statLabel}>{translate(locale,key)}</Text>
+          </View>)}
+        </View>
+      </View>
       <View style={styles.card}>
         <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.moreProfile")}</Text>
         <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.moreAccountInfo")}</Text>
@@ -89,6 +111,9 @@ export function TeacherMorePanel({
           <Text style={[styles.label,textDirection]}>{username}</Text></View>
         <View style={styles.info}><Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.moreSchool")}</Text>
           <Text style={[styles.label,textDirection]}>{schoolName}</Text></View>
+        <View style={styles.info}><Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.profileEmployeeCode")}</Text>
+          <Text style={[styles.label,textDirection]}>{profile.employeeCode||"—"}</Text></View>
+        <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.profileVerifiedDetails")}</Text>
       </View>
       <View style={styles.card}>
         <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.moreLanguage")}</Text>
@@ -113,6 +138,16 @@ const styles=StyleSheet.create({
   stack:{gap:14},
   flex:{flex:1,minWidth:0},
   rtl:{flexDirection:"row-reverse"},
+  profileHero:{gap:14,padding:16,borderRadius:19,backgroundColor:"#f1f6ff",
+    borderWidth:1,borderColor:"#d6e4f8"},
+  heroRow:{flexDirection:"row",alignItems:"center",gap:13},
+  avatar:{width:54,height:54,borderRadius:17,backgroundColor:"#deecff",
+    alignItems:"center",justifyContent:"center"},
+  stats:{flexDirection:"row",flexWrap:"wrap",gap:8},
+  stat:{flexGrow:1,minWidth:"44%",padding:10,alignItems:"center",
+    borderRadius:12,backgroundColor:"#fff",gap:4},
+  statNumber:{fontSize:20,fontWeight:"900",color:tokens.color.brandStrong},
+  statLabel:{fontSize:11.5,fontWeight:"700",color:tokens.color.textMuted,textAlign:"center"},
   card:{gap:12,padding:16,backgroundColor:tokens.color.surface,borderRadius:19,
     borderWidth:1,borderColor:"#e1e7f0"},
   heading:{fontSize:18,fontWeight:"900",color:tokens.color.text},
