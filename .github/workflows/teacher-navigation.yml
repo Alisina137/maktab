@@ -8,6 +8,7 @@ on:
       - "apps/mobile/**"
       - "packages/localization/**"
       - "scripts/verify-teacher-experience-phase*.mjs"
+      - "scripts/test-teacher-*.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "apps/mobile/**"
       - "packages/localization/**"
       - "scripts/verify-teacher-experience-phase*.mjs"
+      - "scripts/test-teacher-*.ts"
       - "package.json"
       - "pnpm-lock.yaml"
   workflow_dispatch:
