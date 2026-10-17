@@ -691,7 +691,7 @@ export const api = {
       student: { id: string; fullName: string; studentCode: string };
     }> }>(`/v1/teacher/homework/${encodeURIComponent(homeworkId)}/submissions`, {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: false });
   },
   reviewHomeworkSubmission(accessToken: string, homeworkId: string, submissionId: string,
     status: "REVIEWED" | "REVISION_REQUESTED", feedback: string) {
@@ -967,10 +967,10 @@ export const api = {
     );
   },
 
-  teacherClassDetail(accessToken: string, assignmentId: string) {
+  teacherClassDetail(accessToken: string, assignmentId: string, fresh = false) {
     return request<TeacherClassDetailPayload>(`/v1/teacher/classes/${encodeURIComponent(assignmentId)}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   teacherAttendanceHistory(accessToken: string, classId: string, from: string, to: string) {
