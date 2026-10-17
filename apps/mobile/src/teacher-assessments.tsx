@@ -312,7 +312,7 @@ const styles=StyleSheet.create({
   row:{flexDirection:"row",alignItems:"center",gap:9},rtl:{flexDirection:"row-reverse"},
   flex:{flex:1,minWidth:0},inline:{alignSelf:"flex-start"},dim:{opacity:0.5},
   title:{fontSize:16,fontWeight:"900",color:tokens.color.text},
-  heading:{fontSize:14,fontWeight:"850",color:tokens.color.text},
+  heading:{fontSize:14,fontWeight:"800",color:tokens.color.text},
   entryTitle:{fontSize:13.5,fontWeight:"800",color:tokens.color.text},
   hint:{fontSize:12.5,color:tokens.color.textMuted,lineHeight:19},
   input:{backgroundColor:"#f8faff",borderWidth:1,borderColor:"#d9e3f0",
