@@ -28,6 +28,8 @@ export function StudentSubmissionPanel({
   const writeQueue=useRef<Promise<void>>(Promise.resolve());
   const submitting=useRef(false);
   const touched=useRef(false);
+  const editSequence=useRef(0);
+  const autosaveTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const [answer,setAnswer]=useState("");
   const [fileId,setFileId]=useState<string|null>(null);
   const [fileName,setFileName]=useState("");
@@ -48,7 +50,7 @@ export function StudentSubmissionPanel({
     }).catch(()=>{if(active)setMessage("student.hwDraftUnavailable");})
       .finally(()=>{if(active)setRestored(true);});
     return ()=>{active=false;};
-  },[draftKey]);
+  },[draftKey,submissionsVerified]);
 
   function saveSnapshot() {
     const snapshot={answer,fileId,fileName};
@@ -59,12 +61,17 @@ export function StudentSubmissionPanel({
   }
   useEffect(()=>{
     if(!dirty||!restored||!canSubmit||submitting.current)return;
+    const sequence=editSequence.current;
     const timer=setTimeout(()=>{
+      if(submitting.current)return;
       void saveSnapshot().then(()=>{
-        setDirty(false);setMessage("student.hwDraftSaved");
+        if(sequence===editSequence.current){
+          setDirty(false);setMessage("student.hwDraftSaved");
+        }
       }).catch(()=>setMessage("student.hwDraftUnavailable"));
     },1000);
-    return ()=>clearTimeout(timer);
+    autosaveTimer.current=timer;
+    return ()=>{clearTimeout(timer);if(autosaveTimer.current===timer)autosaveTimer.current=null;};
   },[answer,fileId,fileName,dirty,restored,canSubmit,draftKey]);
 
   async function saveDraft() {
@@ -89,7 +96,7 @@ export function StudentSubmissionPanel({
     setBusy(true);setMessage(null);
     try {
       const result=await pickAndUploadLearningFile(accessToken);
-      if(result){touched.current=true;setFileId(result.id);
+      if(result){touched.current=true;editSequence.current++;setFileId(result.id);
         setFileName(result.fileName);setDirty(true);}
     }catch{setMessage("learning.fileUploadFailed");}
     finally{setBusy(false);}
@@ -101,7 +108,9 @@ export function StudentSubmissionPanel({
     if(answer.length>STUDENT_DRAFT_MAX_CHARS){
       setMessage("student.hwAnswerTooLong");return;
     }
-    submitting.current=true;setBusy(true);setMessage(null);
+    submitting.current=true;
+    if(autosaveTimer.current)clearTimeout(autosaveTimer.current);
+    setBusy(true);setMessage(null);
     try {
       const result=await api.submitStudentHomework(accessToken,homework.id,answer.trim(),fileId);
       await writeQueue.current.catch(()=>{});
@@ -157,7 +166,7 @@ export function StudentSubmissionPanel({
           </Text>
           <TextInput multiline editable={!busy&&restored} value={answer}
             maxLength={STUDENT_DRAFT_MAX_CHARS} testID="student-homework-answer"
-            onChangeText={value=>{touched.current=true;setAnswer(value);setDirty(true);}}
+            onChangeText={value=>{touched.current=true;editSequence.current++;setAnswer(value);setDirty(true);}}
             placeholder={translate(locale,"learning.studentAnswer")}
             style={[styles.input,textDirection]}/>
           <Text style={[styles.text,textDirection]}>
@@ -176,7 +185,7 @@ export function StudentSubmissionPanel({
           {fileName?<View style={styles.buttons}>
             <Text style={[styles.text,textDirection]}>{fileName}</Text>
             <Pressable accessibilityRole="button" onPress={()=>{
-              setFileId(null);setFileName("");setDirty(true);
+              editSequence.current++;setFileId(null);setFileName("");setDirty(true);
             }}><Text style={styles.actionText}>{translate(locale,"student.hwRemoveFile")}</Text></Pressable>
           </View>:null}
           <Pressable accessibilityRole="button" testID="student-homework-submit"
