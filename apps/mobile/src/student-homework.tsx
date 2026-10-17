@@ -10,7 +10,7 @@ import {
   translate,
   type SupportedLocale
 } from "@maktablink/localization";
-import type { LearnerAcademicPayload } from "./api";
+import type { LearnerAcademicPayload, HomeworkSubmissionPayload } from "./api";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -23,10 +23,12 @@ function HomeworkCard({
   item,
   locale,
   textDirection,
-  accessToken
+  accessToken,
+  onSubmitted
 }: {
   item: HomeworkItem;
   accessToken: string;
+  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
@@ -90,7 +92,7 @@ function HomeworkCard({
         </Pressable>
       ) : null}
       <StudentSubmissionPanel homework={item.homework} accessToken={accessToken}
-        locale={locale} textDirection={textDirection}/>
+        locale={locale} textDirection={textDirection} onSubmitted={onSubmitted}/>
     </View>
   );
 }
@@ -100,11 +102,13 @@ function HomeworkSection({
   items,
   locale,
   textDirection,
-  accessToken
+  accessToken,
+  onSubmitted
 }: {
   title: string;
   items: HomeworkItem[];
   accessToken: string;
+  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
 }) {
@@ -124,6 +128,7 @@ function HomeworkSection({
         <HomeworkCard
           key={item.homework.id}
           item={item}
+          onSubmitted={onSubmitted}
           accessToken={accessToken}
           locale={locale}
           textDirection={textDirection}
@@ -138,10 +143,12 @@ export function StudentHomeworkContent({
   ready,
   locale,
   textDirection,
-  accessToken
+  accessToken,
+  onSubmitted
 }: {
   learning: LearnerAcademicPayload | null;
   accessToken: string;
+  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
   ready: boolean;
   locale: SupportedLocale;
   textDirection: TextDirectionStyle;
@@ -192,6 +199,7 @@ export function StudentHomeworkContent({
       <HomeworkSection
         title={translate(locale, "student.upcomingHomework")}
         items={upcoming}
+        onSubmitted={onSubmitted}
         accessToken={accessToken}
         locale={locale}
         textDirection={textDirection}
@@ -199,6 +207,7 @@ export function StudentHomeworkContent({
       <HomeworkSection
         title={translate(locale, "student.pastHomework")}
         items={past}
+        onSubmitted={onSubmitted}
         accessToken={accessToken}
         locale={locale}
         textDirection={textDirection}
