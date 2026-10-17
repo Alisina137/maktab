@@ -75,7 +75,7 @@ export function TeacherTodayInsights({
   const supervision=waiting[0];
   const priorityCount=pendingAttendance+pending.openGradeSheets+pending.homeworkDrafts+unreadCount;
   const featured=plan.current??plan.next;
-  const latestAnnouncements=[...announcements].sort((a,b)=>b.publishAt.localeCompare(a.publishAt)).slice(0,2);
+  const latestAnnouncements=teacherAnnouncementPreview(announcements,2);
   return <View style={styles.stack} testID="teacher-today-dashboard">
     <View style={styles.card}>
       <View style={[styles.headingRow,rtl&&styles.rowRtl]}>
