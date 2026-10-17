@@ -69,7 +69,7 @@ export function StudentTimetableAgenda({
   const rtl=getDirection(locale)==="rtl";
   const [view,setView]=useState<StudentTimetableView>("TODAY");
   const [now,setNow]=useState(()=>new Date());
-  const [expandedDay,setExpandedDay]=useState<StudentSchoolWeekday|null>(null);
+  const [expandedDay,setExpandedDay]=useState<StudentSchoolWeekday|"NONE"|null>(null);
   const [search,setSearch]=useState("");
   useEffect(()=>{
     const refresh=()=>setNow(new Date());
@@ -83,8 +83,8 @@ export function StudentTimetableAgenda({
   const todayDay=clock?.weekday as StudentSchoolWeekday|undefined;
   const today=clock&&todayDay?studentPeriodsForDay(timetable,todayDay):[];
   const weekDays=studentSchoolWeekdays(locale);
-  const selectedDay=expandedDay??(todayDay&&weekDays.includes(todayDay)?
-    todayDay:weekDays[0]);
+  const selectedDay=expandedDay==="NONE"?null:(expandedDay??(todayDay&&weekDays.includes(todayDay)?
+    todayDay:weekDays[0]));
   const teachers=studentTeacherDirectory(timetable);
   const query=search.trim().normalize("NFKC").toLocaleLowerCase();
   const shownTeachers=teachers.filter(teacher=>!query||
@@ -159,7 +159,7 @@ export function StudentTimetableAgenda({
         return <View key={day} style={[styles.dayCard,isToday&&styles.todayCard]}>
           <Pressable accessibilityRole="button"
             accessibilityState={{expanded:open}}
-            onPress={()=>setExpandedDay(open?null:day)}
+            onPress={()=>setExpandedDay(open?"NONE":day)}
             style={[styles.dayHeading,rtl&&styles.rtl]}
             testID={`student-day-${day.toLowerCase()}`}>
             <Ionicons name={isToday?"today":"calendar-outline"} size={19}
