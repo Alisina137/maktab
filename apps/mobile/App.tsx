@@ -1278,6 +1278,10 @@ function AppContent() {
         notifications:notificationResult.status==="fulfilled"?"ready":"error"
       });
       setStudentCommunicationReady(true);
+    } else {
+      // A push/read action may have happened while the initial GET was running.
+      // Re-fetch rather than accepting stale unread flags or leaving a loader stuck.
+      void refreshStudentInbox();
     }
 
     const failure = results.find((result) => result.status === "rejected");
