@@ -55,5 +55,6 @@ for(const marker of ["limits official exam sheets","explicitly cleared remarks",
 assert.ok(pkg.scripts["verify:teacher:phase6"]?.includes("verify:teacher:phase5"));
 assert.ok(pkg.scripts["verify:teacher:phase6"]?.includes("test-teacher-grading-model.ts"));
 assert.ok(ci.includes("run: pnpm verify:teacher:phase6") ||
-  ci.includes("run: pnpm verify:teacher:phase7"));
+  ci.includes("run: pnpm verify:teacher:phase7") ||
+  ci.includes("run: pnpm verify:teacher:phase8"));
 console.log("Teacher Phase 6: scoped exam and assessment grading, private marks and 3 languages verified.");
