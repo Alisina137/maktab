@@ -120,7 +120,7 @@ test("Student Phase 2 school update excludes archived and transferred class noti
     notice("current-class","CLASS","c1","2026-10-17T10:00:00Z"),
     notice("school","SCHOOL",null,"2026-10-16T10:00:00Z")
   ];
-  assert.equal(studentLatestAnnouncement(items,"c1")?.id,"current-class");
-  assert.equal(studentLatestAnnouncement(items,null)?.id,"school");
-  assert.equal(studentLatestAnnouncement([items[0]],"c1"),null);
+  assert.equal(studentLatestAnnouncement(items,"c1",new Date("2026-10-17T12:00:00Z"))?.id,"current-class");
+  assert.equal(studentLatestAnnouncement(items,null,new Date("2026-10-17T12:00:00Z"))?.id,"school");
+  assert.equal(studentLatestAnnouncement([items[0]],"c1",new Date("2026-10-17T12:00:00Z")),null);
 });
