@@ -870,10 +870,15 @@ export const api = {
     });
   },
 
-  studentFees(accessToken: string) {
+  studentAttendance(accessToken:string,from:string,to:string){
+    return request<{today:string;days:ParentAttendanceDay[]}>(
+      `/v1/student/attendance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      {headers:{Authorization:`Bearer ${accessToken}`}}, {cache:false});
+  },
+  studentFees(accessToken: string, fresh = false) {
     return request<{ invoices: FeeInvoiceViewPayload[] }>("/v1/student/fees", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, {cache:!fresh});
   },
 
   registerPushDevice(accessToken: string, pushToken: string, platform: "ANDROID" | "IOS") {
