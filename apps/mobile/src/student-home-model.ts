@@ -135,7 +135,13 @@ export function studentAcademicOverview(results:readonly StudentResultItem[]) {
 export function studentLatestAnnouncement(
   announcements:readonly AnnouncementPayload[],classId:string|null
 ) {
+  const now=Date.now();
   return [...announcements].filter(item=>!item.archivedAt&&
-    (item.audienceScope!=="CLASS"||(classId!==null&&item.classId===classId)))
+    Number.isFinite(Date.parse(item.publishAt))&&
+    Date.parse(item.publishAt)<=now&&
+    (item.audienceScope==="SCHOOL"||
+      item.audienceScope==="CLASS"&&classId!==null&&item.classId===classId&&
+        (!item.audienceRole||item.audienceRole==="STUDENT")||
+      item.audienceScope==="ROLE"&&item.audienceRole==="STUDENT"))
     .sort((a,b)=>b.publishAt.localeCompare(a.publishAt)||b.id.localeCompare(a.id))[0]??null;
 }
