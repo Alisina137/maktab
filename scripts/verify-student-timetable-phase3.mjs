@@ -46,8 +46,10 @@ assert.ok(pkg.scripts["verify:student:phase3"]?.includes("verify:student:phase2"
 assert.ok(pkg.scripts["verify:student:phase3"]?.includes("test-student-timetable-phase3.ts"));
 assert.ok(workflow.includes("run: pnpm verify:student:phase3") ||
   workflow.includes("run: pnpm verify:student:phase4") ||
-  workflow.includes("run: pnpm verify:student:phase5"));
+  workflow.includes("run: pnpm verify:student:phase5") ||
+  workflow.includes("run: pnpm verify:student:phase6"));
 assert.ok(ci.includes("run: pnpm verify:student:phase3") ||
   ci.includes("run: pnpm verify:student:phase4") ||
-  ci.includes("run: pnpm verify:student:phase5"));
+  ci.includes("run: pnpm verify:student:phase5") ||
+  ci.includes("run: pnpm verify:student:phase6"));
 console.log("Student Phase 3 timetable tabs, current lesson, Kabul time, teacher directory, RTL and regressions verified.");
