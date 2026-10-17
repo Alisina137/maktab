@@ -133,12 +133,12 @@ export function studentAcademicOverview(results:readonly StudentResultItem[]) {
   };
 }
 export function studentLatestAnnouncement(
-  announcements:readonly AnnouncementPayload[],classId:string|null
+  announcements:readonly AnnouncementPayload[],classId:string|null,now:Date=new Date()
 ) {
-  const now=Date.now();
+  const currentTime=now.getTime();
   return [...announcements].filter(item=>!item.archivedAt&&
     Number.isFinite(Date.parse(item.publishAt))&&
-    Date.parse(item.publishAt)<=now&&
+    Date.parse(item.publishAt)<=currentTime&&
     (item.audienceScope==="SCHOOL"||
       item.audienceScope==="CLASS"&&classId!==null&&item.classId===classId&&
         (!item.audienceRole||item.audienceRole==="STUDENT")||
