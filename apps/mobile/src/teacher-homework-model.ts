@@ -55,8 +55,8 @@ export function teacherHomeworkList(
     const assignment = byId.get(item.assignmentId)!;
     return !term || [item.title, item.content, assignment.className,
       assignment.classCode, assignment.subjectName].some(value => normalize(value).includes(term));
-  }).sort((a,b) => (dueTime(a) ?? Number.POSITIVE_INFINITY) -
-    (dueTime(b) ?? Number.POSITIVE_INFINITY) || b.createdAt.localeCompare(a.createdAt));
+  }).sort((a,b) => (dueTime(a) ?? Number.MAX_SAFE_INTEGER) -
+    (dueTime(b) ?? Number.MAX_SAFE_INTEGER) || b.createdAt.localeCompare(a.createdAt));
 }
 
 /** A missing row requires a successfully loaded, teacher-authorized active roster.
