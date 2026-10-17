@@ -84,7 +84,8 @@
     "verify:staff:phase8": "node scripts/verify-staff-phase8.mjs && pnpm --filter @maktablink/api exec tsx --test src/staff/security-phase8.integration.test.ts && pnpm --filter @maktablink/database exec tsx --test src/migration-chain.test.ts && pnpm typecheck",
     "verify:teacher:phase1": "node scripts/verify-teacher-experience-phase1.mjs && pnpm --filter @maktablink/mobile typecheck && pnpm --filter @maktablink/localization typecheck",
     "verify:teacher:phase2": "pnpm verify:teacher:phase1 && node scripts/verify-teacher-experience-phase2.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-teacher-today-model.ts",
-    "verify:teacher:phase3": "pnpm verify:teacher:phase2 && node scripts/verify-teacher-experience-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-teacher-schedule-model.ts"
+    "verify:teacher:phase3": "pnpm verify:teacher:phase2 && node scripts/verify-teacher-experience-phase3.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-teacher-schedule-model.ts",
+    "verify:teacher:phase4": "pnpm verify:teacher:phase3 && node scripts/verify-teacher-experience-phase4.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-teacher-classes-model.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
