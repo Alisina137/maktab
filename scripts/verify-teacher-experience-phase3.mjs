@@ -83,5 +83,7 @@ for(const key of ["Kabul weekday","six standard teaching days",
 }
 assert.ok(pkg.scripts["verify:teacher:phase3"]?.includes("verify:teacher:phase2"));
 assert.ok(pkg.scripts["verify:teacher:phase3"]?.includes("test-teacher-schedule-model.ts"));
-assert.ok(workflow.includes("run: pnpm verify:teacher:phase3"));
+assert.ok(workflow.includes("run: pnpm verify:teacher:phase3") ||
+  workflow.includes("run: pnpm verify:teacher:phase4"),
+  "CI must run at least the Phase 3 regressions.");
 console.log("Teacher Phase 3: Day/Week, current lesson, authorization, RTL labels and regression guards passed.");
