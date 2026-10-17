@@ -189,6 +189,32 @@ export type TranslationKey =
   | "teacher.workflowGrades"
   | "teacher.workflowAnnouncements"
   | "teacher.classOverview"
+  | "teacher.classesIntro"
+  | "teacher.classFilterAll"
+  | "teacher.classFilterDrafts"
+  | "teacher.classFilterExams"
+  | "teacher.classSearch"
+  | "teacher.classClearSearch"
+  | "teacher.classNoMatch"
+  | "teacher.classResetFilters"
+  | "teacher.classDraftShort"
+  | "teacher.classExamShort"
+  | "teacher.classPerformance"
+  | "teacher.classStatsHint"
+  | "teacher.classGradeSheets"
+  | "teacher.classPublishedHomework"
+  | "teacher.classGradeCoverage"
+  | "teacher.classSubmissionCoverage"
+  | "teacher.classStudentProgress"
+  | "teacher.classPerformanceHint"
+  | "teacher.studentSearch"
+  | "teacher.studentFilterAll"
+  | "teacher.studentFilterMissingGrades"
+  | "teacher.studentFilterMissingHomework"
+  | "teacher.studentExamAverage"
+  | "teacher.studentGradeProgress"
+  | "teacher.studentHomeworkProgress"
+  | "teacher.classNoStudentMatch"
   | "teacher.classStudents"
   | "teacher.classSupervision"
   | "teacher.backToClasses"
@@ -786,6 +812,32 @@ const en: Record<TranslationKey, string> = {
   "teacher.workflowGrades": "Marks",
   "teacher.workflowAnnouncements": "Announcements",
   "teacher.classOverview": "Overview",
+  "teacher.classesIntro": "Find your classes and subjects.",
+  "teacher.classFilterAll": "All",
+  "teacher.classFilterDrafts": "Homework drafts",
+  "teacher.classFilterExams": "Open exams",
+  "teacher.classSearch": "Search class, code or subject",
+  "teacher.classClearSearch": "Clear search",
+  "teacher.classNoMatch": "No classes match these filters.",
+  "teacher.classResetFilters": "Clear filters",
+  "teacher.classDraftShort": "Drafts",
+  "teacher.classExamShort": "Exams",
+  "teacher.classPerformance": "Class learning overview",
+  "teacher.classStatsHint": "Progress for this subject only, based on recorded marks and active homework.",
+  "teacher.classGradeSheets": "Exam sheets",
+  "teacher.classPublishedHomework": "Active homework",
+  "teacher.classGradeCoverage": "Recorded exam marks",
+  "teacher.classSubmissionCoverage": "Homework submission coverage",
+  "teacher.classStudentProgress": "View student progress",
+  "teacher.classPerformanceHint": "Only this subject's marks and active homework are shown. These are not final results.",
+  "teacher.studentSearch": "Search students by name or code",
+  "teacher.studentFilterAll": "All students",
+  "teacher.studentFilterMissingGrades": "Missing marks",
+  "teacher.studentFilterMissingHomework": "Missing homework",
+  "teacher.studentExamAverage": "Average recorded exam mark",
+  "teacher.studentGradeProgress": "Marks recorded",
+  "teacher.studentHomeworkProgress": "Homework submitted",
+  "teacher.classNoStudentMatch": "No students match this search or filter.",
   "teacher.classStudents": "Students",
   "teacher.classSupervision": "Supervision",
   "teacher.backToClasses": "Back to my classes",
@@ -1399,6 +1451,32 @@ const dari: Record<TranslationKey, string> = {
   "teacher.workflowGrades": "نمرات",
   "teacher.workflowAnnouncements": "اعلان‌ها",
   "teacher.classOverview": "معرفی صنف",
+  "teacher.classesIntro": "صنف‌ها و مضامین خود را پیدا کنید.",
+  "teacher.classFilterAll": "همه",
+  "teacher.classFilterDrafts": "مسوده‌های وظیفه",
+  "teacher.classFilterExams": "امتحان‌های باز",
+  "teacher.classSearch": "جستجوی صنف، کد یا مضمون",
+  "teacher.classClearSearch": "پاک‌کردن جستجو",
+  "teacher.classNoMatch": "هیچ صنفی با این فیلترها یافت نشد.",
+  "teacher.classResetFilters": "پاک‌کردن فیلترها",
+  "teacher.classDraftShort": "مسوده",
+  "teacher.classExamShort": "امتحان‌ها",
+  "teacher.classPerformance": "نمای آموزشی صنف",
+  "teacher.classStatsHint": "پیشرفت همین مضمون بر اساس نمرات ثبت‌شده و وظایف فعال.",
+  "teacher.classGradeSheets": "جدول‌های نمره",
+  "teacher.classPublishedHomework": "وظایف فعال",
+  "teacher.classGradeCoverage": "نمرات ثبت‌شدهٔ امتحان",
+  "teacher.classSubmissionCoverage": "میزان سپردن وظایف",
+  "teacher.classStudentProgress": "دیدن پیشرفت شاگردان",
+  "teacher.classPerformanceHint": "فقط نمرات و وظایف فعال همین مضمون نمایش داده می‌شود؛ این نتایج نهایی نیست.",
+  "teacher.studentSearch": "جستجوی شاگرد با نام یا کد",
+  "teacher.studentFilterAll": "همه شاگردان",
+  "teacher.studentFilterMissingGrades": "نمرات ناقص",
+  "teacher.studentFilterMissingHomework": "وظایف ناقص",
+  "teacher.studentExamAverage": "میانگین نمرات ثبت‌شده",
+  "teacher.studentGradeProgress": "نمرات ثبت‌شده",
+  "teacher.studentHomeworkProgress": "وظایف سپرده‌شده",
+  "teacher.classNoStudentMatch": "هیچ شاگردی با این جستجو یا فیلتر یافت نشد.",
   "teacher.classStudents": "شاگردان",
   "teacher.classSupervision": "نظارت",
   "teacher.backToClasses": "بازگشت به صنف‌ها",
@@ -2012,6 +2090,32 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.workflowGrades": "نمرې",
   "teacher.workflowAnnouncements": "اعلانونه",
   "teacher.classOverview": "د ټولګي پېژندنه",
+  "teacher.classesIntro": "خپل ټولګي او مضمونونه ومومئ.",
+  "teacher.classFilterAll": "ټول",
+  "teacher.classFilterDrafts": "د کورنۍ دندې مسودې",
+  "teacher.classFilterExams": "پرانیستې ازموینې",
+  "teacher.classSearch": "ټولګی، کوډ یا مضمون ولټوئ",
+  "teacher.classClearSearch": "لټون پاک کړئ",
+  "teacher.classNoMatch": "له دې فلټرونو سره کوم ټولګی ونه موندل شو.",
+  "teacher.classResetFilters": "فلټرونه پاک کړئ",
+  "teacher.classDraftShort": "مسودې",
+  "teacher.classExamShort": "ازموینې",
+  "teacher.classPerformance": "د ټولګي د زده کړې لنډیز",
+  "teacher.classStatsHint": "دا د همدې مضمون پرمختګ دی چې پر ثبت شوو نمرو او فعالو دندو ولاړ دی.",
+  "teacher.classGradeSheets": "د ازموینو جدولونه",
+  "teacher.classPublishedHomework": "فعالې کورنۍ دندې",
+  "teacher.classGradeCoverage": "ثبت شوې د ازموینې نمرې",
+  "teacher.classSubmissionCoverage": "د کورنیو دندو د سپارلو کچه",
+  "teacher.classStudentProgress": "د زده کوونکو پرمختګ وګورئ",
+  "teacher.classPerformanceHint": "یوازې د همدې مضمون نمرې او فعالې دندې ښودل کېږي؛ دا وروستۍ پایلې نه دي.",
+  "teacher.studentSearch": "زده کوونکی د نوم یا کوډ له مخې ولټوئ",
+  "teacher.studentFilterAll": "ټول زده کوونکي",
+  "teacher.studentFilterMissingGrades": "نیمګړې نمرې",
+  "teacher.studentFilterMissingHomework": "نیمګړې کورنۍ دندې",
+  "teacher.studentExamAverage": "د ثبت شوو ازموینو منځنۍ نمره",
+  "teacher.studentGradeProgress": "ثبت شوې نمرې",
+  "teacher.studentHomeworkProgress": "سپارل شوې کورنۍ دندې",
+  "teacher.classNoStudentMatch": "له دې لټون یا فلټر سره زده کوونکی ونه موندل شو.",
   "teacher.classStudents": "زده کوونکي",
   "teacher.classSupervision": "څارنه",
   "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
