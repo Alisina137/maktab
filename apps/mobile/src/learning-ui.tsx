@@ -36,6 +36,10 @@ import { TeacherSubmissionReview } from "./teacher-submissions";
 import { homeworkDeadline, teacherHomeworkList, teacherHomeworkOverview,
   type HomeworkDeadlineFilter } from "./teacher-homework-model";
 import { teacherTime12 } from "./teacher-hub-data";
+import {
+  teacherExamDirectory, teacherGradeStudents, teacherGradeSummary,
+  type TeacherExamStatusFilter
+} from "./teacher-grading-model";
 import { TeacherContinuousAssessmentPanel } from "./teacher-assessments";
 import { gradeDraftsFromSheet, gradeProgress, homeworkDueAt, homeworkDueFields, pendingGradeEntries } from "./learning-workflow";
 
@@ -86,6 +90,10 @@ export function TeacherLearningPanel(props: CommonProps & {
   const [homeworkDeadlineFilter,setHomeworkDeadlineFilter] = useState<HomeworkDeadlineFilter>("ALL");
   const [gradeQuery, setGradeQuery] = useState("");
   const [missingMarksOnly, setMissingMarksOnly] = useState(false);
+  const [examQuery,setExamQuery]=useState("");
+  const [examStatusFilter,setExamStatusFilter]=useState<TeacherExamStatusFilter>("ALL");
+  const gradeGeneration=useRef(0);
+  const visibleAssignmentForGradeRef=useRef<TeacherAssignmentContext|null>(null);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
   const [remarkDraft, setRemarkDraft] = useState<Record<string, string>>({});
 
@@ -96,6 +104,7 @@ export function TeacherLearningPanel(props: CommonProps & {
     void load(requestId);
     return () => {
       loadRequestId.current++;
+      gradeGeneration.current++;
     };
   }, [accessToken, assignmentContext?.assignmentId, assignmentContext?.classId, assignmentContext?.subjectId]);
 
@@ -321,56 +330,70 @@ export function TeacherLearningPanel(props: CommonProps & {
     Alert.alert(translate(locale, action), translate(locale, message), [
       { text: translate(locale, "attendance.cancel"), style: "cancel" },
       { text: translate(locale, action),
-        onPress: () => { void performHomeworkAction(homework); } }
-    ], { cancelable: true });
+        onPress: ()   function gradeHasUnsaved(): boolean {
+    if(!gradeSheet||!gradeSheet.canEdit)return false;
+    const changes=pendingGradeEntries(gradeSheet,{scores:scoreDraft,remarks:remarkDraft});
+    return changes.invalid||changes.entries.length>0;
   }
-
+  function confirmGradeDiscard(action:()=>void) {
+    if(!gradeHasUnsaved()){action();return;}
+    Alert.alert(translate(locale,"teacher.gradeUnsavedTitle"),
+      translate(locale,"teacher.gradeUnsavedHint"),[
+        {text:translate(locale,"attendance.cancel"),style:"cancel"},
+        {text:translate(locale,"teacher.gradeDiscard"),style:"destructive",onPress:action}
+      ]);
+  }
+  function openGradeSheet(examSubjectId:string) {
+    if(busy || gradeSheet?.examSubject.id===examSubjectId)return;
+    confirmGradeDiscard(()=>void openGrades(examSubjectId));
+  }
   async function openGrades(examSubjectId: string) {
+    const generation=++gradeGeneration.current;
     setBusy(true);
-    onError(null);
-    onNotice(null);
+    onError(null);onNotice(null);
+    setGradeSheet(null);setScoreDraft({});setRemarkDraft({});
     try {
-      const sheet = await api.gradeSheet(accessToken, examSubjectId);
+      const sheet=await api.gradeSheet(accessToken,examSubjectId,true);
+      if(generation!==gradeGeneration.current)return;
+      // Fail closed if another session changed the assigned course.
+      const assignment=(assignmentContext?null:visibleAssignmentForGradeRef.current)
+        ?? assignmentContext;
+      if(!assignment || sheet.exam.academicYearId!==assignment.academicYearId ||
+        sheet.examSubject.classId!==assignment.classId ||
+        sheet.examSubject.subjectId!==assignment.subjectId)throw Error("Exam scope changed.");
       setGradeSheet(sheet);
-      const drafts = gradeDraftsFromSheet(sheet);
-      setScoreDraft(drafts.scores);
-      setRemarkDraft(drafts.remarks);
-      setGradeQuery("");
-      setMissingMarksOnly(false);
-    } catch (cause) {
-      const failure = appErrorFromCause(cause);
-      onError(failure.key, failure.kind);
-    } finally {
-      setBusy(false);
-    }
+      const drafts=gradeDraftsFromSheet(sheet);
+      setScoreDraft(drafts.scores);setRemarkDraft(drafts.remarks);
+      setGradeQuery("");setMissingMarksOnly(false);
+    }catch(cause) {
+      if(generation!==gradeGeneration.current)return;
+      const failure=appErrorFromCause(cause);onError(failure.key,failure.kind);
+    }finally{if(generation===gradeGeneration.current)setBusy(false);}
+  }
+  async function saveGrades() {
+    if(!gradeSheet||!gradeSheet.canEdit||busy)return;
+    const {entries,invalid}=pendingGradeEntries(gradeSheet,{scores:scoreDraft,remarks:remarkDraft});
+    if(invalid){onError("learning.validScores");return;}
+    if(!entries.length){onNotice(translate(locale,"learning.noGradeChanges"));return;}
+    const generation=gradeGeneration.current;
+    setBusy(true);onError(null);onNotice(null);
+    try{
+      const result=await api.saveDraftGrades(accessToken,gradeSheet.examSubject.id,entries);
+      if(generation!==gradeGeneration.current)return;
+      if(result.sheet.examSubject.id!==gradeSheet.examSubject.id)
+        throw Error("Exam scope changed.");
+      setGradeSheet(result.sheet);
+      const saved=gradeDraftsFromSheet(result.sheet);
+      setScoreDraft(saved.scores);setRemarkDraft(saved.remarks);
+      onNotice(translate(locale,"learning.marksSaved"));
+      await load(undefined,true);
+    }catch(cause){
+      if(generation!==gradeGeneration.current)return;
+      const failure=appErrorFromCause(cause);onError(failure.key,failure.kind);
+    }finally{if(generation===gradeGeneration.current)setBusy(false);}
   }
 
-  async function saveGrades() {
-    if (!gradeSheet) return;
-    const { entries, invalid } = pendingGradeEntries(gradeSheet, { scores: scoreDraft, remarks: remarkDraft });
-    if (invalid) {
-      onError("learning.validScores");
-      return;
-    }
-    if (!entries.length) {
-      onNotice(translate(locale, "learning.noGradeChanges"));
-      return;
-    }
-
-    setBusy(true);
-    onError(null);
-    onNotice(null);
-    try {
-      const result = await api.saveDraftGrades(accessToken, gradeSheet.examSubject.id, entries);
-      setGradeSheet(result.sheet);
-      const saved = gradeDraftsFromSheet(result.sheet);
-      setScoreDraft(saved.scores);
-      setRemarkDraft(saved.remarks);
-      onNotice(translate(locale, "learning.marksSaved"));
-      await load(undefined,true);
-    } catch (cause) {
-      const failure = appErrorFromCause(cause);
-      onError(failure.key, failure.kind);
+rror(failure.key, failure.kind);
     } finally {
       setBusy(false);
     }
@@ -387,6 +410,9 @@ export function TeacherLearningPanel(props: CommonProps & {
   }, [view, assignmentContext?.assignmentId, assignmentContext?.academicYearId,
       assignmentContext?.classId, assignmentContext?.subjectId]);
   const selectedAssignment = visibleAssignments.find((item) => item.assignmentId === assignmentId) ?? null;
+  visibleAssignmentForGradeRef.current=selectedAssignment?
+    {assignmentId:selectedAssignment.assignmentId,academicYearId:selectedAssignment.academicYearId,
+      classId:selectedAssignment.classId,subjectId:selectedAssignment.subjectId}:null;
   const visibleHomeworks = useMemo(() =>
     !view ? [] : assignmentContext
       ? view.homeworks.filter((item) => item.assignmentId === assignmentContext.assignmentId &&
@@ -408,12 +434,11 @@ export function TeacherLearningPanel(props: CommonProps & {
   const homeworkStats=teacherHomeworkOverview(assignedHomeworks,homeworkNow);
   const listedHomeworks=teacherHomeworkList(assignedHomeworks,visibleAssignments,
     homeworkQuery,homeworkStatus,homeworkAssignmentFilter,homeworkDeadlineFilter,homeworkNow);
-  const gradeCounts = gradeSheet ? gradeProgress(gradeSheet) : null;
-  const visibleGradeStudents = gradeSheet?.students.filter((item) =>
-    (!missingMarksOnly || !item.grade) &&
-    (!gradeQuery.trim() || [item.student.fullName, item.student.studentCode].some((value) =>
-      value.toLocaleLowerCase().includes(gradeQuery.trim().toLocaleLowerCase())))
-  ) ?? [];
+  const listedExamSubjects=teacherExamDirectory(visibleExamSubjects,visibleAssignments,
+    assignmentId,examQuery,examStatusFilter);
+  const gradeCounts=gradeSheet?teacherGradeSummary(gradeSheet,{scores:scoreDraft,remarks:remarkDraft}):null;
+  const visibleGradeStudents=gradeSheet?
+    teacherGradeStudents(gradeSheet,gradeQuery,missingMarksOnly):[];
   const pendingGrades = gradeSheet ? pendingGradeEntries(gradeSheet, { scores: scoreDraft, remarks: remarkDraft }) : null;
 
   if (busy && !view) {
@@ -722,7 +747,11 @@ export function TeacherLearningPanel(props: CommonProps & {
           {visibleAssignments.map(assignment=>(
             <Pressable key={assignment.assignmentId} accessibilityRole="button"
               accessibilityState={{selected:assignmentId===assignment.assignmentId}}
-              onPress={()=>{setAssignmentId(assignment.assignmentId);setGradeSheet(null);}}
+              onPress={()=>{if(busy||assignment.assignmentId===assignmentId)return;
+                confirmGradeDiscard(()=>{
+                  gradeGeneration.current++;setAssignmentId(assignment.assignmentId);
+                  setGradeSheet(null);setScoreDraft({});setRemarkDraft({});setGradeQuery("");
+                });}}
               style={[styles.chip,assignmentId===assignment.assignmentId&&styles.chipActive]}>
               <Text style={assignmentId===assignment.assignmentId?styles.chipTextActive:styles.chipText}>
                 {assignment.subjectName} · {assignment.classCode}
@@ -730,23 +759,43 @@ export function TeacherLearningPanel(props: CommonProps & {
             </Pressable>
           ))}
         </View>
-        {visibleExamSubjects.map((item) => (
+        <TextInput testID="teacher-exam-search" value={examQuery} onChangeText={setExamQuery}
+          placeholder={translate(locale,"teacher.gradeSearchExams")}
+          autoCapitalize="none" style={[styles.input,textDirection]}/>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.horizontalChips,rtl&&styles.rowRtl]}>
+          {(["ALL","OPEN","READ_ONLY"] as const).map(next=>
+            <Pressable key={next} accessibilityRole="tab"
+              accessibilityState={{selected:examStatusFilter===next}}
+              onPress={()=>setExamStatusFilter(next)}
+              style={[styles.chip,examStatusFilter===next&&styles.chipActive]}>
+              <Text style={examStatusFilter===next?styles.chipTextActive:styles.chipText}>
+                {translate(locale,next==="ALL"?"teacher.classFilterAll":
+                  next==="OPEN"?"teacher.gradeOpen":"teacher.gradeReadOnly")}
+              </Text>
+            </Pressable>)}
+        </ScrollView>
+        <Text style={[styles.muted,textDirection]}>
+          {formatLocalizedNumber(listedExamSubjects.length,locale)} {translate(locale,"teacher.gradeExamCount")}
+        </Text>
+        {listedExamSubjects.map((item) => (
           <Pressable
             key={item.examSubject.id}
-            onPress={() => void openGrades(item.examSubject.id)}
+            onPress={() => openGradeSheet(item.examSubject.id)}
             style={({ pressed }) => [styles.examRow, rtl && styles.rowRtl, pressed && styles.pressed]}
           >
             <View style={styles.flex}>
               <Text style={[styles.itemTitle, textDirection]}>{item.exam.name} · {item.subjectName}</Text>
               <Text style={[styles.muted, textDirection]}>
-                {item.className} · {item.examSubject.examDate ? `${formatLocalizedDate(item.examSubject.examDate, locale)} · ` : ""}{translate(locale, "learning.maxScore")} {formatLocalizedNumber(item.examSubject.maxScore, locale)}
+                {item.className} · {item.examSubject.examDate ? `${formatLocalizedDate(item.examSubject.examDate, locale)} · ` : ""}{translate(locale, "learning.maxScore")} {formatLocalizedNumber(item.examSubject.maxScore, locale)} · {translate(locale,item.exam.status==="IN_PROGRESS"?"teacher.gradeOpen":"teacher.gradeReadOnly")}
               </Text>
             </View>
             <Ionicons name={rtl ? "chevron-back" : "chevron-forward"} size={18} color={tokens.color.textMuted} />
           </Pressable>
         ))}
-        {visibleExamSubjects.length === 0 ? (
-          <Text style={[styles.muted, textDirection]}>{translate(locale, "learning.noExamSubjects")}</Text>
+        {listedExamSubjects.length === 0 ? (
+          <Text style={[styles.muted, textDirection]}>{translate(locale,
+            visibleExamSubjects.length?"teacher.gradeNoExamsMatch":"learning.noExamSubjects")}</Text>
         ) : null}
 
         {gradeSheet ? (
@@ -757,6 +806,22 @@ export function TeacherLearningPanel(props: CommonProps & {
             <Text style={[styles.muted, textDirection]}>
               {gradeSheet.classSection.name} · {gradeSheet.examSubject.examDate ? `${formatLocalizedDate(gradeSheet.examSubject.examDate, locale)} · ` : ""}{translate(locale, "learning.maxScore")} {formatLocalizedNumber(gradeSheet.examSubject.maxScore, locale)}
             </Text>
+            <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.gradePrivateDraft")}</Text>
+            <View style={[styles.gradeMetrics,rtl&&styles.rowRtl]}>
+              {([
+                ["teacher.gradeRecorded",gradeCounts?.recorded??null],
+                ["teacher.gradeMissing",gradeCounts?.missing??null]
+              ] as Array<[TranslationKey,number|null]>).map(([label,value])=>
+                <View key={label} style={styles.gradeMetric}>
+                  <Text style={styles.gradeMetricNumber}>{value===null?"—":formatLocalizedNumber(value,locale)}</Text>
+                  <Text style={styles.gradeMetricLabel}>{translate(locale,label)}</Text>
+                </View>)}
+              <View style={styles.gradeMetric}>
+                <Text style={styles.gradeMetricNumber}>{gradeCounts?.averagePercent==null?"—":
+                  `${formatLocalizedNumber(gradeCounts.averagePercent,locale)}%`}</Text>
+                <Text style={styles.gradeMetricLabel}>{translate(locale,"teacher.gradeAverage")}</Text>
+              </View>
+            </View>
             <View style={[styles.progressRow, rtl && styles.rowRtl]}>
               <Text style={[styles.progressText, textDirection]}>
                 {translate(locale, "learning.marksEntered")}: {formatLocalizedNumber(gradeCounts?.recorded ?? 0, locale)}
@@ -769,6 +834,13 @@ export function TeacherLearningPanel(props: CommonProps & {
               <View style={[styles.progressFill, { width: gradeCounts?.total
                 ? (`${100 * gradeCounts.recorded / gradeCounts.total}%` as `${number}%`) : "0%" }]} />
             </View>
+            {gradeCounts?.invalidDrafts?<Text style={[styles.gradeInvalid,textDirection]}>
+              {translate(locale,"teacher.gradeInvalidDraft")}
+            </Text>:null}
+            <Text style={[styles.muted,textDirection]}>
+              {translate(locale,"teacher.gradeUnsaved")}: {gradeCounts?.pendingChanges==null?"—":
+                formatLocalizedNumber(gradeCounts.pendingChanges,locale)}
+            </Text>
             <TextInput testID="teacher-grade-search" value={gradeQuery} onChangeText={setGradeQuery}
               placeholder={translate(locale, "learning.searchStudents")}
               style={[styles.input, textDirection]} autoCapitalize="none" />
@@ -795,7 +867,7 @@ export function TeacherLearningPanel(props: CommonProps & {
                 </View>
                 <View style={[styles.twoColumns, rtl && styles.rowRtl]}>
                   <TextInput
-                    editable={gradeSheet.canEdit}
+                    editable={gradeSheet.canEdit&&!busy}
                     keyboardType="number-pad"
                     value={scoreDraft[item.student.id] ?? ""}
                     onChangeText={(value) => setScoreDraft((current) => ({ ...current, [item.student.id]: value }))}
@@ -1010,6 +1082,12 @@ const styles = StyleSheet.create({
   templateButton: { alignSelf: "flex-start", flexDirection: "row", gap: 6, alignItems: "center" },
   gradeFilter: { alignSelf: "flex-start" },
   gradeStatus: { fontSize: 11, color: tokens.color.brandStrong, fontWeight: "700" },
+  gradeMetrics:{flexDirection:"row",gap:7,flexWrap:"wrap"},
+  gradeMetric:{flexGrow:1,minWidth:"29%",alignItems:"center",backgroundColor:"#f0f5ff",
+    borderRadius:12,padding:9,gap:5},
+  gradeMetricNumber:{fontSize:18,color:tokens.color.brandStrong,fontWeight:"900"},
+  gradeMetricLabel:{fontSize:11,textAlign:"center",color:tokens.color.textMuted,fontWeight:"700"},
+  gradeInvalid:{color:"#b34336",fontWeight:"800",fontSize:12},
   progressRow: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   progressText: { fontSize: 12, fontWeight: "800", color: tokens.color.text },
   progressTrack: { height: 8, borderRadius: 6, backgroundColor: "#edf1f7", overflow: "hidden" },
