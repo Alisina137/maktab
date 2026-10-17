@@ -32,9 +32,9 @@ test("Student Phase 7 announcements reject archived future other-role and transf
   announce("future","SCHOOL",null,null,"2026-10-19T09:00:00Z")
  ];
  assert.deepEqual(studentVisibleAnnouncements(notices,"c1",now).map(x=>x.id),
-  ["my-class","school","student-role"].sort()); // deterministic title timestamp ties use ID
+  ["student-role","school","my-class"]); // same date, descending ID
  assert.deepEqual(studentVisibleAnnouncements(notices,null,now).map(x=>x.id),
-  ["school","student-role"].sort());
+  ["student-role","school"]);
  assert.deepEqual(studentFilterAnnouncements(notices,{classId:"c1",audience:"CLASS",
   query:"my-class",now}).map(x=>x.id),["my-class"]);
  assert.deepEqual(studentFilterAnnouncements(notices,{classId:"c1",audience:"STUDENT",
@@ -74,7 +74,7 @@ test("Student Phase 7 pagination never invents inaccessible announcements or not
  assert.equal(first.hasMore,true);
  assert.equal(studentInboxPage(items,2,x=>x.id).showing,40);
  assert.equal(studentInboxPage(items,3,x=>x.id).showing,57);
- assert.equal(studentInboxPage(items,1,x=>x.id,"44").showing,60>items.length?57:60);
+ assert.equal(studentInboxPage(items,1,x=>x.id,"44").showing,57);
  assert.equal(studentInboxPage(items,1,x=>x.id,"unknown").showing,20);
  assert.deepEqual(items.slice(0,20),first.visible);
 });
