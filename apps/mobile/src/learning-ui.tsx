@@ -330,7 +330,11 @@ export function TeacherLearningPanel(props: CommonProps & {
     Alert.alert(translate(locale, action), translate(locale, message), [
       { text: translate(locale, "attendance.cancel"), style: "cancel" },
       { text: translate(locale, action),
-        onPress: ()   function gradeHasUnsaved(): boolean {
+        onPress: () => { void performHomeworkAction(homework); } }
+    ], { cancelable: true });
+  }
+
+  function gradeHasUnsaved(): boolean {
     if(!gradeSheet||!gradeSheet.canEdit)return false;
     const changes=pendingGradeEntries(gradeSheet,{scores:scoreDraft,remarks:remarkDraft});
     return changes.invalid||changes.entries.length>0;
@@ -391,12 +395,6 @@ export function TeacherLearningPanel(props: CommonProps & {
       if(generation!==gradeGeneration.current)return;
       const failure=appErrorFromCause(cause);onError(failure.key,failure.kind);
     }finally{if(generation===gradeGeneration.current)setBusy(false);}
-  }
-
-rror(failure.key, failure.kind);
-    } finally {
-      setBusy(false);
-    }
   }
 
   const visibleAssignments = useMemo(() => {
