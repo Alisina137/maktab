@@ -76,6 +76,11 @@ import { StudentHomeworkContent } from "./src/student-homework";
 import { StudentResultsContent } from "./src/student-results";
 import { StudentCommunicationContent, type StudentCommunicationTab } from "./src/student-communication";
 import { StudentBottomNavigation, type StudentTab } from "./src/student-navigation";
+import {
+  studentDestination, studentTabForScreen, studentReturnScreen,
+  type StudentPrimaryScreen
+} from "./src/student-navigation-model";
+import { StudentMorePanel } from "./src/student-more";
 import { ParentBottomNavigation, type ParentTab } from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession, subscribeToPushOpens } from "./src/push";
 import { notificationDestination } from "./src/notification-destination";
@@ -242,7 +247,7 @@ function AppContent() {
   const [studentAnnouncements, setStudentAnnouncements] = useState<AnnouncementPayload[]>([]);
   const [studentNotifications, setStudentNotifications] = useState<ParentNotification[]>([]);
   const [studentCommunicationTab, setStudentCommunicationTab] = useState<StudentCommunicationTab>("ANNOUNCEMENTS");
-  const [studentDetailReturnScreen, setStudentDetailReturnScreen] = useState<"home" | "student-more">("home");
+  const [studentDetailReturnScreen, setStudentDetailReturnScreen] = useState<StudentPrimaryScreen>("home");
   const [studentCommunicationReady, setStudentCommunicationReady] = useState(false);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
@@ -1952,29 +1957,24 @@ function AppContent() {
     session.user.status !== "SUSPENDED" &&
     !session.mustChangePassword;
   const showStudentNavigation =
-    (screen === "home" || screen === "student-homework" ||
-      screen === "student-results" || screen === "student-more") &&
+    (screen === "home" || screen === "student-timetable" ||
+      screen === "student-homework" || screen === "student-results" ||
+      screen === "student-more") &&
     session?.user.role === "STUDENT" &&
     session.user.status !== "SUSPENDED" &&
     !session.mustChangePassword &&
     !studentEnrollmentUnavailable;
-  const studentActiveTab: StudentTab =
-    screen === "student-homework" ? "HOMEWORK" :
-    screen === "student-results" ? "RESULTS" :
-    screen === "student-more" ? "MORE" : "HOME";
-
-  function selectStudentTab(tab: StudentTab) {
-    const destination: Screen =
-      tab === "HOME" ? "home" :
-      tab === "HOMEWORK" ? "student-homework" :
-      tab === "RESULTS" ? "student-results" : "student-more";
-    if (screen === destination) return;
+  const studentActiveTab:StudentTab=studentTabForScreen(screen)??"HOME";
+  function selectStudentTab(tab:StudentTab) {
+    const destination=studentDestination(tab);
+    if(screen===destination)return;
     setScreen(destination);
+    setStudentDetailReturnScreen(destination);
     setNotice(null);
     setAppError(null);
-    setTimeout(() => {
-      onboardingScrollRef.current?.scrollTo({ y: 0, animated: !reduceMotion });
-    }, 0);
+    setTimeout(()=>{
+      onboardingScrollRef.current?.scrollTo({y:0,animated:!reduceMotion});
+    },0);
   }
 
   function selectTeacherTab(tab: TeacherTab) {
@@ -2093,6 +2093,24 @@ function AppContent() {
             </View>
           </View>
 
+          <View style={[styles.studentHeaderActions,direction==="rtl"&&styles.rowRtl]}>
+            {showStudentNavigation?<Pressable accessibilityRole="button"
+              testID="student-header-notifications"
+              accessibilityLabel={translate(locale,"student.notificationsTitle")}
+              onPress={()=>{
+                setStudentDetailReturnScreen(studentReturnScreen(screen));
+                setStudentCommunicationTab("NOTIFICATIONS");
+                setNotice(null);setAppError(null);setScreen("student-communication");
+              }}
+              style={styles.studentHeaderBell}>
+              <Ionicons name="notifications-outline" size={21} color={tokens.color.brandStrong}/>
+              {studentNotifications.some(item=>!item.readAt)?<View style={styles.studentBellBadge}>
+                <Text style={styles.studentBellBadgeText}>
+                  {studentNotifications.filter(item=>!item.readAt).length>99?"99+":
+                    formatLocalizedNumber(studentNotifications.filter(item=>!item.readAt).length,locale)}
+                </Text>
+              </View>:null}
+            </Pressable>:null}
           <View style={styles.languageSelectWrap}>
             <Pressable
               accessibilityRole="button"
@@ -2142,6 +2160,7 @@ function AppContent() {
                 })}
               </View>
             ) : null}
+          </View>
           </View>
         </View>
 
@@ -2945,7 +2964,6 @@ function AppContent() {
               locale={locale}
               textDirection={textDirection}
               onOpenTimetable={() => {
-                setStudentDetailReturnScreen("home");
                 setNotice(null);
                 setAppError(null);
                 setScreen("student-timetable");
@@ -2992,61 +3010,26 @@ function AppContent() {
         session.user.status !== "SUSPENDED" &&
         !studentEnrollmentUnavailable ? (
           <View style={styles.section}>
-            <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="grid-outline" size={24} color={tokens.color.brandStrong} />
-              </View>
-              <View style={styles.flexCopy}>
-                <Text style={[styles.title, textDirection]}>
-                  {translate(locale, "parent.moreTitle")}
-                </Text>
-                <Text style={[styles.subtitle, textDirection]}>
-                  {translate(locale, "student.communicationSubtitle")}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.phaseCard}>
-              {([
-                { key: "student.viewTimetable" as const, icon: "calendar-outline" as const, target: "student-timetable" as const },
-                { key: "student.viewAnnouncements" as const, icon: "megaphone-outline" as const, target: "student-communication" as const },
-                { key: "student.viewNotifications" as const, icon: "notifications-outline" as const, target: "student-communication" as const }
-              ]).map((item) => (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={translate(locale, item.key)}
-                  style={({ pressed }) => [styles.supervisedCard, direction === "rtl" && styles.rowRtl, pressed && styles.cardPressed]}
-                  onPress={() => {
-                    setStudentDetailReturnScreen("student-more");
-                    if (item.target === "student-communication") {
-                      setStudentCommunicationTab(item.key === "student.viewNotifications" ? "NOTIFICATIONS" : "ANNOUNCEMENTS");
-                    }
-                    setNotice(null);
-                    setAppError(null);
-                    setScreen(item.target);
-                  }}
-                >
-                  <View style={styles.smallIconShell}>
-                    <Ionicons name={item.icon} size={21} color={tokens.color.brandStrong} />
-                  </View>
-                  <Text style={[styles.cardTitle, styles.flexCopy, textDirection]}>
-                    {translate(locale, item.key)}
-                  </Text>
-                  <Ionicons
-                    name={direction === "rtl" ? "chevron-back" : "chevron-forward"}
-                    size={18}
-                    color={tokens.color.textMuted}
-                  />
-                </Pressable>
-              ))}
-            </View>
-            <AdminContactCard contact={adminContact} locale={locale} />
-            <Pressable
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-              onPress={() => void logout()}
-            >
-              <Text style={styles.secondaryButtonText}>{translate(locale, "auth.logout")}</Text>
-            </Pressable>
+            <StudentMorePanel
+              locale={locale}
+              textDirection={textDirection}
+              fullName={studentTimetable?.student.fullName ?? studentLearning?.student.fullName ?? null}
+              username={session.user.username}
+              studentCode={studentTimetable?.student.studentCode ?? studentLearning?.student.studentCode ?? null}
+              className={studentTimetable?.classSection.name ?? null}
+              academicYear={studentTimetable?.academicYear.name ?? null}
+              schoolName={school?.name ?? ""}
+              unreadCount={studentNotifications.filter(item=>!item.readAt).length}
+              contact={adminContact}
+              onOpenUpdates={(tab)=>{
+                setStudentDetailReturnScreen("student-more");
+                setStudentCommunicationTab(tab);
+                setNotice(null);setAppError(null);
+                setScreen("student-communication");
+              }}
+              onLocaleChange={chooseLocale}
+              onLogout={()=>void logout()}
+            />
           </View>
         ) : null}
 
@@ -3055,15 +3038,6 @@ function AppContent() {
         session.user.status !== "SUSPENDED" &&
         !studentEnrollmentUnavailable ? (
           <View style={styles.section}>
-            <BackButton
-              locale={locale}
-              onPress={() => {
-                setNotice(null);
-                setAppError(null);
-                setScreen(studentDetailReturnScreen);
-              }}
-            />
-
             <View style={[styles.teacherHero, direction === "rtl" && styles.rowRtl]}>
               <View style={styles.heroIcon}>
                 <Ionicons name="calendar-outline" size={24} color={tokens.color.brandStrong} />
@@ -3841,6 +3815,14 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 52, gap: 16 },
   contentWithParentNav: { paddingBottom: 28 },
   center: { flex: 1, minHeight: 500, alignItems: "center", justifyContent: "center", gap: 12 },
+  studentHeaderActions:{flexDirection:"row",alignItems:"center",gap:7},
+  studentHeaderBell:{width:44,height:44,borderRadius:13,borderWidth:1,
+    borderColor:"#dce5f2",backgroundColor:"#f5f9ff",alignItems:"center",
+    justifyContent:"center",position:"relative"},
+  studentBellBadge:{position:"absolute",top:-3,right:-3,minHeight:19,minWidth:19,
+    paddingHorizontal:3,borderRadius:11,backgroundColor:"#bd364d",
+    alignItems:"center",justifyContent:"center"},
+  studentBellBadgeText:{color:"#fff",fontWeight:"900",fontSize:10},
   topbar: {
     position: "relative",
     zIndex: 20,
