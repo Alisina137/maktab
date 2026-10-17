@@ -239,6 +239,24 @@ export type TranslationKey =
   | "teacher.gradeReadOnly"
   | "teacher.gradeExamCount"
   | "teacher.gradeNoExamsMatch"
+  | "teacher.supervisionToday"
+  | "teacher.lessonUnsavedTitle"
+  | "teacher.lessonUnsavedHint"
+  | "teacher.lessonCount"
+  | "teacher.lessonSearch"
+  | "teacher.lessonNoMatch"
+  | "teacher.unitSearch"
+  | "teacher.unitNoMatch"
+  | "teacher.noticeConfirmTitle"
+  | "teacher.noticeConfirmHint"
+  | "teacher.noticeResults"
+  | "teacher.noticeSearch"
+  | "teacher.noticeClass"
+  | "teacher.noticeSchool"
+  | "teacher.noticeRole"
+  | "teacher.noticeNoMatch"
+  | "teacher.noticeShowLess"
+  | "teacher.noticeShowAll"
   | "teacher.classStudents"
   | "teacher.classSupervision"
   | "teacher.backToClasses"
@@ -898,6 +916,24 @@ const en: Record<TranslationKey, string> = {
   "teacher.gradeReadOnly": "Read-only",
   "teacher.gradeExamCount": "exam subjects",
   "teacher.gradeNoExamsMatch": "No exams match this subject or filter.",
+  "teacher.supervisionToday": "Today's attendance",
+  "teacher.lessonUnsavedTitle": "Unsaved lesson plan",
+  "teacher.lessonUnsavedHint": "You have unfinished lesson edits. Discard them and change tabs?",
+  "teacher.lessonCount": "Lessons",
+  "teacher.lessonSearch": "Search lesson topic, objective or notes",
+  "teacher.lessonNoMatch": "No lessons match these filters.",
+  "teacher.unitSearch": "Search curriculum units",
+  "teacher.unitNoMatch": "No curriculum units match these filters.",
+  "teacher.noticeConfirmTitle": "Publish class announcement?",
+  "teacher.noticeConfirmHint": "This message will be delivered to the selected supervised class:",
+  "teacher.noticeResults": "Announcements",
+  "teacher.noticeSearch": "Search announcement title or message",
+  "teacher.noticeClass": "Class",
+  "teacher.noticeSchool": "School",
+  "teacher.noticeRole": "Role",
+  "teacher.noticeNoMatch": "No announcements match these filters.",
+  "teacher.noticeShowLess": "Show fewer",
+  "teacher.noticeShowAll": "Show all announcements",
   "teacher.classStudents": "Students",
   "teacher.classSupervision": "Supervision",
   "teacher.backToClasses": "Back to my classes",
@@ -1573,6 +1609,24 @@ const dari: Record<TranslationKey, string> = {
   "teacher.gradeReadOnly": "فقط نمایش",
   "teacher.gradeExamCount": "مضمون امتحانی",
   "teacher.gradeNoExamsMatch": "امتحانی مطابق این مضمون یا فیلتر یافت نشد.",
+  "teacher.supervisionToday": "حاضری امروز",
+  "teacher.lessonUnsavedTitle": "پلان درسی ذخیره‌نشده",
+  "teacher.lessonUnsavedHint": "تغییرات پلان درسی ذخیره نشده‌اند. آن‌ها را کنار گذاشته و تب دیگر را باز کنید؟",
+  "teacher.lessonCount": "درس‌ها",
+  "teacher.lessonSearch": "جستجوی موضوع، هدف یا یادداشت درس",
+  "teacher.lessonNoMatch": "درسی مطابق این فیلتر یافت نشد.",
+  "teacher.unitSearch": "جستجوی بخش‌های نصاب",
+  "teacher.unitNoMatch": "بخشی از نصاب مطابق فیلتر یافت نشد.",
+  "teacher.noticeConfirmTitle": "اعلان صنف نشر شود؟",
+  "teacher.noticeConfirmHint": "این پیام برای صنف تحت نظارت انتخاب‌شده ارسال می‌شود:",
+  "teacher.noticeResults": "اعلانات",
+  "teacher.noticeSearch": "جستجوی عنوان یا متن اعلان",
+  "teacher.noticeClass": "صنف",
+  "teacher.noticeSchool": "مکتب",
+  "teacher.noticeRole": "نقش",
+  "teacher.noticeNoMatch": "اعلانی مطابق این فیلتر وجود ندارد.",
+  "teacher.noticeShowLess": "نمایش کمتر",
+  "teacher.noticeShowAll": "نمایش همه اعلانات",
   "teacher.classStudents": "شاگردان",
   "teacher.classSupervision": "نظارت",
   "teacher.backToClasses": "بازگشت به صنف‌ها",
@@ -2248,6 +2302,24 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.gradeReadOnly": "یوازې لوستل",
   "teacher.gradeExamCount": "ازموینې مضمونونه",
   "teacher.gradeNoExamsMatch": "له دې مضمون یا چاڼ سره سمه ازموینه نشته.",
+  "teacher.supervisionToday": "د نن ورځې حاضري",
+  "teacher.lessonUnsavedTitle": "نه خوندي شوی درسي پلان",
+  "teacher.lessonUnsavedHint": "ستاسو د درسي پلان بدلونونه نه دي خوندي شوي. بدلونونه پرېږدئ او بل ټب پرانیزئ؟",
+  "teacher.lessonCount": "درسونه",
+  "teacher.lessonSearch": "د درس موضوع، موخه یا یادښت ولټوئ",
+  "teacher.lessonNoMatch": "له دې چاڼ سره سم درس نشته.",
+  "teacher.unitSearch": "د نصاب برخې ولټوئ",
+  "teacher.unitNoMatch": "له دې چاڼ سره د نصاب برخه نشته.",
+  "teacher.noticeConfirmTitle": "د ټولګي اعلان خپور شي؟",
+  "teacher.noticeConfirmHint": "دا پیغام ټاکل شوي تر څارنې لاندې ټولګي ته لېږل کېږي:",
+  "teacher.noticeResults": "خبرتیاوې",
+  "teacher.noticeSearch": "د اعلان سرلیک یا متن ولټوئ",
+  "teacher.noticeClass": "ټولګی",
+  "teacher.noticeSchool": "ښوونځی",
+  "teacher.noticeRole": "رول",
+  "teacher.noticeNoMatch": "له دې چاڼ سره سم اعلان نشته.",
+  "teacher.noticeShowLess": "لږ وښایئ",
+  "teacher.noticeShowAll": "ټول اعلانونه وښایئ",
   "teacher.classStudents": "زده کوونکي",
   "teacher.classSupervision": "څارنه",
   "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
