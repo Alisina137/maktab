@@ -988,10 +988,10 @@ export const api = {
     });
   },
 
-  teacherLearning(accessToken: string) {
+  teacherLearning(accessToken: string, fresh = false) {
     return request<TeacherLearningPayload>("/v1/teacher/learning", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   createHomework(
