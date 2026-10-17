@@ -184,6 +184,12 @@ export interface AttendanceStore extends AttendanceMonitoringStore, AttendanceHi
     teacherUserId: string,
     input: SubmitDailyAttendanceInput
   ): Promise<{ sheet: AttendanceSheet; created: boolean; changed: boolean; notificationCount: number }>;
+  getStudentAttendance(
+    schoolId: string,
+    studentUserId: string,
+    from?: string,
+    to?: string
+  ): Promise<ParentAttendanceDay[]>;
   getParentAttendance(
     schoolId: string,
     parentUserId: string,
@@ -872,6 +878,47 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
         sheet: await buildSheet(schoolId, input.classId, input.date, true),
         ...result
       };
+    },
+
+    async getStudentAttendance(schoolId, studentUserId, from, to) {
+      if ((from && !isValidAttendanceDate(from)) || (to && !isValidAttendanceDate(to)) ||
+        (from && to && from > to)) {
+        throw new AttendanceValidationError("Choose valid attendance dates in chronological order.");
+      }
+      const today=await schoolToday(schoolId);
+      const effectiveTo=to??today;
+      const effectiveFrom=from??defaultFrom(effectiveTo);
+      // Account-bound lookup prevents enumerating other students or schools.
+      const [student]=await db.select({
+        id:students.id,classId:students.classId,academicYearId:students.academicYearId
+      }).from(students).where(and(
+        eq(students.schoolId,schoolId),eq(students.userId,studentUserId),
+        eq(students.status,"ACTIVE")
+      )).limit(1);
+      if(!student)throw new AttendanceNotFoundError("No active enrollment for this student account.");
+      return db.select({
+        attendanceId:dailyAttendances.id,
+        date:dailyAttendances.date,
+        status:studentAttendances.status,
+        note:studentAttendances.note,
+        classId:classSections.id,
+        className:classSections.name
+      }).from(studentAttendances)
+        .innerJoin(dailyAttendances,and(
+          eq(dailyAttendances.id,studentAttendances.attendanceId),
+          eq(dailyAttendances.schoolId,studentAttendances.schoolId)))
+        .innerJoin(classSections,and(
+          eq(classSections.id,dailyAttendances.classId),
+          eq(classSections.schoolId,dailyAttendances.schoolId)))
+        .where(and(
+          eq(studentAttendances.schoolId,schoolId),
+          eq(studentAttendances.studentId,student.id),
+          eq(dailyAttendances.classId,student.classId),
+          eq(dailyAttendances.academicYearId,student.academicYearId),
+          gte(dailyAttendances.date,effectiveFrom),
+          lte(dailyAttendances.date,effectiveTo),
+          lte(dailyAttendances.date,today)
+        )).orderBy(desc(dailyAttendances.date));
     },
 
     async getParentAttendance(schoolId, parentUserId, studentId, from, to) {
