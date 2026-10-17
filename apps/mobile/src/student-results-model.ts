@@ -28,7 +28,7 @@ function publishedAt(item:StudentResultItem):string|null{
 }
 function compareRecent(a:string|null,b:string|null):number {
   const ad=a?Date.parse(a):NaN,bd=b?Date.parse(b):NaN;
-  if(Number.isFinite(ad)&&Number.isFinite(b))return bd-ad;
+  if(Number.isFinite(ad)&&Number.isFinite(bd))return bd-ad;
   if(Number.isFinite(ad))return -1;
   if(Number.isFinite(bd))return 1;
   return (b??"").localeCompare(a??"");
