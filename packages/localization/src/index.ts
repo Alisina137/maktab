@@ -582,6 +582,27 @@ export type TranslationKey =
   | "student.hwWriteAnswer"
   | "student.hwSaveDraft"
   | "student.hwRemoveFile"
+  | "student.resExams"
+  | "student.resPerformance"
+  | "student.resHistory"
+  | "student.resPublishedAverage"
+  | "student.resPublishedMarks"
+  | "student.resSearch"
+  | "student.resSubjectFilter"
+  | "student.resAllSubjects"
+  | "student.resExamTypeFilter"
+  | "student.resAllTypes"
+  | "student.resNoMatching"
+  | "student.resSubjectBreakdown"
+  | "student.resWeightedExplanation"
+  | "student.resImproving"
+  | "student.resDeclining"
+  | "student.resStable"
+  | "student.resFirstMark"
+  | "student.resLatestMark"
+  | "student.resPreviousMark"
+  | "student.resHistoryScope"
+  | "student.resScorePercent"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1336,6 +1357,27 @@ const en: Record<TranslationKey, string> = {
   "student.hwWriteAnswer": "Your answer",
   "student.hwSaveDraft": "Save draft",
   "student.hwRemoveFile": "Remove attachment",
+  "student.resExams": "Exams",
+  "student.resPerformance": "Performance",
+  "student.resHistory": "History",
+  "student.resPublishedAverage": "Published grade average",
+  "student.resPublishedMarks": "Published marks",
+  "student.resSearch": "Search exam or subject",
+  "student.resSubjectFilter": "Subject",
+  "student.resAllSubjects": "All subjects",
+  "student.resExamTypeFilter": "Exam type",
+  "student.resAllTypes": "All types",
+  "student.resNoMatching": "No published results match these filters.",
+  "student.resSubjectBreakdown": "Subject performance",
+  "student.resWeightedExplanation": "Overall percentages use total earned marks divided by available marks. Trends compare the latest two published assessments.",
+  "student.resImproving": "Improving",
+  "student.resDeclining": "Decreasing",
+  "student.resStable": "Unchanged",
+  "student.resFirstMark": "First recorded result",
+  "student.resLatestMark": "Latest result",
+  "student.resPreviousMark": "Previous result",
+  "student.resHistoryScope": "Published results currently available for your enrolled class and academic year. Earlier school years are not included.",
+  "student.resScorePercent": "Percentage",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -2106,6 +2148,27 @@ const dari: Record<TranslationKey, string> = {
   "student.hwWriteAnswer": "پاسخ شما",
   "student.hwSaveDraft": "ذخیرۀ پیش‌نویس",
   "student.hwRemoveFile": "حذف ضمیمه",
+  "student.resExams": "امتحانات",
+  "student.resPerformance": "کارکرد درسی",
+  "student.resHistory": "تاریخچه",
+  "student.resPublishedAverage": "اوسط نمرات نشرشده",
+  "student.resPublishedMarks": "نمرات نشرشده",
+  "student.resSearch": "جستجوی امتحان یا مضمون",
+  "student.resSubjectFilter": "مضمون",
+  "student.resAllSubjects": "همه مضامین",
+  "student.resExamTypeFilter": "نوع امتحان",
+  "student.resAllTypes": "همه انواع",
+  "student.resNoMatching": "نتیجۀ نشرشده مطابق فیلترها یافت نشد.",
+  "student.resSubjectBreakdown": "کارکرد در هر مضمون",
+  "student.resWeightedExplanation": "فیصدی عمومی از مجموع نمرات کسب‌شده در برابر مجموع نمرات ممکن محاسبه می‌شود. روند، دو ارزیابی اخیر نشرشده را مقایسه می‌کند.",
+  "student.resImproving": "رو به بهبود",
+  "student.resDeclining": "رو به کاهش",
+  "student.resStable": "بدون تغییر",
+  "student.resFirstMark": "نخستین نتیجه ثبت‌شده",
+  "student.resLatestMark": "آخرین نتیجه",
+  "student.resPreviousMark": "نتیجۀ قبلی",
+  "student.resHistoryScope": "نتایج نشرشدۀ موجود برای صنف و سال تعلیمی فعلی شما. سال‌های تعلیمی قبلی شامل نیست.",
+  "student.resScorePercent": "فیصدی",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2876,6 +2939,27 @@ const pashto: Record<TranslationKey, string> = {
   "student.hwWriteAnswer": "ستاسو ځواب",
   "student.hwSaveDraft": "مسوده خوندي کړئ",
   "student.hwRemoveFile": "ضمیمه لرې کړئ",
+  "student.resExams": "ازموینې",
+  "student.resPerformance": "د زده‌کړې پایلې",
+  "student.resHistory": "تاریخچه",
+  "student.resPublishedAverage": "د خپرو شوو نمرو اوسط",
+  "student.resPublishedMarks": "خپرې شوې نمرې",
+  "student.resSearch": "ازموینه یا مضمون ولټوئ",
+  "student.resSubjectFilter": "مضمون",
+  "student.resAllSubjects": "ټول مضمونونه",
+  "student.resExamTypeFilter": "د ازموینې ډول",
+  "student.resAllTypes": "ټول ډولونه",
+  "student.resNoMatching": "له فلټرونو سره برابرې خپرې شوې پایلې ونه موندل شوې.",
+  "student.resSubjectBreakdown": "د مضمونونو پایلې",
+  "student.resWeightedExplanation": "ټولیزه سلنه د ترلاسه شوو نمرو له مجموعې او د شته نمرو له مجموعې حسابېږي. بدلون د وروستیو دوو خپرو شوو ارزونو پرتله ده.",
+  "student.resImproving": "ښه والی",
+  "student.resDeclining": "کمښت",
+  "student.resStable": "بې بدلون",
+  "student.resFirstMark": "لومړۍ ثبت شوې پایله",
+  "student.resLatestMark": "وروستۍ پایله",
+  "student.resPreviousMark": "مخکینۍ پایله",
+  "student.resHistoryScope": "یوازې ستاسو د اوسني ټولګي او تعلیمي کال شته خپرې شوې پایلې ښودل کېږي. د تېرو کلونو پایلې نه دي شاملې.",
+  "student.resScorePercent": "سلنه",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
