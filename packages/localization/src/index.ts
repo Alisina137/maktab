@@ -215,6 +215,14 @@ export type TranslationKey =
   | "teacher.studentGradeProgress"
   | "teacher.studentHomeworkProgress"
   | "teacher.classNoStudentMatch"
+  | "teacher.homeworkRecords"
+  | "teacher.homeworkDueSoon"
+  | "teacher.homeworkPastDue"
+  | "teacher.homeworkSubmissionHint"
+  | "teacher.homeworkChooseClass"
+  | "teacher.homeworkAllClasses"
+  | "teacher.homeworkDeadlineAll"
+  | "teacher.homeworkClearFilters"
   | "teacher.classStudents"
   | "teacher.classSupervision"
   | "teacher.backToClasses"
@@ -850,6 +858,14 @@ const en: Record<TranslationKey, string> = {
   "teacher.studentGradeProgress": "Marks recorded",
   "teacher.studentHomeworkProgress": "Homework submitted",
   "teacher.classNoStudentMatch": "No students match this search or filter.",
+  "teacher.homeworkRecords": "Homework overview",
+  "teacher.homeworkDueSoon": "Due within 48 hours",
+  "teacher.homeworkPastDue": "Past due · open",
+  "teacher.homeworkSubmissionHint": "Submission counts are shown when you open an individual homework review queue.",
+  "teacher.homeworkChooseClass": "Filter by class and subject",
+  "teacher.homeworkAllClasses": "All my classes",
+  "teacher.homeworkDeadlineAll": "Any deadline",
+  "teacher.homeworkClearFilters": "Clear homework filters",
   "teacher.classStudents": "Students",
   "teacher.classSupervision": "Supervision",
   "teacher.backToClasses": "Back to my classes",
@@ -1501,6 +1517,14 @@ const dari: Record<TranslationKey, string> = {
   "teacher.studentGradeProgress": "نمرات ثبت‌شده",
   "teacher.studentHomeworkProgress": "وظایف سپرده‌شده",
   "teacher.classNoStudentMatch": "هیچ شاگردی با این جستجو یا فیلتر یافت نشد.",
+  "teacher.homeworkRecords": "نمای کلی کارخانگی‌ها",
+  "teacher.homeworkDueSoon": "موعد تا ۴۸ ساعت",
+  "teacher.homeworkPastDue": "گذشته از موعد · باز",
+  "teacher.homeworkSubmissionHint": "شمار تسلیمی‌ها پس از بازکردن فهرست بررسی هر کارخانگی نمایش داده می‌شود.",
+  "teacher.homeworkChooseClass": "فیلتر بر اساس صنف و مضمون",
+  "teacher.homeworkAllClasses": "همهٔ صنف‌هایم",
+  "teacher.homeworkDeadlineAll": "هر موعد",
+  "teacher.homeworkClearFilters": "پاک‌کردن فیلترهای کارخانگی",
   "teacher.classStudents": "شاگردان",
   "teacher.classSupervision": "نظارت",
   "teacher.backToClasses": "بازگشت به صنف‌ها",
@@ -2152,6 +2176,14 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.studentGradeProgress": "ثبت شوې نمرې",
   "teacher.studentHomeworkProgress": "سپارل شوې کورنۍ دندې",
   "teacher.classNoStudentMatch": "له دې لټون یا فلټر سره زده کوونکی ونه موندل شو.",
+  "teacher.homeworkRecords": "د کورنۍ دندو لنډیز",
+  "teacher.homeworkDueSoon": "په ۴۸ ساعتونو کې موعد",
+  "teacher.homeworkPastDue": "له موعده تېرې · پرانیستې",
+  "teacher.homeworkSubmissionHint": "د سپارنو شمېر د هرې دندې د کتنې لېست پرانیستلو وروسته ښکاري.",
+  "teacher.homeworkChooseClass": "د ټولګي او مضمون له مخې چاڼ",
+  "teacher.homeworkAllClasses": "زما ټول ټولګي",
+  "teacher.homeworkDeadlineAll": "هر موعد",
+  "teacher.homeworkClearFilters": "د کورنۍ دندو چاڼونه پاک کړئ",
   "teacher.classStudents": "زده کوونکي",
   "teacher.classSupervision": "څارنه",
   "teacher.backToClasses": "بېرته خپلو ټولګیو ته",
