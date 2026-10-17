@@ -6,10 +6,11 @@ import { api, type HomeworkPayload, type HomeworkSubmissionPayload } from "./api
 import { pickAndUploadLearningFile, shareLearningFile } from "./learning-files";
 
 export function StudentSubmissionPanel({
-  homework, accessToken, locale, textDirection
+  homework, accessToken, locale, textDirection, onSubmitted
 }: {
   homework: HomeworkPayload; accessToken: string; locale: SupportedLocale;
   textDirection: {textAlign:"right"|"left";writingDirection:"rtl"|"ltr"};
+  onSubmitted?: (submission:HomeworkSubmissionPayload)=>void;
 }) {
   const [open,setOpen]=useState(false);
   const [submission,setSubmission]=useState<HomeworkSubmissionPayload|null>(null);
@@ -47,6 +48,7 @@ export function StudentSubmissionPanel({
     try {
       const result=await api.submitStudentHomework(accessToken,homework.id,answer.trim(),fileId);
       setSubmission(result.submission);
+      onSubmitted?.(result.submission);
       setMessage("learning.submissionSaved");
     } catch {setMessage("learning.submissionFailed");}
     finally{setBusy(false);}
