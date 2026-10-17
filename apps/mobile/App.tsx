@@ -82,6 +82,8 @@ import {
   type StudentPrimaryScreen
 } from "./src/student-navigation-model";
 import { StudentMorePanel } from "./src/student-more";
+import { StudentAttendanceContent } from "./src/student-attendance";
+import { StudentFeesContent } from "./src/student-fees";
 import { ParentBottomNavigation, type ParentTab } from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession, subscribeToPushOpens } from "./src/push";
 import { notificationDestination } from "./src/notification-destination";
@@ -115,6 +117,8 @@ type Screen =
   | "student-homework"
   | "student-results"
   | "student-communication"
+  | "student-attendance"
+  | "student-fees"
   | "student-more"
   | "teacher-attendance";
 
@@ -3048,9 +3052,58 @@ function AppContent() {
                 setNotice(null);setAppError(null);
                 setScreen("student-communication");
               }}
+              onOpenRecords={(tab)=>{
+                setStudentDetailReturnScreen("student-more");
+                setNotice(null);setAppError(null);
+                setScreen(tab==="ATTENDANCE"?"student-attendance":"student-fees");
+              }}
               onLocaleChange={chooseLocale}
               onLogout={()=>void logout()}
             />
+          </View>
+        ) : null}
+
+        {(screen === "student-attendance" || screen === "student-fees") &&
+        session?.user.role === "STUDENT" &&
+        session.user.status !== "SUSPENDED" &&
+        !session.mustChangePassword &&
+        !studentEnrollmentUnavailable ? (
+          <View style={styles.section}>
+            <BackButton locale={locale} onPress={()=>{
+              setNotice(null);setAppError(null);setScreen("student-more");
+            }}/>
+            <View style={[styles.teacherHero,direction === "rtl" && styles.rowRtl]}>
+              <View style={styles.heroIcon}>
+                <Ionicons
+                  name={screen==="student-attendance"?"calendar-outline":"wallet-outline"}
+                  size={24} color={tokens.color.brandStrong}/>
+              </View>
+              <View style={styles.flexCopy}>
+                <Text style={[styles.title,textDirection]}>
+                  {translate(locale,screen==="student-attendance"?
+                    "student.attendanceTitle":"student.feeTitle")}
+                </Text>
+                <Text style={[styles.subtitle,textDirection]}>
+                  {translate(locale,screen==="student-attendance"?
+                    "student.attendanceHint":"student.feeHint")}
+                </Text>
+              </View>
+            </View>
+            {screen==="student-attendance"?
+              <StudentAttendanceContent key={session.user.id+":"+session.accessToken}
+                accessToken={session.accessToken}
+                studentId={studentLearning?.student.id??studentTimetable?.student.id??session.user.id}
+                locale={locale} textDirection={textDirection}
+                onSensitiveError={(cause)=>showCause(cause)}/>:
+              studentLearning?.student.id||studentTimetable?.student.id?
+              <StudentFeesContent key={session.user.id+":"+session.accessToken}
+                accessToken={session.accessToken}
+                studentId={studentLearning?.student.id??studentTimetable!.student.id}
+                locale={locale} textDirection={textDirection}
+                onSensitiveError={(cause)=>showCause(cause)}/>:
+              <Text style={[styles.subtitle,textDirection]}>
+                {translate(locale,"student.recordsLoadError")}
+              </Text>}
           </View>
         ) : null}
 
