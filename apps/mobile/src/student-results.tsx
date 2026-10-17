@@ -55,10 +55,11 @@ function Trend({item,locale,textDirection}:{
   </View>;
 }
 export function StudentResultsContent({
-  learning,ready,locale,textDirection
+  learning,ready,locale,textDirection,onTabChange
 }:{
   learning:LearnerAcademicPayload|null;ready:boolean;
   locale:SupportedLocale;textDirection:Direction;
+  onTabChange?:()=>void;
 }) {
   const rtl=getDirection(locale)==="rtl";
   const [tab,setTab]=useState<StudentResultsTab>("EXAMS");
@@ -86,7 +87,7 @@ export function StudentResultsContent({
       {studentResultsTabs.map(next=><Pressable key={next}
         testID={`student-results-tab-${next.toLowerCase()}`}
         accessibilityRole="tab" accessibilityState={{selected:tab===next}}
-        onPress={()=>setTab(next)}
+        onPress={()=>{if(tab!==next){setTab(next);onTabChange?.();}}}
         style={[styles.tab,tab===next&&styles.tabSelected]}>
         <Text style={[styles.tabText,tab===next&&styles.tabTextSelected]}>
           {translate(locale,tabLabel[next])}
