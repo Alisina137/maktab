@@ -256,6 +256,11 @@ function AppContent() {
   const [studentCommunicationTab, setStudentCommunicationTab] = useState<StudentCommunicationTab>("ANNOUNCEMENTS");
   const [studentDetailReturnScreen, setStudentDetailReturnScreen] = useState<StudentPrimaryScreen>("home");
   const [studentCommunicationReady, setStudentCommunicationReady] = useState(false);
+  const [studentInboxStatus,setStudentInboxStatus]=useState<{
+    announcements:"loading"|"ready"|"error";
+    notifications:"loading"|"ready"|"error";
+  }>({announcements:"loading",notifications:"loading"});
+  const [studentFocusedAnnouncementId,setStudentFocusedAnnouncementId]=useState<string|null>(null);
   const [adminContact, setAdminContact] = useState<AdminContactPayload | null>(null);
   const [attendanceSheet, setAttendanceSheet] = useState<AttendanceSheetPayload | null>(null);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
@@ -291,6 +296,7 @@ function AppContent() {
   });
   const studentHomeLoadRequestId = useRef(0);
   const studentSubmissionVersion = useRef(0);
+  const studentInboxVersion=useRef(0);
   const teacherHomeLoadRequestId = useRef(0);
   const selectedChildIdRef = useRef("");
   const parentHomeRef = useRef<ParentHomePayload | null>(null);
@@ -657,8 +663,10 @@ function AppContent() {
       studentSubmissionVersion.current += 1;
       setStudentSubmissions(null);
       setStudentSubmissionsReady(false);
+      studentInboxVersion.current+=1;
       setStudentAnnouncements([]);
       setStudentNotifications([]);
+      setStudentInboxStatus({announcements:"loading",notifications:"loading"});
       setStudentCommunicationReady(false);
       void loadStudentHomeData(session.accessToken, requestId);
     }
@@ -926,6 +934,7 @@ function AppContent() {
     // Invalidate student reads/submission refreshes before switching accounts.
     studentHomeLoadRequestId.current += 1;
     studentSubmissionVersion.current += 1;
+    studentInboxVersion.current+=1;
     // Stop in-flight reads before clearing child/account data.
     pendingParentNotificationRef.current = null;
     resetParentNotificationFocus();
@@ -957,6 +966,8 @@ function AppContent() {
     setStudentSubmissionsReady(false);
     setStudentAnnouncements([]);
     setStudentNotifications([]);
+    setStudentInboxStatus({announcements:"loading",notifications:"loading"});
+    setStudentFocusedAnnouncementId(null);
     setStudentCommunicationReady(false);
     setAdminContact(null);
     setAttendanceSheet(null);
@@ -1223,6 +1234,7 @@ function AppContent() {
     // notification service must not trap the Student timetable/homework in a
     // permanent loading state. Authorization failures remain authoritative.
     const submissionVersion=studentSubmissionVersion.current;
+    const inboxVersion=studentInboxVersion.current;
     const [timetableResult, learningResult, announcementResult, notificationResult, submissionsResult] =
       await Promise.allSettled([
         api.studentTimetable(accessToken),
@@ -1255,12 +1267,80 @@ function AppContent() {
         ? submissionsResult.value.submissions.map(row=>row.submission):null);
       setStudentSubmissionsReady(true);
     }
-    if (announcementResult.status === "fulfilled") setStudentAnnouncements(announcementResult.value.announcements);
-    if (notificationResult.status === "fulfilled") setStudentNotifications(notificationResult.value.notifications);
-    setStudentCommunicationReady(true);
+    if(inboxVersion===studentInboxVersion.current){
+      if (announcementResult.status === "fulfilled")
+        setStudentAnnouncements(announcementResult.value.announcements);
+      if (notificationResult.status === "fulfilled")
+        setStudentNotifications(notificationResult.value.notifications);
+      setStudentInboxStatus({
+        announcements:announcementResult.status==="fulfilled"?"ready":"error",
+        notifications:notificationResult.status==="fulfilled"?"ready":"error"
+      });
+      setStudentCommunicationReady(true);
+    }
 
     const failure = results.find((result) => result.status === "rejected");
     if (failure?.status === "rejected") showCause(failure.reason);
+  }
+
+  // Fetch announcements and notifications independently: one service can recover
+  // without erasing valid records returned by the other service.
+  async function refreshStudentInbox():Promise<boolean>{
+    const current=sessionRef.current;
+    if(!current||current.user.role!=="STUDENT"||
+      current.user.status==="SUSPENDED"||current.mustChangePassword||
+      studentEnrollmentUnavailable)return false;
+    const id=current.user.id,token=current.accessToken,version=++studentInboxVersion.current;
+    const active=()=>sessionRef.current?.user.id===id&&
+      sessionRef.current?.accessToken===token&&
+      studentInboxVersion.current===version;
+    const [announcements,notifications]=await Promise.allSettled([
+      api.announcements(token,true),api.notifications(token,true)
+    ]);
+    if(!active())return false;
+    if(announcements.status==="fulfilled")
+      setStudentAnnouncements(announcements.value.announcements);
+    if(notifications.status==="fulfilled")
+      setStudentNotifications(notifications.value.notifications);
+    setStudentInboxStatus({
+      announcements:announcements.status==="fulfilled"?"ready":"error",
+      notifications:notifications.status==="fulfilled"?"ready":"error"
+    });
+    setStudentCommunicationReady(true);
+    const fail=[announcements,notifications].find(item=>item.status==="rejected");
+    if(fail?.status==="rejected"&&fail.reason instanceof ApiRequestError&&
+      ["account_unavailable","account_suspended","session_invalid",
+       "password_change_required","school_service_unavailable"].includes(fail.reason.code??""))
+      showCause(fail.reason);
+    return announcements.status==="fulfilled"&&notifications.status==="fulfilled";
+  }
+  async function markStudentInboxRead(notificationId:string):Promise<boolean>{
+    const current=sessionRef.current;
+    if(!current||current.user.role!=="STUDENT"||studentEnrollmentUnavailable)return false;
+    const {accessToken:token,user}=current;
+    try {
+      const result=await api.markNotificationRead(token,notificationId);
+      if(sessionRef.current?.accessToken!==token||
+        sessionRef.current?.user.id!==user.id)return false;
+      studentInboxVersion.current+=1; // Ignore old GETs that can restore unread state.
+      setStudentNotifications(rows=>rows.map(row=>row.id===notificationId?
+        result.notification:row));
+      return true;
+    }catch{return false;}
+  }
+  async function markStudentInboxAllRead():Promise<boolean>{
+    const current=sessionRef.current;
+    if(!current||current.user.role!=="STUDENT"||studentEnrollmentUnavailable)return false;
+    const token=current.accessToken,id=current.user.id;
+    try{
+      await api.markAllNotificationsRead(token);
+      if(sessionRef.current?.accessToken!==token||
+        sessionRef.current?.user.id!==id)return false;
+      studentInboxVersion.current+=1;
+      const now=new Date().toISOString();
+      setStudentNotifications(rows=>rows.map(row=>row.readAt?row:{...row,readAt:now}));
+      return true;
+    }catch{return false;}
   }
 
   async function loadSchools(searchQuery = query) {
