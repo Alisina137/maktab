@@ -43,5 +43,5 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify student Phases 1–2, navigation and actionable Today
-        run: pnpm verify:student:phase2
+      - name: Verify student Phases 1–3, including Today, Week and Teachers
+        run: pnpm verify:student:phase3
