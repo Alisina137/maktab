@@ -109,5 +109,6 @@ for(const marker of [
 assert.ok(pkg.scripts["verify:teacher:phase4"]?.includes("verify:teacher:phase3"));
 assert.ok(pkg.scripts["verify:teacher:phase4"]?.includes("test-teacher-classes-model.ts"));
 assert.ok(ci.includes("run: pnpm verify:teacher:phase4") ||
-  ci.includes("run: pnpm verify:teacher:phase5"));
+  ci.includes("run: pnpm verify:teacher:phase5") ||
+  ci.includes("run: pnpm verify:teacher:phase6"));
 console.log("Teacher Phase 4 source verification passed: scoped queries, class search, progress, RTL, and 3 languages.");
