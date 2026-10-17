@@ -840,10 +840,10 @@ export const api = {
     });
   },
 
-  announcements(accessToken: string) {
+  announcements(accessToken: string, fresh = false) {
     return request<{ announcements: AnnouncementPayload[] }>("/v1/announcements", {
       headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    }, { cache: !fresh });
   },
 
   createTeacherAnnouncement(
@@ -931,7 +931,7 @@ export const api = {
   teacherTeaching(accessToken: string, assignmentId: string) {
     return request<TeacherTeachingPayload>(
       `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } }, { cache: false }
     );
   },
   createTeachingLesson(accessToken: string, assignmentId: string, input: {
@@ -963,7 +963,7 @@ export const api = {
   teacherTeachingReport(accessToken: string, assignmentId: string, from: string, to: string) {
     return request<TeacherTeachingReport>(
       `/v1/teacher/teaching/${encodeURIComponent(assignmentId)}/report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      { headers: { Authorization: `Bearer ${accessToken}` } }, { cache: false }
     );
   },
 
