@@ -14,9 +14,9 @@ const localeNames:Record<SupportedLocale,string>={
 type Direction={textAlign:"left"|"right";writingDirection:"ltr"|"rtl"};
 type Destination="ANNOUNCEMENTS"|"NOTIFICATIONS";
 
-function MenuLink({label,description,icon,rtl,textDirection,badge,onPress}:{
+function MenuLink({label,description,icon,rtl,textDirection,locale,badge,onPress}:{
   label:string;description:string;icon:keyof typeof Ionicons.glyphMap;
-  rtl:boolean;textDirection:Direction;badge?:number;onPress:()=>void;
+  rtl:boolean;textDirection:Direction;locale:SupportedLocale;badge?:number;onPress:()=>void;
 }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label}
     onPress={onPress} style={({pressed})=>[
@@ -28,7 +28,7 @@ function MenuLink({label,description,icon,rtl,textDirection,badge,onPress}:{
       <Text style={[styles.description,textDirection]}>{description}</Text>
     </View>
     {badge&&badge>0?<View style={styles.badge}>
-      <Text style={styles.badgeText}>{badge>99?"99+":formatLocalizedNumber(badge,"en")}</Text>
+      <Text style={styles.badgeText}>{badge>99?"99+":formatLocalizedNumber(badge,locale)}</Text>
     </View>:null}
     <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={19} color={tokens.color.textMuted}/>
   </Pressable>;
@@ -75,11 +75,11 @@ export function StudentMorePanel({
       <Text style={[styles.description,textDirection]}>{translate(locale,"student.moreSchoolUpdatesHint")}</Text>
       <MenuLink icon="megaphone-outline" label={translate(locale,"student.announcementsTitle")}
         description={translate(locale,"student.announcementsSubtitle")}
-        rtl={rtl} textDirection={textDirection}
+        rtl={rtl} textDirection={textDirection} locale={locale}
         onPress={()=>onOpenUpdates("ANNOUNCEMENTS")}/>
       <MenuLink icon="notifications-outline" label={translate(locale,"student.notificationsTitle")}
         description={translate(locale,"student.notificationsSubtitle")}
-        badge={unreadCount} rtl={rtl} textDirection={textDirection}
+        badge={unreadCount} rtl={rtl} textDirection={textDirection} locale={locale}
         onPress={()=>onOpenUpdates("NOTIFICATIONS")}/>
     </View>
     <View style={styles.card}>
