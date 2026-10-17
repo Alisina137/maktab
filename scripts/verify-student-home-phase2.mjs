@@ -27,7 +27,7 @@ for(const key of [
   'testID="student-home-urgent-homework"',
   "studentLessonFocus(timetable,now)",
   "studentHomeworkOverview(learning?.homework??[],submissions,now)",
-  "studentAcademicOverview(learning?.results??[])",
+  "studentAcademicOverview(studentVisibleResults(learning))",
   "studentLatestAnnouncement(announcements,student?.classId??null)",
   "setInterval(()=>setNow(new Date()),60_000)",
   "student.homeAtGlance","student.homeUpcomingTasks",
