@@ -605,6 +605,38 @@ export type TranslationKey =
   | "student.resScorePercent"
   | "student.resRefresh"
   | "student.resRefreshFailed"
+  | "student.recordsTitle"
+  | "student.recordsHint"
+  | "student.attendanceTitle"
+  | "student.attendanceHint"
+  | "student.feeTitle"
+  | "student.feeHint"
+  | "student.attendanceCalendar"
+  | "student.attendanceExplanation"
+  | "student.recordsLoadError"
+  | "student.recordsRetry"
+  | "student.attendanceSummary"
+  | "student.attendanceRate"
+  | "student.attendanceRateHelp"
+  | "student.attendanceSelected"
+  | "student.attendanceHistory"
+  | "student.attendanceNoRecords"
+  | "student.feeOverview"
+  | "student.feeReadOnly"
+  | "student.feeIssued"
+  | "student.feePartiallyPaid"
+  | "student.feePaid"
+  | "student.feeOverdue"
+  | "student.feeCancelled"
+  | "student.feeAll"
+  | "student.feeDue"
+  | "student.feeTotal"
+  | "student.feeOutstanding"
+  | "student.feeInvoiceCount"
+  | "student.feePaymentHistory"
+  | "student.feeNoPayments"
+  | "student.feeNoInvoices"
+  | "student.feeContactSchool"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1382,6 +1414,38 @@ const en: Record<TranslationKey, string> = {
   "student.resScorePercent": "Percentage",
   "student.resRefresh": "Refresh results",
   "student.resRefreshFailed": "Refresh failed. Previously loaded results are shown.",
+  "student.recordsTitle": "School records",
+  "student.recordsHint": "Read-only attendance and fee information for your enrollment.",
+  "student.attendanceTitle": "My attendance",
+  "student.attendanceHint": "Recorded school days, attendance calendar and history.",
+  "student.feeTitle": "My fees",
+  "student.feeHint": "Issued invoices and recorded payments (view only).",
+  "student.attendanceCalendar": "Attendance calendar",
+  "student.attendanceExplanation": "Only attendance actually recorded by the school is shown. Missing marks are not absences.",
+  "student.recordsLoadError": "School records could not be loaded. Check your connection and try again.",
+  "student.recordsRetry": "Try again",
+  "student.attendanceSummary": "Attendance summary",
+  "student.attendanceRate": "Recorded attendance rate",
+  "student.attendanceRateHelp": "Present and late days count as attended; excused and unrecorded days are excluded from the rate.",
+  "student.attendanceSelected": "Selected day",
+  "student.attendanceHistory": "Recorded days",
+  "student.attendanceNoRecords": "No recorded attendance in this month.",
+  "student.feeOverview": "Fee overview",
+  "student.feeReadOnly": "School-controlled records. Contact the school about payments or corrections.",
+  "student.feeIssued": "Issued",
+  "student.feePartiallyPaid": "Partially paid",
+  "student.feePaid": "Paid",
+  "student.feeOverdue": "Overdue",
+  "student.feeCancelled": "Cancelled",
+  "student.feeAll": "All",
+  "student.feeDue": "Due",
+  "student.feeTotal": "Total invoiced",
+  "student.feeOutstanding": "Outstanding",
+  "student.feeInvoiceCount": "Invoices",
+  "student.feePaymentHistory": "Recorded payments",
+  "student.feeNoPayments": "No payments recorded.",
+  "student.feeNoInvoices": "No invoices match this view.",
+  "student.feeContactSchool": "These figures come from the school ledger. For payments, refunds or corrections, contact the school.",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -2175,6 +2239,38 @@ const dari: Record<TranslationKey, string> = {
   "student.resScorePercent": "فیصدی",
   "student.resRefresh": "تازه‌سازی نتایج",
   "student.resRefreshFailed": "تازه‌سازی انجام نشد. نتایج قبلاً بارگذاری‌شده نشان داده می‌شود.",
+  "student.recordsTitle": "سوابق مکتب",
+  "student.recordsHint": "معلومات صرف‌خواندنی حاضری و فیس مربوط به شمولیت شما.",
+  "student.attendanceTitle": "حاضری من",
+  "student.attendanceHint": "روزهای ثبت‌شده، تقویم و تاریخچۀ حاضری.",
+  "student.feeTitle": "فیس‌های من",
+  "student.feeHint": "بل‌های صادرشده و پرداخت‌های ثبت‌شده (صرف دیدن).",
+  "student.attendanceCalendar": "تقویم حاضری",
+  "student.attendanceExplanation": "فقط حاضری ثبت‌شده توسط مکتب نشان داده می‌شود. روزهای ثبت‌نشده غیرحاضر محسوب نمی‌شوند.",
+  "student.recordsLoadError": "معلومات مکتب بارگذاری نشد. اتصال را بررسی کرده دوباره تلاش کنید.",
+  "student.recordsRetry": "تلاش دوباره",
+  "student.attendanceSummary": "خلاصۀ حاضری",
+  "student.attendanceRate": "فیصدی حاضری ثبت‌شده",
+  "student.attendanceRateHelp": "روزهای حاضر و ناوقت شامل حاضری می‌شود؛ روزهای معذور و ثبت‌نشده از محاسبه حذف می‌شوند.",
+  "student.attendanceSelected": "روز انتخاب‌شده",
+  "student.attendanceHistory": "روزهای ثبت‌شده",
+  "student.attendanceNoRecords": "در این ماه حاضری ثبت‌شده وجود ندارد.",
+  "student.feeOverview": "خلاصۀ فیس‌ها",
+  "student.feeReadOnly": "معلومات تحت مدیریت مکتب است. برای پرداخت یا اصلاح به مکتب مراجعه کنید.",
+  "student.feeIssued": "صادرشده",
+  "student.feePartiallyPaid": "قسمتی پرداخت‌شده",
+  "student.feePaid": "پرداخت‌شده",
+  "student.feeOverdue": "گذشته از موعد",
+  "student.feeCancelled": "لغوشده",
+  "student.feeAll": "همه",
+  "student.feeDue": "باقی‌مانده",
+  "student.feeTotal": "مجموع بل‌ها",
+  "student.feeOutstanding": "باقی‌مانده",
+  "student.feeInvoiceCount": "بل‌ها",
+  "student.feePaymentHistory": "پرداخت‌های ثبت‌شده",
+  "student.feeNoPayments": "هیچ پرداختی ثبت نشده است.",
+  "student.feeNoInvoices": "بلی مطابق این بخش وجود ندارد.",
+  "student.feeContactSchool": "این ارقام از دفتر حساب مکتب است. برای پرداخت، بازپرداخت یا اصلاح با مکتب تماس بگیرید.",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2968,6 +3064,38 @@ const pashto: Record<TranslationKey, string> = {
   "student.resScorePercent": "سلنه",
   "student.resRefresh": "پایلې تازه کړئ",
   "student.resRefreshFailed": "تازه کول ناکام شول. پخوانۍ پورته شوې پایلې ښودل کېږي.",
+  "student.recordsTitle": "د ښوونځي ریکارډونه",
+  "student.recordsHint": "ستاسو د شاملېدو د حاضرۍ او فیسونو یوازې د کتلو معلومات.",
+  "student.attendanceTitle": "زما حاضري",
+  "student.attendanceHint": "ثبت شوې ورځې، د حاضرۍ تقویم او تاریخچه.",
+  "student.feeTitle": "زما فیسونه",
+  "student.feeHint": "صادر شوي بلونه او ثبت شوې ورکړې (یوازې کتل).",
+  "student.attendanceCalendar": "د حاضرۍ تقویم",
+  "student.attendanceExplanation": "یوازې د ښوونځي له خوا ثبت شوې حاضري ښودل کېږي. نه ثبت شوې ورځې غیرحاضري نه ګڼل کېږي.",
+  "student.recordsLoadError": "د ښوونځي معلومات پورته نه شول. اړیکه وڅېړئ او بیا هڅه وکړئ.",
+  "student.recordsRetry": "بیا هڅه",
+  "student.attendanceSummary": "د حاضرۍ لنډیز",
+  "student.attendanceRate": "د ثبت شوې حاضرۍ سلنه",
+  "student.attendanceRateHelp": "حاضر او ناوخته ورځې د حاضرۍ برخه ده؛ معذور او نه ثبت شوې ورځې په سلنه کې نه شمېرل کېږي.",
+  "student.attendanceSelected": "ټاکل شوې ورځ",
+  "student.attendanceHistory": "ثبت شوې ورځې",
+  "student.attendanceNoRecords": "په دې میاشت کې حاضري نه ده ثبت شوې.",
+  "student.feeOverview": "د فیسونو لنډیز",
+  "student.feeReadOnly": "دا ریکارډونه د ښوونځي تر واک لاندې دي. د ورکړې یا سمون لپاره ښوونځي سره اړیکه ونیسئ.",
+  "student.feeIssued": "صادر شوی",
+  "student.feePartiallyPaid": "یوه برخه ورکړل شوې",
+  "student.feePaid": "ورکړل شوی",
+  "student.feeOverdue": "له نېټې تېر",
+  "student.feeCancelled": "لغوه شوی",
+  "student.feeAll": "ټول",
+  "student.feeDue": "پاتې",
+  "student.feeTotal": "د بلونو ټولیزه اندازه",
+  "student.feeOutstanding": "پاتې اندازه",
+  "student.feeInvoiceCount": "بلونه",
+  "student.feePaymentHistory": "ثبت شوې ورکړې",
+  "student.feeNoPayments": "هیڅ ورکړه نه ده ثبت شوې.",
+  "student.feeNoInvoices": "په دې برخه کې بل نشته.",
+  "student.feeContactSchool": "دا شمېرې د ښوونځي له حسابونو څخه دي. د ورکړې، بېرته ورکولو یا سمون لپاره له ښوونځي سره اړیکه ونیسئ.",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
