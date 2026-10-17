@@ -58,10 +58,10 @@ export function StudentPasswordSettings({locale,onChangePassword}:{
      style={[styles.input,rtl&&styles.right]}/>
    </View>)}
    <Pressable testID="student-phase8-password-toggle" accessibilityRole="button"
-    accessibilityLabel={translate(locale,"parent.moreShowPassword")}
+    accessibilityLabel={translate(locale,"action.showPassword")}
     onPress={()=>setVisible(v=>!v)} style={[styles.row,rtl&&styles.rtl]}>
     <Ionicons name={visible?"eye-off-outline":"eye-outline"} size={18} color={tokens.color.brandStrong}/>
-    <Text style={styles.hint}>{translate(locale,"parent.moreShowPassword")}</Text>
+    <Text style={styles.hint}>{translate(locale,"action.showPassword")}</Text>
    </Pressable>
    {error?<Text accessibilityRole="alert" style={styles.error}>{translate(locale,error)}</Text>:null}
    {success?<Text accessibilityRole="alert" style={styles.success}>
