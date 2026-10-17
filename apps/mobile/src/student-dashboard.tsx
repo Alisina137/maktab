@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
@@ -34,7 +34,7 @@ function Stat({label,value,icon,onPress,rtl,textDirection}:{
 function Section({title,icon,rtl,textDirection,onOpen,actionKey,locale,children}:{
   title:string;icon:Icon;rtl:boolean;textDirection:Direction;
   onOpen?:()=>void;actionKey?:TranslationKey;locale:SupportedLocale;
-  children:React.ReactNode;
+  children:ReactNode;
 }){
   return <View style={styles.sectionCard}>
     <View style={[styles.sectionHeading,rtl&&styles.rtl]}>
