@@ -112,16 +112,11 @@ export function TeacherSubmissionReview({
     }catch(cause){
       if(request!==generation.current)return;
       const failure=appErrorFromCause(cause);onError(failure.key,failure.kind);
-      // Avoid stale review state after a rejected concurrent update.
-      if(loaded)void loadAfterFailure();
+      // Keep the typed feedback and require an explicit refresh after failure.
+      // Automatically retrying a failed write/read would amplify tunnel outages.
     }finally{
       if(request===generation.current){pending.current=false;setBusy(false);}
     }
-  }
-
-  async function loadAfterFailure(){
-    // Refresh only after the current review lock is released.
-    setTimeout(()=>{if(!pending.current)void load();},0);
   }
   async function openFile(id:string){
     try{await shareLearningFile(accessToken,id);}
