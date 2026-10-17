@@ -36,17 +36,52 @@ export function StudentSubmissionPanel({
   const expired = !row.canSubmit;
   const canSubmit=studentHomeworkCanSubmit(row,submissionsVerified);
 
-  async function load() {
+  useEffect(()=>{
+    let active=true;
+    touched.current=false;
+    setRestored(false);setDirty(false);
+    setAnswer(submission?.status==="REVISION_REQUESTED"?submission.answer:"");
+    setFileId(null);setFileName("");
+    void readStudentHomeworkDraft(draftKey).then(draft=>{
+      if(!active||!draft||!canSubmit||touched.current)return;
+      setAnswer(draft.answer);setFileId(draft.fileId);setFileName(draft.fileName);
+    }).catch(()=>{if(active)setMessage("student.hwDraftUnavailable");})
+      .finally(()=>{if(active)setRestored(true);});
+    return ()=>{active=false;};
+  },[draftKey]);
+
+  function saveSnapshot() {
+    const snapshot={answer,fileId,fileName};
+    const run=writeQueue.current.catch(()=>{}).then(()=>
+      writeStudentHomeworkDraft(draftKey,snapshot));
+    writeQueue.current=run;
+    return run;
+  }
+  useEffect(()=>{
+    if(!dirty||!restored||!canSubmit||submitting.current)return;
+    const timer=setTimeout(()=>{
+      void saveSnapshot().then(()=>{
+        setDirty(false);setMessage("student.hwDraftSaved");
+      }).catch(()=>setMessage("student.hwDraftUnavailable"));
+    },1000);
+    return ()=>clearTimeout(timer);
+  },[answer,fileId,fileName,dirty,restored,canSubmit,draftKey]);
+
+  async function saveDraft() {
+    if(!canSubmit||busy||!restored)return;
+    setBusy(true);
+    try {await saveSnapshot();setDirty(false);setMessage("student.hwDraftSaved");}
+    catch {setMessage("student.hwDraftUnavailable");}
+    finally {setBusy(false);}
+  }
+
+  async function refresh() {
+    if(!onRefresh||busy)return;
     setBusy(true);
     try {
-      const result=await api.studentHomeworkSubmissions(accessToken);
-      const existing=result.submissions.find(row=>row.submission.homeworkId===homework.id)?.submission??null;
-      setSubmission(existing);
-      setAnswer(existing?.answer??"");
-      setFileId(null);
-      setMessage(null);
-      setOpen(true);
-    } catch {setMessage("learning.submissionFailed");setOpen(true);}
+      const ok=await onRefresh();
+      setMessage(ok?null:"student.hwCannotVerify");
+    }catch{setMessage("student.hwCannotVerify");}
     finally{setBusy(false);}
   }
   async function pick() {
