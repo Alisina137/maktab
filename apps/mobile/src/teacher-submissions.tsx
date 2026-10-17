@@ -70,7 +70,7 @@ export function TeacherSubmissionReview({
       // If it cannot be verified, retain the submitted queue but hide missing counts.
       let activeRoster:StudentIdentity[]|null=null;
       try{
-        const detail=await api.teacherClassDetail(accessToken,homework.assignmentId);
+        const detail=await api.teacherClassDetail(accessToken,homework.assignmentId,true);
         if(detail.assignment.assignmentId===homework.assignmentId &&
           detail.assignment.classId===homework.classId &&
           detail.assignment.subjectId===homework.subjectId &&
