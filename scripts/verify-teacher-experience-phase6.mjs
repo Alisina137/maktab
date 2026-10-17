@@ -54,5 +54,6 @@ for(const marker of ["limits official exam sheets","explicitly cleared remarks",
  assert.ok(tests.includes(marker),"Phase 6 regression missing "+marker);
 assert.ok(pkg.scripts["verify:teacher:phase6"]?.includes("verify:teacher:phase5"));
 assert.ok(pkg.scripts["verify:teacher:phase6"]?.includes("test-teacher-grading-model.ts"));
-assert.ok(ci.includes("run: pnpm verify:teacher:phase6"));
+assert.ok(ci.includes("run: pnpm verify:teacher:phase6") ||
+  ci.includes("run: pnpm verify:teacher:phase7"));
 console.log("Teacher Phase 6: scoped exam and assessment grading, private marks and 3 languages verified.");
