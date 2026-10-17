@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  ScrollView,
   Pressable,
   StyleSheet,
   Text,
@@ -23,6 +25,10 @@ import {
   type ParentNotification
 } from "./api";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
+import {
+  teacherAnnouncementList, teacherAnnouncementValid,
+  type TeacherAnnouncementScope
+} from "./teacher-phase7-model";
 
 type TextDirectionStyle = {
   textAlign: "right" | "left";
@@ -64,6 +70,9 @@ export function CommunicationPanel({
   const [classId, setClassId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [announcementQuery,setAnnouncementQuery]=useState("");
+  const [announcementScope,setAnnouncementScope]=useState<TeacherAnnouncementScope>("ALL");
+  const [expandedAnnouncements,setExpandedAnnouncements]=useState(false);
   const loadRequestId = useRef(0);
 
   useEffect(() => {
@@ -73,6 +82,9 @@ export function CommunicationPanel({
       if (loadRequestId.current === requestId) loadRequestId.current += 1;
     };
   }, [accessToken, mode, studentId, teacherSection]);
+  useEffect(()=>{
+    setAnnouncementQuery("");setAnnouncementScope("ALL");setExpandedAnnouncements(false);
+  },[accessToken,mode,studentId,teacherSection]);
 
   useEffect(() => {
     if (mode === "TEACHER") {
@@ -90,7 +102,7 @@ export function CommunicationPanel({
       let loadedAnnouncements: AnnouncementPayload[] = [];
       let loadedFees: FeeInvoiceViewPayload[] = [];
       const tasks: Array<Promise<unknown>> = [
-        api.announcements(accessToken).then((result) => {
+        api.announcements(accessToken,mode==="TEACHER").then((result) => {
           loadedAnnouncements = result.announcements;
         })
       ];
@@ -132,7 +144,9 @@ export function CommunicationPanel({
   }
 
   async function postAnnouncement() {
-    if (!classId || !title.trim() || !content.trim()) {
+    if(busy)return;
+    if (!teacherAnnouncementValid(classId,title,content,
+      supervisedClasses.map(item=>item.classId))) {
       onError("communication.completeAnnouncement");
       return;
     }
@@ -155,6 +169,19 @@ export function CommunicationPanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  function confirmAnnouncement() {
+    if(!teacherAnnouncementValid(classId,title,content,
+      supervisedClasses.map(item=>item.classId))) {
+      onError("communication.completeAnnouncement");return;
+    }
+    const selected=supervisedClasses.find(item=>item.classId===classId);
+    Alert.alert(translate(locale,"teacher.noticeConfirmTitle"),
+      `${translate(locale,"teacher.noticeConfirmHint")} ${selected?.className??selected?.classCode??""}`,[
+        {text:translate(locale,"attendance.cancel"),style:"cancel"},
+        {text:translate(locale,"communication.publish"),onPress:()=>void postAnnouncement()}
+      ]);
   }
 
   async function markRead(notificationId: string) {
@@ -180,15 +207,16 @@ export function CommunicationPanel({
     [fees]
   );
 
-  const visibleAnnouncements = useMemo(
-    () =>
-      mode === "PARENT" && selectedClassId
-        ? announcements.filter(
-            (item) => item.audienceScope !== "CLASS" || item.classId === selectedClassId
-          )
-        : announcements,
-    [announcements, mode, selectedClassId]
-  );
+  const visibleAnnouncements=useMemo(()=>{
+    if(mode==="TEACHER")return teacherAnnouncementList(
+      announcements,announcementQuery,announcementScope);
+    return mode==="PARENT"&&selectedClassId
+      ? announcements.filter(item=>item.audienceScope!=="CLASS"||
+          item.classId===selectedClassId)
+      : announcements;
+  },[announcements,mode,selectedClassId,announcementQuery,announcementScope]);
+  const announcementsShown=mode==="TEACHER"&&expandedAnnouncements
+    ? visibleAnnouncements:visibleAnnouncements.slice(0,10);
 
   return (
     <View style={styles.stack}>
@@ -217,12 +245,14 @@ export function CommunicationPanel({
             ))}
           </View>
           <TextInput
+            testID="teacher-announcement-title" maxLength={160} editable={!busy}
             value={title}
             onChangeText={setTitle}
             placeholder={translate(locale, "communication.title")}
             style={[styles.input, textDirection]}
           />
           <TextInput
+            testID="teacher-announcement-content" maxLength={10000} editable={!busy}
             multiline
             value={content}
             onChangeText={setContent}
@@ -231,7 +261,7 @@ export function CommunicationPanel({
           />
           <Pressable
             disabled={busy}
-            onPress={() => void postAnnouncement()}
+            onPress={confirmAnnouncement}
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, busy && styles.disabled]}
           >
             <Text style={styles.primaryText}>{translate(locale, "communication.publish")}</Text>
@@ -246,7 +276,37 @@ export function CommunicationPanel({
           </View>
           <Text style={[styles.sectionTitle, textDirection]}>{translate(locale, "communication.announcements")}</Text>
         </View>
-        {visibleAnnouncements.slice(0, 10).map((item) => (
+        {mode==="TEACHER"?<>
+          <View style={[styles.headingRow,rtl&&styles.rowRtl]}>
+            <Text style={[styles.muted,styles.flex,textDirection]}>
+              {translate(locale,"teacher.noticeResults")} · {formatLocalizedNumber(visibleAnnouncements.length,locale)}
+            </Text>
+            <Pressable accessibilityRole="button" disabled={busy}
+              onPress={()=>void load(++loadRequestId.current)}>
+              <Ionicons name="refresh-outline" size={21} color={tokens.color.brandStrong}/>
+            </Pressable>
+          </View>
+          <TextInput testID="teacher-announcement-search"
+            value={announcementQuery} onChangeText={value=>{
+              setAnnouncementQuery(value);setExpandedAnnouncements(false);
+            }} placeholder={translate(locale,"teacher.noticeSearch")}
+            style={[styles.input,textDirection]} autoCapitalize="none"/>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.filterChips,rtl&&styles.rowRtl]}>
+            {(["ALL","CLASS","SCHOOL","ROLE"] as TeacherAnnouncementScope[]).map(next=>
+              <Pressable key={next} accessibilityRole="tab"
+                accessibilityState={{selected:announcementScope===next}}
+                onPress={()=>{setAnnouncementScope(next);setExpandedAnnouncements(false);}}
+                style={[styles.chip,announcementScope===next&&styles.chipActive]}>
+                <Text style={announcementScope===next?styles.chipTextActive:styles.chipText}>
+                  {translate(locale,next==="ALL"?"teacher.classFilterAll":
+                    next==="CLASS"?"teacher.noticeClass":
+                    next==="SCHOOL"?"teacher.noticeSchool":"teacher.noticeRole")}
+                </Text>
+              </Pressable>)}
+          </ScrollView>
+        </>:null}
+        {announcementsShown.map((item) => (
           <View key={item.id} style={styles.listItem}>
             <Text style={[styles.itemTitle, textDirection]}>{item.title}</Text>
             <Text style={[styles.body, textDirection]}>{item.content}</Text>
@@ -254,8 +314,15 @@ export function CommunicationPanel({
           </View>
         ))}
         {visibleAnnouncements.length === 0 ? (
-          <Text style={[styles.muted, textDirection]}>{translate(locale, "communication.noAnnouncements")}</Text>
+          <Text style={[styles.muted,textDirection]}>{translate(locale,
+            mode==="TEACHER"&&announcements.length?"teacher.noticeNoMatch":"communication.noAnnouncements")}</Text>
         ) : null}
+        {mode==="TEACHER"&&visibleAnnouncements.length>10?
+          <Pressable accessibilityRole="button" onPress={()=>setExpandedAnnouncements(value=>!value)}
+            style={styles.expandButton}>
+            <Text style={styles.expandText}>{translate(locale,expandedAnnouncements?
+              "teacher.noticeShowLess":"teacher.noticeShowAll")}</Text>
+          </Pressable>:null}
       </View>
 
       {mode !== "TEACHER" ? (
@@ -377,6 +444,10 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 92, textAlignVertical: "top" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  filterChips:{flexDirection:"row",gap:7,paddingVertical:3},
+  expandButton:{minHeight:43,padding:10,alignItems:"center",
+    borderRadius:11,backgroundColor:"#eaf2ff"},
+  expandText:{fontSize:12,fontWeight:"800",color:tokens.color.brandStrong},
   chip: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: "#dbe3ee" },
   chipActive: { backgroundColor: tokens.color.brand, borderColor: tokens.color.brand },
   chipText: { color: tokens.color.text, fontWeight: "800", fontSize: 12 },
