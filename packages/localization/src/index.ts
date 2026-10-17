@@ -603,6 +603,8 @@ export type TranslationKey =
   | "student.resPreviousMark"
   | "student.resHistoryScope"
   | "student.resScorePercent"
+  | "student.resRefresh"
+  | "student.resRefreshFailed"
   | "student.timetableTitle"
   | "student.timetableSubtitle"
   | "student.noTimetable"
@@ -1378,6 +1380,8 @@ const en: Record<TranslationKey, string> = {
   "student.resPreviousMark": "Previous result",
   "student.resHistoryScope": "Published results currently available for your enrolled class and academic year. Earlier school years are not included.",
   "student.resScorePercent": "Percentage",
+  "student.resRefresh": "Refresh results",
+  "student.resRefreshFailed": "Refresh failed. Previously loaded results are shown.",
   "student.timetableTitle": "My timetable",
   "student.timetableSubtitle": "Your weekly class agenda.",
   "student.noTimetable": "No timetable has been created for your class yet.",
@@ -2169,6 +2173,8 @@ const dari: Record<TranslationKey, string> = {
   "student.resPreviousMark": "نتیجۀ قبلی",
   "student.resHistoryScope": "نتایج نشرشدۀ موجود برای صنف و سال تعلیمی فعلی شما. سال‌های تعلیمی قبلی شامل نیست.",
   "student.resScorePercent": "فیصدی",
+  "student.resRefresh": "تازه‌سازی نتایج",
+  "student.resRefreshFailed": "تازه‌سازی انجام نشد. نتایج قبلاً بارگذاری‌شده نشان داده می‌شود.",
   "student.timetableTitle": "تقسیم اوقات من",
   "student.timetableSubtitle": "برنامه هفتگی صنف شما.",
   "student.noTimetable": "هنوز تقسیم اوقاتی برای صنف شما ساخته نشده است.",
@@ -2960,6 +2966,8 @@ const pashto: Record<TranslationKey, string> = {
   "student.resPreviousMark": "مخکینۍ پایله",
   "student.resHistoryScope": "یوازې ستاسو د اوسني ټولګي او تعلیمي کال شته خپرې شوې پایلې ښودل کېږي. د تېرو کلونو پایلې نه دي شاملې.",
   "student.resScorePercent": "سلنه",
+  "student.resRefresh": "پایلې تازه کړئ",
+  "student.resRefreshFailed": "تازه کول ناکام شول. پخوانۍ پورته شوې پایلې ښودل کېږي.",
   "student.timetableTitle": "زما مهالویش",
   "student.timetableSubtitle": "ستاسو د ټولګي اوونیز مهالویش.",
   "student.noTimetable": "ستاسو د ټولګي لپاره تر اوسه مهالویش نه دی جوړ شوی.",
