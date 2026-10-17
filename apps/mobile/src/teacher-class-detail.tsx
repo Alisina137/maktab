@@ -9,6 +9,7 @@ import { CommunicationPanel } from "./communication-ui";
 import { teacherTime12 } from "./teacher-hub-data";
 import { NegaranHistoryPanel } from "./negaran-history";
 import { TeacherTeachingPanel } from "./teacher-teaching";
+import { TeacherClassProgressPanel } from "./teacher-class-progress";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
 
 export type TeacherClassSection = "OVERVIEW" | "STUDENTS" | "LEARNING" | "TEACHING" | "ATTENDANCE";
@@ -45,7 +46,6 @@ export function TeacherClassDetailPage({
   const rtl = getDirection(locale) === "rtl";
   const [detail, setDetail] = useState<TeacherClassDetailPayload | null>(null);
   const [ready, setReady] = useState(false);
-  const [studentId, setStudentId] = useState("");
   const [refresh, setRefresh] = useState(0);
   const requestId = useRef(0);
 
@@ -114,6 +114,12 @@ export function TeacherClassDetailPage({
             ))}
           </View>
           {section === "OVERVIEW" ? (
+            <TeacherClassProgressPanel mode="OVERVIEW" detail={detail}
+              locale={locale} textDirection={textDirection}
+              onStudents={()=>openSection("STUDENTS")}
+              onGrades={()=>{onLearningSectionChange("GRADES");openSection("LEARNING");}}/>
+          ) : null}
+          {section === "OVERVIEW" ? (
             <View style={styles.card}>
               <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.subjectSchedule")}</Text>
               {detail.schedule.length ? [...detail.schedule].sort((a,b) => a.startsAt.localeCompare(b.startsAt)).map((period) => (
@@ -125,34 +131,10 @@ export function TeacherClassDetailPage({
             </View>
           ) : null}
           {section === "STUDENTS" ? (
-            <View style={styles.card}>
-              <Text style={[styles.title, textDirection]}>{translate(locale, "teacher.classStudents")}</Text>
-              <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.studentRosterHint")}</Text>
-              {detail.students.map((student) => (
-                <View key={student.id} style={styles.listRow}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={student.fullName}
-                    onPress={() => setStudentId((currentId) => currentId === student.id ? "" : student.id)}
-                    style={[styles.row, rtl && styles.rtl]}>
-                    <Ionicons name="person-circle-outline" size={27} color={tokens.color.brandStrong} />
-                    <View style={styles.flex}>
-                      <Text style={[styles.label, textDirection]}>{student.fullName}</Text>
-                      <Text style={[styles.muted, textDirection]}>{student.studentCode}</Text>
-                    </View>
-                    <Ionicons name={studentId === student.id ? "chevron-up" : "chevron-down"} size={18} color={tokens.color.textMuted} />
-                  </Pressable>
-                  {studentId === student.id ? (
-                    <View style={styles.studentMore}>
-                      <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.studentReadOnly")}</Text>
-                      <Text style={[styles.label, textDirection]}>{current.subjectName} · {current.className}</Text>
-                      <Pressable accessibilityRole="button" style={styles.smallButton} onPress={() => { onLearningSectionChange("GRADES"); openSection("LEARNING"); }}>
-                        <Text style={styles.link}>{translate(locale, "teacher.workflowGrades")}</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-              {!detail.students.length ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noActiveStudents")}</Text> : null}
-            </View>
+            <TeacherClassProgressPanel mode="STUDENTS" detail={detail}
+              locale={locale} textDirection={textDirection}
+              onStudents={()=>openSection("STUDENTS")}
+              onGrades={()=>{onLearningSectionChange("GRADES");openSection("LEARNING");}}/>
           ) : null}
           {section === "LEARNING" ? (
             <View style={styles.stack}>
