@@ -5,7 +5,7 @@ on:
     paths:
       - "apps/mobile/**"
       - "packages/localization/**"
-      - "scripts/verify-student-navigation-phase*.mjs"
+      - "scripts/verify-student-*.mjs"
       - "scripts/test-student-*.ts"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -14,7 +14,7 @@ on:
     paths:
       - "apps/mobile/**"
       - "packages/localization/**"
-      - "scripts/verify-student-navigation-phase*.mjs"
+      - "scripts/verify-student-*.mjs"
       - "scripts/test-student-*.ts"
       - "package.json"
       - "pnpm-lock.yaml"
