@@ -29,13 +29,13 @@ test("Phase 4 groups only own assigned subjects and class counts",()=>{
   const result=teacherClassesOverview(academics,learning,"","ALL");
   assert.equal(result.totalClasses,2);assert.equal(result.totalSubjects,3);
   assert.equal(result.classes.length,2);
-  assert.equal(result.classes[0]?.subjects.length,2);
+  assert.equal(result.classes.find(item=>item.classId==="c1")?.subjects.length,2);
   assert.equal(result.homeworkDrafts,2);
   assert.equal(result.openExams,2);
 });
 test("Phase 4 searches class code and subject without showing another class",()=>{
   assert.deepEqual(teacherClassesOverview(academics,learning," 8A ","ALL").classes.map(x=>x.classId),["c2"]);
-  assert.deepEqual(teacherClassesOverview(academics,learning,"sCIence","ALL").classes[0]?.subjects.map(x=>x.assignment.assignmentId),["a2"]);
+  assert.deepEqual(teacherClassesOverview(academics,learning,"sCIence","ALL").classes.find(item=>item.classId==="c1")?.subjects.map(x=>x.assignment.assignmentId),["a2"]);
   assert.equal(teacherClassesOverview(academics,learning,"Unlisted","ALL").classes.length,0);
 });
 test("Phase 4 filters drafts and grading only for assigned academic-year subject",()=>{
@@ -44,7 +44,7 @@ test("Phase 4 filters drafts and grading only for assigned academic-year subject
   assert.equal(drafts.classes[1]?.subjects.length,1);
   const exams=teacherClassesOverview(academics,learning,"","GRADING");
   assert.equal(exams.classes.length,2);
-  assert.deepEqual(exams.classes[0]?.subjects.map(x=>x.assignment.assignmentId),["a1"]);
+  assert.deepEqual(exams.classes.find(item=>item.classId==="c1")?.subjects.map(x=>x.assignment.assignmentId),["a1"]);
 });
 test("Phase 4 renders unknown progress as N/A and never as fabricated zero",()=>{
   assert.equal(teacherProgressRatio(0,0),null);
