@@ -3101,6 +3101,15 @@ function AppContent() {
               ready={studentLearningReady}
               locale={locale}
               textDirection={textDirection}
+              onSubmitted={(submitted)=>{
+                if(sessionRef.current?.accessToken!==session.accessToken||
+                  submitted.studentId!==studentLearning?.student.id)return;
+                setStudentSubmissions(current=>{
+                  const updated=(current??[]).filter(item=>item.homeworkId!==submitted.homeworkId);
+                  return [...updated,submitted];
+                });
+                setStudentSubmissionsReady(true);
+              }}
             />
           </View>
         ) : null}
