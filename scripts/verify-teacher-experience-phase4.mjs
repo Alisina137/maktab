@@ -111,5 +111,6 @@ assert.ok(pkg.scripts["verify:teacher:phase4"]?.includes("test-teacher-classes-m
 assert.ok(ci.includes("run: pnpm verify:teacher:phase4") ||
   ci.includes("run: pnpm verify:teacher:phase5") ||
   ci.includes("run: pnpm verify:teacher:phase6") ||
-  ci.includes("run: pnpm verify:teacher:phase7"));
+  ci.includes("run: pnpm verify:teacher:phase7") ||
+  ci.includes("run: pnpm verify:teacher:phase8"));
 console.log("Teacher Phase 4 source verification passed: scoped queries, class search, progress, RTL, and 3 languages.");
