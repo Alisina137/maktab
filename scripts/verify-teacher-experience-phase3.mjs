@@ -86,6 +86,7 @@ assert.ok(pkg.scripts["verify:teacher:phase3"]?.includes("test-teacher-schedule-
 assert.ok(workflow.includes("run: pnpm verify:teacher:phase3") ||
   workflow.includes("run: pnpm verify:teacher:phase4") ||
   workflow.includes("run: pnpm verify:teacher:phase5") ||
-  workflow.includes("run: pnpm verify:teacher:phase6"),
+  workflow.includes("run: pnpm verify:teacher:phase6") ||
+  workflow.includes("run: pnpm verify:teacher:phase7"),
   "CI must run at least the Phase 3 regressions.");
 console.log("Teacher Phase 3: Day/Week, current lesson, authorization, RTL labels and regression guards passed.");
