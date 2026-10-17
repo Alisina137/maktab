@@ -3072,6 +3072,9 @@ function AppContent() {
               ready={studentTimetableReady}
               locale={locale}
               textDirection={textDirection}
+              onViewChange={()=>onboardingScrollRef.current?.scrollTo({
+                y:0,animated:!reduceMotion
+              })}
             />
           </View>
         ) : null}
