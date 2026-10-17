@@ -1,400 +1,311 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
-  formatLocalizedDate,
-  formatLocalizedNumber,
-  getDirection,
-  translate,
-  type SupportedLocale
+  formatLocalizedDate,formatLocalizedNumber,getDirection,
+  translate,type SupportedLocale,type TranslationKey
 } from "@maktablink/localization";
 import type { LearnerAcademicPayload } from "./api";
+import {
+  studentVisibleResults,studentResultsSubjects,studentResultsTypes,
+  studentFilterResults,studentExamGroups,studentSubjectPerformance,
+  studentResultHistory,studentPublishedAverage,studentResultsTabs,
+  type StudentResultsTab,type StudentSubjectPerformance
+} from "./student-results-model";
 
-type TextDirectionStyle = {
-  textAlign: "right" | "left";
-  writingDirection: "rtl" | "ltr";
+type Direction={textAlign:"left"|"right";writingDirection:"ltr"|"rtl"};
+const tabLabel:Record<StudentResultsTab,TranslationKey>={
+  EXAMS:"student.resExams",PERFORMANCE:"student.resPerformance",
+  HISTORY:"student.resHistory"
 };
-
-type ResultItem = LearnerAcademicPayload["results"][number];
-
-interface ExamGroup {
-  examId: string;
-  examName: string;
-  examType: string;
-  publishedAt: string | null;
-  results: ResultItem[];
+function Empty({locale,textDirection,label}:{
+  locale:SupportedLocale;textDirection:Direction;label:TranslationKey
+}){
+  return <View style={styles.empty}>
+    <Ionicons name="ribbon-outline" size={25} color={tokens.color.textMuted}/>
+    <Text style={[styles.muted,textDirection]}>{translate(locale,label)}</Text>
+  </View>;
 }
-
-function groupPublishedResults(results: ResultItem[]): ExamGroup[] {
-  const groups = new Map<string, ExamGroup>();
-
-  for (const result of results) {
-    if (!["PUBLISHED", "ARCHIVED"].includes(result.exam.status) || result.grade.status !== "PUBLISHED") {
-      continue;
-    }
-
-    const existing = groups.get(result.exam.id);
-    if (existing) {
-      existing.results.push(result);
-      if (!existing.publishedAt && result.exam.publishedAt) {
-        existing.publishedAt = result.exam.publishedAt;
-      }
-      continue;
-    }
-
-    groups.set(result.exam.id, {
-      examId: result.exam.id,
-      examName: result.exam.name,
-      examType: result.exam.type,
-      publishedAt: result.exam.publishedAt,
-      results: [result]
-    });
-  }
-
-  return [...groups.values()].sort((a, b) => {
-    const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-    const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-    return bTime - aTime;
-  });
+function Score({score,max,locale}:{
+  score:number;max:number;locale:SupportedLocale
+}){
+  return <Text style={styles.score}>
+    {formatLocalizedNumber(score,locale)}
+    <Text style={styles.scoreDivider}> / </Text>
+    {formatLocalizedNumber(max,locale)}
+  </Text>;
 }
-
-function SubjectResultRow({
-  result,
-  locale,
-  textDirection
-}: {
-  result: ResultItem;
-  locale: SupportedLocale;
-  textDirection: TextDirectionStyle;
-}) {
-  const rtl = getDirection(locale) === "rtl";
-
-  return (
-    <View style={styles.subjectCard}>
-      <View style={[styles.subjectHeading, rtl && styles.rowRtl]}>
-        <View style={styles.subjectIcon}>
-          <Ionicons name="book-outline" size={17} color={tokens.color.brandStrong} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={[styles.subjectName, textDirection]}>{result.subjectName}</Text>
-          <Text style={[styles.className, textDirection]}>{result.className}{result.examSubject.examDate ? ` · ${formatLocalizedDate(result.examSubject.examDate, locale)}` : ""}</Text>
-        </View>
-        <View style={styles.scorePill}>
-          <Text style={styles.scoreText}>
-            {formatLocalizedNumber(result.grade.score, locale)}
-            <Text style={styles.scoreDivider}>/</Text>
-            {formatLocalizedNumber(result.examSubject.maxScore, locale)}
-          </Text>
-        </View>
-      </View>
-
-      {result.grade.remark ? (
-        <View style={[styles.remarkBox, rtl && styles.rowRtl]}>
-          <Ionicons name="chatbubble-ellipses-outline" size={16} color={tokens.color.textMuted} />
-          <View style={styles.flex}>
-            <Text style={[styles.remarkLabel, textDirection]}>
-              {translate(locale, "student.teacherRemark")}
-            </Text>
-            <Text style={[styles.remarkText, textDirection]}>{result.grade.remark}</Text>
-          </View>
-        </View>
-      ) : null}
-    </View>
-  );
+function Progress({value}:{value:number}){
+  return <View style={styles.track} accessibilityLabel={`${value}%`}>
+    <View style={[styles.fill,{width:`${Math.max(0,Math.min(100,value))}%` as `${number}%`}]}/>
+  </View>;
 }
-
+function Trend({item,locale,textDirection}:{
+  item:StudentSubjectPerformance;locale:SupportedLocale;textDirection:Direction
+}){
+  const key:TranslationKey=item.trend==="UP"?"student.resImproving":
+    item.trend==="DOWN"?"student.resDeclining":
+    item.trend==="SAME"?"student.resStable":"student.resFirstMark";
+  const icon=item.trend==="UP"?"trending-up-outline":
+    item.trend==="DOWN"?"trending-down-outline":"remove-outline";
+  return <View style={styles.trend}>
+    <Ionicons name={icon} size={17} color={tokens.color.brandStrong}/>
+    <Text style={[styles.trendText,textDirection]}>{translate(locale,key)}</Text>
+  </View>;
+}
 export function StudentResultsContent({
-  learning,
-  ready,
-  locale,
-  textDirection
-}: {
-  learning: LearnerAcademicPayload | null;
-  ready: boolean;
-  locale: SupportedLocale;
-  textDirection: TextDirectionStyle;
+  learning,ready,locale,textDirection
+}:{
+  learning:LearnerAcademicPayload|null;ready:boolean;
+  locale:SupportedLocale;textDirection:Direction;
 }) {
-  const rtl = getDirection(locale) === "rtl";
-
-  if (!ready && !learning) {
-    return (
-      <View style={styles.loadingCard}>
-        <View style={styles.loadingLineWide} />
-        <View style={styles.loadingLineShort} />
-      </View>
-    );
-  }
-
-  const groups = groupPublishedResults(learning?.results ?? []);
-
-  if (groups.length === 0) {
-    return (
-      <View style={styles.emptyCard}>
-        <View style={styles.emptyIcon}>
-          <Ionicons name="ribbon-outline" size={24} color={tokens.color.textMuted} />
-        </View>
-        <Text style={[styles.emptyText, textDirection]}>
-          {translate(locale, "student.noResults")}
+  const rtl=getDirection(locale)==="rtl";
+  const [tab,setTab]=useState<StudentResultsTab>("EXAMS");
+  const [subject,setSubject]=useState<string|null>(null);
+  const [examType,setExamType]=useState<string|null>(null);
+  const [query,setQuery]=useState("");
+  const [expandedExam,setExpandedExam]=useState<string|null>(null);
+  if(!ready&&!learning)return <View style={styles.loadingCard}>
+    <View style={styles.loadingLineWide}/><View style={styles.loadingLineShort}/>
+  </View>;
+  if(!learning)return <Empty locale={locale} textDirection={textDirection}
+    label="student.homeDataUnavailable"/>;
+  const all=studentVisibleResults(learning);
+  const subjects=studentResultsSubjects(all);
+  const types=studentResultsTypes(all);
+  const filtered=studentFilterResults(all,{subject,examType,query});
+  const groups=studentExamGroups(filtered);
+  const performance=studentSubjectPerformance(filtered);
+  const history=studentResultHistory(filtered);
+  const average=studentPublishedAverage(filtered);
+  const count=(n:number)=>formatLocalizedNumber(n,locale);
+  const percent=(n:number)=>`${count(n)}%`;
+  return <View style={styles.stack} testID="student-results-phase5">
+    <View style={[styles.tabBar,rtl&&styles.rtl]} accessibilityRole="tablist">
+      {studentResultsTabs.map(next=><Pressable key={next}
+        testID={`student-results-tab-${next.toLowerCase()}`}
+        accessibilityRole="tab" accessibilityState={{selected:tab===next}}
+        onPress={()=>setTab(next)}
+        style={[styles.tab,tab===next&&styles.tabSelected]}>
+        <Text style={[styles.tabText,tab===next&&styles.tabTextSelected]}>
+          {translate(locale,tabLabel[next])}
         </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.stack}>
-      {groups.map((group) => {
-        const totalScore = group.results.reduce((sum, result) => sum + result.grade.score, 0);
-        const totalMax = group.results.reduce(
-          (sum, result) => sum + result.examSubject.maxScore,
-          0
-        );
-
-        return (
-          <View key={group.examId} style={styles.examCard}>
-            <View style={[styles.examHeading, rtl && styles.rowRtl]}>
-              <View style={styles.examIcon}>
-                <Ionicons name="ribbon-outline" size={21} color={tokens.color.brandStrong} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={[styles.examName, textDirection]}>{group.examName}</Text>
-                {group.examType ? (
-                  <Text style={[styles.examType, textDirection]}>{group.examType}</Text>
-                ) : null}
-              </View>
-            </View>
-
-            <View style={[styles.examMeta, rtl && styles.rowRtl]}>
-              <View style={styles.totalPill}>
-                <Text style={styles.totalLabel}>
-                  {translate(locale, "student.examTotal")}
-                </Text>
-                <Text style={styles.totalValue}>
-                  {formatLocalizedNumber(totalScore, locale)}
-                  <Text style={styles.scoreDivider}>/</Text>
-                  {formatLocalizedNumber(totalMax, locale)}
-                </Text>
-              </View>
-
-              {group.publishedAt ? (
-                <View style={styles.publishPill}>
-                  <Ionicons name="calendar-outline" size={13} color={tokens.color.textMuted} />
-                  <Text style={styles.publishText}>
-                    {translate(locale, "student.publishedOn")}{" "}
-                    {formatLocalizedDate(group.publishedAt, locale)}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.subjectList}>
-              {group.results
-                .slice()
-                .sort((a, b) => a.subjectName.localeCompare(b.subjectName))
-                .map((result) => (
-                  <SubjectResultRow
-                    key={result.grade.id}
-                    result={result}
-                    locale={locale}
-                    textDirection={textDirection}
-                  />
-                ))}
-            </View>
-          </View>
-        );
-      })}
+      </Pressable>)}
     </View>
-  );
+    <View style={[styles.summaryRow,rtl&&styles.rtl]}>
+      <View style={styles.summaryCell}>
+        <Text style={styles.summaryNumber}>{average===null?"—":percent(average)}</Text>
+        <Text style={styles.summaryLabel}>{translate(locale,"student.resPublishedAverage")}</Text>
+      </View>
+      <View style={styles.summaryCell}>
+        <Text style={styles.summaryNumber}>{count(filtered.length)}</Text>
+        <Text style={styles.summaryLabel}>{translate(locale,"student.resPublishedMarks")}</Text>
+      </View>
+    </View>
+    <TextInput testID="student-results-search" value={query} onChangeText={setQuery}
+      autoCapitalize="none" style={[styles.search,textDirection]}
+      placeholder={translate(locale,"student.resSearch")}/>
+    <View style={styles.filterStack}>
+      <Text style={[styles.filterTitle,textDirection]}>
+        {translate(locale,"student.resSubjectFilter")}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.chips,rtl&&styles.rtl]}>
+        {[null,...subjects].map(next=><Pressable key={next??"ALL"}
+          accessibilityRole="button" accessibilityState={{selected:subject===next}}
+          onPress={()=>setSubject(next)}
+          style={[styles.chip,subject===next&&styles.chipSelected]}>
+          <Text style={[styles.chipText,subject===next&&styles.chipTextSelected]}>
+            {next??translate(locale,"student.resAllSubjects")}
+          </Text>
+        </Pressable>)}
+      </ScrollView>
+      <Text style={[styles.filterTitle,textDirection]}>
+        {translate(locale,"student.resExamTypeFilter")}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.chips,rtl&&styles.rtl]}>
+        {[null,...types].map(next=><Pressable key={next??"ALL"}
+          accessibilityRole="button" accessibilityState={{selected:examType===next}}
+          onPress={()=>setExamType(next)}
+          style={[styles.chip,examType===next&&styles.chipSelected]}>
+          <Text style={[styles.chipText,examType===next&&styles.chipTextSelected]}>
+            {next??translate(locale,"student.resAllTypes")}
+          </Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>
+    {all.length===0?<Empty locale={locale} textDirection={textDirection}
+      label="student.noResults"/>:filtered.length===0?
+      <Empty locale={locale} textDirection={textDirection}
+        label="student.resNoMatching"/>:null}
+    {filtered.length>0&&tab==="EXAMS"?<View style={styles.stack}
+      testID="student-results-exams">
+      <Text style={[styles.sectionTitle,textDirection]}>
+        {translate(locale,"student.resExams")} · {count(groups.length)}
+      </Text>
+      {groups.map(group=>{
+        const expanded=expandedExam===null||expandedExam===group.id;
+        return <View key={group.id} style={styles.card}>
+          <Pressable accessibilityRole="button" accessibilityState={{expanded}}
+            onPress={()=>setExpandedExam(expanded? "NONE":group.id)}
+            style={[styles.row,rtl&&styles.rtl]}>
+            <View style={styles.flex}>
+              <Text style={[styles.name,textDirection]}>{group.name}</Text>
+              <Text style={[styles.muted,textDirection]}>
+                {group.type||translate(locale,"student.resExams")}
+              </Text>
+              {group.publishedAt?<Text style={[styles.muted,textDirection]}>
+                {translate(locale,"student.publishedOn")}:
+                {" "}{formatLocalizedDate(group.publishedAt,locale)}
+              </Text>:null}
+            </View>
+            <Text style={styles.percent}>{percent(group.percent)}</Text>
+            <Ionicons name={expanded?"chevron-up":"chevron-down"} size={18}
+              color={tokens.color.textMuted}/>
+          </Pressable>
+          <View style={[styles.metaRow,rtl&&styles.rtl]}>
+            <Text style={styles.muted}>{translate(locale,"student.examTotal")}</Text>
+            <Score score={group.score} max={group.maxScore} locale={locale}/>
+          </View>
+          <Progress value={group.percent}/>
+          {expanded?<View style={styles.innerStack}>
+            {group.results.map(result=><View key={result.grade.id} style={styles.subjectRow}>
+              <View style={[styles.row,rtl&&styles.rtl]}>
+                <View style={styles.flex}>
+                  <Text style={[styles.name,textDirection]}>{result.subjectName}</Text>
+                  {result.examSubject.examDate?<Text style={[styles.muted,textDirection]}>
+                    {formatLocalizedDate(result.examSubject.examDate,locale)}
+                  </Text>:null}
+                </View>
+                <Score score={result.grade.score}
+                  max={result.examSubject.maxScore} locale={locale}/>
+              </View>
+              {result.grade.remark?<View style={styles.remark}>
+                <Text style={[styles.muted,textDirection]}>
+                  {translate(locale,"student.teacherRemark")}: {result.grade.remark}
+                </Text>
+              </View>:null}
+            </View>)}
+          </View>:null}
+        </View>;
+      })}
+    </View>:null}
+    {filtered.length>0&&tab==="PERFORMANCE"?<View style={styles.stack}
+      testID="student-results-performance">
+      <Text style={[styles.sectionTitle,textDirection]}>
+        {translate(locale,"student.resSubjectBreakdown")}
+      </Text>
+      <Text style={[styles.muted,textDirection]}>
+        {translate(locale,"student.resWeightedExplanation")}
+      </Text>
+      {performance.map(item=><View key={item.subjectId} style={styles.card}>
+        <View style={[styles.row,rtl&&styles.rtl]}>
+          <View style={styles.flex}>
+            <Text style={[styles.name,textDirection]}>{item.name}</Text>
+            <Text style={[styles.muted,textDirection]}>
+              {count(item.publishedMarks)} {" "}{translate(locale,"student.resPublishedMarks")}
+            </Text>
+          </View>
+          <Text style={styles.percent}>{percent(item.percent)}</Text>
+        </View>
+        <Progress value={item.percent}/>
+        <Trend item={item} locale={locale} textDirection={textDirection}/>
+        <View style={[styles.metaRow,rtl&&styles.rtl]}>
+          <Text style={styles.muted}>{translate(locale,"student.resLatestMark")}</Text>
+          <Text style={styles.score}>{percent(item.latestPercent)}</Text>
+        </View>
+        {item.previousPercent!==null?<View style={[styles.metaRow,rtl&&styles.rtl]}>
+          <Text style={styles.muted}>{translate(locale,"student.resPreviousMark")}</Text>
+          <Text style={styles.score}>{percent(item.previousPercent)}</Text>
+        </View>:null}
+        <View style={styles.innerStack}>
+          {item.timeline.map(entry=><View key={entry.id}
+            style={[styles.metaRow,rtl&&styles.rtl]}>
+            <Text style={[styles.muted,styles.flex,textDirection]}>
+              {entry.exam}{entry.date?` · ${formatLocalizedDate(entry.date,locale)}`:""}
+            </Text>
+            <Text style={styles.score}>{percent(entry.percent)}</Text>
+          </View>)}
+        </View>
+      </View>)}
+    </View>:null}
+    {filtered.length>0&&tab==="HISTORY"?<View style={styles.stack}
+      testID="student-results-history">
+      <Text style={[styles.sectionTitle,textDirection]}>
+        {translate(locale,"student.resHistory")}
+      </Text>
+      <Text style={[styles.muted,textDirection]}>
+        {translate(locale,"student.resHistoryScope")}
+      </Text>
+      {history.map(entry=><View key={entry.id} style={styles.card}>
+        <View style={[styles.row,rtl&&styles.rtl]}>
+          <View style={styles.flex}>
+            <Text style={[styles.name,textDirection]}>{entry.subjectName}</Text>
+            <Text style={[styles.muted,textDirection]}>
+              {entry.examName} · {entry.examType}
+            </Text>
+          </View>
+          <Score score={entry.score} max={entry.maxScore} locale={locale}/>
+        </View>
+        <View style={[styles.metaRow,rtl&&styles.rtl]}>
+          <Text style={styles.muted}>{translate(locale,"student.resScorePercent")}</Text>
+          <Text style={styles.percent}>{percent(entry.percent)}</Text>
+        </View>
+        {entry.publishedAt?<Text style={[styles.muted,textDirection]}>
+          {translate(locale,"student.publishedOn")}:
+          {" "}{formatLocalizedDate(entry.publishedAt,locale)}
+        </Text>:null}
+        {entry.remark?<Text style={[styles.muted,textDirection]}>
+          {translate(locale,"student.teacherRemark")}: {entry.remark}
+        </Text>:null}
+      </View>)}
+    </View>:null}
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  stack: { gap: 14 },
-  rowRtl: { flexDirection: "row-reverse" },
-  flex: { flex: 1, minWidth: 0 },
-  examCard: {
-    padding: 16,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "#e1e7f0",
-    backgroundColor: tokens.color.surface,
-    gap: 13,
-    shadowColor: "#172033",
-    shadowOpacity: 0.035,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1
-  },
-  examHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11
-  },
-  examIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#edf3ff"
-  },
-  examName: {
-    color: tokens.color.text,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "900"
-  },
-  examType: {
-    color: tokens.color.textMuted,
-    fontSize: 11.5,
-    lineHeight: 17,
-    marginTop: 2
-  },
-  examMeta: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8
-  },
-  totalPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 10,
-    minHeight: 34,
-    borderRadius: 12,
-    backgroundColor: "#edf3ff"
-  },
-  totalLabel: {
-    color: tokens.color.textMuted,
-    fontSize: 10.5,
-    fontWeight: "700"
-  },
-  totalValue: {
-    color: tokens.color.brandStrong,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  publishPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    minHeight: 34,
-    borderRadius: 12,
-    backgroundColor: "#f3f5f8"
-  },
-  publishText: {
-    color: tokens.color.textMuted,
-    fontSize: 10.5,
-    fontWeight: "700"
-  },
-  scoreDivider: { color: tokens.color.textMuted },
-  subjectList: { gap: 8 },
-  subjectCard: {
-    padding: 13,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8edf4",
-    backgroundColor: "#f9fbfe",
-    gap: 9
-  },
-  subjectHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9
-  },
-  subjectIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#edf3ff"
-  },
-  subjectName: {
-    color: tokens.color.text,
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: "900"
-  },
-  className: {
-    color: tokens.color.textMuted,
-    fontSize: 11.5,
-    lineHeight: 16
-  },
-  scorePill: {
-    minWidth: 64,
-    minHeight: 34,
-    paddingHorizontal: 9,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#e9f7ef"
-  },
-  scoreText: {
-    color: "#207a4c",
-    fontSize: 12.5,
-    fontWeight: "900"
-  },
-  remarkBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#f2f4f7"
-  },
-  remarkLabel: {
-    color: tokens.color.textMuted,
-    fontSize: 10.5,
-    fontWeight: "800"
-  },
-  remarkText: {
-    color: tokens.color.text,
-    fontSize: 12.5,
-    lineHeight: 18,
-    marginTop: 2
-  },
-  emptyCard: {
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#e1e7f0",
-    backgroundColor: tokens.color.surface,
-    alignItems: "center",
-    gap: 10
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f4f8"
-  },
-  emptyText: {
-    color: tokens.color.textMuted,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontWeight: "700"
-  },
-  loadingCard: {
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#e1e7f0",
-    backgroundColor: tokens.color.surface,
-    gap: 10
-  },
-  loadingLineWide: {
-    height: 12,
-    width: "78%",
-    borderRadius: 999,
-    backgroundColor: "#edf1f6"
-  },
-  loadingLineShort: {
-    height: 11,
-    width: "52%",
-    borderRadius: 999,
-    backgroundColor: "#f0f3f7"
-  }
+const styles=StyleSheet.create({
+  stack:{gap:13},rtl:{flexDirection:"row-reverse"},flex:{flex:1,minWidth:0},
+  tabBar:{flexDirection:"row",backgroundColor:"#edf2f9",padding:4,gap:4,borderRadius:15},
+  tab:{flex:1,minHeight:44,alignItems:"center",justifyContent:"center",borderRadius:12},
+  tabSelected:{backgroundColor:"#fff",borderWidth:1,borderColor:"#c9d9ee"},
+  tabText:{fontSize:12,fontWeight:"800",color:tokens.color.textMuted,textAlign:"center"},
+  tabTextSelected:{color:tokens.color.brandStrong},
+  summaryRow:{flexDirection:"row",gap:10},
+  summaryCell:{flex:1,padding:14,borderRadius:16,gap:6,alignItems:"center",
+    backgroundColor:"#eef5ff",borderColor:"#dce7f7",borderWidth:1},
+  summaryNumber:{fontSize:23,fontWeight:"900",color:tokens.color.brandStrong},
+  summaryLabel:{fontSize:11.5,textAlign:"center",color:tokens.color.textMuted},
+  search:{minHeight:47,paddingHorizontal:13,borderRadius:12,borderWidth:1,
+    borderColor:"#cdd9e9",backgroundColor:"#fff",color:tokens.color.text},
+  filterStack:{gap:8},
+  filterTitle:{fontSize:12,fontWeight:"800",color:tokens.color.text},
+  chips:{flexDirection:"row",gap:7,paddingVertical:2},
+  chip:{minHeight:40,paddingHorizontal:12,borderRadius:11,borderColor:"#dce5f0",
+    borderWidth:1,backgroundColor:"#fff",justifyContent:"center"},
+  chipSelected:{backgroundColor:"#e7f0ff",borderColor:tokens.color.brandStrong},
+  chipText:{fontSize:12,fontWeight:"800",color:tokens.color.textMuted},
+  chipTextSelected:{color:tokens.color.brandStrong},
+  sectionTitle:{fontSize:16,fontWeight:"900",color:tokens.color.text},
+  card:{padding:15,borderWidth:1,borderColor:"#e1e8f2",borderRadius:18,
+    gap:11,backgroundColor:"#fff"},
+  row:{flexDirection:"row",alignItems:"center",gap:10},
+  name:{fontSize:14,fontWeight:"900",color:tokens.color.text},
+  muted:{fontSize:12,lineHeight:18,color:tokens.color.textMuted},
+  percent:{fontSize:18,fontWeight:"900",color:tokens.color.brandStrong},
+  score:{fontSize:13,fontWeight:"900",color:tokens.color.brandStrong},
+  scoreDivider:{color:tokens.color.textMuted},
+  metaRow:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:9},
+  track:{height:8,borderRadius:8,overflow:"hidden",backgroundColor:"#e5edf7"},
+  fill:{height:8,backgroundColor:tokens.color.brandStrong},
+  innerStack:{gap:9},subjectRow:{padding:10,gap:8,borderRadius:12,backgroundColor:"#f7faff"},
+  remark:{backgroundColor:"#f0f3f8",padding:9,borderRadius:9},
+  trend:{flexDirection:"row",alignItems:"center",gap:6},
+  trendText:{fontSize:12,fontWeight:"800",color:tokens.color.brandStrong},
+  empty:{minHeight:150,padding:20,borderRadius:17,backgroundColor:"#fff",
+    borderWidth:1,borderColor:"#e1e7f0",alignItems:"center",justifyContent:"center",gap:10},
+  loadingCard:{padding:18,borderRadius:18,borderWidth:1,borderColor:"#e1e7f0",
+    backgroundColor:"#fff",gap:12},
+  loadingLineWide:{height:12,width:"78%",borderRadius:999,backgroundColor:"#edf1f6"},
+  loadingLineShort:{height:11,width:"52%",borderRadius:999,backgroundColor:"#f0f3f7"}
 });
