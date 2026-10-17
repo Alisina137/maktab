@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -12,6 +12,11 @@ import {
 } from "./api";
 import { HomeworkDueDatePicker } from "./homework-date-picker";
 import { appErrorFromCause, type AppErrorKind } from "./error-message";
+import {
+  teacherLessonList, teacherTeachingProgress, teacherUnitList,
+  teacherValidLessonInput, teacherValidReportRange,
+  type TeacherLessonFilter, type TeacherUnitFilter
+} from "./teacher-phase7-model";
 
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 type Section = "LESSONS" | "CURRICULUM" | "REPORT";
@@ -73,12 +78,21 @@ export function TeacherTeachingPanel({
   const [to, setTo] = useState(todayInKabul);
   const [report, setReport] = useState<TeacherTeachingReport | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
+  const [lessonSearch,setLessonSearch]=useState("");
+  const [lessonFilter,setLessonFilter]=useState<TeacherLessonFilter>("ALL");
+  const [unitSearch,setUnitSearch]=useState("");
+  const [unitFilter,setUnitFilter]=useState<TeacherUnitFilter>("ALL");
+  const reportGeneration=useRef(0);
 
   useEffect(() => {
     const id = ++generation.current;
     setReady(false);
     setView(null);
     setReport(null);
+    reportGeneration.current++;
+    clearForm();
+    setLessonSearch("");setLessonFilter("ALL");
+    setUnitSearch("");setUnitFilter("ALL");
     void api.teacherTeaching(accessToken, assignmentId)
       .then((result) => { if (generation.current === id) setView(result); })
       .catch((error: unknown) => {
@@ -86,7 +100,7 @@ export function TeacherTeachingPanel({
         const failure = appErrorFromCause(error);
         onError(failure.key, failure.kind);
       }).finally(() => { if (generation.current === id) setReady(true); });
-    return () => { generation.current += 1; };
+    return () => { generation.current += 1; reportGeneration.current++; };
   }, [accessToken, assignmentId, reconnectEpoch, refresh]);
 
   function clearForm() {
@@ -100,9 +114,7 @@ export function TeacherTeachingPanel({
     setSection("LESSONS");
   }
   async function saveLesson() {
-    if (!topic.trim() || !objective.trim() || !lessonDate ||
-      topic.trim().length > 160 || objective.trim().length > 4000 ||
-      materials.trim().length > 500 || notes.trim().length > 4000) {
+    if (!teacherValidLessonInput({lessonDate,topic,objective,materials,notes})) {
       onError("teaching.invalidLesson"); return;
     }
     setBusy(true);
@@ -120,7 +132,7 @@ export function TeacherTeachingPanel({
     } finally { setBusy(false); }
   }
   async function setLessonState(lesson: TeachingLesson, status: LessonState) {
-    if (lesson.status === status) return;
+    if (busy || lesson.status === status) return;
     setBusy(true);
     try {
       await api.updateTeachingLesson(accessToken, assignmentId, lesson.id, { status });
@@ -131,6 +143,7 @@ export function TeacherTeachingPanel({
     } finally { setBusy(false); }
   }
   async function setUnitState(id: string, status: UnitState) {
+    if (busy) return;
     setBusy(true);
     try {
       await api.setTeachingUnit(accessToken, assignmentId, id, status);
@@ -141,15 +154,19 @@ export function TeacherTeachingPanel({
     } finally { setBusy(false); }
   }
   async function loadReport() {
-    if (from > to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    if (!teacherValidReportRange(from,to)) {
       onError("teaching.invalidRange"); return;
     }
+    const request=++reportGeneration.current;
     setReportBusy(true); setReport(null);
     try {
-      setReport(await api.teacherTeachingReport(accessToken, assignmentId, from, to));
+      const result=await api.teacherTeachingReport(accessToken, assignmentId, from, to);
+      if (request===reportGeneration.current) setReport(result);
     } catch (cause) {
-      const failure = appErrorFromCause(cause); onError(failure.key, failure.kind);
-    } finally { setReportBusy(false); }
+      if(request===reportGeneration.current) {
+        const failure = appErrorFromCause(cause); onError(failure.key, failure.kind);
+      }
+    } finally { if(request===reportGeneration.current)setReportBusy(false); }
   }
   function statistics(summary: TeachingSummary) {
     return <View style={[styles.metrics, rtl && styles.rtl]}>
@@ -158,12 +175,28 @@ export function TeacherTeachingPanel({
       <Metric label={translate(locale, "teaching.postponed")} value={summary.lessonPostponed} locale={locale}/>
     </View>;
   }
+  const filteredLessons=view?teacherLessonList(view.lessons,lessonSearch,lessonFilter):[];
+  const filteredUnits=view?teacherUnitList(view.units,unitFilter,unitSearch):[];
+  const progress=view?teacherTeachingProgress(view):null;
+  function navigate(next:Section) {
+    if (busy||next===section)return;
+    const unsaved=Boolean(topic.trim()||objective.trim()||materials.trim()||notes.trim()||lessonDate);
+    if(section==="LESSONS"&&unsaved) {
+      Alert.alert(translate(locale,"teacher.lessonUnsavedTitle"),
+        translate(locale,"teacher.lessonUnsavedHint"),[
+          {text:translate(locale,"attendance.cancel"),style:"cancel"},
+          {text:translate(locale,"teacher.gradeDiscard"),style:"destructive",
+            onPress:()=>{clearForm();setSection(next);}}
+        ]);return;
+    }
+    setSection(next);
+  }
   return (
     <View style={styles.stack} testID="teacher-teaching-workspace">
       <View style={[styles.tabs, rtl && styles.rtl]} accessibilityRole="tablist">
         {menus.map(([id, label, icon]) => (
           <Pressable key={id} accessibilityRole="tab" accessibilityLabel={translate(locale, label)}
-            accessibilityState={{ selected: section === id }} onPress={() => setSection(id)}
+            accessibilityState={{ selected: section === id }} onPress={() => navigate(id)}
             style={[styles.tab, section === id && styles.activeTab]}>
             <Ionicons name={icon} size={19} color={section === id ? tokens.color.brandStrong : tokens.color.textMuted}/>
             <Text style={[styles.tabText, section === id && styles.tabTextActive]}>{translate(locale, label)}</Text>
@@ -221,7 +254,29 @@ export function TeacherTeachingPanel({
               <View style={styles.card}>
                 <Text style={[styles.title, textDirection]}>{translate(locale, "teaching.lessons")}</Text>
                 {statistics(view.summary)}
-                {view.lessons.map((lesson) => (
+                <View style={[styles.summaryCard,rtl&&styles.rtl]}>
+                  <Text style={[styles.muted,styles.flex,textDirection]}>
+                    {translate(locale,"teacher.lessonCount")} · {formatLocalizedNumber(filteredLessons.length,locale)} / {formatLocalizedNumber(view.lessons.length,locale)}
+                  </Text>
+                  <Pressable accessibilityRole="button" onPress={()=>setRefresh(n=>n+1)}>
+                    <Ionicons name="refresh-outline" size={20} color={tokens.color.brandStrong}/>
+                  </Pressable>
+                </View>
+                <TextInput testID="teacher-lesson-search" value={lessonSearch} onChangeText={setLessonSearch}
+                  placeholder={translate(locale,"teacher.lessonSearch")} style={[styles.input,textDirection]}/>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={[styles.horizontalChips,rtl&&styles.rtl]}>
+                  {(["ALL",...lessonStates] as TeacherLessonFilter[]).map(status=><Pressable
+                    key={status} accessibilityRole="tab"
+                    accessibilityState={{selected:lessonFilter===status}}
+                    onPress={()=>setLessonFilter(status)}
+                    style={[styles.chip,lessonFilter===status&&styles.selected]}>
+                    <Text style={[styles.chipText,lessonFilter===status&&styles.selectedText]}>
+                      {translate(locale,status==="ALL"?"teacher.classFilterAll":lessonKey[status])}
+                    </Text>
+                  </Pressable>)}
+                </ScrollView>
+                {filteredLessons.map((lesson) => (
                   <View key={lesson.id} style={styles.item}>
                     <Text style={[styles.itemTitle, textDirection]}>{lesson.topic}</Text>
                     <Text style={[styles.muted, textDirection]}>{formatLocalizedDate(lesson.lessonDate, locale)}</Text>
@@ -242,8 +297,8 @@ export function TeacherTeachingPanel({
                     </View>
                   </View>
                 ))}
-                {!view.lessons.length ? <Text style={[styles.muted, textDirection]}>
-                  {translate(locale, "teaching.noLessons")}
+                {!filteredLessons.length ? <Text style={[styles.muted, textDirection]}>
+                  {translate(locale,view.lessons.length?"teacher.lessonNoMatch":"teaching.noLessons")}
                 </Text> : null}
               </View>
             </>
@@ -252,11 +307,29 @@ export function TeacherTeachingPanel({
             <View style={styles.card}>
               <Text style={[styles.title, textDirection]}>{translate(locale, "teaching.curriculum")}</Text>
               <Text style={[styles.muted, textDirection]}>{translate(locale, "teaching.curriculumHint")}</Text>
-              <Text style={[styles.label, textDirection]}>
-                {formatLocalizedNumber(view.summary.unitsCompleted,locale)} / {formatLocalizedNumber(view.summary.unitsTotal,locale)}
+              <Text style={[styles.label,textDirection]}>
+                {formatLocalizedNumber(progress?.unitCompleted??0,locale)} / {formatLocalizedNumber(progress?.unitTotal??0,locale)}
                 {" "}{translate(locale,"teaching.unitsComplete")}
+                {progress?.completionPercent==null?"":` · ${formatLocalizedNumber(progress.completionPercent,locale)}%`}
               </Text>
-              {view.units.map(({ unit, status })=> (
+              <View style={styles.progressTrack}><View style={[styles.progressFill,{
+                width: `${progress?.completionPercent??0}%` as `${number}%`
+              }]}/></View>
+              <TextInput testID="teacher-unit-search" value={unitSearch} onChangeText={setUnitSearch}
+                placeholder={translate(locale,"teacher.unitSearch")} style={[styles.input,textDirection]}/>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.horizontalChips,rtl&&styles.rtl]}>
+                {(["ALL",...unitStates] as TeacherUnitFilter[]).map(status=><Pressable
+                  key={status} accessibilityRole="tab"
+                  accessibilityState={{selected:unitFilter===status}}
+                  onPress={()=>setUnitFilter(status)}
+                  style={[styles.chip,unitFilter===status&&styles.selected]}>
+                  <Text style={[styles.chipText,unitFilter===status&&styles.selectedText]}>
+                    {translate(locale,status==="ALL"?"teacher.classFilterAll":unitKey[status])}
+                  </Text>
+                </Pressable>)}
+              </ScrollView>
+              {filteredUnits.map(({ unit, status })=> (
                 <View style={styles.item} key={unit.id}>
                   <Text style={[styles.itemTitle, textDirection]}>{unit.sortOrder}. {unit.title}</Text>
                   <View style={[styles.chips, rtl && styles.rtl]}>
@@ -270,8 +343,8 @@ export function TeacherTeachingPanel({
                   </View>
                 </View>
               ))}
-              {!view.units.length ? <Text style={[styles.muted, textDirection]}>
-                {translate(locale, "teaching.noUnits")}
+              {!filteredUnits.length ? <Text style={[styles.muted, textDirection]}>
+                {translate(locale,view.units.length?"teacher.unitNoMatch":"teaching.noUnits")}
               </Text> : null}
             </View>
           ) : null}
@@ -317,6 +390,13 @@ export function TeacherTeachingPanel({
 
 const styles=StyleSheet.create({
   stack:{gap:13}, rtl:{flexDirection:"row-reverse"},
+  flex:{flex:1},
+  horizontalChips:{flexDirection:"row",gap:7,paddingBottom:4},
+  summaryCard:{flexDirection:"row",alignItems:"center",gap:9,padding:10,
+    borderRadius:12,backgroundColor:"#f0f5ff"},
+  progressTrack:{height:8,backgroundColor:"#e5ebf5",borderRadius:9,overflow:"hidden"},
+  progressFill:{height:8,backgroundColor:tokens.color.brandStrong,borderRadius:9},
+  selectedText:{color:tokens.color.brandStrong,fontWeight:"900"},
   tabs:{flexDirection:"row",gap:7},
   tab:{flex:1,minHeight:56,borderWidth:1,borderColor:"#dfe7f2",borderRadius:13,
     backgroundColor:"#fff",alignItems:"center",justifyContent:"center",gap:5,padding:7},
