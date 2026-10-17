@@ -77,7 +77,7 @@ for(const phrase of ["only recorded school days","calendar uses Solar Hijri",
 assert.ok(pkg.scripts["verify:student:phase6"]?.includes("verify:student:phase5"));
 assert.ok(pkg.scripts["verify:student:phase6"]?.includes("test-student-records-phase6.ts"));
 assert.ok(workflow.includes("run: pnpm verify:student:phase6") ||
-  workflow.includes("run: pnpm verify:student:phase7"));
+  (workflow.includes("run: pnpm verify:student:phase7") || workflow.includes("run: pnpm verify:student:phase8")));
 assert.ok(ci.includes("run: pnpm verify:student:phase6") ||
-  ci.includes("run: pnpm verify:student:phase7"));
+  (ci.includes("run: pnpm verify:student:phase7") || ci.includes("run: pnpm verify:student:phase8")));
 console.log("Student Phase 6 attendance, enrolled record privacy, fees ledger, locale and regressions verified.");

@@ -48,10 +48,10 @@ assert.ok(workflow.includes("run: pnpm verify:student:phase3") ||
   workflow.includes("run: pnpm verify:student:phase4") ||
   workflow.includes("run: pnpm verify:student:phase5") ||
   workflow.includes("run: pnpm verify:student:phase6") ||
-  workflow.includes("run: pnpm verify:student:phase7"));
+  (workflow.includes("run: pnpm verify:student:phase7") || workflow.includes("run: pnpm verify:student:phase8")));
 assert.ok(ci.includes("run: pnpm verify:student:phase3") ||
   ci.includes("run: pnpm verify:student:phase4") ||
   ci.includes("run: pnpm verify:student:phase5") ||
   ci.includes("run: pnpm verify:student:phase6") ||
-  ci.includes("run: pnpm verify:student:phase7"));
+  (ci.includes("run: pnpm verify:student:phase7") || ci.includes("run: pnpm verify:student:phase8")));
 console.log("Student Phase 3 timetable tabs, current lesson, Kabul time, teacher directory, RTL and regressions verified.");

@@ -63,6 +63,6 @@ for(const keyword of [
 ])assert.ok(tests.includes(keyword),"Phase 7 acceptance test missing "+keyword);
 assert.ok(pkg.scripts["verify:student:phase7"]?.includes("verify:student:phase6"));
 assert.ok(pkg.scripts["verify:student:phase7"]?.includes("test-student-communication-phase7.ts"));
-assert.ok(workflow.includes("run: pnpm verify:student:phase7"));
-assert.ok(ci.includes("run: pnpm verify:student:phase7"));
+assert.ok((workflow.includes("run: pnpm verify:student:phase7") || workflow.includes("run: pnpm verify:student:phase8")));
+assert.ok((ci.includes("run: pnpm verify:student:phase7") || ci.includes("run: pnpm verify:student:phase8")));
 console.log("Student Phase 7 localized inbox, scoped audience, filtered read states, retry, pagination, navigation verified.");

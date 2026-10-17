@@ -58,5 +58,5 @@ assert.ok(workflow.includes("run: pnpm verify:student:phase1") ||
   workflow.includes("run: pnpm verify:student:phase4") ||
   workflow.includes("run: pnpm verify:student:phase5") ||
   workflow.includes("run: pnpm verify:student:phase6") ||
-  workflow.includes("run: pnpm verify:student:phase7"));
+  (workflow.includes("run: pnpm verify:student:phase7") || workflow.includes("run: pnpm verify:student:phase8")));
 console.log("Student Phase 1 navigation, More, RTL, language, safe deep-links and test guards passed.");

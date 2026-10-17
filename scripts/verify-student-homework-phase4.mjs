@@ -78,9 +78,9 @@ assert.ok(pkg.scripts["verify:student:phase4"]?.includes("test-student-homework-
 assert.ok(workflow.includes("run: pnpm verify:student:phase4") ||
   workflow.includes("run: pnpm verify:student:phase5") ||
   workflow.includes("run: pnpm verify:student:phase6") ||
-  workflow.includes("run: pnpm verify:student:phase7"));
+  (workflow.includes("run: pnpm verify:student:phase7") || workflow.includes("run: pnpm verify:student:phase8")));
 assert.ok(ci.includes("run: pnpm verify:student:phase4") ||
   ci.includes("run: pnpm verify:student:phase5") ||
   ci.includes("run: pnpm verify:student:phase6") ||
-  ci.includes("run: pnpm verify:student:phase7"));
+  (ci.includes("run: pnpm verify:student:phase7") || ci.includes("run: pnpm verify:student:phase8")));
 console.log("Student Phase 4 authenticated homework tabs, filters, encrypted drafts and submission checks verified.");
