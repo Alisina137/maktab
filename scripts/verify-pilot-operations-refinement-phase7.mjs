@@ -49,7 +49,7 @@ assert.ok(panel.includes('export { PILOT_TABS, isPilotSection } from "./pilot-op
   !panel.includes('export const PILOT_TABS = ['),
   "There must be no duplicate Pilot route registry");
 assert.ok(panel.includes('section === "overview"') &&
-  panel.includes("<PilotOperationsPulse key={accessToken}") &&
+  panel.includes('<PilotOperationsPulse key={"pilot-pulse:" + accessToken}') &&
   panel.includes("<PilotAdoptionPanel") &&
   panel.includes("<PilotServiceHealthPanel") &&
   panel.includes("<PilotOversightPanel") &&
