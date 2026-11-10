@@ -179,7 +179,9 @@ export function AdminDashboardFrame({
             const isAcademic = item.href === "/admin/academics";
             return (
               <div className="ml-admin-nav-group" key={item.href}>
-                <div className="ml-admin-nav-row">
+                <div className={"ml-admin-nav-row" +
+                  (isAcademic ? " ml-admin-nav-row-academic" : "") +
+                  (active ? " ml-admin-nav-row-active" : "")}>
                   <Link href={item.href} title={t(item.label)}
                     className={"admin-route-nav-link ml-admin-side-link" +
                       (active ? " admin-route-nav-link-active ml-admin-side-link-active" : "")}
@@ -194,14 +196,15 @@ export function AdminDashboardFrame({
                   {isAcademic ? (
                     <button className={"ml-admin-subnav-toggle" + (academicExpanded ? " ml-admin-subnav-toggle-open" : "")}
                       type="button" title={t("Academic sections")} aria-label={t("Academic sections")}
-                      aria-expanded={academicExpanded}
+                      aria-expanded={academicExpanded} aria-controls="ml-admin-academic-subnav"
+                      data-admin-no-loading="true"
                       onClick={() => setAcademicExpanded((current) => !current)}>
                       <Icon name="chevron" size={16} />
                     </button>
                   ) : null}
                 </div>
                 {isAcademic && academicExpanded ? (
-                  <div className="ml-admin-subnav">
+                  <div className="ml-admin-subnav" id="ml-admin-academic-subnav">
                     {academics.map((entry) => (
                       <Link href={entry.href} key={entry.href}
                         className={currentPath === entry.href ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
