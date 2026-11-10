@@ -288,10 +288,15 @@ export function AdminDashboardFrame({
 
         <div className="ml-admin-content-area" id="admin-workspace-content">
           <section className="admin-route-heading ml-admin-page-heading">
-            <div className="ml-admin-page-heading-text">
+            <div className="ml-admin-page-heading-intro">
+              <span className="ml-admin-page-heading-symbol" aria-hidden="true">
+                <Icon name={pathname.startsWith("/admin/academics") ? "academic" : navIcons[navItems.find((item) => activeRoute(pathname, item.href))?.href ?? ""] ?? "dashboard"} size={27} />
+              </span>
+              <div className="ml-admin-page-heading-text">
               <span className="ml-admin-page-eyebrow">{t("School Administration")} <span> / </span>{t(title)}</span>
               <h1>{t(title)}</h1>
               <p>{t(description)}</p>
+              </div>
             </div>
             {yearScoped && academicYears.length > 0 ? (
               <label className="admin-language-control admin-year-context-control ml-admin-year-picker">
