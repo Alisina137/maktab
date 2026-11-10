@@ -249,18 +249,25 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
 .ml-admin-dashboard-shell .ml-admin-subnav-toggle-open > svg { transform: rotate(180deg); }
 .ml-admin-dashboard-shell .ml-admin-subnav {
   display: grid;
-  gap: 0;
-  margin: 3px 0 8px 20px;
-  padding-inline-start: 10px;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 4px 0 10px;
+  margin-inline-start: 18px;
+  padding-inline-start: 9px;
   border-inline-start: 1px solid rgba(185,207,235,.19);
 }
 .ml-admin-dashboard-shell .ml-admin-subnav-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 31px;
-  padding: 5px 8px;
+  min-height: 33px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 8px;
   border-radius: 7px;
+  overflow-wrap: anywhere;
+  white-space: normal;
   color: #adc3de;
   font-size: 11px;
   font-weight: 650;
@@ -270,7 +277,8 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
 .ml-admin-dashboard-shell .ml-admin-subnav-link:hover { color: white; background: rgba(255,255,255,.09); }
 .ml-admin-dashboard-shell .ml-admin-subnav-link-active { color: white; background: rgba(255,255,255,.13); }
 .ml-admin-dashboard-shell .ml-admin-subnav-dot { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: currentColor; }
-.ml-admin-dashboard-shell[dir="rtl"] .ml-admin-subnav { margin-inline-start: 20px; margin-inline-end: 0; }
+.ml-admin-dashboard-shell[dir="rtl"] .ml-admin-subnav { margin-inline-start: 18px; margin-inline-end: 0; }
+.ml-admin-dashboard-shell [id^="family-"] { scroll-margin-top: 106px; }
 .ml-admin-dashboard-shell .ml-admin-sidebar-footer {
   display: grid;
   gap: 8px;
@@ -630,6 +638,7 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
   }
   .ml-admin-dashboard-shell.ml-admin-compact :is(.ml-admin-sidebar-brand-text, .ml-admin-school-chip-text, .ml-admin-school-chip > svg, .ml-admin-nav-label, .ml-admin-sidebar-profile-name, .ml-admin-subnav-toggle, .ml-admin-subnav, .ml-admin-sign-out span) { display: initial; }
   .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: flex-start !important; padding-inline: 12px !important; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-expandable .ml-admin-subnav-toggle { display: grid; }
   .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr) 40px; }
   .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic .ml-admin-subnav-toggle { display: grid; }
   .ml-admin-dashboard-shell .ml-admin-topbar { min-height: 68px; }
