@@ -123,8 +123,10 @@ assert.ok(accountPage.includes('placeholder={newRole === "PARENT" ? "parent001"'
   "Parent and student username examples must comply with the alphanumeric-only contract");
 assert.ok(css.includes(".admin-account-stat-selected") &&
   css.includes(".admin-account-view-button:focus-visible") &&
-  css.includes(".admin-account-grid-creating .admin-users-panel"),
-  "Accounts overview focus, selected state or responsive directory/form layout missing");
+  accountPage.includes('{view === "DIRECTORY" ? <AdminAccountDirectory') &&
+  accountPage.includes('{view === "DIRECTORY" ? <div className="admin-account-stats"') &&
+  css.includes(".admin-account-grid-creating .admin-create-account-card"),
+  "Accounts must isolate directory and creation views, preserving focus and responsive layouts");
 for (const key of ['"Account overview":', '"Total accounts":', '"Active accounts":',
                    '"Pending activation":', '"Suspended accounts":', '"Search accounts":',
                    '"Filter by status":']) {

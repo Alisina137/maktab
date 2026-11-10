@@ -509,8 +509,8 @@ export default function AccountsPage() {
         <div className="admin-account-overview-heading">
           <div>
             <span className="eyebrow">{t("Account overview")}</span>
-            <h3>{t("Manage school accounts")}</h3>
-            <p>{t("Review account access and create new school logins.")}</p>
+            <h3>{t(view === "CREATE" ? "Create account" : "Manage school accounts")}</h3>
+            <p>{t(view === "CREATE" ? "Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record." : "Review account access and create new school logins.")}</p>
           </div>
           <div className="admin-account-view-switch" role="group" aria-label={t("Accounts page view")}>
             <button
@@ -527,7 +527,7 @@ export default function AccountsPage() {
             >{t("Create account")}</button>
           </div>
         </div>
-        <div className="admin-account-stats" role="group" aria-label={t("Account overview")}>
+        {view === "DIRECTORY" ? <div className="admin-account-stats" role="group" aria-label={t("Account overview")}>
           {summaries.map((summary) => (
             <button
               key={summary.id}
@@ -543,7 +543,7 @@ export default function AccountsPage() {
               <strong>{summary.value.toLocaleString()}</strong>
             </button>
           ))}
-        </div>
+        </div> : null}
       </div>
 
       <div className={`admin-grid admin-account-grid ${view === "CREATE" ? "admin-account-grid-creating" : "admin-account-grid-directory"}`}>
@@ -705,7 +705,7 @@ export default function AccountsPage() {
         </article>
         ) : null}
 
-        <AdminAccountDirectory
+        {view === "DIRECTORY" ? <AdminAccountDirectory
           result={visibleDirectory}
           group={group}
           status={status}
@@ -746,7 +746,7 @@ export default function AccountsPage() {
           }}
           onAction={requestAction}
           onBulk={requestBulk}
-        />
+        /> : null}
       </div>
     </section>
   );

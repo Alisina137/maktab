@@ -3090,7 +3090,14 @@ button,
 }
 
 .admin-account-grid-creating {
-  grid-template-columns: minmax(290px, .7fr) minmax(0, 1.5fr);
+  /* Creation is its own workspace, never a side-by-side directory. */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.admin-account-grid-creating .admin-create-account-card {
+  width: min(100%, 820px);
+  max-width: 100%;
 }
 
 .admin-account-grid .admin-create-account-card,
@@ -3183,7 +3190,7 @@ button,
   }
 
   .admin-account-grid-creating {
-    grid-template-columns: minmax(270px, .85fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3197,9 +3204,6 @@ button,
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .admin-account-grid-creating .admin-users-panel {
-    display: none;
-  }
 }
 
 @media (max-width: 620px) {
