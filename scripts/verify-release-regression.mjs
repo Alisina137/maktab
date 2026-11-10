@@ -105,7 +105,8 @@ for (const key of ['"Setup progress":', '"{done} of {total} checks complete":', 
 }
 
 /* Phase 1 Accounts: safeguard directory-first layout, status filters and locale coverage. */
-assert.ok(accountPage.includes('useState<AccountView>("DIRECTORY")') &&
+assert.ok(accountPage.includes('useState<AccountView>(routedTab)') &&
+  accountPage.includes('"/admin/accounts", ["DIRECTORY", "CREATE"] as const, "DIRECTORY" as AccountView') &&
   accountPage.includes('admin-account-grid-directory') &&
   accountPage.includes('admin-account-grid-creating'),
   "Accounts must default to the directory and retain the two adaptive layouts");
