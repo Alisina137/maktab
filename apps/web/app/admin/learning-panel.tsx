@@ -12,6 +12,7 @@ import { AdminLearningExams, type Exam, type ExamSubject, type AcademicContext }
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 
 import { useAdminWorkspace } from "./admin-workspace";
+import { useAdminSectionRoute } from "./admin-section-route";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 
 type LearningOverview = {
@@ -84,7 +85,16 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [activeTab, setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW");
+  const { routedTab, navigateTab } = useAdminSectionRoute(
+    "/admin/learning", learningTabs.map((tab) => tab.id),
+    initialExamId ? "EXAMS" as LearningTab : "OVERVIEW" as LearningTab
+  );
+  const [activeTab, setActiveTab] = useState<LearningTab>(routedTab);
+  useEffect(() => setActiveTab(routedTab), [routedTab]);
+  function selectTab(tab: LearningTab) {
+    setActiveTab(tab);
+    navigateTab(tab);
+  }
   const tabRefs = useRef<Partial<Record<LearningTab, HTMLButtonElement | null>>>({});
   const generation = useRef(0);
   const pending = useRef<AbortController | null>(null);
@@ -190,7 +200,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
             tabIndex={activeTab === id ? 0 : -1}
             ref={element => { tabRefs.current[id] = element; }}
             className={activeTab === id ? "is-active" : ""}
-            onClick={() => setActiveTab(id)}
+            onClick={() => selectTab(id)}
             onKeyDown={event => {
               const forward = locale === "en" ? "ArrowRight" : "ArrowLeft";
               const backward = locale === "en" ? "ArrowLeft" : "ArrowRight";
@@ -202,7 +212,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
               if (next !== -1) {
                 event.preventDefault();
                 const destination = learningTabs[next]!.id;
-                setActiveTab(destination);
+                selectTab(destination);
                 tabRefs.current[destination]?.focus();
               }
             }}>{t(title)}</button>
@@ -232,14 +242,14 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
                   ["Continuous assessments", dashboard.metrics.continuousAssessments, "RESULTS"]
                 ] as const).map(([title, count, tab]) => (
                   <button type="button" className="learning-metric-card" key={title}
-                    onClick={() => setActiveTab(tab)}>
+                    onClick={() => selectTab(tab)}>
                     <span>{t(title)}</span>
                     <strong>{formatCount(count)}</strong>
                     <small>{t("View section")} →</small>
                   </button>
                 ))}
                 <button type="button" className="learning-metric-card"
-                  onClick={() => setActiveTab("TEACHING")}>
+                  onClick={() => selectTab("TEACHING")}>
                   <span>{t("Assigned curriculum units completed")}</span>
                   <strong>{dashboard.metrics.curriculumAssignedUnits === 0 ? "—" :
                     `${formatCount(dashboard.metrics.curriculumCompletedUnits)}/${formatCount(dashboard.metrics.curriculumAssignedUnits)}`}</strong>
@@ -256,7 +266,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
                         className="learning-attention-item"
                         onClick={() => {
                           if (item.category === "HOMEWORK") {
-                            setActiveTab("HOMEWORK");
+                            selectTab("HOMEWORK");
                           } else {
                             router.push(`/admin/learning/exams/${item.id}`);
                           }

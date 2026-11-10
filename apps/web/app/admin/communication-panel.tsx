@@ -18,10 +18,12 @@ import {
   formatAdminHijriDateTime
 } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
+import { useAdminSectionRoute } from "./admin-section-route";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 import { adminApi } from "./admin-client";
 
 type Section = "OVERVIEW" | "COMMUNICATION" | "FEES";
+const communicationTabs: readonly Section[] = ["OVERVIEW", "COMMUNICATION", "FEES"];
 type Pane = "LIST" | "FORM";
 type ResourceKey = "communication" | "families" | "academics";
 type ResourceStatus = "idle" | "loading" | "ready" | "error";
@@ -102,7 +104,15 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [families, setFamilies] = useState<FamilyOverview | null>(null);
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
-  const [section, setSection] = useState<Section>("OVERVIEW");
+  const { routedTab, navigateTab } = useAdminSectionRoute(
+    "/admin/communication", communicationTabs, "OVERVIEW" as Section
+  );
+  const [section, setSection] = useState<Section>(routedTab);
+  useEffect(() => setSection(routedTab), [routedTab]);
+  function selectSection(next: Section) {
+    setSection(next);
+    navigateTab(next);
+  }
   const [communicationPane, setCommunicationPane] = useState<Pane>("LIST");
   const [feesPane, setFeesPane] = useState<Pane>("LIST");
   const [feesModule, setFeesModule] = useState<"INVOICES" | "PAYMENTS" | "BALANCES" | "REPORTS">("INVOICES");
@@ -173,7 +183,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [reversalReason, setReversalReason] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setSection("OVERVIEW");
+    setSection(routedTab);
     setCommunicationPane("LIST");
     setFeesPane("LIST");
     setFeesModule("INVOICES");
@@ -667,7 +677,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     ? visibleAcademics?.classes.find(row => row.id === id)?.name ?? t("Unknown class")
     : "";
   function showAnnouncement(id: string) {
-    setSection("COMMUNICATION");
+    selectSection("COMMUNICATION");
     setCommunicationPane("LIST");
     setAnnouncementSearch(""); setAnnouncementStatusFilter("ALL");
     setAnnouncementAudienceFilter("ALL"); setAnnouncementClassFilter("");
@@ -736,11 +746,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               if (target !== -1) {
                 event.preventDefault();
                 const next = keys[target]!;
-                setSection(next);
+                selectSection(next);
                 sectionRefs.current[next]?.focus();
               }
             }}
-            onClick={() => setSection(key)}>{t(label)}</button>
+            onClick={() => selectSection(key)}>{t(label)}</button>
         ))}
       </nav>
 
@@ -756,7 +766,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <div className="communication-dashboard-heading">
                   <h3>{t("Communication overview")}</h3>
                   <button type="button" className="admin-secondary"
-                    onClick={() => setSection("COMMUNICATION")}>{t("View announcements")}</button>
+                    onClick={() => selectSection("COMMUNICATION")}>{t("View announcements")}</button>
                 </div>
                 <div className="academic-summary-grid communication-overview-grid">
                   <Summary label={t("Total announcements")} value={formatCount(notices.total)} />
@@ -769,7 +779,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <div className="communication-dashboard-heading">
                   <h3>{t("Financial overview")}</h3>
                   <button type="button" className="admin-secondary"
-                    onClick={() => setSection("FEES")}>{t("View fee invoices")}</button>
+                    onClick={() => selectSection("FEES")}>{t("View fee invoices")}</button>
                 </div>
                 <p className="admin-copy">{t("Issued school invoices only. Drafts and cancelled invoices do not count toward balances.")}</p>
                 <div className="academic-summary-grid communication-overview-grid">
@@ -800,7 +810,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   <h3>{t("Recent fee invoices")}</h3>
                   {visibleOverview.invoices.slice(0, 4).map(item => (
                     <button type="button" className="communication-recent-row" key={item.invoice.id}
-                      onClick={() => { setSection("FEES"); setFeesPane("LIST"); }}>
+                      onClick={() => { selectSection("FEES"); setFeesPane("LIST"); }}>
                       <strong>{item.studentName}</strong>
                       <span>{t(item.invoice.status)} · {formatMoney(item.outstanding)}</span>
                     </button>

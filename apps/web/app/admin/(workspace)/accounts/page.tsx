@@ -15,6 +15,7 @@ import type { AccountFamilyOverview } from "../../account-details-data";
 import { shouldAcceptAccountDirectoryResult, updateAccountSelection } from "../../account-directory-safety";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
+import { useAdminSectionRoute } from "../../admin-section-route";
 
 type AccountView = "DIRECTORY" | "CREATE";
 
@@ -69,7 +70,15 @@ export default function AccountsPage() {
   const [creationAttempted, setCreationAttempted] = useState(false);
   const [credential, setCredential] = useState<{ username: string; password: string } | null>(null);
   const [group, setGroup] = useState<AccountGroup>("ALL");
-  const [view, setView] = useState<AccountView>("DIRECTORY");
+  const { routedTab, navigateTab } = useAdminSectionRoute(
+    "/admin/accounts", ["DIRECTORY", "CREATE"] as const, "DIRECTORY" as AccountView
+  );
+  const [view, setView] = useState<AccountView>(routedTab);
+  useEffect(() => setView(routedTab), [routedTab]);
+  function selectView(next: AccountView) {
+    setView(next);
+    navigateTab(next);
+  }
   const [highlight, setHighlight] = useState<AccountHighlight>("ALL");
   const [status, setStatus] = useState<"ALL" | User["status"]>("ALL");
   const [query, setQuery] = useState("");
@@ -304,7 +313,7 @@ export default function AccountsPage() {
       setFamilyToken(null);
       setCreationAttempted(false);
       setCredential({ username: result.user.username, password: result.temporaryPassword });
-      setView("DIRECTORY");
+      selectView("DIRECTORY");
       refreshDirectory();
       showToast({
         kind: "success",
@@ -364,7 +373,7 @@ export default function AccountsPage() {
       if (result.temporaryPassword) {
         setSelectedAccountId(null);
         setCredential({ username: result.user.username, password: result.temporaryPassword });
-        setView("DIRECTORY");
+        selectView("DIRECTORY");
       }
       showToast({
         kind: "success",
@@ -419,7 +428,7 @@ export default function AccountsPage() {
     setQuery("");
     setPage(1);
     resetSelection();
-    setView("DIRECTORY");
+    selectView("DIRECTORY");
     setSelectedAccountId(null);
   }
   function clearFilters() {
@@ -508,13 +517,13 @@ export default function AccountsPage() {
               type="button"
               className={view === "DIRECTORY" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
               aria-pressed={view === "DIRECTORY"}
-              onClick={() => setView("DIRECTORY")}
+              onClick={() => selectView("DIRECTORY")}
             >{t("Account directory")}</button>
             <button
               type="button"
               className={view === "CREATE" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
               aria-pressed={view === "CREATE"}
-              onClick={() => setView("CREATE")}
+              onClick={() => selectView("CREATE")}
             >{t("Create account")}</button>
           </div>
         </div>

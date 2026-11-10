@@ -4,6 +4,7 @@ import Link from "next/link";
 import { adminApi, friendlyAdminError } from "../../admin-client";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "../../admin-hijri-date-picker";
 import { useAdminWorkspace } from "../../admin-workspace";
+import { useAdminSectionRoute } from "../../admin-section-route";
 import { staffWorkText } from "../../../staff/staff-work-i18n";
 import type { WorkTask, MessageDraft } from "../../../staff/staff-work-panel";
 import "../../../staff/staff-work.css";
@@ -13,7 +14,15 @@ type TasksResponse={tasks:Array<WorkTask & {assignedTo:string;createdBy:string}>
 export default function StaffWorkAdministration(){
   const {stored,locale}=useAdminWorkspace();
   const t=(label:string)=>staffWorkText(locale,label);
-  const [tab,setTab]=useState<"tasks"|"drafts">("tasks");
+  const { routedTab, navigateTab } = useAdminSectionRoute(
+    "/admin/staff-work", ["tasks", "drafts"] as const, "tasks"
+  );
+  const [tab,setTab]=useState<"tasks"|"drafts">(routedTab);
+  useEffect(()=>setTab(routedTab),[routedTab]);
+  function selectTab(next:"tasks"|"drafts") {
+    setTab(next);
+    navigateTab(next);
+  }
   const [tasks,setTasks]=useState<TasksResponse>({tasks:[],staff:[]});
   const [drafts,setDrafts]=useState<MessageDraft[]>([]);
   const [title,setTitle]=useState("");
@@ -97,9 +106,9 @@ export default function StaffWorkAdministration(){
     </header>
     <div className="staff-work-tabs" role="tablist">
       <button type="button" role="tab" aria-selected={tab==="tasks"}
-        onClick={()=>setTab("tasks")}>{t("Staff task assignments")}</button>
+        onClick={()=>selectTab("tasks")}>{t("Staff task assignments")}</button>
       <button type="button" role="tab" aria-selected={tab==="drafts"}
-        onClick={()=>setTab("drafts")}>{t("Communication review")}
+        onClick={()=>selectTab("drafts")}>{t("Communication review")}
         {" ("+drafts.filter(x=>x.status==="SUBMITTED").length+")"}</button>
     </div>
     {error?<p className="admin-error" role="alert">{error}</p>:null}

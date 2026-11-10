@@ -1,7 +1,8 @@
 import "../dashboard-shell.css";
+import { Suspense } from "react";
 import "../academic-overview.css";
 import { AdminWorkspaceShell } from "../admin-workspace";
 
 export default function AdminWorkspaceLayout({ children }: { children: React.ReactNode }) {
-  return <AdminWorkspaceShell>{children}</AdminWorkspaceShell>;
+  return <Suspense fallback={null}><AdminWorkspaceShell>{children}</AdminWorkspaceShell></Suspense>;
 }

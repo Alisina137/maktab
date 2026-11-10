@@ -13,6 +13,7 @@ import { useTransientAdminFeedback } from "./admin-feedback";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
+import { useAdminSectionRoute } from "./admin-section-route";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import {
   ATTENDANCE_TABS, attendanceRate, type AttendanceTab
@@ -68,7 +69,15 @@ function reportUrl(yearId: string, filters?: Filters): string {
 export function AttendancePanel({ accessToken }: { accessToken: string }) {
   const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => staffAttendanceText(locale, english);
-  const [activeTab, setActiveTab] = useState<AttendanceTab>("OVERVIEW");
+  const { routedTab, navigateTab } = useAdminSectionRoute(
+    "/admin/attendance", ATTENDANCE_TABS.map((tab) => tab.id), "OVERVIEW" as AttendanceTab
+  );
+  const [activeTab, setActiveTab] = useState<AttendanceTab>(routedTab);
+  useEffect(() => setActiveTab(routedTab), [routedTab]);
+  function selectTab(tab: AttendanceTab) {
+    setActiveTab(tab);
+    navigateTab(tab);
+  }
   const tabRefs = useRef<Partial<Record<AttendanceTab, HTMLButtonElement | null>>>({});
   const [draftFilters, setDraftFilters] = useState<Filters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null);
@@ -213,7 +222,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
     else return;
     event.preventDefault();
     const destination = ATTENDANCE_TABS[target]!.id;
-    setActiveTab(destination);
+    selectTab(destination);
     tabRefs.current[destination]?.focus();
   }
 
@@ -251,7 +260,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             tabIndex={activeTab === id ? 0 : -1}
             ref={element => { tabRefs.current[id] = element; }}
             onKeyDown={event => onTabKeyDown(event, id)}
-            onClick={() => setActiveTab(id)}>
+            onClick={() => selectTab(id)}>
             {t(label)}
           </button>
         ))}
@@ -325,7 +334,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <strong>{report.summary.absent + report.summary.late}</strong>
                 <p>{t("Absent and Late marks in the selected period, not unresolved cases.")}</p>
                 <button type="button" className="admin-secondary"
-                  onClick={() => setActiveTab("FOLLOWUPS")}>{t("View recorded absences and lateness")}</button>
+                  onClick={() => selectTab("FOLLOWUPS")}>{t("View recorded absences and lateness")}</button>
               </article>
               <article className="admin-panel attendance-dashboard-card">
                 <span>{t("Submission overview")}</span>
@@ -333,7 +342,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
                 <p>{t("Submitted registers in the selected period. Daily eligibility is shown below.")}</p>
                 <p>{t("Daily submission monitoring follows the timetable and declared school closures.")}</p>
                 <button type="button" className="admin-secondary"
-                  onClick={() => setActiveTab("REGISTERS")}>{t("Open daily registers")}</button>
+                  onClick={() => selectTab("REGISTERS")}>{t("Open daily registers")}</button>
               </article>
             </div>
             <AdminAttendanceMonitoring
