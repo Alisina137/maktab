@@ -13,7 +13,7 @@ const state=read("docs/PROJECT-STATE.md");
 
 for(const marker of [
   'type Section = "OVERVIEW" | "COMMUNICATION" | "FEES"',
-  'useState<Section>("OVERVIEW")', 'role="tablist"', 'role="tab"',
+  'useState<Section>(routedTab)', 'useAdminSectionRoute(', 'role="tablist"', 'role="tab"',
   'aria-selected={section === key}', 'aria-controls=', 'scrollIntoView(',
   'event.key === "Home"', 'event.key === "End"',
   'locale === "en" ? "ArrowRight" : "ArrowLeft"',
