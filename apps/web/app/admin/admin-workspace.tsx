@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
@@ -23,6 +22,7 @@ import {
 } from "./admin-client";
 import { ADMIN_ERROR_DURATION_MS, ADMIN_SUCCESS_DURATION_MS } from "./admin-feedback";
 import { AdminLoader } from "./admin-loader";
+import { AdminDashboardFrame } from "./admin-dashboard-frame";
 import {
   ADMIN_DEFAULT_LOCALE,
   adminDirection,
@@ -66,19 +66,22 @@ type AdminWorkspaceContextValue = {
 const AdminWorkspaceContext = createContext<AdminWorkspaceContextValue | null>(null);
 
 const navItems = [
+  { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/academics", label: "Academics" },
   { href: "/admin/accounts", label: "Accounts" },
-  { href: "/admin/staff-work", label: "Staff work" },
-  { href: "/admin/pilot", label: "Pilot operations" },
-  { href: "/admin/communication", label: "Communication & fees" },
-  { href: "/admin/learning", label: "Learning" },
-  { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/families", label: "Families" },
   { href: "/admin/registrations", label: "Registrations" },
-  { href: "/admin/academics", label: "Academics" }
+  { href: "/admin/attendance", label: "Attendance" },
+  { href: "/admin/learning", label: "Learning" },
+  { href: "/admin/communication", label: "Communication & fees" },
+  { href: "/admin/staff-work", label: "Staff work" },
+  { href: "/admin/pilot", label: "Pilot operations" },
+  { href: "/admin/profile", label: "Profile" }
 ] as const;
 
 // Loading states describe the current workspace, not implementation phases.
 const adminLoadingTextByRoute: Record<string, string> = {
+  "/admin/dashboard": "Loading academics data…",
   "/admin/accounts": "Loading accounts data…",
   "/admin/staff-work": "Loading staff work…",
   "/admin/pilot": "Loading pilot operations data…",
@@ -102,6 +105,7 @@ function loadingTextForAdminRoute(pathname: string): string {
 }
 
 const yearScopedRoutes = new Set([
+  "/admin/dashboard",
   "/admin/academics",
   "/admin/families",
   "/admin/attendance",
@@ -114,6 +118,10 @@ const yearScopedRoutes = new Set([
 ]);
 
 const pageCopy: Record<string, { title: string; description: string }> = {
+  "/admin/dashboard": {
+    title: "School Dashboard",
+    description: "An overview of your school's academic structure, teaching team and daily timetable."
+  },
   "/admin/staff-work": {
     title: "Staff tasks & communication review",
     description: "Assign staff tasks and review staff-written communication drafts before publication."
@@ -155,8 +163,8 @@ const pageCopy: Record<string, { title: string; description: string }> = {
     description: "Manage parents, students, credentials, relationships, and bulk onboarding."
   },
   "/admin/academics": {
-    title: "Academics",
-    description: "Manage academic years, grades, classes, subjects, teachers, assignments, Negaran, and timetable."
+    title: "Academic Management",
+    description: "Manage academic structure, classes, teachers, subjects and timetables for your school."
   },
   "/admin/academics/years": {
     title: "Academic years",
@@ -570,107 +578,13 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       setSelectedAcademicYearId,
       refreshAcademicYears
     }}>
-      <main className="admin-shell admin-shell-premium admin-workspace" lang={locale} dir={adminDirection(locale)}>
-        <header className="admin-premium-header">
-          <div className="admin-premium-brand-row">
-            <div className="admin-auth-brand admin-auth-brand-dark">
-              <span className="admin-brand-mark" aria-hidden="true">M</span>
-              <div>
-                <strong>MaktabLink</strong>
-                <span>{t("School Administration")}</span>
-              </div>
-            </div>
-
-            <div className="admin-header-actions admin-header-actions-premium">
-              <div className="admin-header-language-control">
-                <select
-                  aria-label={t("Language")}
-                  value={locale}
-                  onChange={(event) => changeLocale(event.target.value as AdminLocale)}
-                >
-                  {adminLocaleOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-              <Link
-                className="admin-header-profile-link"
-                href="/admin/profile"
-                aria-label={t("Administrator profile")}
-              >
-                <AdminHeaderAvatar
-                  fullName={adminProfile.fullName || stored.session.user.username}
-                  imageUrl={adminProfile.imageUrl}
-                />
-                <span>{firstName(adminProfile.fullName || stored.session.user.username)}</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="admin-school-hero admin-school-hero-route">
-            <div className="admin-school-identity">
-              <SchoolAvatar school={stored.school} />
-              <div>
-                <span className="admin-kicker">{t("School workspace")}</span>
-                <h1>{stored.school.name}</h1>
-                <p>{stored.school.province} · {stored.school.city} · {t("School code")} {stored.school.code}</p>
-              </div>
-            </div>
-            <div className="admin-session-pill">
-              <span className="admin-live-dot" aria-hidden="true" />
-              {t("Signed in as")} {stored.session.user.username}
-            </div>
-          </div>
-        </header>
-
-        <nav className="admin-route-nav" aria-label="Administration sections">
-          {navItems.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.href === "/admin/academics" && pathname.startsWith("/admin/academics/")) ||
-              (item.href === "/admin/pilot" && pathname.startsWith("/admin/pilot/"));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={active ? "admin-route-nav-link admin-route-nav-link-active" : "admin-route-nav-link"}
-                aria-current={active ? "page" : undefined}
-              >
-                {t(item.label)}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <section className="admin-route-heading">
-          <div>
-            <span className="admin-kicker">{t("School Administration")}</span>
-            <h2>{t(copy.title)}</h2>
-            <p>{t(copy.description)}</p>
-          </div>
-          {(yearScopedRoutes.has(pathname) || pathname.startsWith("/admin/learning/exams/")) && academicYears.length > 0 ? (
-            <label className="admin-language-control admin-year-context-control">
-              <span>{t("Academic year context")}</span>
-              <select
-                value={selectedAcademicYearId}
-                onChange={(event) => setSelectedAcademicYearId(event.target.value)}
-              >
-                {academicYears.map((year) => (
-                  <option key={year.id} value={year.id}>
-                    {year.name} · {t(year.status)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </section>
-
-        <section className="admin-route-content">{children}</section>
-
-        {toast ? (
-          <AdminToast toast={toast} leaving={toastLeaving} onDismiss={dismissToast} />
-        ) : null}
-      </main>
+      <AdminDashboardFrame pathname={pathname} title={copy.title}
+        description={copy.description}
+        yearScoped={yearScopedRoutes.has(pathname) || pathname.startsWith("/admin/learning/exams/")}
+        navItems={navItems}>
+        {children}
+        {toast ? <AdminToast toast={toast} leaving={toastLeaving} onDismiss={dismissToast} /> : null}
+      </AdminDashboardFrame>
     </AdminWorkspaceContext.Provider>
   );
 }
@@ -703,54 +617,5 @@ function AdminToast({
       </div>
       <button type="button" onClick={onDismiss} aria-label="Dismiss message">×</button>
     </div>
-  );
-}
-
-function firstName(value: string) {
-  return value.trim().split(/\s+/)[0] || value;
-}
-
-function AdminHeaderAvatar({
-  fullName,
-  imageUrl
-}: {
-  fullName: string;
-  imageUrl: string | null;
-}) {
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [imageUrl]);
-
-  if (imageUrl && !failed) {
-    return (
-      <img
-        className="admin-header-profile-avatar"
-        src={imageUrl}
-        alt=""
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  return (
-    <span className="admin-header-profile-avatar admin-header-profile-avatar-fallback" aria-hidden="true">
-      {fullName.slice(0, 1).toUpperCase()}
-    </span>
-  );
-}
-
-function SchoolAvatar({ school }: { school: StoredAdminSession["school"] }) {
-  const [failed, setFailed] = useState(false);
-
-  if (school.imageUrl && !failed) {
-    return <img className="admin-school-avatar" src={school.imageUrl} alt="" onError={() => setFailed(true)} />;
-  }
-
-  return (
-    <span className="admin-school-avatar admin-school-avatar-fallback" aria-hidden="true">
-      {school.name.slice(0, 1).toUpperCase()}
-    </span>
   );
 }

@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
     const preferred = readAdminLocale();
     setLocale(preferred);
     if (loadAdminSession()) {
-      router.replace("/admin/accounts");
+      router.replace("/admin/dashboard");
       return;
     }
 
@@ -119,7 +119,7 @@ export default function AdminLoginPage() {
         return;
       }
       saveAdminSession({ session: result, school: selectedSchool });
-      router.push("/admin/accounts");
+      router.push("/admin/dashboard");
     } catch (cause) {
       showToast({
         kind: "error",
@@ -142,7 +142,7 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ newPassword })
       });
       saveAdminSession({ session: result, school: selectedSchool });
-      router.push("/admin/accounts");
+      router.push("/admin/dashboard");
     } catch (cause) {
       showToast({
         kind: "error",

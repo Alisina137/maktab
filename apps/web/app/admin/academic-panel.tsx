@@ -8,6 +8,7 @@ import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-p
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminText, type AdminLocale } from "./admin-i18n";
 import { CurriculumAdminPanel } from "./curriculum-admin";
+import { AdminAcademicOverview } from "./admin-academic-overview";
 
 export const academicSectionNames = [
   "years",
@@ -227,42 +228,9 @@ export function AcademicPanel({
   const selectedYearHistorical = effectiveYear?.status === "CLOSED" || effectiveYear?.status === "ARCHIVED";
 
   if (section === "overview") {
-    const modules = [
-      { key: "years", title: "Academic years", description: "Create years and manage Draft, Active, Closed, and Archived lifecycle.", count: overview.academicYears.length },
-      { key: "grades", title: "Grade levels", description: "Manage the reusable school grade catalog.", count: overview.gradeLevels.length },
-      { key: "subjects", title: "Subjects", description: "Manage the reusable school subject catalog.", count: overview.subjects.length },
-      { key: "classes", title: "Classes", description: "Create and manage classes for the selected academic year.", count: selectedClasses.length },
-      { key: "teachers", title: "Teacher profiles", description: "Attach academic teacher profiles to teacher accounts.", count: overview.teachers.length },
-      { key: "assignments", title: "Teacher assignments", description: "Assign teachers to subjects and classes in the selected year.", count: selectedAssignments.length },
-      { key: "negaran", title: "Negaran assignments", description: "Manage class-supervisor responsibility and history.", count: selectedNegaranAssignments.length },
-      { key: "timetable", title: "Timetable periods", description: "Create periods and review weekly teacher/class timetables.", count: selectedTimetable.length },
-      { key: "curriculum", title: "Curriculum units", description: "Define official subject chapters for each class. Teachers record their own progress.", count: 0 }
-    ] as const;
-
     return (
-      <section className="academic-section admin-page-enter">
-        <div className="admin-section-header academic-heading">
-          <div>
-            <span className="eyebrow">{t("Phase 3 · Academic Structure")}</span>
-            <h2>{t("Academic modules")}</h2>
-            <p>{t("Open one academic module at a time. Each page contains one form and the records created by that form.")}</p>
-          </div>
-          <button className="admin-secondary" onClick={() => void load(true)} disabled={busy}>{t("Refresh")}</button>
-        </div>
-
-        <div className="academic-form-grid academic-module-grid">
-          {modules.map((module) => (
-            <Link className="admin-panel academic-form-card academic-module-card" href={"/admin/academics/" + module.key} key={module.key}>
-              <div className="academic-module-card-heading">
-                <h2>{t(module.title)}</h2>
-                <strong>{module.count}</strong>
-              </div>
-              <p>{t(module.description)}</p>
-              <span className="academic-module-open">{t("Open module")} →</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <AdminAcademicOverview data={overview} yearId={effectiveYearId}
+        accessToken={accessToken} locale={locale} onRefresh={() => load(true)} />
     );
   }
 

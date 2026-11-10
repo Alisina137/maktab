@@ -1,0 +1,331 @@
+/* Academic overview — real school data, no illustrative KPIs or fabricated activity. */
+.ml-admin-dashboard-shell .ml-academic-overview {
+  display: grid;
+  gap: 19px;
+  border-top: 0;
+}
+.ml-admin-dashboard-shell .ml-academic-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 6px;
+  border: 1px solid #dce6f3;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 5px 15px rgba(35,74,134,.045);
+  scrollbar-width: thin;
+}
+.ml-admin-dashboard-shell .ml-academic-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 17px;
+  border-radius: 9px;
+  color: #536783;
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-academic-tab:hover { background: #f0f5fc; color: #2364cb; }
+.ml-admin-dashboard-shell .ml-academic-tab-active,
+.ml-admin-dashboard-shell .ml-academic-tab-active:hover {
+  color: white;
+  background: linear-gradient(130deg, #226fe5, #1856c8);
+  box-shadow: 0 4px 12px rgba(31,105,224,.2);
+}
+.ml-admin-dashboard-shell .ml-academic-refresh {
+  display: grid;
+  flex: 0 0 39px;
+  width: 39px;
+  height: 39px;
+  margin-inline-start: auto;
+  place-items: center;
+  border: 1px solid #e0e8f4;
+  border-radius: 9px;
+  background: #f9fbff;
+  color: #46719e;
+}
+.ml-admin-dashboard-shell .ml-academic-refresh:hover { background: #eaf3ff; color: #245fcf; }
+.ml-admin-dashboard-shell .ml-academic-metrics {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 14px;
+}
+.ml-admin-dashboard-shell .ml-academic-metric {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 112px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 19px;
+  border: 1px solid #dfe9f5;
+  border-radius: 17px;
+  background: linear-gradient(120deg,#f9fcff,#eff6ff);
+  box-shadow: 0 5px 12px rgba(27,65,117,.045), inset 0 1px 0 rgba(255,255,255,.95);
+}
+.ml-admin-dashboard-shell .ml-academic-metric-green { background: linear-gradient(120deg,#fbfffe,#edfaf5); border-color: #dcefe8; }
+.ml-admin-dashboard-shell .ml-academic-metric-orange { background: linear-gradient(120deg,#fffefd,#fff6eb); border-color: #f4e8d8; }
+.ml-admin-dashboard-shell .ml-academic-metric-purple { background: linear-gradient(120deg,#fdfcff,#f4f1ff); border-color: #e8e3fa; }
+.ml-admin-dashboard-shell .ml-academic-metric-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 53px;
+  height: 53px;
+  flex: 0 0 53px;
+  place-items: center;
+  border-radius: 13px;
+  background: #e5f0ff;
+  color: #2976e0;
+}
+.ml-admin-dashboard-shell .ml-academic-metric-green .ml-academic-metric-icon { background: #dff7e9; color: #23a373; }
+.ml-admin-dashboard-shell .ml-academic-metric-orange .ml-academic-metric-icon { background: #fff0d9; color: #da9731; }
+.ml-admin-dashboard-shell .ml-academic-metric-purple .ml-academic-metric-icon { background: #eee9ff; color: #775fe2; }
+.ml-admin-dashboard-shell .ml-academic-metric-copy { position: relative; z-index: 1; display: grid; gap: 4px; min-width: 0; }
+.ml-admin-dashboard-shell .ml-academic-metric-copy span { color: #4d617b; font-size: 12px; font-weight: 750; line-height: 1.45; }
+.ml-admin-dashboard-shell .ml-academic-metric-copy strong { color: #192c4b; font-size: clamp(23px,2.2vw,31px); font-weight: 900; line-height: 1.12; }
+.ml-admin-dashboard-shell .ml-academic-metric-bg { position: absolute; inset-inline-end: 4px; bottom: 0; opacity: .19; color: #5b9dee; }
+.ml-admin-dashboard-shell .ml-academic-metric-green .ml-academic-metric-bg { color: #42c899; }
+.ml-admin-dashboard-shell .ml-academic-metric-orange .ml-academic-metric-bg { color: #f1b85e; }
+.ml-admin-dashboard-shell .ml-academic-metric-purple .ml-academic-metric-bg { color: #a69af7; }
+.ml-admin-dashboard-shell .ml-academic-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.ml-admin-dashboard-shell .ml-academic-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dfe7f2;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 7px 16px rgba(28,67,129,.055);
+}
+.ml-admin-dashboard-shell .ml-academic-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 53px;
+  padding: 15px 15px 10px;
+}
+.ml-admin-dashboard-shell .ml-academic-card-heading h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: #1d2e4d;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 850;
+}
+.ml-admin-dashboard-shell .ml-academic-card-heading h2 svg { flex: 0 0 auto; color: #236bdb; }
+.ml-admin-dashboard-shell .ml-academic-card-heading > a {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 3px;
+  color: #276ee1;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 760;
+  text-decoration: none;
+}
+.ml-admin-dashboard-shell .ml-academic-card-heading > a:hover { text-decoration: underline; }
+.ml-admin-dashboard-shell[dir="rtl"] .ml-academic-card-heading > a svg { transform: scaleX(-1); }
+.ml-admin-dashboard-shell .ml-academic-table-wrap { width: 100%; overflow-x: auto; padding: 0 12px 13px; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap table { width: 100%; min-width: 270px; border-spacing: 0; border-collapse: collapse; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap th {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e4eaf4;
+  background: #f6f9fd;
+  color: #607088;
+  font-size: 10px;
+  font-weight: 780;
+  text-align: start;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-academic-table-wrap th:first-child { border-start-start-radius: 8px; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap th:last-child { border-start-end-radius: 8px; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap td {
+  max-width: 190px;
+  padding: 10px 8px;
+  overflow: hidden;
+  border-bottom: 1px solid #eaf0f6;
+  color: #536783;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-academic-table-wrap tr:last-child td { border-bottom: none; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap td:first-child { color: #293d59; font-weight: 790; }
+.ml-admin-dashboard-shell .ml-academic-table-wrap td a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  overflow: hidden;
+  color: #294264;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-academic-table-wrap td a:hover { color: #276fe0; text-decoration: underline; }
+.ml-admin-dashboard-shell .ml-academic-table-icon, .ml-admin-dashboard-shell .ml-academic-table-person {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border-radius: 7px;
+  background: #eaf2ff;
+  color: #266ed3;
+  font-size: 13px;
+  font-weight: 800;
+}
+.ml-admin-dashboard-shell .ml-academic-table-person { border-radius: 50%; background: #e7ebf4; color: #5c6f90; font-size: 11px; }
+.ml-admin-dashboard-shell .ml-academic-table-subject { background: #e8f7f1; color: #159f75; }
+.ml-admin-dashboard-shell .ml-academic-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(290px,.85fr);
+  gap: 14px;
+  align-items: start;
+}
+.ml-admin-dashboard-shell .ml-academic-timetable-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-inline-start: auto;
+}
+.ml-admin-dashboard-shell .ml-academic-timetable-controls select {
+  min-height: 34px;
+  min-width: 110px;
+  max-width: 155px;
+  padding: 0 7px;
+  border: 1px solid #dce6f5;
+  border-radius: 8px;
+  background: #fafdff;
+  color: #3c5779;
+  font-size: 11px;
+}
+.ml-admin-dashboard-shell .ml-academic-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #7086a1;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-academic-periods {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 13px 17px;
+}
+.ml-admin-dashboard-shell .ml-academic-period {
+  display: grid;
+  flex: 1 0 105px;
+  min-width: 105px;
+  max-width: 175px;
+  gap: 7px;
+  min-height: 116px;
+  padding: 12px 10px;
+  border: 1px solid #e4eaf7;
+  border-radius: 11px;
+  background: #f1f7ff;
+}
+.ml-admin-dashboard-shell .ml-academic-period:nth-child(4n+2) { background: #effaf5; }
+.ml-admin-dashboard-shell .ml-academic-period:nth-child(4n+3) { background: #f4f1ff; }
+.ml-admin-dashboard-shell .ml-academic-period:nth-child(4n) { background: #fff8ed; }
+.ml-admin-dashboard-shell .ml-academic-period small { color: #647690; font-size: 10px; line-height: 1.3; }
+.ml-admin-dashboard-shell .ml-academic-period span { color: #74869e; font-size: 10px; white-space: nowrap; }
+.ml-admin-dashboard-shell .ml-academic-period strong { color: #273e5e; font-size: 11px; line-height: 1.35; }
+.ml-admin-dashboard-shell .ml-academic-no-periods {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 130px;
+  padding: 16px;
+  color: #71839a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .ml-academic-no-periods a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-inline-start: auto;
+  color: #2167d2;
+  font-weight: 750;
+  text-decoration: none;
+}
+.ml-admin-dashboard-shell .ml-academic-summary dl { margin: 0; padding: 0 14px 12px; }
+.ml-admin-dashboard-shell .ml-academic-summary dl > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 2px;
+  border-top: 1px solid #e8eef6;
+}
+.ml-admin-dashboard-shell .ml-academic-summary dt { color: #526781; font-size: 11px; font-weight: 680; line-height: 1.4; }
+.ml-admin-dashboard-shell .ml-academic-summary dd { margin: 0; color: #1b3151; font-size: 12px; font-weight: 850; text-align: end; }
+.ml-admin-dashboard-shell .ml-academic-status {
+  display: inline-block;
+  padding: 4px 6px;
+  margin-inline-start: 5px;
+  border-radius: 7px;
+  background: #e6f7ed;
+  color: #168150;
+  font-size: 9px;
+  font-weight: 800;
+}
+@media (max-width: 1330px) {
+  .ml-admin-dashboard-shell .ml-academic-metrics { gap: 10px; }
+  .ml-admin-dashboard-shell .ml-academic-metric { gap: 10px; padding: 13px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-icon { flex-basis: 44px; width: 44px; height: 44px; }
+  .ml-admin-dashboard-shell .ml-academic-directory-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ml-admin-dashboard-shell .ml-academic-directory-grid > article:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 1100px) {
+  .ml-admin-dashboard-shell .ml-academic-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ml-admin-dashboard-shell .ml-academic-lower-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .ml-admin-dashboard-shell .ml-academic-overview { gap: 12px; }
+  .ml-admin-dashboard-shell .ml-academic-metric { min-height: 92px; padding: 11px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-bg { display: none; }
+  .ml-admin-dashboard-shell .ml-academic-metric-copy strong { font-size: 24px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-copy span { font-size: 10px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-icon { flex-basis: 38px; width: 38px; height: 38px; }
+  .ml-admin-dashboard-shell .ml-academic-directory-grid { grid-template-columns: 1fr; }
+  .ml-admin-dashboard-shell .ml-academic-directory-grid > article:last-child { grid-column: auto; }
+  .ml-admin-dashboard-shell .ml-academic-card-heading { gap: 7px; flex-wrap: wrap; }
+  .ml-admin-dashboard-shell .ml-academic-timetable-controls { width: 100%; justify-content: space-between; }
+  .ml-admin-dashboard-shell .ml-academic-period { flex-basis: 125px; }
+}
+@media (max-width: 400px) {
+  .ml-admin-dashboard-shell .ml-academic-metrics { gap: 8px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-icon { flex-basis: 32px; width: 32px; height: 32px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-icon svg { width: 20px; height: 20px; }
+  .ml-admin-dashboard-shell .ml-academic-metric-copy strong { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .ml-academic-overview :where(a,button) { transition: none; }
+}

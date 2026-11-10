@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../apps/web/app/globals.css", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../apps/web/app/admin/admin-workspace.tsx", import.meta.url), "utf8");
+const frame = readFileSync(new URL("../apps/web/app/admin/admin-dashboard-frame.tsx", import.meta.url), "utf8");
+const dashboardCss = readFileSync(new URL("../apps/web/app/admin/dashboard-shell.css", import.meta.url), "utf8");
 const communication = readFileSync(new URL("../apps/web/app/admin/communication-panel.tsx", import.meta.url), "utf8");
 
 function block(selector) {
@@ -22,9 +24,12 @@ assert.match(block(".admin-dashboard-heading h2"), /font-size:\s*21px/);
 assert.match(block(".admin-dashboard-heading p"), /font-size:\s*12\.8px/);
 assert.ok(css.includes(".admin-school-identity h1 {\n    font-size: 21px;"), "Keep 70% narrow-phone school heading.");
 assert.ok(css.includes(".admin-route-heading h2 {\n    font-size: 19.6px;"), "Keep 70% mobile route heading.");
-for (const marker of ['className="admin-school-identity"', 'className="admin-route-heading"']) {
-  assert.ok(workspace.includes(marker), "Heading target no longer in admin shell: " + marker);
-}
+assert.ok(workspace.includes("<AdminDashboardFrame") &&
+  frame.includes('className="admin-route-heading ml-admin-page-heading"') &&
+  frame.includes("<h1>{t(title)}</h1>") &&
+  dashboardCss.includes(".ml-admin-page-heading h1") &&
+  dashboardCss.includes(".ml-admin-page-heading p"),
+  "Dashboard route headings must stay distinct and legible in the new shell.");
 assert.ok(communication.includes('className="admin-section-header academic-heading"'),
   "Communication screen should use the smaller section heading.");
 assert.ok(!css.includes(".admin-workspace { font-size:"),
@@ -40,9 +45,8 @@ for(const fragment of [
   'preload: false',
   'className={`${adminEnglishFont.variable} ${adminPersianFont.variable}`}'
 ]) assert.ok(rootLayout.includes(fragment), "Missing self-hosted dual admin fonts: " + fragment);
-for (const fragment of [
-  'className="admin-shell admin-shell-premium admin-workspace" lang={locale} dir={adminDirection(locale)}'
-]) assert.ok(workspace.includes(fragment), "The admin language must track its locale.");
+assert.ok(frame.includes("lang={locale}") && frame.includes('dir={locale === "en" ? "ltr" : "rtl"}'),
+  "The admin language and text direction must track the selected locale.");
 for (const fragment of [
   '.admin-workspace[lang="en"] {',
   '.admin-workspace:is([lang="fa-AF"], [lang="ps-AF"]) {',

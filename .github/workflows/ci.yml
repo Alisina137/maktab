@@ -61,6 +61,9 @@ jobs:
       - name: Admin Fees responsive RTL reminder and invoice layout
         run: pnpm verify:admin-fees:layout
 
+      - name: Admin Dashboard screenshot-inspired navigation and real academic overview
+        run: pnpm verify:admin-dashboard
+
       - name: Admin 70% titles and 80% subtitles layout
         run: pnpm verify:admin-headings
 
