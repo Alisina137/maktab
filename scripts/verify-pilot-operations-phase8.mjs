@@ -43,6 +43,18 @@ assert.ok(css.includes(".pilot-nav-mobile") && css.includes(".pilot-pulse-grid")
   css.includes("@media (max-width: 620px)"),
   "Responsive grid and mobile navigation styling required");
 
+// Each panel is rendered in the same JSX child list. A shared session token
+// alone is NOT a unique React key; keep it namespaced per panel/route so
+// the overview cannot emit duplicate-key warnings or confuse reconciliation.
+const sessionPanelKeys = [...panel.matchAll(/key=\{\"([^\"]+)\" \+ accessToken\}/g)]
+  .map(([, prefix]) => prefix);
+assert.equal(sessionPanelKeys.length, 9,
+  "All nine session-scoped Pilot panels must have an explicit namespace");
+assert.equal(new Set(sessionPanelKeys).size, sessionPanelKeys.length,
+  "Sibling Pilot panels must never reuse the same React key");
+assert.ok(!panel.includes("key={accessToken}"),
+  "A bare access token is shared across sibling Pilot panels and causes duplicate-key warnings");
+
 // API access, paging, no-cache and tenant boundaries.
 for (const p of ["/v1/admin/pilot/adoption", "/v1/admin/pilot/service-health",
   "/v1/admin/pilot/oversight", "/v1/admin/pilot/audit"]) {
