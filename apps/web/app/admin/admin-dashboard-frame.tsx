@@ -204,8 +204,8 @@ export function AdminDashboardFrame({
                   {expandable ? (
                     <button className={"ml-admin-subnav-toggle" +
                       (open ? " ml-admin-subnav-toggle-open" : "")}
-                      type="button" title={t(item.label) + " · " + t("Academic sections")}
-                      aria-label={t(item.label) + " · " + t("Academic sections")}
+                      type="button" title={t(open ? "Collapse subsections" : "Expand subsections") + ": " + t(item.label)}
+                      aria-label={t(open ? "Collapse subsections" : "Expand subsections") + ": " + t(item.label)}
                       aria-expanded={open} aria-controls={groupId + "-subnav"}
                       data-admin-no-loading="true"
                       onClick={() => setExpandedGroup((current) =>
