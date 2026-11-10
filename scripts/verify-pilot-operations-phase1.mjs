@@ -9,6 +9,7 @@ const launchUi = read("apps/web/app/admin/pilot-launch-support-panel.tsx");
 const launchRoutes = read("apps/api/src/pilot/launch-routes.ts");
 const nested = read("apps/web/app/admin/(workspace)/pilot/[section]/page.tsx");
 const workspace = read("apps/web/app/admin/admin-workspace.tsx");
+const dashboardFrame = read("apps/web/app/admin/admin-dashboard-frame.tsx");
 const css = read("apps/web/app/globals.css");
 const i18n = read("apps/web/app/admin/admin-i18n.ts");
 
@@ -25,8 +26,11 @@ for (const [section, href] of [
 }
 assert.ok(root.includes('section="overview"'), "Default Pilot Operations section must be Overview");
 assert.ok(nested.includes("isPilotSection(section)") && nested.includes("useParams"), "Dynamic route must validate sections");
-assert.ok(workspace.includes('item.href === "/admin/pilot" && pathname.startsWith("/admin/pilot/")'),
-  "Main navigation must highlight Pilot Operations child routes");
+assert.ok(workspace.includes('{ href: "/admin/pilot", label: "Pilot operations" }') &&
+  dashboardFrame.includes("activeRoute(currentPath, item.href)") &&
+  dashboardFrame.includes('pathname.startsWith(href + "/")') &&
+  dashboardFrame.includes("ml-admin-side-link-active"),
+  "Main navigation must highlight Pilot Operations and nested child routes");
 assert.ok(navigation.includes('aria-current={section === tab.section ? "page" : undefined}') &&
   navigation.includes("nav.scrollBy({") &&
   !navigation.includes("scrollIntoView(") &&
