@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Expand subsections": "نمایش زیربخش‌ها",
+  "Collapse subsections": "پنهان کردن زیربخش‌ها",
+  "Staff requests": "درخواست‌های کارمندان",
   "Dashboard": "داشبورد",
   "School Dashboard": "داشبورد مکتب",
   "An overview of your school's academic structure, teaching team and daily timetable.": "نمای عمومی ساختار تعلیمی، معلمان و تقسیم اوقات روزانهٔ مکتب شما.",
@@ -2583,6 +2586,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Expand subsections": "فرعي برخې ښکاره کړئ",
+  "Collapse subsections": "فرعي برخې پټې کړئ",
+  "Staff requests": "د کارکوونکو غوښتنې",
   "Dashboard": "ډشبورډ",
   "School Dashboard": "د ښوونځي ډشبورډ",
   "An overview of your school's academic structure, teaching team and daily timetable.": "ستاسو د ښوونځي د تعلیمي جوړښت، ښوونکو او ورځني مهال‌وېش عمومي لید.",
