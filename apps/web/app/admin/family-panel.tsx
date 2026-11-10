@@ -375,6 +375,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const t = (english: string) => adminText(locale, english);
   const toastPortalTarget = typeof document === "undefined" ? null : document.body;
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
+  // Hash links are mounted only after protected school data loads. Replay the
+  // scroll once the real section exists, while respecting any current hash.
+  useEffect(() => {
+    if (!overview || !window.location.hash.startsWith("#family-")) return;
+    const targetId = window.location.hash.slice(1);
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [overview]);
+
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
   const { error, notice, setError, setNotice } = useTransientAdminFeedback({ persistent: true });
@@ -1358,7 +1369,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       </div>
 
       <div className="family-add-student-layout">
-      <article className="admin-panel academic-form-card family-add-student-card">
+      <article id="family-add-student" className="admin-panel academic-form-card family-add-student-card">
         <div><h2>{t("Add student")}</h2><p>{t("Link the student to one existing parent account. The relationship is singular, not many-to-many.")}</p></div>
         <form className="admin-form family-add-student-form" onSubmit={createStudent}>
           <div className="family-add-student-field">
@@ -1453,7 +1464,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           <button className="admin-primary" disabled={busy}>{t("Create parent & credential")}</button>
         </form>
       </article>
-      <article className="admin-panel academic-list-panel">
+      <article id="family-parents" className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div>
             <h2>{t("Parents")}</h2>
@@ -1585,7 +1596,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </button>
         </form>
       </article>
-      <article className="admin-panel academic-list-panel">
+      <article id="family-students" className="admin-panel academic-list-panel">
         <div className="admin-section-header">
           <div>
             <h2>{t("Students")}</h2>
@@ -1720,7 +1731,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </div>
       </div>
 
-      <article className="admin-panel family-import-panel">
+      <article id="family-import" className="admin-panel family-import-panel">
         <div className="admin-section-header">
           <div>
             <h2>{t("Bulk import")}</h2>
