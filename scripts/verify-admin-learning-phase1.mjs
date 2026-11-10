@@ -13,7 +13,7 @@ const apiTests = read("apps/api/src/app.test.ts");
 for (const tab of ["OVERVIEW","HOMEWORK","EXAMS","RESULTS","TEACHING","REPORTS"])
   assert.ok(panel.includes('id: "' + tab + '"'), "Missing learning tab "+tab);
 for (const fragment of [
-  'setActiveTab] = useState<LearningTab>(initialExamId ? "EXAMS" : "OVERVIEW")',
+  'useState<LearningTab>(routedTab)', 'initialExamId ? "EXAMS" as LearningTab : "OVERVIEW" as LearningTab',
   'role="tablist" aria-label={t("Learning sections")}',
   'role="tab" aria-selected={activeTab === id}',
   'tabRefs.current[activeTab]?.scrollIntoView',

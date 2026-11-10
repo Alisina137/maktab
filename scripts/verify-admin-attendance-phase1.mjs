@@ -19,7 +19,7 @@ for(const fragment of [
   'role="tabpanel"','tabRefs.current[destination]?.focus()',
   'event.key === "ArrowRight"','event.key === "ArrowLeft"',
   'event.key === "Home"','event.key === "End"',
-  'setActiveTab("REGISTERS")','setActiveTab("FOLLOWUPS")',
+  'selectTab("REGISTERS")','selectTab("FOLLOWUPS")',
   'new AbortController()','controller.signal.aborted',
   'loadSequence.current !== run','scopeRef.current !== expectedScope',
   'loadController.current?.abort()', 'controller.abort()',
