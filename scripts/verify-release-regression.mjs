@@ -17,6 +17,8 @@ const migration = read("packages/database/src/migration-chain.test.ts");
 const css = read("apps/web/app/globals.css");
 const mobile = read("apps/mobile/App.tsx");
 const landing = read("apps/web/app/page.tsx");
+const landingExperience = read("apps/web/app/home-landing.tsx");
+const landingStyles = read("apps/web/app/landing.css");
 const pilot = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const accountPage = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
 const accountRules = read("apps/web/app/admin/account-create-rules.ts");
@@ -273,7 +275,18 @@ for (const key of ['"Accounts per page":', '"Bulk account actions":',
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase5 missing a Dari or Pashto translation: ${key}`);
 }
-assert.ok(landing.includes('id="home-heading"'), "Public landing page heading is missing");
+assert.ok(
+  landing.includes('HomeLanding') &&
+  landingExperience.includes('id="ml-home-title"') &&
+  landingExperience.includes('href="/admin"') &&
+  landingExperience.includes('href="/staff"') &&
+  landingExperience.includes('id="how-it-works"') &&
+  landingExperience.includes('id="features"') &&
+  ['"fa-AF"', '"ps-AF"', '"en"'].every((locale) => landingExperience.includes(locale)) &&
+  landingStyles.includes('@media (max-width: 650px)') &&
+  landingStyles.includes('.ml-home[dir="rtl"]'),
+  "Public landing page must retain accessible multilingual onboarding, role entry and responsive RTL styling"
+);
 assert.ok(!landing.includes("intentionally deferred to Phase 4"), "Obsolete release page content returned");
 assert.ok(read("packages/database/drizzle.config.ts").includes("DATABASE_URL_UNPOOLED"),
   "Direct migration URL preference missing");
