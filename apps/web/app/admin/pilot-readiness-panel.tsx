@@ -495,7 +495,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
 
       <PilotOperationsNavigation section={section} locale={locale} />
       {section === "overview" ? (
-        <PilotOperationsPulse key={accessToken} accessToken={accessToken} locale={locale} />
+        <PilotOperationsPulse key={"pilot-pulse:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
 
       {loadError ? <div className="admin-error pilot-retry-alert" role="alert">
@@ -522,7 +522,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
         </div>
       ) : null}
       {section === "overview" ? (
-        <PilotOperationalReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} compact />
+        <PilotOperationalReadinessPanel key={"operational-overview:" + accessToken} accessToken={accessToken} locale={locale} compact />
       ) : null}
       {section === "overview" && advanced ? (
         <div className="pilot-coverage-mini" aria-label={t("Coverage results")}>
@@ -540,7 +540,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
           locale={locale} busy={busy || advancedBusy} />
       ) : null}
       {section === "readiness" ? (
-        <PilotOperationalReadinessPanel key={accessToken} accessToken={accessToken} locale={locale} />
+        <PilotOperationalReadinessPanel key={"operational-readiness:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
       {section === "readiness" && advanced ? (
         <section className="pilot-coverage-section" aria-labelledby="pilot-coverage-title">
@@ -661,7 +661,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {(section === "subscription" || (section === "overview" && subscription)) ? (
-        <PilotSubscriptionHealthPanel key={accessToken} accessToken={accessToken}
+        <PilotSubscriptionHealthPanel key={"subscription-health:" + accessToken} accessToken={accessToken}
           locale={locale} compact={section === "overview"} />
       ) : null}
 
@@ -781,7 +781,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
               <Link className="pilot-inline-link" href="/admin/pilot/launch">{t("View launch requirements")}</Link>
             </article>
           </div>
-          <PilotOverviewActivity key={accessToken} accessToken={accessToken} locale={locale} />
+          <PilotOverviewActivity key={"overview-activity:" + accessToken} accessToken={accessToken} locale={locale} />
           <h3 className="pilot-section-heading">{t("Quick actions")}</h3>
           <div className="pilot-quick-grid">
             {([
@@ -802,13 +802,13 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {section === "adoption" ? (
-        <PilotAdoptionPanel key={accessToken} accessToken={accessToken} locale={locale} />
+        <PilotAdoptionPanel key={"adoption:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
       {section === "service" ? (
-        <PilotServiceHealthPanel key={accessToken} accessToken={accessToken} locale={locale} />
+        <PilotServiceHealthPanel key={"service:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
       {section === "oversight" ? (
-        <PilotOversightPanel key={accessToken} accessToken={accessToken} locale={locale} />
+        <PilotOversightPanel key={"oversight:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
 
       {section === "onboarding" && readiness ? (
@@ -966,7 +966,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {section === "launch" ? (
-        <PilotLaunchSupportPanel key={accessToken} accessToken={accessToken} locale={locale}
+        <PilotLaunchSupportPanel key={"launch-support:" + accessToken} accessToken={accessToken} locale={locale}
           setupReady={Boolean(advanced?.ready)} />
       ) : null}
 
