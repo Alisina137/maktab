@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { adminLocaleOptions, type AdminLocale } from "./admin-i18n";
 import { useAdminWorkspace } from "./admin-workspace";
+import { adminSidebarSections, sidebarItemIsActive } from "./admin-sidebar-sections";
 
 type NavItem = { href: string; label: string };
 type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check";
@@ -15,19 +16,6 @@ const navIcons: Record<string, Glyph> = {
   "/admin/attendance": "attendance", "/admin/learning": "learning", "/admin/communication": "communication",
   "/admin/pilot": "pilot", "/admin/profile": "profile"
 };
-
-const academics = [
-  { href: "/admin/academics", label: "Overview" },
-  { href: "/admin/academics/years", label: "Academic years" },
-  { href: "/admin/academics/grades", label: "Grade levels" },
-  { href: "/admin/academics/classes", label: "Classes" },
-  { href: "/admin/academics/subjects", label: "Subjects" },
-  { href: "/admin/academics/teachers", label: "Teacher profiles" },
-  { href: "/admin/academics/assignments", label: "Teacher assignments" },
-  { href: "/admin/academics/negaran", label: "Negaran assignments" },
-  { href: "/admin/academics/timetable", label: "Timetable periods" },
-  { href: "/admin/academics/curriculum", label: "Curriculum units" }
-] as const;
 
 const iconPaths: Record<Glyph, string> = {
   dashboard: "M3 10.2 12 3l9 7.2V21h-6v-6H9v6H3V10.2z",
@@ -82,11 +70,17 @@ export function AdminDashboardFrame({
 }) {
   const router = useRouter();
   const currentPath = usePathname();
+  const searchParams = useSearchParams();
+  const searchTab = searchParams.get("tab");
   const { stored, locale, t, setLocale, signOut, adminProfile, academicYears,
     selectedAcademicYearId, setSelectedAcademicYearId } = useAdminWorkspace();
   const [compact, setCompact] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [academicExpanded, setAcademicExpanded] = useState(pathname.startsWith("/admin/academics"));
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(
+    () => Object.keys(adminSidebarSections).find((group) =>
+      pathname === group || pathname.startsWith(group + "/")) ?? null
+  );
+  const [fragment, setFragment] = useState("");
   const [search, setSearch] = useState("");
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -94,7 +88,11 @@ export function AdminDashboardFrame({
   const userName = adminProfile.fullName || stored.session.user.username;
 
   const searchOptions = useMemo(() => {
-    const items = [...navItems, ...academics.slice(1)];
+    const items = [...navItems,
+      ...Object.entries(adminSidebarSections).flatMap(([group, children]) =>
+        children.map((child) => ({ ...child, label: navItems.find((item) =>
+          item.href === group)?.label + " · " + child.label }))
+      )];
     const q = search.trim().toLocaleLowerCase();
     if (!q) return items.slice(0, 7);
     return items.filter((item) =>
@@ -106,7 +104,13 @@ export function AdminDashboardFrame({
   useEffect(() => {
     setMobileOpen(false);
     setShowResults(false);
-    if (pathname.startsWith("/admin/academics")) setAcademicExpanded(true);
+    const group = Object.keys(adminSidebarSections).find((item) =>
+      pathname === item || pathname.startsWith(item + "/"));
+    if (group) setExpandedGroup(group);
+    setFragment(window.location.hash);
+    const handleHash = () => setFragment(window.location.hash);
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
   }, [pathname]);
 
   useEffect(() => {
@@ -176,43 +180,56 @@ export function AdminDashboardFrame({
         <nav className="admin-route-nav ml-admin-side-nav" aria-label={t("Administration sections")}>
           {navItems.map((item) => {
             const active = activeRoute(currentPath, item.href);
-            const isAcademic = item.href === "/admin/academics";
+            const submenu = adminSidebarSections[item.href];
+            const expandable = Boolean(submenu?.length);
+            const open = expandedGroup === item.href;
+            const groupId = item.href.replaceAll("/", "-").slice(1);
             return (
               <div className="ml-admin-nav-group" key={item.href}>
                 <div className={"ml-admin-nav-row" +
-                  (isAcademic ? " ml-admin-nav-row-academic" : "") +
+                  (expandable ? " ml-admin-nav-row-academic ml-admin-nav-row-expandable" : "") +
                   (active ? " ml-admin-nav-row-active" : "")}>
                   <Link href={item.href} title={t(item.label)}
                     className={"admin-route-nav-link ml-admin-side-link" +
                       (active ? " admin-route-nav-link-active ml-admin-side-link-active" : "")}
-                    aria-current={currentPath === item.href ? "page" : undefined}
+                    aria-current={currentPath === item.href && !searchTab && !fragment ? "page" : undefined}
                     onClick={() => {
                       setMobileOpen(false);
-                      if (isAcademic) setAcademicExpanded(true);
+                      setFragment("");
+                      if (expandable) setExpandedGroup(item.href);
                     }}>
                     <Icon name={navIcons[item.href] ?? "dashboard"} size={19} />
                     <span className="ml-admin-nav-label">{t(item.label)}</span>
                   </Link>
-                  {isAcademic ? (
-                    <button className={"ml-admin-subnav-toggle" + (academicExpanded ? " ml-admin-subnav-toggle-open" : "")}
-                      type="button" title={t("Academic sections")} aria-label={t("Academic sections")}
-                      aria-expanded={academicExpanded} aria-controls="ml-admin-academic-subnav"
+                  {expandable ? (
+                    <button className={"ml-admin-subnav-toggle" +
+                      (open ? " ml-admin-subnav-toggle-open" : "")}
+                      type="button" title={t(item.label) + " · " + t("Academic sections")}
+                      aria-label={t(item.label) + " · " + t("Academic sections")}
+                      aria-expanded={open} aria-controls={groupId + "-subnav"}
                       data-admin-no-loading="true"
-                      onClick={() => setAcademicExpanded((current) => !current)}>
+                      onClick={() => setExpandedGroup((current) =>
+                        current === item.href ? null : item.href)}>
                       <Icon name="chevron" size={16} />
                     </button>
                   ) : null}
                 </div>
-                {isAcademic && academicExpanded ? (
-                  <div className="ml-admin-subnav" id="ml-admin-academic-subnav">
-                    {academics.map((entry) => (
-                      <Link href={entry.href} key={entry.href}
-                        className={currentPath === entry.href ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
-                        aria-current={currentPath === entry.href ? "page" : undefined}
-                        onClick={() => setMobileOpen(false)}>
-                        <span className="ml-admin-subnav-dot" aria-hidden="true" />{t(entry.label)}
-                      </Link>
-                    ))}
+                {expandable && open ? (
+                  <div className="ml-admin-subnav" id={groupId + "-subnav"}>
+                    {submenu!.map((entry) => {
+                      const selected = sidebarItemIsActive(entry.href, currentPath, searchTab, fragment);
+                      return (
+                        <Link href={entry.href} key={entry.href} title={t(entry.label)}
+                          className={selected ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
+                          aria-current={selected ? "page" : undefined}
+                          onClick={() => {
+                            setMobileOpen(false);
+                            setFragment(new URL(entry.href, window.location.origin).hash);
+                          }}>
+                          <span className="ml-admin-subnav-dot" aria-hidden="true" />{t(entry.label)}
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : null}
               </div>
