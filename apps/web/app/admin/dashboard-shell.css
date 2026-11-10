@@ -132,7 +132,48 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   display: flex;
   align-items: center;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   border-radius: 10px;
+}
+/* Academic link and expander occupy separate, fixed grid tracks.
+   The toggle remains inside the row for every locale and expansion state. */
+.ml-admin-dashboard-shell .ml-admin-nav-row.ml-admin-nav-row-academic {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid transparent;
+}
+.ml-admin-dashboard-shell .ml-admin-nav-row-academic.ml-admin-nav-row-active {
+  border-color: rgba(194,229,255,.15);
+  background: linear-gradient(100deg,#1b65da,#2d8be9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.11), 0 5px 13px rgba(0,0,0,.12);
+}
+.ml-admin-dashboard-shell .ml-admin-nav-row-academic .admin-route-nav-link.ml-admin-side-link {
+  min-width: 0;
+  width: 100%;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 9px;
+  box-shadow: none;
+  animation: none;
+  transform: none;
+}
+.ml-admin-dashboard-shell .ml-admin-nav-row-academic .ml-admin-side-link-active,
+.ml-admin-dashboard-shell .ml-admin-nav-row-academic .ml-admin-side-link-active:hover {
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+  transform: none;
+}
+.ml-admin-dashboard-shell .ml-admin-nav-row-academic .ml-admin-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ml-admin-dashboard-shell .admin-route-nav-link.ml-admin-side-link {
   display: flex;
@@ -168,23 +209,44 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.11), 0 5px 13px rgba(0,0,0,.12);
 }
 .ml-admin-dashboard-shell .ml-admin-subnav-toggle {
-  position: absolute;
-  inset-inline-end: 3px;
-  top: 3px;
+  position: relative;
+  inset: auto;
+  top: auto;
   z-index: 1;
   display: grid;
+  justify-self: center;
+  align-self: center;
+  flex: 0 0 auto;
   width: 34px;
-  height: 35px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
   place-items: center;
-  border: 0;
+  border: 1px solid rgba(204,225,255,.13);
   border-radius: 8px;
-  background: transparent;
-  color: #b8cdec;
+  background: rgba(255,255,255,.055);
+  color: #d6e7fa;
+  cursor: pointer;
+  transition: background .17s ease, border-color .17s ease;
 }
-.ml-admin-dashboard-shell .ml-admin-subnav-toggle:hover { background: rgba(255,255,255,.12); color: #fff; }
-.ml-admin-dashboard-shell .ml-admin-subnav-toggle > svg { transition: transform .17s ease; }
+.ml-admin-dashboard-shell .ml-admin-subnav-toggle:hover,
+.ml-admin-dashboard-shell .ml-admin-subnav-toggle:focus-visible,
+.ml-admin-dashboard-shell .ml-admin-subnav-toggle-open {
+  border-color: rgba(230,242,255,.26);
+  background: rgba(255,255,255,.16);
+  color: #fff;
+}
+.ml-admin-dashboard-shell .ml-admin-subnav-toggle:focus-visible {
+  outline: 2px solid #d2e7ff;
+  outline-offset: -2px;
+}
+.ml-admin-dashboard-shell .ml-admin-subnav-toggle > svg {
+  display: block;
+  transition: transform .17s ease;
+}
 .ml-admin-dashboard-shell .ml-admin-subnav-toggle-open > svg { transform: rotate(180deg); }
-.ml-admin-dashboard-shell .ml-admin-nav-group:has(.ml-admin-subnav-toggle) .ml-admin-side-link { padding-inline-end: 42px; }
 .ml-admin-dashboard-shell .ml-admin-subnav {
   display: grid;
   gap: 0;
@@ -527,6 +589,7 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
 .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-brand { margin-inline: 3px; justify-content: center; }
 .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-school-chip { justify-content: center; padding-inline: 3px; }
 .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: center !important; padding-inline: 4px !important; }
+.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr); }
 .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-profile, .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sign-out { justify-content: center; padding-inline: 5px; }
 
 @media (max-width: 1200px) {
@@ -567,6 +630,8 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
   }
   .ml-admin-dashboard-shell.ml-admin-compact :is(.ml-admin-sidebar-brand-text, .ml-admin-school-chip-text, .ml-admin-school-chip > svg, .ml-admin-nav-label, .ml-admin-sidebar-profile-name, .ml-admin-subnav-toggle, .ml-admin-subnav, .ml-admin-sign-out span) { display: initial; }
   .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: flex-start !important; padding-inline: 12px !important; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr) 40px; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic .ml-admin-subnav-toggle { display: grid; }
   .ml-admin-dashboard-shell .ml-admin-topbar { min-height: 68px; }
   .ml-admin-dashboard-shell .ml-admin-content-area { padding-top: 21px; }
 }
