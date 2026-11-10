@@ -32,6 +32,17 @@ assert.ok(frame.includes('role="search"') &&
   frame.includes("setMobileOpen(false)") &&
   frame.includes("aria-expanded={academicExpanded}"),
   "Search keyboard shortcuts, accessible collapsible nav and mobile exit are required");
+assert.ok(frame.includes('ml-admin-nav-row-academic') &&
+  frame.includes('ml-admin-nav-row-active') &&
+  frame.includes('data-admin-no-loading="true"') &&
+  frame.includes('aria-controls="ml-admin-academic-subnav"') &&
+  frame.includes('onClick={() => setAcademicExpanded((current) => !current)}') &&
+  css.includes('grid-template-columns: minmax(0, 1fr) 40px') &&
+  css.includes('.ml-admin-nav-row-academic .ml-admin-side-link-active') &&
+  css.includes('position: relative;\n  inset: auto;\n  top: auto;') &&
+  css.includes('.ml-admin-compact .ml-admin-nav-row-academic') &&
+  css.includes('.ml-admin-subnav-toggle:focus-visible'),
+  "Academic expand/collapse icon must stay in its own bounded sidebar track in desktop, compact and RTL/mobile layouts");
 for (const route of ["/admin/academics", "/admin/accounts", "/admin/attendance",
   "/admin/learning", "/admin/communication", "/admin/pilot", "/admin/profile"]) {
   assert.ok(shell.includes(route) || frame.includes(route), "Lost admin route: " + route);
