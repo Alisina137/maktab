@@ -12,6 +12,14 @@ const css = read("apps/web/app/admin/dashboard-shell.css");
 const academicCss = read("apps/web/app/admin/academic-overview.css");
 const translations = read("apps/web/app/admin/admin-i18n.ts");
 const login = read("apps/web/app/admin/page.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const sectionRoute = read("apps/web/app/admin/admin-section-route.ts");
+const attendance = read("apps/web/app/admin/attendance-panel.tsx");
+const learning = read("apps/web/app/admin/learning-panel.tsx");
+const communication = read("apps/web/app/admin/communication-panel.tsx");
+const accounts = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
+const staffWork = read("apps/web/app/admin/(workspace)/staff-work/page.tsx");
+
 
 assert.ok(shell.includes("<AdminDashboardFrame") &&
   shell.includes('"/admin/dashboard"') &&
@@ -30,19 +38,35 @@ assert.ok(frame.includes('role="search"') &&
   frame.includes('event.key.toLowerCase() === "k"') &&
   frame.includes('event.key === "Escape"') &&
   frame.includes("setMobileOpen(false)") &&
-  frame.includes("aria-expanded={academicExpanded}"),
+  frame.includes("aria-expanded={open}") &&
+  frame.includes('data-admin-no-loading="true"') &&
+  frame.includes("adminSidebarSections[item.href]"),
   "Search keyboard shortcuts, accessible collapsible nav and mobile exit are required");
 assert.ok(frame.includes('ml-admin-nav-row-academic') &&
   frame.includes('ml-admin-nav-row-active') &&
   frame.includes('data-admin-no-loading="true"') &&
-  frame.includes('aria-controls="ml-admin-academic-subnav"') &&
-  frame.includes('onClick={() => setAcademicExpanded((current) => !current)}') &&
+  frame.includes('aria-controls={groupId + "-subnav"}') &&
+  frame.includes('setExpandedGroup((current) =>') &&
   css.includes('grid-template-columns: minmax(0, 1fr) 40px') &&
   css.includes('.ml-admin-nav-row-academic .ml-admin-side-link-active') &&
   css.includes('position: relative;\n  inset: auto;\n  top: auto;') &&
   css.includes('.ml-admin-compact .ml-admin-nav-row-academic') &&
   css.includes('.ml-admin-subnav-toggle:focus-visible'),
-  "Academic expand/collapse icon must stay in its own bounded sidebar track in desktop, compact and RTL/mobile layouts");
+  "All sidebar expand/collapse buttons must stay in bounded tracks in desktop, compact and RTL/mobile layouts");
+for (const group of ["/admin/academics", "/admin/accounts", "/admin/families",
+  "/admin/attendance", "/admin/learning", "/admin/communication",
+  "/admin/staff-work", "/admin/pilot"]) {
+  assert.ok(sidebar.includes('"' + group + '"'), "Missing sidebar submenu: " + group);
+}
+assert.ok(sidebar.includes("PILOT_TABS.map") && sidebar.includes("ATTENDANCE_TABS") &&
+  sidebar.includes("sidebarItemIsActive") && frame.includes("sidebarItemIsActive(") &&
+  frame.includes("aria-current={selected ?") &&
+  sectionRoute.includes('searchParams.get("tab")') &&
+  sectionRoute.includes('scroll: false'), "Sidebar deep links, selected states or history navigation regressed");
+for (const panel of [attendance, learning, communication, accounts, staffWork]) {
+  assert.ok(panel.includes("useAdminSectionRoute(") && panel.includes("navigateTab(") &&
+    panel.includes("routedTab"), "An existing admin tab view lost URL synchronization");
+}
 for (const route of ["/admin/academics", "/admin/accounts", "/admin/attendance",
   "/admin/learning", "/admin/communication", "/admin/pilot", "/admin/profile"]) {
   assert.ok(shell.includes(route) || frame.includes(route), "Lost admin route: " + route);
