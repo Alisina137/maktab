@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Open sidebar": "باز کردن منوی کناری",
+  "Expand sidebar": "گسترش منوی کناری",
+  "Collapse sidebar": "جمع کردن منوی کناری",
   "Expand subsections": "نمایش زیربخش‌ها",
   "Collapse subsections": "پنهان کردن زیربخش‌ها",
   "Staff requests": "درخواست‌های کارمندان",
@@ -2586,6 +2589,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Open sidebar": "اړخیز مېنو پرانیزئ",
+  "Expand sidebar": "اړخیز مېنو پراخ کړئ",
+  "Collapse sidebar": "اړخیز مېنو راټول کړئ",
   "Expand subsections": "فرعي برخې ښکاره کړئ",
   "Collapse subsections": "فرعي برخې پټې کړئ",
   "Staff requests": "د کارکوونکو غوښتنې",

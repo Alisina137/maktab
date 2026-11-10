@@ -42,6 +42,23 @@ assert.ok(frame.includes('role="search"') &&
   frame.includes('data-admin-no-loading="true"') &&
   frame.includes("adminSidebarSections[item.href]"),
   "Search keyboard shortcuts, accessible collapsible nav and mobile exit are required");
+// The sidebar width must shrink as a grid column, not merely hide its labels.
+assert.ok(css.includes("grid-template-columns: 256px minmax(0, 1fr)") &&
+  css.includes("main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium.ml-admin-compact") &&
+  css.includes("grid-template-columns: 73px minmax(0, 1fr)") &&
+  css.includes("@media (min-width: 901px)") &&
+  css.includes("@media (max-width: 900px)") &&
+  frame.includes('(compact ? " ml-admin-compact" : "")') &&
+  frame.includes('setCompact((current) => !current)') &&
+  frame.includes('aria-expanded={isMobileLayout ? mobileOpen : !compact}') &&
+  frame.includes('aria-controls="ml-admin-sidebar"') &&
+  frame.includes('data-admin-no-loading="true" onClick={toggleSidebar}') &&
+  frame.includes('mobileQuery.addEventListener("change", syncLayout)') &&
+  frame.includes('title={t("Administrator profile")}') &&
+  ["Open sidebar", "Expand sidebar", "Collapse sidebar"].every((key) =>
+    translations.split(JSON.stringify(key) + ":").length === 3),
+  "Hamburger must shrink desktop grid to 73px, preserve the mobile drawer and expose localized toggle state");
+
 assert.ok(frame.includes('ml-admin-nav-row-academic') &&
   frame.includes('ml-admin-nav-row-active') &&
   frame.includes('data-admin-no-loading="true"') &&

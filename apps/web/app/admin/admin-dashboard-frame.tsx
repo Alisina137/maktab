@@ -76,6 +76,7 @@ export function AdminDashboardFrame({
     selectedAcademicYearId, setSelectedAcademicYearId } = useAdminWorkspace();
   const [compact, setCompact] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(
     () => Object.keys(adminSidebarSections).find((group) =>
       pathname === group || pathname.startsWith(group + "/")) ?? null
@@ -112,6 +113,17 @@ export function AdminDashboardFrame({
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, [pathname]);
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 900px)");
+    const syncLayout = () => {
+      setIsMobileLayout(mobileQuery.matches);
+      if (!mobileQuery.matches) setMobileOpen(false);
+    };
+    syncLayout();
+    mobileQuery.addEventListener("change", syncLayout);
+    return () => mobileQuery.removeEventListener("change", syncLayout);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -165,8 +177,8 @@ export function AdminDashboardFrame({
       {mobileOpen ? <button className="ml-admin-sidebar-backdrop" type="button"
         aria-label={t("Close sidebar")} onClick={() => setMobileOpen(false)} /> : null}
 
-      <aside className="ml-admin-sidebar" aria-label={t("School Administration")}>
-        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" onClick={() => setMobileOpen(false)}>
+      <aside id="ml-admin-sidebar" className="ml-admin-sidebar" aria-label={t("School Administration")}>
+        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={() => setMobileOpen(false)}>
           <span className="ml-admin-brand-icon"><Icon name="academic" size={27} /></span>
           <span className="ml-admin-sidebar-brand-text"><strong>MaktabLink</strong><small>{t("School Administration")}</small></span>
         </Link>
@@ -238,7 +250,7 @@ export function AdminDashboardFrame({
         </nav>
 
         <div className="ml-admin-sidebar-footer">
-          <Link className="ml-admin-sidebar-profile" href="/admin/profile" onClick={() => setMobileOpen(false)}>
+          <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={() => setMobileOpen(false)}>
             <UserAvatar name={userName} url={adminProfile.imageUrl} />
             <span className="ml-admin-sidebar-profile-name"><strong>{userName}</strong><small>{t("School Administration")}</small></span>
           </Link>
@@ -251,8 +263,18 @@ export function AdminDashboardFrame({
 
       <div className="ml-admin-main-column">
         <header className="ml-admin-topbar">
-          <button className="ml-admin-menu-button" type="button" aria-label={t("Toggle navigation")}
-            aria-expanded={mobileOpen} onClick={toggleSidebar}><Icon name="menu" size={21} /></button>
+          <button className="ml-admin-menu-button" type="button"
+            aria-label={t(isMobileLayout
+              ? (mobileOpen ? "Close sidebar" : "Open sidebar")
+              : (compact ? "Expand sidebar" : "Collapse sidebar"))}
+            title={t(isMobileLayout
+              ? (mobileOpen ? "Close sidebar" : "Open sidebar")
+              : (compact ? "Expand sidebar" : "Collapse sidebar"))}
+            aria-controls="ml-admin-sidebar"
+            aria-expanded={isMobileLayout ? mobileOpen : !compact}
+            data-admin-no-loading="true" onClick={toggleSidebar}>
+            <Icon name="menu" size={21} />
+          </button>
 
           <form className="ml-admin-search" ref={searchBoxRef} role="search"
             onSubmit={(event) => {

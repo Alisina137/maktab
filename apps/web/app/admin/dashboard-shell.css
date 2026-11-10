@@ -7,6 +7,7 @@ body:has(.ml-admin-dashboard-shell) {
 main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   display: grid;
   grid-template-columns: 256px minmax(0, 1fr);
+  transition: grid-template-columns .2s ease;
   grid-template-rows: minmax(100vh, auto);
   align-items: stretch;
   align-content: stretch;
@@ -590,15 +591,21 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
 .ml-admin-dashboard-shell .ml-admin-skip:focus { top: 12px; }
 .ml-admin-dashboard-shell .ml-admin-sidebar-backdrop { display: none; }
 
-/* A compact, icon-only navigation is available on desktop. */
-main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px minmax(0,1fr); }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar { padding-inline: 9px; }
-.ml-admin-dashboard-shell.ml-admin-compact :is(.ml-admin-sidebar-brand-text, .ml-admin-school-chip-text, .ml-admin-school-chip > svg, .ml-admin-nav-label, .ml-admin-sidebar-profile-name, .ml-admin-subnav-toggle, .ml-admin-subnav, .ml-admin-sign-out span) { display: none; }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-brand { margin-inline: 3px; justify-content: center; }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-school-chip { justify-content: center; padding-inline: 3px; }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: center !important; padding-inline: 4px !important; }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr); }
-.ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-profile, .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sign-out { justify-content: center; padding-inline: 5px; }
+/* Desktop-only icon rail. The selector must outrank the 256px root
+   rule (main + three classes) or the grid keeps its full sidebar width. */
+@media (min-width: 901px) {
+  main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium.ml-admin-compact {
+    grid-template-columns: 73px minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar { padding-inline: 9px; }
+  .ml-admin-dashboard-shell.ml-admin-compact :is(.ml-admin-sidebar-brand-text, .ml-admin-school-chip-text, .ml-admin-school-chip > svg, .ml-admin-nav-label, .ml-admin-sidebar-profile-name, .ml-admin-subnav-toggle, .ml-admin-subnav, .ml-admin-sign-out span) { display: none; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-brand { margin-inline: 3px; justify-content: center; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-school-chip { justify-content: center; padding-inline: 3px; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: center !important; padding-inline: 4px !important; }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr); }
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-profile,
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sign-out { justify-content: center; padding-inline: 5px; }
+}
 
 @media (max-width: 1200px) {
   .ml-admin-dashboard-shell .ml-admin-content-area { padding-inline: 22px; }
@@ -636,11 +643,6 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
     border-radius: 0;
     background: rgba(10,26,46,.55);
   }
-  .ml-admin-dashboard-shell.ml-admin-compact :is(.ml-admin-sidebar-brand-text, .ml-admin-school-chip-text, .ml-admin-school-chip > svg, .ml-admin-nav-label, .ml-admin-sidebar-profile-name, .ml-admin-subnav-toggle, .ml-admin-subnav, .ml-admin-sign-out span) { display: initial; }
-  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-side-link { justify-content: flex-start !important; padding-inline: 12px !important; }
-  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-expandable .ml-admin-subnav-toggle { display: grid; }
-  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic { grid-template-columns: minmax(0,1fr) 40px; }
-  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-nav-row-academic .ml-admin-subnav-toggle { display: grid; }
   .ml-admin-dashboard-shell .ml-admin-topbar { min-height: 68px; }
   .ml-admin-dashboard-shell .ml-admin-content-area { padding-top: 21px; }
 }
@@ -667,6 +669,7 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
   .ml-admin-dashboard-shell .ml-admin-topbar-language { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium { transition: none; }
   .ml-admin-dashboard-shell .ml-admin-sidebar,
   .ml-admin-dashboard-shell :is(.ml-admin-subnav-toggle > svg, .ml-admin-side-link) { transition: none; }
 }
