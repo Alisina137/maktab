@@ -429,6 +429,30 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   margin-bottom: 23px;
   padding: 4px 0 0;
 }
+/* Reference-style title block shared by all school-admin pages. */
+.ml-admin-dashboard-shell .ml-admin-page-heading-intro {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  flex: 1 1 570px;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading-symbol {
+  display: grid;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid #d7e4fc;
+  border-radius: 17px;
+  background: linear-gradient(140deg,#e8f1ff,#dceaff);
+  box-shadow: 0 7px 16px rgba(47,99,180,.075);
+  color: #2467d9;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading-intro .ml-admin-page-heading-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
 .ml-admin-dashboard-shell .ml-admin-page-eyebrow {
   display: block;
   margin-bottom: 8px;
@@ -547,6 +571,12 @@ main.ml-admin-dashboard-shell.ml-admin-compact { grid-template-columns: 73px min
   .ml-admin-dashboard-shell .ml-admin-content-area { padding-top: 21px; }
 }
 @media (max-width: 650px) {
+  .ml-admin-dashboard-shell .ml-admin-page-heading-intro { gap: 11px; width: 100%; }
+  .ml-admin-dashboard-shell .ml-admin-page-heading-symbol {
+    width: 43px; height: 43px; flex-basis: 43px; border-radius: 13px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-page-heading-symbol svg { width: 22px; height: 22px; }
+
   .ml-admin-dashboard-shell .ml-admin-topbar { padding: 10px 13px; gap: 9px; }
   .ml-admin-dashboard-shell .ml-admin-topbar-user > span { display: none; }
   .ml-admin-dashboard-shell .ml-admin-topbar-user > svg { display: none; }
