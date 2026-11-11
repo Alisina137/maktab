@@ -1,0 +1,333 @@
+/* Pilot Operations workspace — the authenticated admin sidebar is the only
+   section navigator. Keep this styling scoped to the pilot routes. */
+.ml-admin-dashboard-shell .pilot-workspace {
+  display: grid;
+  gap: 19px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  align-content: start;
+}
+.ml-admin-dashboard-shell .pilot-workspace > * {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .pilot-workspace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-width: 0;
+  padding: clamp(20px, 2.3vw, 30px);
+  border: 1px solid #dce7f7;
+  border-radius: 21px;
+  background:
+    radial-gradient(ellipse at 100% 3%, rgba(137,180,251,.19), transparent 46%),
+    linear-gradient(124deg, #f0f6ff 0%, #ffffff 72%);
+  box-shadow: 0 9px 27px rgba(22,60,122,.045);
+}
+.ml-admin-dashboard-shell .pilot-workspace-context {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  flex: 1 1 500px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .pilot-workspace-symbol {
+  display: grid;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid #cde0fb;
+  border-radius: 17px;
+  background: #e4efff;
+  color: #2669d5;
+  box-shadow: 0 8px 17px rgba(41,106,201,.07);
+}
+.ml-admin-dashboard-shell .pilot-workspace-copy { min-width: 0; }
+.ml-admin-dashboard-shell .pilot-workspace-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  color: #2b61b9;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.5;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+.ml-admin-dashboard-shell[dir="rtl"] .pilot-workspace-kicker { letter-spacing: 0; }
+.ml-admin-dashboard-shell .pilot-workspace-kicker-divider {
+  color: #96b1dd;
+  font-weight: 500;
+}
+.ml-admin-dashboard-shell .pilot-workspace-copy h2 {
+  margin: 7px 0 5px;
+  color: #182d4e;
+  font-size: clamp(21px, 2vw, 28px);
+  font-weight: 860;
+  line-height: 1.3;
+  letter-spacing: -.025em;
+}
+.ml-admin-dashboard-shell[dir="rtl"] .pilot-workspace-copy h2 { letter-spacing: 0; }
+.ml-admin-dashboard-shell .pilot-workspace-copy p {
+  max-width: 690px;
+  margin: 0;
+  color: #687b97;
+  font-size: 12px;
+  line-height: 1.75;
+}
+.ml-admin-dashboard-shell .pilot-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 9px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .pilot-workspace-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 230px;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid #dce9f4;
+  border-radius: 999px;
+  background: #eff5fd;
+  color: #37618f;
+  font-size: 11px;
+  font-weight: 820;
+  line-height: 1.45;
+  white-space: normal;
+}
+.ml-admin-dashboard-shell .pilot-workspace-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ml-admin-dashboard-shell .pilot-workspace-status-ok {
+  border-color: #c7ecd9;
+  background: #effaf4;
+  color: #198052;
+}
+.ml-admin-dashboard-shell .pilot-workspace-status-warning {
+  border-color: #f5deb1;
+  background: #fff8e9;
+  color: #93650b;
+}
+.ml-admin-dashboard-shell .pilot-workspace-status-danger {
+  border-color: #f3ccca;
+  background: #fff2f1;
+  color: #a33f3b;
+}
+.ml-admin-dashboard-shell .pilot-workspace-refresh {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 41px;
+  padding: 9px 16px;
+  border: 1px solid #cadbf4;
+  border-radius: 11px;
+  background: #fff;
+  color: #2255aa;
+  font-size: 12px;
+  font-weight: 810;
+  box-shadow: 0 3px 11px rgba(35,75,142,.045);
+  transition: background .16s ease, border-color .16s ease;
+}
+.ml-admin-dashboard-shell .pilot-workspace-refresh:hover:not(:disabled) {
+  background: #eaf3ff;
+  border-color: #91b7ed;
+}
+.ml-admin-dashboard-shell .pilot-workspace-refresh:focus-visible {
+  outline: 3px solid #6ea5fa;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .pilot-workspace-refresh:disabled {
+  cursor: not-allowed;
+  opacity: .63;
+}
+.ml-admin-dashboard-shell .pilot-workspace > .admin-panel {
+  border: 1px solid #e0e9f5;
+  border-radius: 19px;
+  box-shadow: 0 8px 24px rgba(32,68,120,.045);
+}
+.ml-admin-dashboard-shell .pilot-workspace > .pilot-retry-alert {
+  border-radius: 12px;
+}
+.ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-grid,
+.ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stats {
+  gap: 13px;
+}
+.ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-card,
+.ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stat {
+  border-radius: 16px;
+  border-color: #dce6f4;
+  background: linear-gradient(150deg,#fff,#f9fbff);
+  box-shadow: 0 5px 17px rgba(24,57,115,.035);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-card:hover,
+.ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stat:hover {
+  border-color: #aac7ef;
+  box-shadow: 0 12px 26px rgba(35,83,153,.095);
+  transform: translateY(-2px);
+}
+.ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-card:focus-visible,
+.ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stat:focus-visible {
+  outline: 3px solid #73a8f7;
+  outline-offset: 2px;
+}
+/* Subscription is a real-data summary, separate from the independent health panel. */
+.ml-admin-dashboard-shell .pilot-workspace .pilot-subscription-card {
+  display: grid;
+  gap: 19px;
+  min-width: 0;
+  padding: clamp(20px, 2vw, 28px);
+  background: linear-gradient(135deg,#fff 63%,#f6faff 100%);
+}
+.ml-admin-dashboard-shell .pilot-subscription-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid #e4ecf7;
+}
+.ml-admin-dashboard-shell .pilot-subscription-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .pilot-subscription-identity > div {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .pilot-subscription-plan-icon {
+  display: grid;
+  flex: 0 0 49px;
+  width: 49px;
+  height: 49px;
+  place-items: center;
+  border-radius: 14px;
+  background: #eaf2ff;
+  color: #2670d7;
+  border: 1px solid #d6e6fc;
+}
+.ml-admin-dashboard-shell .pilot-subscription-identity h3 {
+  margin: 4px 0 0;
+  color: #1b3357;
+  font-size: 23px;
+  font-weight: 860;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .pilot-subscription-top .pilot-badge {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .pilot-subscription-facts {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 12px;
+  margin: 0;
+}
+.ml-admin-dashboard-shell .pilot-subscription-facts > div {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 88px;
+  padding: 17px 18px;
+  border: 1px solid #e5ecf6;
+  border-radius: 13px;
+  background: #f9fbff;
+}
+.ml-admin-dashboard-shell .pilot-subscription-facts dt {
+  color: #71839d;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .pilot-subscription-facts dd {
+  margin: 0;
+  color: #203e69;
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.ml-admin-dashboard-shell .pilot-subscription-grace {
+  margin: 0;
+  padding: 12px 15px;
+  border: 1px solid #f0dcad;
+  border-radius: 11px;
+  background: #fff9e9;
+  color: #82591a;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.ml-admin-dashboard-shell .pilot-workspace .pilot-onboarding-card {
+  border-radius: 20px;
+}
+@media (max-width: 1250px) {
+  .ml-admin-dashboard-shell .pilot-subscription-facts {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+@media (max-width: 930px) {
+  .ml-admin-dashboard-shell .pilot-workspace-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ml-admin-dashboard-shell .pilot-workspace-context { flex: 0 1 auto; }
+  .ml-admin-dashboard-shell .pilot-workspace-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+@media (max-width: 650px) {
+  .ml-admin-dashboard-shell .pilot-workspace { gap: 14px; }
+  .ml-admin-dashboard-shell .pilot-workspace-toolbar {
+    padding: 18px 16px;
+    gap: 14px;
+    border-radius: 15px;
+  }
+  .ml-admin-dashboard-shell .pilot-workspace-context { align-items: flex-start; gap: 11px; }
+  .ml-admin-dashboard-shell .pilot-workspace-symbol {
+    flex-basis: 42px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .ml-admin-dashboard-shell .pilot-workspace-symbol svg { width: 21px; height: 21px; }
+  .ml-admin-dashboard-shell .pilot-workspace-copy h2 { font-size: 21px; }
+  .ml-admin-dashboard-shell .pilot-workspace-status { max-width: 100%; }
+  .ml-admin-dashboard-shell .pilot-workspace-refresh { min-height: 39px; }
+  .ml-admin-dashboard-shell .pilot-subscription-top { align-items: flex-start; }
+  .ml-admin-dashboard-shell .pilot-subscription-facts { grid-template-columns: minmax(0, 1fr); }
+  .ml-admin-dashboard-shell .pilot-subscription-facts > div { min-height: 74px; }
+  .ml-admin-dashboard-shell .pilot-workspace .pilot-subscription-card {
+    padding: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .pilot-workspace-refresh,
+  .ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stat,
+  .ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-card {
+    transition: none;
+  }
+  .ml-admin-dashboard-shell .pilot-workspace .pilot-dashboard-stat:hover,
+  .ml-admin-dashboard-shell .pilot-workspace .pilot-pulse-card:hover { transform: none; }
+}
