@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 const read = (file) => readFileSync(new URL("../" + file, import.meta.url), "utf8");
 const panel = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
 const activity = read("apps/web/app/admin/pilot-overview-activity.tsx");
 const styles = read("apps/web/app/globals.css");
 const locale = read("apps/web/app/admin/admin-i18n.ts");
@@ -16,12 +17,12 @@ assert.match(panel, /section === "launch" \? \(/,
   "Support must render independently of readiness API");
 assert.doesNotMatch(panel, /section === "launch" && readiness/,
   "Support must not depend on readiness succeeding");
-assert.match(panel, /<PilotOperationsNavigation section=\{section\} locale=\{locale\}/,
-  "Tab navigation must remain mounted");
-assert.match(navigation, /aria-current=\{section === tab\.section/,
-  "Current route must remain selected");
-assert.match(navigation, /pilot-section-nav/, "Grouped desktop navigation required");
-assert.match(navigation, /pilot-nav-mobile/, "Mobile switcher required");
+assert.ok(!panel.includes("<PilotOperationsNavigation") &&
+  !navigation.includes("PilotOperationsNavigation") &&
+  sidebar.includes('"/admin/pilot": PILOT_TABS.map') &&
+  panel.includes("pilot-workspace-toolbar") &&
+  panel.includes("PILOT_GROUP_LABELS[activePilotTab.group]"),
+  "Pilot page must render the route-specific toolbar and use the admin sidebar as its only navigation");
 
 const statKeys = ["Students", "Teachers", "Parents", "Classes", "Subjects",
   "Assignments", "Academic years", "Core setup checks"];

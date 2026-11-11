@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const nav = read("apps/web/app/admin/pilot-operations-navigation.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const shell = read("apps/web/app/admin/admin-dashboard-frame.tsx");
+const pilotStyles = read("apps/web/app/admin/pilot-workspace.css");
 const panel = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const overview = read("apps/web/app/admin/pilot-operations-pulse.tsx");
 const overviewActivity = read("apps/web/app/admin/pilot-overview-activity.tsx");
@@ -33,21 +36,21 @@ assert.deepEqual(routes.map((r) => r.group),
 assert.equal(routes[0]?.href, "/admin/pilot", "Overview remains the first default route");
 assert.ok(nav.includes("export function isPilotSection") && nav.includes("export type PilotSection"),
   "Link validation and type narrowing must use the canonical source");
-assert.ok(nav.includes('aria-current={section === tab.section ? "page" : undefined}') &&
-  nav.includes('role="group"') &&
-  nav.includes('aria-label={t(group.label)}') &&
-  nav.includes('value={section}') &&
-  nav.includes('selected.href') &&
-  nav.includes('router.push(selected.href)'),
-  "Groups, current-tab semantics and the mobile jump control must be keyboard-accessible");
-assert.ok(nav.includes("nav.scrollBy(") &&
-  !nav.includes("scrollIntoView(") &&
-  nav.includes("getBoundingClientRect()"),
-  "Switching to another tab must only horizontally scroll the tab strip");
+assert.ok(nav.includes("export const PILOT_GROUP_LABELS") &&
+  nav.includes('START: "Get started"') &&
+  nav.includes('MONITOR: "Monitor"') &&
+  nav.includes('MANAGE: "Manage"') &&
+  sidebar.includes('"/admin/pilot": PILOT_TABS.map') &&
+  sidebar.includes("sidebarItemIsActive") &&
+  shell.includes('aria-current={selected ? "page" : undefined}'),
+  "Nine grouped pilot sections must remain accessible through the shared sidebar");
 assert.ok(panel.includes('export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation"') &&
-  panel.includes("<PilotOperationsNavigation section={section} locale={locale} />") &&
+  panel.includes('className="pilot-section pilot-workspace admin-page-enter"') &&
+  panel.includes("PILOT_GROUP_LABELS[activePilotTab.group]") &&
+  !panel.includes("<PilotOperationsNavigation") &&
+  !nav.includes("PilotOperationsNavigation") &&
   !panel.includes('export const PILOT_TABS = ['),
-  "There must be no duplicate Pilot route registry");
+  "No duplicate pilot tab bar or route registry may appear on any section");
 assert.ok(panel.includes('section === "overview"') &&
   panel.includes('<PilotOperationsPulse key={"pilot-pulse:" + accessToken}') &&
   panel.includes("<PilotAdoptionPanel") &&
@@ -105,12 +108,14 @@ assert.ok(adoption.includes('cache: "no-store"') &&
   api.includes('"/v1/admin/pilot/adoption"'),
   "Existing authenticated school reporting endpoints must remain");
 
-assert.ok(styles.includes(".pilot-nav-group") &&
-  styles.includes(".pilot-nav-mobile") &&
-  styles.includes("@media (max-width: 760px)") &&
+assert.ok(pilotStyles.includes(".pilot-workspace-toolbar") &&
+  pilotStyles.includes(".pilot-subscription-facts") &&
+  pilotStyles.includes(".pilot-workspace-refresh:focus-visible") &&
+  pilotStyles.includes("@media (max-width: 930px)") &&
+  pilotStyles.includes("@media (max-width: 650px)") &&
   styles.includes(".pilot-pulse-grid") &&
   styles.includes("@media (max-width: 620px)"),
-  "Both mobile navigation and overview pulse must remain responsive");
+  "The pilot toolbar, summary cards and sidebar-only layout must remain responsive");
 const fa = locale.split("const fa: Record<string, string> = {")[1]?.split("const ps: Record<string, string> = {")[0];
 const ps = locale.split("const ps: Record<string, string> = {")[1]?.split("export function adminText(")[0];
 for (const item of ["Get started","Monitor","Manage","Pilot operations section",

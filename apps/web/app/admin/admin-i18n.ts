@@ -10,6 +10,7 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Subscription status": "وضعیت اشتراک",
   "Profile sections": "بخش‌های پروفایل",
   "Profile details": "جزئیات پروفایل",
   "Your name and position at the school.": "نام و وظیفهٔ شما در مکتب.",
@@ -2603,6 +2604,7 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Subscription status": "د ګډون حالت",
   "Profile sections": "د پروفایل برخې",
   "Profile details": "د پروفایل معلومات",
   "Your name and position at the school.": "په ښوونځي کې ستاسو نوم او دنده.",

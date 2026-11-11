@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
 const nav = read("apps/web/app/admin/pilot-operations-navigation.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const sidebarFrame = read("apps/web/app/admin/admin-dashboard-frame.tsx");
+const pilotStyles = read("apps/web/app/admin/pilot-workspace.css");
 const panel = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const pulse = read("apps/web/app/admin/pilot-operations-pulse.tsx");
 const pulseModel = read("apps/web/app/admin/pilot-operations-pulse-model.ts");
@@ -32,16 +35,21 @@ const entries = [...nav.matchAll(/\{ section: "([a-z]+)", label: "([^"]+)", href
 assert.equal(entries.length, 9, "Pilot operations must retain all nine tabs");
 assert.equal(new Set(entries.map((entry) => entry.href)).size, 9, "No duplicate section links");
 assert.equal(entries[0].section, "overview", "Overview must remain the first default tab");
-assert.ok(nav.includes('aria-current={section === tab.section ? "page" : undefined}') &&
-  nav.includes('router.push(selected.href)') &&
-  !nav.includes("scrollIntoView(") &&
-  nav.includes("nav.scrollBy(") &&
-  panel.includes('export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation"'),
-  "Focus/route semantics must be accessible without causing page vertical jumps");
-assert.ok(css.includes(".pilot-nav-mobile") && css.includes(".pilot-pulse-grid") &&
-  css.includes("@media (max-width: 760px)") &&
+assert.ok(nav.includes("export const PILOT_GROUP_LABELS") &&
+  !nav.includes("PilotOperationsNavigation") &&
+  sidebar.includes('"/admin/pilot": PILOT_TABS.map') &&
+  sidebar.includes("sidebarItemIsActive") &&
+  sidebarFrame.includes('aria-current={selected ? "page" : undefined}') &&
+  panel.includes('export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation"') &&
+  !panel.includes("<PilotOperationsNavigation"),
+  "All nine pilot sections must use one selected and accessible sidebar navigation");
+assert.ok(pilotStyles.includes(".pilot-workspace-toolbar") &&
+  pilotStyles.includes(".pilot-workspace-status") &&
+  pilotStyles.includes(".pilot-subscription-facts") &&
+  pilotStyles.includes("@media (max-width: 650px)") &&
+  css.includes(".pilot-pulse-grid") &&
   css.includes("@media (max-width: 620px)"),
-  "Responsive grid and mobile navigation styling required");
+  "Pilot card grid and sidebar-only layout must adapt to mobile and RTL");
 
 // Each panel is rendered in the same JSX child list. A shared session token
 // alone is NOT a unique React key; keep it namespaced per panel/route so

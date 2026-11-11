@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const src = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const styles = read("apps/web/app/admin/pilot-workspace.css");
 const root = read("apps/web/app/admin/(workspace)/pilot/page.tsx");
 const launchUi = read("apps/web/app/admin/pilot-launch-support-panel.tsx");
 const launchRoutes = read("apps/api/src/pilot/launch-routes.ts");
@@ -31,11 +33,14 @@ assert.ok(workspace.includes('{ href: "/admin/pilot", label: "Pilot operations" 
   dashboardFrame.includes('pathname.startsWith(href + "/")') &&
   dashboardFrame.includes("ml-admin-side-link-active"),
   "Main navigation must highlight Pilot Operations and nested child routes");
-assert.ok(navigation.includes('aria-current={section === tab.section ? "page" : undefined}') &&
-  navigation.includes("nav.scrollBy({") &&
-  !navigation.includes("scrollIntoView(") &&
-  src.includes("<PilotOperationsNavigation section={section} locale={locale} />"),
-  "Active tab must be semantically selected and revealed horizontally without jumping the whole page");
+assert.ok(sidebar.includes('"/admin/pilot": PILOT_TABS.map') &&
+  sidebar.includes("sidebarItemIsActive") &&
+  dashboardFrame.includes('aria-current={selected ? "page" : undefined}') &&
+  src.includes('className="pilot-section pilot-workspace admin-page-enter"') &&
+  src.includes('id="pilot-workspace-heading"') &&
+  !src.includes("<PilotOperationsNavigation") &&
+  !navigation.includes("PilotOperationsNavigation"),
+  "Pilot sections must use the single accessible sidebar navigation, not a second page tab bar");
 assert.ok(src.includes("requestVersion.current") && src.includes("version !== requestVersion.current"),
   "Stale requests must not overwrite selected session data");
 assert.ok((src.includes("readiness.checks.filter((check) => check.passed).length") || src.includes("currentReadiness.checks.filter((check) => check.passed).length")) &&
@@ -58,11 +63,13 @@ assert.ok(src.includes("PilotLaunchSupportPanel") &&
   launchUi.includes("Evidence submissions are requests for operator review") &&
   launchRoutes.includes('"/v1/platform/pilot/schools/:schoolId/launch/decision"'),
   "Phase 6 must present actual operator decisions and never treat submissions as approval");
-assert.ok(css.includes(".pilot-section-nav") && css.includes(".pilot-section-link[aria-current=\"page\"]") &&
-  css.includes(".pilot-section-link:focus-visible") &&
-  css.includes("@media (max-width: 620px)") &&
-  css.includes("@media (prefers-reduced-motion: reduce)"),
-  "Responsive/keyboard/reduced-motion pilot styles are required");
+assert.ok(styles.includes(".pilot-workspace-toolbar") &&
+  styles.includes(".pilot-workspace-refresh:focus-visible") &&
+  styles.includes(".pilot-subscription-facts") &&
+  styles.includes("@media (max-width: 650px)") &&
+  styles.includes("@media (prefers-reduced-motion: reduce)") &&
+  css.includes("@media (max-width: 620px)"),
+  "Sidebar-only pilot workspace must remain responsive, structured and keyboard-accessible");
 const fa = i18n.split("const fa: Record<string, string> = {")[1]?.split("const ps: Record<string, string> = {")[0];
 const ps = i18n.split("const ps: Record<string, string> = {")[1]?.split("export function adminText(")[0];
 for (const key of [
