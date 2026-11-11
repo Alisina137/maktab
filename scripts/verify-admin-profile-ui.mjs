@@ -36,7 +36,7 @@ assert.ok(profile.includes('import "../../profile-redesign.css"') &&
   profile.includes('id="ml-profile-security"') &&
   profile.includes('className="ml-profile-save-row"') &&
   profile.includes('className="ml-profile-live-pill"') &&
-  profile.includes('className="ml-profile-account"'),
+  profile.includes('className="admin-panel admin-profile-card ml-profile-account"'),
   "Profile cover, form, preview, account and security navigation must stay intact.");
 for (const label of ["Personal details", "Profile picture", "Contact details", "Office & availability"]) {
   assert.ok(profile.includes('t("' + label + '")'), "Profile form missing section: " + label);
