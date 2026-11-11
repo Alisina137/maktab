@@ -10,6 +10,20 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Profile sections": "بخش‌های پروفایل",
+  "Profile details": "جزئیات پروفایل",
+  "Your name and position at the school.": "نام و وظیفهٔ شما در مکتب.",
+  "Profile picture": "عکس پروفایل",
+  "Upload a photo or provide a direct image URL.": "یک عکس بارگذاری کنید یا پیوند مستقیم عکس را وارد نمایید.",
+  "Contact details": "معلومات تماس",
+  "Contact methods visible to people at your school.": "راه‌های تماس که برای اعضای مکتب شما قابل دید است.",
+  "Office & availability": "دفتر و ساعات دسترسی",
+  "Help families know where and when to reach you.": "به خانواده‌ها کمک کنید بدانند چه وقت و کجا با شما تماس بگیرند.",
+  "Your contact card preview updates as you type. Save to apply your changes.": "پیش‌نمایش کارت تماس هنگام نوشتن به‌روز می‌شود. برای ثبت تغییرات ذخیره کنید.",
+  "Live preview": "پیش‌نمایش زنده",
+  "Add your contact details to see them here.": "معلومات تماس خود را وارد کنید تا اینجا نمایش داده شود.",
+  "School account": "حساب مکتب",
+  "Your school sign-in and access details.": "معلومات ورود و سطح دسترسی شما در مکتب.",
   "Open sidebar": "باز کردن منوی کناری",
   "Expand sidebar": "گسترش منوی کناری",
   "Collapse sidebar": "جمع کردن منوی کناری",
@@ -2589,6 +2603,20 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Profile sections": "د پروفایل برخې",
+  "Profile details": "د پروفایل معلومات",
+  "Your name and position at the school.": "په ښوونځي کې ستاسو نوم او دنده.",
+  "Profile picture": "د پروفایل انځور",
+  "Upload a photo or provide a direct image URL.": "انځور پورته کړئ یا د انځور مستقیم لینک ورکړئ.",
+  "Contact details": "د اړیکو معلومات",
+  "Contact methods visible to people at your school.": "د اړیکو هغه لارې چې ستاسو د ښوونځي غړو ته ښکاري.",
+  "Office & availability": "دفتر او د لاسرسي وختونه",
+  "Help families know where and when to reach you.": "له کورنیو سره مرسته وکړئ چې پوه شي چیرته او کله له تاسو سره اړیکه نیولی شي.",
+  "Your contact card preview updates as you type. Save to apply your changes.": "د اړیکو کارت بېلګه د لیکلو پر مهال بدلېږي. د بدلونونو د ساتلو لپاره یې خوندي کړئ.",
+  "Live preview": "ژوندۍ بېلګه",
+  "Add your contact details to see them here.": "د اړیکو معلومات مو ولیکئ څو دلته ښکاره شي.",
+  "School account": "د ښوونځي حساب",
+  "Your school sign-in and access details.": "ښوونځي ته ستاسو د ننوتلو او لاسرسي معلومات.",
   "Open sidebar": "اړخیز مېنو پرانیزئ",
   "Expand sidebar": "اړخیز مېنو پراخ کړئ",
   "Collapse sidebar": "اړخیز مېنو راټول کړئ",

@@ -320,10 +320,9 @@ export function AdminDashboardFrame({
                   value={option.value}>{option.label}</option>)}
               </select>
             </label>
-            <Link href="/admin/profile" className="ml-admin-topbar-user" title={t("Administrator profile")}>
+            <Link href="/admin/profile" className="ml-admin-topbar-user"
+              title={t("Administrator profile")} aria-label={t("Administrator profile")}>
               <UserAvatar name={userName} url={adminProfile.imageUrl} />
-              <span>{userName.split(/\s+/)[0]}</span>
-              <Icon name="chevron" size={15} />
             </Link>
           </div>
         </header>

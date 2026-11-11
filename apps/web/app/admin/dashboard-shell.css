@@ -459,13 +459,28 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   font-weight: 700;
 }
 .ml-admin-dashboard-shell .ml-admin-topbar-user {
-  display: flex;
-  align-items: center;
-  gap: 9px;
+  display: inline-grid;
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  padding: 3px;
+  place-items: center;
+  border: 1px solid #dce6f5;
+  border-radius: 50%;
+  background: #fff;
   color: #263d5e;
-  font-size: 12px;
-  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(36,75,132,.055);
   text-decoration: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.ml-admin-dashboard-shell .ml-admin-topbar-user:hover {
+  border-color: #a8c6ef;
+  background: #f2f7ff;
+  box-shadow: 0 6px 18px rgba(36,75,132,.13);
+}
+.ml-admin-dashboard-shell .ml-admin-topbar-user:focus-visible {
+  outline: 2px solid #2466d3;
+  outline-offset: 3px;
 }
 .ml-admin-dashboard-shell .ml-admin-user-avatar {
   display: grid;
@@ -654,8 +669,6 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   .ml-admin-dashboard-shell .ml-admin-page-heading-symbol svg { width: 22px; height: 22px; }
 
   .ml-admin-dashboard-shell .ml-admin-topbar { padding: 10px 13px; gap: 9px; }
-  .ml-admin-dashboard-shell .ml-admin-topbar-user > span { display: none; }
-  .ml-admin-dashboard-shell .ml-admin-topbar-user > svg { display: none; }
   .ml-admin-dashboard-shell .ml-admin-topbar-language select { max-width: 89px; }
   .ml-admin-dashboard-shell .ml-admin-search kbd { display: none; }
   .ml-admin-dashboard-shell .ml-admin-topbar-actions { gap: 4px; }
