@@ -134,14 +134,14 @@ const pageCopy: Record<string, { title: string; description: string }> = {
     title: "Pilot operations",
     description: "Review readiness, subscription access, school exports, import templates, and audit activity."
   },
-  "/admin/pilot/readiness": { title: "Pilot operations", description: "Check school configuration and missing setup items." },
-  "/admin/pilot/adoption": { title: "Usage & adoption", description: "Review school sign-ins and academic activity, not learning outcomes." },
-  "/admin/pilot/service": { title: "Service health", description: "Review school service observations and subscription assistance." },
-  "/admin/pilot/oversight": { title: "Operations oversight", description: "Review school operational events and independent production release gates." },
-  "/admin/pilot/onboarding": { title: "Pilot operations", description: "Prepare school setup and validated family imports." },
-  "/admin/pilot/subscription": { title: "Pilot operations", description: "Review school subscription and access." },
-  "/admin/pilot/audit": { title: "Pilot operations", description: "View school audit history and data exports." },
-  "/admin/pilot/launch": { title: "Pilot operations", description: "Review manual launch prerequisites and support." },
+  "/admin/pilot/readiness": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/adoption": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/service": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/oversight": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/onboarding": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/subscription": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/audit": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
+  "/admin/pilot/launch": { title: "Pilot operations", description: "Review readiness, subscription access, school exports, import templates, and audit activity." },
   "/admin/communication": {
     title: "Communication & fees",
     description: "Manage school announcements, fee invoices, payments, reminders, and reversals."

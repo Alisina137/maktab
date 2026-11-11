@@ -13,7 +13,8 @@ import { parseImportHistoryPage, importPageInsights, type ImportHistoryPage } fr
 import { PilotAdoptionPanel } from "./pilot-adoption-panel";
 import { PilotServiceHealthPanel } from "./pilot-service-health-panel";
 import { PilotOversightPanel } from "./pilot-oversight-panel";
-import { PilotOperationsNavigation, PILOT_SECTION_DESCRIPTIONS, type PilotSection } from "./pilot-operations-navigation";
+import { PILOT_TABS, PILOT_GROUP_LABELS, PILOT_SECTION_DESCRIPTIONS, type PilotSection } from "./pilot-operations-navigation";
+import "./pilot-workspace.css";
 import { PilotOperationsPulse } from "./pilot-operations-pulse";
 import { formatPilotTimestamp } from "./pilot-timestamp";
 export { PILOT_TABS, isPilotSection } from "./pilot-operations-navigation";
@@ -466,6 +467,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   const pendingChecks = currentReadiness.checks.filter((check) => !check.passed);
   const progressPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
   const billingAttention = subscription !== null && (subscription.status === "PAST_DUE" || subscription.status === "GRACE");
+  const activePilotTab = PILOT_TABS.find((tab) => tab.section === section) ?? PILOT_TABS[0];
   const overviewStats = [
     { label: "Students", value: currentReadiness.counts.students, href: "/admin/accounts" },
     { label: "Teachers", value: currentReadiness.counts.teachers, href: "/admin/academics/teachers" },
@@ -478,22 +480,58 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
   ];
 
   return (
-    <section className="pilot-section admin-page-enter" aria-labelledby="pilot-readiness-title">
-      <div className="admin-section-header academic-heading">
-        <div>
-          <span className="eyebrow">{t("Operations workspace")}</span>
-          <h2 id="pilot-readiness-title">{t("Pilot operations")}</h2>
-          <p>{t(PILOT_SECTION_DESCRIPTIONS[section])}</p>
+    <section className="pilot-section pilot-workspace admin-page-enter" aria-labelledby="pilot-workspace-heading">
+      <header className="pilot-workspace-toolbar">
+        <div className="pilot-workspace-context">
+          <span className="pilot-workspace-symbol" aria-hidden="true">
+            <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <path d="M14 17h7M17.5 13.5v7" />
+            </svg>
+          </span>
+          <div className="pilot-workspace-copy">
+            <div className="pilot-workspace-kicker">
+              <span>{t("Operations workspace")}</span>
+              <span className="pilot-workspace-kicker-divider" aria-hidden="true">/</span>
+              <span>{t(PILOT_GROUP_LABELS[activePilotTab.group])}</span>
+            </div>
+            <h2 id="pilot-workspace-heading">{t(activePilotTab.label)}</h2>
+            <p>{t(PILOT_SECTION_DESCRIPTIONS[section])}</p>
+          </div>
         </div>
-        {(["overview", "readiness", "onboarding", "subscription", "audit"] as PilotSection[])
-          .includes(section) ? (
-          <button className="admin-secondary" type="button"
-            onClick={() => void load()} disabled={busy}>{t("Refresh")}</button>
-        ) : null}
-      </div>
-
-
-      <PilotOperationsNavigation section={section} locale={locale} />
+        <div className="pilot-workspace-actions">
+          {(section === "overview" || section === "readiness") && advanced ? (
+            <span className={"pilot-workspace-status " +
+              (advanced.ready ? "pilot-workspace-status-ok" : "pilot-workspace-status-warning")}>
+              <span className="pilot-workspace-status-dot" aria-hidden="true" />
+              {t(advanced.ready ? "Automated setup ready" : "Setup needs attention")}
+            </span>
+          ) : null}
+          {(section === "overview" || section === "subscription") && subscription ? (
+            <span className={"pilot-workspace-status " +
+              (writeBlocked ? "pilot-workspace-status-danger" :
+                billingAttention ? "pilot-workspace-status-warning" : "pilot-workspace-status-ok")}>
+              <span className="pilot-workspace-status-dot" aria-hidden="true" />
+              {t(subscription.status)}
+            </span>
+          ) : null}
+          {(["overview", "readiness", "onboarding", "subscription", "audit"] as PilotSection[])
+            .includes(section) ? (
+            <button className="admin-secondary pilot-workspace-refresh" type="button"
+              onClick={() => void load()} disabled={busy} aria-label={t("Refresh")}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+                aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.2 6" /><path d="M20 4v7h-7" />
+              </svg>
+              {t("Refresh")}
+            </button>
+          ) : null}
+        </div>
+      </header>
       {section === "overview" ? (
         <PilotOperationsPulse key={"pilot-pulse:" + accessToken} accessToken={accessToken} locale={locale} />
       ) : null}
@@ -638,27 +676,46 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
       ) : null}
 
       {subscription && (section === "overview" || section === "subscription") ? (
-        <article className="admin-panel pilot-subscription">
-          <div>
-            <span className="eyebrow">{t("School subscription")}</span>
-            <h3>{subscription.planCode}</h3>
-            <p>
-              <strong>{t(subscription.status)}</strong> · {t(subscription.billingCycle)} · {subscription.priceAfn.toLocaleString()} AFN
-            </p>
-            <p>
-              {subscription.expiresOn
-                ? adminFormat(locale, "Expires {date}", { date: formatAdminHijriDate(locale, subscription.expiresOn) })
-                : t("No expiry date set")}
-              {subscription.graceEndsOn
-                ? ` · ${adminFormat(locale, "Grace ends {date}", { date: formatAdminHijriDate(locale, subscription.graceEndsOn) })}`
-                : ""}
-            </p>
+        <article className="admin-panel pilot-subscription pilot-subscription-card"
+          aria-label={t("School subscription")}>
+          <div className="pilot-subscription-top">
+            <div className="pilot-subscription-identity">
+              <span className="pilot-subscription-plan-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="3" />
+                  <path d="M3 10h18M7 15h4" />
+                </svg>
+              </span>
+              <div>
+                <span className="eyebrow">{t("School subscription")}</span>
+                <h3>{subscription.planCode}</h3>
+              </div>
+            </div>
+            <span className={writeBlocked ? "pilot-badge pilot-badge-danger" :
+              billingAttention ? "pilot-badge pilot-badge-warning" : "pilot-badge pilot-badge-ok"}>
+              {t(writeBlocked ? "Operational writes disabled" :
+                billingAttention ? "Billing attention needed" : "Operational access enabled")}
+            </span>
           </div>
-          <span className={writeBlocked ? "pilot-badge pilot-badge-danger" : billingAttention ? "pilot-badge pilot-badge-warning" : "pilot-badge pilot-badge-ok"}>
-            {t(writeBlocked ? "Operational writes disabled" : billingAttention ? "Billing attention needed" : "Operational access enabled")}
-          </span>
+          <dl className="pilot-subscription-facts">
+            <div><dt>{t("Subscription status")}</dt><dd>{t(subscription.status)}</dd></div>
+            <div><dt>{t("Billing cycle")}</dt><dd>{t(subscription.billingCycle)}</dd></div>
+            <div><dt>{t("Price")}</dt><dd>{subscription.priceAfn.toLocaleString()} AFN</dd></div>
+            <div><dt>{t("Expiry date")}</dt>
+              <dd>{subscription.expiresOn
+                ? formatAdminHijriDate(locale, subscription.expiresOn)
+                : t("No expiry date set")}</dd></div>
+          </dl>
+          {subscription.graceEndsOn ? (
+            <p className="pilot-subscription-grace">
+              {adminFormat(locale, "Grace ends {date}", {
+                date: formatAdminHijriDate(locale, subscription.graceEndsOn)
+              })}
+            </p>
+          ) : null}
         </article>
-      ) : null}
+      ) : null>
 
       {(section === "subscription" || (section === "overview" && subscription)) ? (
         <PilotSubscriptionHealthPanel key={"subscription-health:" + accessToken} accessToken={accessToken}
