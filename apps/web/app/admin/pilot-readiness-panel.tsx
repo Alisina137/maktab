@@ -715,7 +715,7 @@ export function PilotReadinessPanel({ accessToken, section = "overview" }: { acc
             </p>
           ) : null}
         </article>
-      ) : null>
+      ) : null}
 
       {(section === "subscription" || (section === "overview" && subscription)) ? (
         <PilotSubscriptionHealthPanel key={"subscription-health:" + accessToken} accessToken={accessToken}
