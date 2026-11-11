@@ -98,7 +98,7 @@
     "verify:student:phase6": "pnpm verify:student:phase5 && node scripts/verify-student-records-phase6.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-student-records-phase6.ts",
     "verify:student:phase8": "pnpm verify:student:phase7 && node scripts/verify-student-profile-phase8.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-student-profile-phase8.ts",
     "verify:student:phase7": "pnpm verify:student:phase6 && node scripts/verify-student-communication-phase7.mjs && pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-student-communication-phase7.ts",
-    "verify:admin-dashboard": "node scripts/verify-admin-dashboard-redesign.mjs"
+    "verify:admin-dashboard": "node scripts/verify-admin-dashboard-redesign.mjs && node scripts/verify-admin-profile-ui.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
