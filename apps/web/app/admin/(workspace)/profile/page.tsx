@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "
 import { adminApi, friendlyAdminError, type Session } from "../../admin-client";
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { AdminPasswordInput } from "../../admin-password-input";
+import "../../profile-redesign.css";
 import { useAdminWorkspace } from "../../admin-workspace";
 
 type AdminProfile = {
@@ -392,10 +393,38 @@ export default function AdminProfilePage() {
   }), [bio, email, fullName, jobTitle, officeHours, officeLocation, phone, stored.session.user.username, whatsapp]);
 
   return (
-    <section className="admin-profile-page admin-page-enter">
+    <section className="admin-profile-page admin-page-enter ml-profile-redesign">
+      <div className="ml-profile-cover">
+        <div className="ml-profile-cover-eyebrow">{t("School Administration")} / {t("Administrator profile")}</div>
+        <div className="ml-profile-cover-main">
+          <div className="ml-profile-cover-avatar" aria-hidden="true">
+            {imageUrl && !imageFailed ? (
+              <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
+            ) : (
+              <span>{contactPreview.fullName.slice(0, 1).toUpperCase()}</span>
+            )}
+          </div>
+          <div className="ml-profile-cover-info">
+            <h2>{contactPreview.fullName}</h2>
+            <p>{contactPreview.jobTitle || t("School admin")}</p>
+            <div className="ml-profile-cover-badges">
+              <span>{t("School admin")}</span>
+              <span>{stored.school.name}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav className="ml-profile-navigation" aria-label={t("Profile sections")}>
+        <a href="#ml-profile-edit"><span aria-hidden="true">01</span>{t("Profile details")}</a>
+        <a href="#ml-profile-preview"><span aria-hidden="true">02</span>{t("Contact card preview")}</a>
+        <a href="#ml-profile-account"><span aria-hidden="true">03</span>{t("Account information")}</a>
+        <a href="#ml-profile-security"><span aria-hidden="true">04</span>{t("Security")}</a>
+      </nav>
+
       <div className="admin-profile-grid">
-        <article className="admin-panel admin-profile-card">
-          <div className="admin-section-header">
+        <article className="admin-panel admin-profile-card ml-profile-editor" id="ml-profile-edit">
+          <div className="admin-section-header ml-profile-editor-heading">
             <div>
               <span className="admin-kicker">{t("Public school contact")}</span>
               <h3>{t("Administrator profile")}</h3>
@@ -411,6 +440,10 @@ export default function AdminProfilePage() {
           ) : (
             <form className="admin-form admin-profile-form" onSubmit={save}>
               <div className="admin-profile-form-grid">
+                <div className="ml-profile-form-heading admin-profile-wide">
+                  <span className="ml-profile-form-index" aria-hidden="true">01</span>
+                  <div><h4>{t("Personal details")}</h4><p>{t("Your name and position at the school.")}</p></div>
+                </div>
                 <label>
                   {t("Full name")}
                   <input value={fullName} onChange={(e) => setFullName(e.target.value)} minLength={2} maxLength={160} required />
@@ -419,6 +452,10 @@ export default function AdminProfilePage() {
                   {t("Position / title")}
                   <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} maxLength={120} placeholder={t("Principal, administrator…")} />
                 </label>
+                <div className="ml-profile-form-heading admin-profile-wide">
+                  <span className="ml-profile-form-index" aria-hidden="true">02</span>
+                  <div><h4>{t("Profile picture")}</h4><p>{t("Upload a photo or provide a direct image URL.")}</p></div>
+                </div>
                 <div className="admin-profile-wide admin-profile-image-field">
                   <label>
                     {t("Profile image URL")}
@@ -455,6 +492,10 @@ export default function AdminProfilePage() {
                       : t("Paste a direct web image URL or choose a JPG, PNG, or WebP file from this PC. Maximum file size: 5 MB.")}
                   </span>
                 </div>
+                <div className="ml-profile-form-heading admin-profile-wide">
+                  <span className="ml-profile-form-index" aria-hidden="true">03</span>
+                  <div><h4>{t("Contact details")}</h4><p>{t("Contact methods visible to people at your school.")}</p></div>
+                </div>
                 <label>
                   {t("Public email")}
                   <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={254} placeholder="admin@school.af" />
@@ -467,6 +508,10 @@ export default function AdminProfilePage() {
                   {t("Phone")}
                   <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={32} placeholder="07xxxxxxxx" />
                 </label>
+                <div className="ml-profile-form-heading admin-profile-wide">
+                  <span className="ml-profile-form-index" aria-hidden="true">04</span>
+                  <div><h4>{t("Office & availability")}</h4><p>{t("Help families know where and when to reach you.")}</p></div>
+                </div>
                 <label>
                   {t("Office / location")}
                   <input value={officeLocation} onChange={(e) => setOfficeLocation(e.target.value)} maxLength={200} placeholder={t("Main administration office")} />
@@ -481,16 +526,22 @@ export default function AdminProfilePage() {
                 </label>
               </div>
 
-              <button className="admin-primary" disabled={busy} type="submit">
-                {t(busy ? "Saving…" : "Save changes")}
-              </button>
+              <div className="ml-profile-save-row">
+                <p>{t("Your contact card preview updates as you type. Save to apply your changes.")}</p>
+                <button className="admin-primary" disabled={busy || imageProcessing} type="submit">
+                  {t(busy ? "Saving…" : "Save changes")}
+                </button>
+              </div>
             </form>
           )}
         </article>
 
         <aside className="admin-profile-side">
-          <article className="admin-panel admin-contact-preview">
-            <span className="admin-kicker">{t("Contact card preview")}</span>
+          <article className="admin-panel admin-contact-preview" id="ml-profile-preview">
+            <div className="ml-profile-preview-top">
+              <span className="admin-kicker">{t("Contact card preview")}</span>
+              <span className="ml-profile-live-pill">{t("Live preview")}</span>
+            </div>
             <div className="admin-contact-avatar">
               {imageUrl && !imageFailed ? (
                 <img
@@ -512,6 +563,10 @@ export default function AdminProfilePage() {
             {contactPreview.bio ? <p className="admin-contact-bio">{contactPreview.bio}</p> : null}
 
             <div className="admin-contact-links">
+              {!contactPreview.email && !contactPreview.whatsapp && !contactPreview.phone &&
+               !contactPreview.officeLocation && !contactPreview.officeHours ? (
+                <p className="ml-profile-preview-empty">{t("Add your contact details to see them here.")}</p>
+              ) : null}
               {contactPreview.email ? (
                 <a href={`mailto:${contactPreview.email}`}>{t("Email")}: {contactPreview.email}</a>
               ) : null}
@@ -526,8 +581,10 @@ export default function AdminProfilePage() {
             </div>
           </article>
 
-          <article className="admin-panel admin-profile-card">
+          <article className="admin-panel admin-profile-card ml-profile-account" id="ml-profile-account">
             <span className="admin-kicker">{t("Account information")}</span>
+            <h3>{t("School account")}</h3>
+            <p className="ml-profile-account-description">{t("Your school sign-in and access details.")}</p>
             <dl className="admin-profile-details">
               <div><dt>{t("Username")}</dt><dd>{stored.session.user.username}</dd></div>
               <div><dt>{t("Role")}</dt><dd>{t("School admin")}</dd></div>
@@ -548,7 +605,7 @@ export default function AdminProfilePage() {
         </aside>
       </div>
 
-      <article className="admin-panel admin-password-card admin-password-2fa-card">
+      <article className="admin-panel admin-password-card admin-password-2fa-card ml-profile-security" id="ml-profile-security">
         <div>
           <span className="admin-kicker">{t("Security")}</span>
           <h3>{t("Change my password")}</h3>
