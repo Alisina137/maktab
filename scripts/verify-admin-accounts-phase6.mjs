@@ -25,6 +25,7 @@ const store = read("packages/database/src/account-store.ts");
 const api = read("apps/api/src/users/routes.ts");
 const css = read("apps/web/app/globals.css");
 const pagingCss = read("apps/web/app/admin/account-directory-paging.css");
+const adminWorkspace = read("apps/web/app/admin/admin-workspace.tsx");
 const i18n = read("apps/web/app/admin/admin-i18n.ts");
 
 const faText = i18n.split("const fa: Record<string, string> = {")[1]?.split("const ps: Record<string, string> = {")[0];
@@ -133,6 +134,16 @@ assert.ok(directory.includes('import "./account-directory-paging.css"') &&
   pagingCss.includes(".ml-account-page-number-active") &&
   pagingCss.includes(".ml-account-carousel-controls :is(button):focus-visible"),
   "Role tab changes must display an accessible spinner and a responsive numbered page carousel.");
+
+// Carousel buttons are navigation controls, not async submissions: the
+// directory's own loading ring is the only visible progress indicator.
+assert.ok(adminWorkspace.includes('button.dataset.adminNoLoading === "true"') &&
+  (directory.match(/data-admin-no-loading="true"/g) ?? []).length === 3 &&
+  /className="admin-secondary ml-account-page-arrow"\s+data-admin-no-loading="true"\s+disabled=\{loading \|\| busy \|\| page <= 1\}/.test(directory) &&
+  /<button key=\{number\} type="button" data-admin-no-loading="true"/.test(directory) &&
+  /className="admin-secondary ml-account-page-arrow"\s+data-admin-no-loading="true"\s+disabled=\{loading \|\| busy \|\| page >= pageCount\}/.test(directory) &&
+  directory.includes('className="ml-account-directory-loading" role="status" aria-live="polite"'),
+  "Page number, Previous and Next buttons must not display an additional spinner; the directory spinner remains.");
 
 console.log(`[accounts:phase6] ${uiKeys.size} UI copy keys verified across Dari/Pashto, placeholder parity, tenant/network guards, focus and responsive source contracts.`);
 console.log("[accounts:phase6] Live DOM keyboard, screen-reader, zoom, phone, network and deployment scenarios still require manual acceptance.");
