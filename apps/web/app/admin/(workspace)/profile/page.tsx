@@ -584,162 +584,162 @@ export default function AdminProfilePage() {
           <p>{t("Manage account access and password separately from your school contact details.")}</p>
         </header>
         <div className="ml-profile-private-grid">
-      <article className="admin-panel admin-password-card admin-password-2fa-card ml-profile-security" id="ml-profile-security">
-        <div>
-          <span className="admin-kicker">{t("Security")}</span>
-          <h3>{t("Change my password")}</h3>
-          <p>{t("Administrator password changes require your current password plus email verification.")}</p>
-          <div className="admin-password-security-note">
-            <strong>{t("Email verification")}</strong>
-            <span>{t("The new-password form stays locked until the email code is verified.")}</span>
-          </div>
-        </div>
-
-        <div className="admin-password-2fa-flow">
-          {passwordVerificationStep === "START" ? (
-            <form className="admin-form admin-password-form admin-password-step" onSubmit={startPasswordVerification}>
-              <div className="admin-password-step-heading">
-                <span className="admin-password-step-number">1</span>
-                <div>
-                  <strong>{t("Confirm current password")}</strong>
-                  <span>{t("We verify your current password before sending the security code.")}</span>
-                </div>
+          <article className="admin-panel admin-password-card admin-password-2fa-card ml-profile-security" id="ml-profile-security">
+            <div>
+              <span className="admin-kicker">{t("Security")}</span>
+              <h3>{t("Change my password")}</h3>
+              <p>{t("Administrator password changes require your current password plus email verification.")}</p>
+              <div className="admin-password-security-note">
+                <strong>{t("Email verification")}</strong>
+                <span>{t("The new-password form stays locked until the email code is verified.")}</span>
               </div>
-
-              <label>
-                {t("Current password")}
-                <AdminPasswordInput
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  showLabel={t("Show password")}
-                  hideLabel={t("Hide password")}
-                />
-              </label>
-
-              <button className="admin-primary" disabled={passwordBusy || !currentPassword} type="submit">
-                {t("Send email verification code")}
-              </button>
-            </form>
-          ) : null}
-
-          {passwordVerificationStep === "CODES" ? (
-            <form className="admin-form admin-password-form admin-password-step" onSubmit={verifyPasswordCodes}>
-              <div className="admin-password-step-heading">
-                <span className="admin-password-step-number">2</span>
-                <div>
-                  <strong>{t("Verify email")}</strong>
-                  <span>{t("Enter the six-digit code. The code expires after 10 minutes.")}</span>
-                </div>
-              </div>
-
-              <div className="admin-password-delivery-grid admin-password-delivery-grid-single">
-                <div className="admin-password-delivery-card">
-                  <span>{t("Email code sent to")}</span>
-                  <strong dir="ltr">{passwordMaskedEmail}</strong>
-                </div>
-              </div>
-
-              <label>
-                {t("Email verification code")}
-                <input
-                  value={passwordEmailCode}
-                  onChange={(e) => setPasswordEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  required
-                  dir="ltr"
-                />
-              </label>
-
-              <div className="admin-password-step-actions">
-                <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={resetPasswordVerification}>
-                  {t("Start again")}
-                </button>
-                <button className="admin-primary" disabled={passwordBusy || passwordEmailCode.length !== 6} type="submit">
-                  {t("Verify email code")}
-                </button>
-              </div>
-            </form>
-          ) : null}
-
-          {passwordVerificationStep === "VERIFIED" ? (
-            <form className="admin-form admin-password-form admin-password-step" onSubmit={changePassword}>
-              <div className="admin-password-step-heading admin-password-step-verified">
-                <span className="admin-password-step-number">✓</span>
-                <div>
-                  <strong>{t("Identity verified")}</strong>
-                  <span>{t("Email verification passed. Choose your new administrator password.")}</span>
-                </div>
-              </div>
-
-              <label>
-                {t("New password")}
-                <AdminPasswordInput
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  minLength={8}
-                  autoComplete="new-password"
-                  required
-                  showLabel={t("Show password")}
-                  hideLabel={t("Hide password")}
-                />
-              </label>
-
-              <label>
-                {t("Confirm new password")}
-                <AdminPasswordInput
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  minLength={8}
-                  autoComplete="new-password"
-                  required
-                  showLabel={t("Show password")}
-                  hideLabel={t("Hide password")}
-                />
-              </label>
-
-              <div className="admin-password-step-actions">
-                <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={() => {
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  resetPasswordVerification();
-                }}>
-                  {t("Cancel verification")}
-                </button>
-                <button className="admin-primary" disabled={passwordBusy} type="submit">
-                  {t("Change password")}
-                </button>
-              </div>
-            </form>
-          ) : null}
-        </div>
-      </article>
-          <aside className="ml-profile-private-side" aria-label={t("Account information")}>
-          <article className="admin-panel admin-profile-card ml-profile-account" id="ml-profile-account">
-            <span className="admin-kicker">{t("Account information")}</span>
-            <h3>{t("School account")}</h3>
-            <p className="ml-profile-account-description">{t("Your school sign-in and access details.")}</p>
-            <dl className="admin-profile-details">
-              <div><dt>{t("Username")}</dt><dd>{stored.session.user.username}</dd></div>
-              <div><dt>{t("Role")}</dt><dd>{t("School admin")}</dd></div>
-              <div><dt>{t("School")}</dt><dd>{stored.school.name}</dd></div>
-              <div><dt>{t("School code")}</dt><dd>{stored.school.code}</dd></div>
-            </dl>
-            <div className="admin-profile-signout">
-              <button
-                className="admin-secondary admin-profile-signout-button"
-                type="button"
-                disabled={signingOut}
-                onClick={() => void handleSignOut()}
-              >
-                {t("Sign out")}
-              </button>
+            </div>
+    
+            <div className="admin-password-2fa-flow">
+              {passwordVerificationStep === "START" ? (
+                <form className="admin-form admin-password-form admin-password-step" onSubmit={startPasswordVerification}>
+                  <div className="admin-password-step-heading">
+                    <span className="admin-password-step-number">1</span>
+                    <div>
+                      <strong>{t("Confirm current password")}</strong>
+                      <span>{t("We verify your current password before sending the security code.")}</span>
+                    </div>
+                  </div>
+    
+                  <label>
+                    {t("Current password")}
+                    <AdminPasswordInput
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                      showLabel={t("Show password")}
+                      hideLabel={t("Hide password")}
+                    />
+                  </label>
+    
+                  <button className="admin-primary" disabled={passwordBusy || !currentPassword} type="submit">
+                    {t("Send email verification code")}
+                  </button>
+                </form>
+              ) : null}
+    
+              {passwordVerificationStep === "CODES" ? (
+                <form className="admin-form admin-password-form admin-password-step" onSubmit={verifyPasswordCodes}>
+                  <div className="admin-password-step-heading">
+                    <span className="admin-password-step-number">2</span>
+                    <div>
+                      <strong>{t("Verify email")}</strong>
+                      <span>{t("Enter the six-digit code. The code expires after 10 minutes.")}</span>
+                    </div>
+                  </div>
+    
+                  <div className="admin-password-delivery-grid admin-password-delivery-grid-single">
+                    <div className="admin-password-delivery-card">
+                      <span>{t("Email code sent to")}</span>
+                      <strong dir="ltr">{passwordMaskedEmail}</strong>
+                    </div>
+                  </div>
+    
+                  <label>
+                    {t("Email verification code")}
+                    <input
+                      value={passwordEmailCode}
+                      onChange={(e) => setPasswordEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="\d{6}"
+                      maxLength={6}
+                      required
+                      dir="ltr"
+                    />
+                  </label>
+    
+                  <div className="admin-password-step-actions">
+                    <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={resetPasswordVerification}>
+                      {t("Start again")}
+                    </button>
+                    <button className="admin-primary" disabled={passwordBusy || passwordEmailCode.length !== 6} type="submit">
+                      {t("Verify email code")}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+    
+              {passwordVerificationStep === "VERIFIED" ? (
+                <form className="admin-form admin-password-form admin-password-step" onSubmit={changePassword}>
+                  <div className="admin-password-step-heading admin-password-step-verified">
+                    <span className="admin-password-step-number">✓</span>
+                    <div>
+                      <strong>{t("Identity verified")}</strong>
+                      <span>{t("Email verification passed. Choose your new administrator password.")}</span>
+                    </div>
+                  </div>
+    
+                  <label>
+                    {t("New password")}
+                    <AdminPasswordInput
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete="new-password"
+                      required
+                      showLabel={t("Show password")}
+                      hideLabel={t("Hide password")}
+                    />
+                  </label>
+    
+                  <label>
+                    {t("Confirm new password")}
+                    <AdminPasswordInput
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete="new-password"
+                      required
+                      showLabel={t("Show password")}
+                      hideLabel={t("Hide password")}
+                    />
+                  </label>
+    
+                  <div className="admin-password-step-actions">
+                    <button className="admin-secondary" type="button" disabled={passwordBusy} onClick={() => {
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      resetPasswordVerification();
+                    }}>
+                      {t("Cancel verification")}
+                    </button>
+                    <button className="admin-primary" disabled={passwordBusy} type="submit">
+                      {t("Change password")}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
             </div>
           </article>
+          <aside className="ml-profile-private-side" aria-label={t("Account information")}>
+            <article className="admin-panel admin-profile-card ml-profile-account" id="ml-profile-account">
+              <span className="admin-kicker">{t("Account information")}</span>
+              <h3>{t("School account")}</h3>
+              <p className="ml-profile-account-description">{t("Your school sign-in and access details.")}</p>
+              <dl className="admin-profile-details">
+                <div><dt>{t("Username")}</dt><dd>{stored.session.user.username}</dd></div>
+                <div><dt>{t("Role")}</dt><dd>{t("School admin")}</dd></div>
+                <div><dt>{t("School")}</dt><dd>{stored.school.name}</dd></div>
+                <div><dt>{t("School code")}</dt><dd>{stored.school.code}</dd></div>
+              </dl>
+              <div className="admin-profile-signout">
+                <button
+                  className="admin-secondary admin-profile-signout-button"
+                  type="button"
+                  disabled={signingOut}
+                  onClick={() => void handleSignOut()}
+                >
+                  {t("Sign out")}
+                </button>
+              </div>
+            </article>
           </aside>
         </div>
       </section>
