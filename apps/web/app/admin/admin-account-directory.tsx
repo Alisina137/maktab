@@ -258,11 +258,12 @@ export function AdminAccountDirectory({
         <span className="ml-account-page-size">{t("Accounts per page")}: <strong>5</strong></span>
         <div className="ml-account-carousel-controls" role="group" aria-label={t("Account pagination")}>
           <button type="button" className="admin-secondary ml-account-page-arrow"
+            data-admin-no-loading="true"
             disabled={loading || busy || page <= 1}
             onClick={() => onPage(page - 1)}>{t("Previous")}</button>
           <div className="ml-account-carousel-pages">
             {pageNumbers.map((number) => (
-              <button key={number} type="button"
+              <button key={number} type="button" data-admin-no-loading="true"
                 className={"ml-account-page-number" + (number === page ? " ml-account-page-number-active" : "")}
                 aria-current={number === page ? "page" : undefined}
                 aria-label={adminFormat(locale, "Page {page} of {pages}", { page: number, pages: pageCount })}
@@ -271,6 +272,7 @@ export function AdminAccountDirectory({
             ))}
           </div>
           <button type="button" className="admin-secondary ml-account-page-arrow"
+            data-admin-no-loading="true"
             disabled={loading || busy || page >= pageCount}
             onClick={() => onPage(page + 1)}>{t("Next")}</button>
         </div>
