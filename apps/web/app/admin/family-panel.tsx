@@ -1958,7 +1958,7 @@ function FamilyAccountCarousel({
   const renderedPage = useRef(page);
   const movement = page > renderedPage.current ? "next" :
     page < renderedPage.current ? "previous" : "none";
-  renderedPage.current = page;
+  useEffect(() => { renderedPage.current = page; }, [page]);
   const horizontalStep = locale === "en" ? 1 : -1;
   const t = (value: string) => adminText(locale, value);
   const goToPage = (requestedPage: number) => {
