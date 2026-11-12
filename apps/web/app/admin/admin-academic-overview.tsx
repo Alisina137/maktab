@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { adminApi } from "./admin-client";
 import { adminText, type AdminLocale } from "./admin-i18n";
+import { AcademicSectionIcon } from "./academic-section-icons";
 
 type Overview = {
   academicYears: Array<{ id: string; name: string; status: string }>;
@@ -141,7 +142,9 @@ export function AdminAcademicOverview({
       <div className="ml-academic-tabbar" role="navigation" aria-label={t("Academic sections")}>
         {tabs.map((tab) => (
           <Link key={tab.href} href={tab.href} className={tab.href === "/admin/academics" ? "ml-academic-tab ml-academic-tab-active" : "ml-academic-tab"}
-            aria-current={tab.href === "/admin/academics" ? "page" : undefined}>{t(tab.label)}</Link>
+            aria-current={tab.href === "/admin/academics" ? "page" : undefined}>
+              <AcademicSectionIcon href={tab.href} size={16} />{t(tab.label)}
+            </Link>
         ))}
         <button className="ml-academic-refresh" type="button" onClick={() => void refreshAll()}
           disabled={refreshBusy} aria-label={t("Refresh")} title={t("Refresh")}><Icon name="refresh" size={17} /></button>

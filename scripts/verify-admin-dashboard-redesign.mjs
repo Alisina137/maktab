@@ -29,6 +29,7 @@ assert.ok(adminType.includes("--ml-admin-type-body: 13.5px") &&
 const translations = read("apps/web/app/admin/admin-i18n.ts");
 const login = read("apps/web/app/admin/page.tsx");
 const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const academicIcons = read("apps/web/app/admin/academic-section-icons.tsx");
 const sectionRoute = read("apps/web/app/admin/admin-section-route.ts");
 const attendance = read("apps/web/app/admin/attendance-panel.tsx");
 const learning = read("apps/web/app/admin/learning-panel.tsx");
@@ -113,6 +114,27 @@ for (const group of ["/admin/academics", "/admin/accounts", "/admin/families",
   "/admin/staff-work", "/admin/pilot"]) {
   assert.ok(sidebar.includes('"' + group + '"'), "Missing sidebar submenu: " + group);
 }
+// Each of the ten real Academics destinations must have a distinct icon.
+for (const route of [
+  "/admin/academics", "/admin/academics/years", "/admin/academics/grades",
+  "/admin/academics/classes", "/admin/academics/subjects",
+  "/admin/academics/teachers", "/admin/academics/assignments",
+  "/admin/academics/negaran", "/admin/academics/timetable",
+  "/admin/academics/curriculum"
+]) {
+  assert.ok(academicIcons.includes(JSON.stringify(route) + ":"),
+    "Academics subtab missing icon: " + route);
+}
+assert.ok(frame.includes('const academicIcon = item.href === "/admin/academics"') &&
+  frame.includes('<AcademicSectionIcon href={entry.href} size={16} />') &&
+  frame.includes('ml-admin-subnav-dot') &&
+  academic.includes('<AcademicSectionIcon href={tab.href} size={16} />') &&
+  academicIcons.includes('aria-hidden="true"') &&
+  css.includes(".ml-admin-subnav-icon") &&
+  css.includes(".ml-admin-subnav-link-active .ml-admin-subnav-icon") &&
+  academicCss.includes(".ml-academic-tab > svg"),
+  "Academics tab icons must cover the sidebar and overview without changing other submenus");
+
 assert.ok(sidebar.includes("PILOT_TABS.map") && sidebar.includes("ATTENDANCE_TABS") &&
   sidebar.includes("sidebarItemIsActive") && frame.includes("sidebarItemIsActive(") &&
   frame.includes("aria-current={selected ?") &&

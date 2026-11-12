@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { adminLocaleOptions, type AdminLocale } from "./admin-i18n";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminSidebarSections, sidebarItemIsActive } from "./admin-sidebar-sections";
+import { AcademicSectionIcon, academicSectionIconPaths } from "./academic-section-icons";
 
 type NavItem = { href: string; label: string };
 type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check";
@@ -230,6 +231,7 @@ export function AdminDashboardFrame({
                   <div className="ml-admin-subnav" id={groupId + "-subnav"}>
                     {submenu!.map((entry) => {
                       const selected = sidebarItemIsActive(entry.href, currentPath, searchTab, fragment);
+                      const academicIcon = item.href === "/admin/academics" && Boolean(academicSectionIconPaths[entry.href]);
                       return (
                         <Link href={entry.href} key={entry.href} title={t(entry.label)}
                           className={selected ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
@@ -238,7 +240,12 @@ export function AdminDashboardFrame({
                             setMobileOpen(false);
                             setFragment(new URL(entry.href, window.location.origin).hash);
                           }}>
-                          <span className="ml-admin-subnav-dot" aria-hidden="true" />{t(entry.label)}
+                          {academicIcon ? (
+                            <span className="ml-admin-subnav-icon" aria-hidden="true">
+                              <AcademicSectionIcon href={entry.href} size={16} />
+                            </span>
+                          ) : <span className="ml-admin-subnav-dot" aria-hidden="true" />}
+                          {t(entry.label)}
                         </Link>
                       );
                     })}
