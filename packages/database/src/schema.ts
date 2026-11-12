@@ -116,6 +116,7 @@ export const users = pgTable(
   },
   (table) => [
     uniqueIndex("users_school_username_unique").on(table.schoolId, table.username),
+    uniqueIndex("users_school_username_casefold_unique").on(table.schoolId, sql`lower(${table.username})`),
     uniqueIndex("users_school_user_compound_unique").on(table.schoolId, table.id),
     index("users_school_role_idx").on(table.schoolId, table.role),
     index("users_school_status_idx").on(table.schoolId, table.status)
