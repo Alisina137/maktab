@@ -676,11 +676,21 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
     ? visibleAcademics?.classes.find(row => row.id === id)?.name ?? t("Unknown class")
     : "";
   function showAnnouncement(id: string) {
-    selectSection("COMMUNICATION");
-    setCommunicationPane("LIST");
+    // The overview's first four notices may not be on the first filtered page.
+    // Open enough rows to reveal the exact selected notice, even after sorting.
+    const allNotices = findAnnouncements(
+      visibleOverview?.announcements ?? [],
+      { search: "", status: "ALL", audience: "ALL", classId: "" },
+      announcementClock
+    );
+    const index = allNotices.findIndex(item => item.id === id);
     setAnnouncementSearch(""); setAnnouncementStatusFilter("ALL");
     setAnnouncementAudienceFilter("ALL"); setAnnouncementClassFilter("");
-    setExpandedAnnouncementId(id); setAnnouncementLimit(ANNOUNCEMENT_PAGE_SIZE);
+    setAnnouncementLimit(Math.max(ANNOUNCEMENT_PAGE_SIZE,
+      Math.ceil((index + 1) / ANNOUNCEMENT_PAGE_SIZE) * ANNOUNCEMENT_PAGE_SIZE));
+    setExpandedAnnouncementId(id);
+    setCommunicationPane("LIST");
+    selectSection("COMMUNICATION");
   }
   const ready = resourceStatus.communication === "ready" && !!visibleOverview;
   function resourceNotice(key: ResourceKey) {
@@ -716,6 +726,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             void loadResource("communication");
             void loadResource("families");
             void loadResource("academics");
+            setFeeReloadKey(value => value + 1);
           }}>{t("Refresh all")}</button>
       </div>
 
