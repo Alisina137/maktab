@@ -161,6 +161,15 @@ export function createAttendanceMonitoringStore(
       if(input.date<year.startDate||input.date>year.endDate)
         throw new AttendanceCalendarValidationError("Closure date must fall within the academic year.");
       return db.transaction(async tx=>{
+        // Lock the academic-year row used by Negaran submissions BEFORE
+        // checking for attendance. This serializes closure vs first submit.
+        const [lockedYear]=await tx.select().from(academicYears)
+          .where(and(eq(academicYears.schoolId,schoolId),
+            eq(academicYears.id,input.academicYearId))).limit(1).for("update");
+        if(!lockedYear||!(lockedYear.status==="DRAFT"||lockedYear.status==="ACTIVE"))
+          throw new AttendanceCalendarConflictError("Closed or archived academic years cannot be changed.");
+        if(input.date<lockedYear.startDate||input.date>lockedYear.endDate)
+          throw new AttendanceCalendarValidationError("Closure date must fall within the academic year.");
         const [existing]=await tx.select({id:attendanceClosures.id})
           .from(attendanceClosures).where(and(eq(attendanceClosures.schoolId,schoolId),
           eq(attendanceClosures.academicYearId,input.academicYearId),
