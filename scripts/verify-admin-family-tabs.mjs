@@ -12,6 +12,7 @@ const css = read("apps/web/app/admin/family-tabs.css");
 const i18n = read("apps/web/app/admin/admin-i18n.ts");
 const routes = read("apps/web/app/admin/admin-section-route.ts");
 const layout = read("apps/web/app/admin/(workspace)/layout.tsx");
+const pagerModel = read("apps/web/app/admin/family-list-paging.ts");
 
 const sections = ["add-student", "parent-account", "student-account", "bulk-import"];
 assert.equal((tabs.match(/\{ id: "/g) ?? []).length, 4,
@@ -90,4 +91,47 @@ for (const key of ["Family management","Family sections","Parent account","Stude
   assert.equal(i18n.split(JSON.stringify(key) + ":").length, 3,
     "Family tab needs Dari and Pashto translations: " + key);
 }
+
+// The parent and student lists page independently AFTER their existing filters,
+// with five rows at most. Switching filters returns to the first page and
+// removing accounts cannot strand the user on a now-empty page.
+for (const marker of [
+  "const [parentListPage, setParentListPage] = useState(1)",
+  "const [studentListPage, setStudentListPage] = useState(1)",
+  "paginateFamilyRows(listedParents, parentListPage)",
+  "paginateFamilyRows(listedStudents, studentListPage)",
+  "parentsPage.items.map((parent) => (",
+  "studentsPage.items.map((item) => {",
+  "if (parentListPage !== parentsPage.page) setParentListPage(parentsPage.page)",
+  "if (studentListPage !== studentsPage.page) setStudentListPage(studentsPage.page)",
+  "setParentListPage(1)",
+  "setStudentListPage(1)",
+  "label={t(\"Parent list pagination\")}",
+  "label={t(\"Student list pagination\")}",
+  'data-admin-no-loading="true"',
+  'aria-current={number === page ? "page" : undefined}',
+  "total > FAMILY_LIST_PAGE_SIZE"
+]) assert.ok(family.includes(marker), "Family paging regression: " + marker);
+assert.ok(!family.includes('listedParents.length > 4 ? "family-list-scroll"') &&
+  !family.includes('listedStudents.length > 4 ? "family-list-scroll"') &&
+  !family.includes("listedParents.map((parent) => (") &&
+  !family.includes("listedStudents.map((item) => {"),
+  "Unbounded family lists and the old nested scroll region must be gone");
+assert.ok(pagerModel.includes("export const FAMILY_LIST_PAGE_SIZE = 5") &&
+  pagerModel.includes("rows.slice(offset, offset + FAMILY_LIST_PAGE_SIZE)") &&
+  pagerModel.includes("Math.ceil(total / FAMILY_LIST_PAGE_SIZE)") &&
+  pagerModel.includes("Math.min(pages, Math.max(1, normalized))"),
+  "Five-item pagination must safely clamp on filtering, deletion and empty lists");
+for(const key of [
+  "Showing {start}–{end} of {total}",
+  "Parent list pagination", "Student list pagination"
+]) assert.equal(i18n.split(JSON.stringify(key)+":").length, 3,
+  "Family carousel must translate paging announcements into Dari and Pashto: " + key);
+for(const marker of [
+  ".ml-family-list-pager", ".ml-family-page-active",
+  ".ml-family-list-page-controls",
+  ".ml-family-list-pager button:focus-visible",
+  "@media (max-width: 850px)", "@media (max-width: 490px)"
+]) assert.ok(css.includes(marker), "Family carousel CSS missing: " + marker);
+
 console.log("Admin Families verified: default Add Student, parent form + list, student form + list, bulk import, URL-backed accessible tabs and RTL.");
