@@ -24,6 +24,7 @@ const safety = read("apps/web/app/admin/account-directory-safety.ts");
 const store = read("packages/database/src/account-store.ts");
 const api = read("apps/api/src/users/routes.ts");
 const css = read("apps/web/app/globals.css");
+const pagingCss = read("apps/web/app/admin/account-directory-paging.css");
 const i18n = read("apps/web/app/admin/admin-i18n.ts");
 
 const faText = i18n.split("const fa: Record<string, string> = {")[1]?.split("const ps: Record<string, string> = {")[0];
@@ -104,6 +105,34 @@ for (const selector of [
   "@media (max-width: 1280px)", "@media (max-width: 620px)",
   "@media (prefers-reduced-motion: reduce)"
 ]) assert.ok(css.includes(selector), `Accounts Phase6 accessibility/responsive style missing: ${selector}`);
+
+// Pagination is deliberately fixed at five accounts per server page. A
+// current-page-only selection cannot silently span additional carousel pages.
+assert.ok(page.includes("const pageSize = 5;") &&
+  page.includes("page: String(page), pageSize: String(pageSize)") &&
+  page.includes("function updateGroup(next: AccountGroup)") &&
+  page.includes("setPage(1); resetSelection()") &&
+  directory.includes("const users = result.users.slice(0, Math.min(5, pageSize));") &&
+  directory.includes("pageSize: 5, pages: 1") &&
+  directory.includes("pageNumbers.map((number) => (") &&
+  directory.includes('aria-current={number === page ? "page" : undefined}') &&
+  directory.includes("onPage(page - 1)") && directory.includes("onPage(page + 1)") &&
+  directory.includes("onPage(number)") &&
+  !directory.includes("onPageSize(") &&
+  api.includes("[5, 10, 20, 50].includes(value)"),
+  "Account Directory must show a maximum of five items per page with server-side paging.");
+// No transient loading paragraph should replace the account list; a visual
+// spinner announces progress through a visually-hidden localized status.
+assert.ok(directory.includes('import "./account-directory-paging.css"') &&
+  directory.includes('className="ml-account-directory-loading" role="status" aria-live="polite"') &&
+  directory.includes('className="ml-account-directory-spinner" aria-hidden="true"') &&
+  directory.includes('className="ml-account-directory-screenreader-only"') &&
+  !directory.includes('<p className="admin-copy" role="status">{t("Loading accounts data…")}</p>') &&
+  pagingCss.includes("animation: ml-account-directory-spinner-spin") &&
+  pagingCss.includes("@media (prefers-reduced-motion: reduce)") &&
+  pagingCss.includes(".ml-account-page-number-active") &&
+  pagingCss.includes(".ml-account-carousel-controls :is(button):focus-visible"),
+  "Role tab changes must display an accessible spinner and a responsive numbered page carousel.");
 
 console.log(`[accounts:phase6] ${uiKeys.size} UI copy keys verified across Dari/Pashto, placeholder parity, tenant/network guards, focus and responsive source contracts.`);
 console.log("[accounts:phase6] Live DOM keyboard, screen-reader, zoom, phone, network and deployment scenarios still require manual acceptance.");

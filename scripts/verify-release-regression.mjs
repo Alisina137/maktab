@@ -30,6 +30,7 @@ const accountStoreSource = read("packages/database/src/account-store.ts");
 const detailsData = read("apps/web/app/admin/account-details-data.ts");
 const detailsTests = read("apps/api/src/account-details-data.test.ts");
 const directoryUi = read("apps/web/app/admin/admin-account-directory.tsx");
+const pagingCss = read("apps/web/app/admin/account-directory-paging.css");
 const directorySafety = read("apps/web/app/admin/account-directory-safety.ts");
 const bulkConfirm = read("apps/web/app/admin/admin-account-bulk-confirm.tsx");
 const creationTests = read("apps/api/src/account-create-rules.test.ts");
@@ -235,6 +236,14 @@ for (const key of ['"Confirm password reset":', '"Confirm suspension":',
   assert.ok(adminTranslations.split(key).length >= 3,
     `Account Phase4 missing a Dari or Pashto translation: ${key}`);
 }
+/* Account directory carousel: fixed five-account pages and loading indicator. */
+assert.ok(accountPage.includes("const pageSize = 5;") &&
+  directoryUi.includes("result.users.slice(0, Math.min(5, pageSize))") &&
+  directoryUi.includes("pageNumbers.map((number) => (") &&
+  directoryUi.includes("ml-account-directory-spinner") &&
+  pagingCss.includes(".ml-account-directory-spinner") &&
+  userRoutes.includes("[5, 10, 20, 50].includes(value)"),
+  "Account directory must provide five-account pages and a role-change loading spinner.");
 /* Admin Accounts Phase 5: server pagination and atomic batch selection. */
 assert.ok(accountPage.includes('/v1/admin/users/directory?') &&
   accountPage.includes('new AbortController()') &&
