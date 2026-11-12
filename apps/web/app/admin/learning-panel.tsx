@@ -13,6 +13,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
+import { AdminSubnavIcon } from "./admin-subnav-icons";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 
 type LearningOverview = {
@@ -199,7 +200,7 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
             aria-controls={`learning-panel-${id.toLowerCase()}`}
             tabIndex={activeTab === id ? 0 : -1}
             ref={element => { tabRefs.current[id] = element; }}
-            className={activeTab === id ? "is-active" : ""}
+            className={activeTab === id ? "is-active ml-admin-tab-with-icon" : "ml-admin-tab-with-icon"}
             onClick={() => selectTab(id)}
             onKeyDown={event => {
               const forward = locale === "en" ? "ArrowRight" : "ArrowLeft";
@@ -215,7 +216,10 @@ export function LearningPanel({ accessToken, initialExamId }: { accessToken: str
                 selectTab(destination);
                 tabRefs.current[destination]?.focus();
               }
-            }}>{t(title)}</button>
+            }}>
+              <AdminSubnavIcon href={id === "OVERVIEW" ? "/admin/learning" : "/admin/learning?tab=" + id.toLowerCase()} />
+              {t(title)}
+            </button>
         ))}
       </nav>
 

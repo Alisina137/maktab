@@ -16,6 +16,7 @@ import { shouldAcceptAccountDirectoryResult, updateAccountSelection } from "../.
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 import { useAdminSectionRoute } from "../../admin-section-route";
+import { AdminSubnavIcon } from "../../admin-subnav-icons";
 import "../../account-create-layout.css";
 
 type AccountView = "DIRECTORY" | "CREATE";
@@ -516,16 +517,16 @@ export default function AccountsPage() {
           <div className="admin-account-view-switch" role="group" aria-label={t("Accounts page view")}>
             <button
               type="button"
-              className={view === "DIRECTORY" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
+              className={view === "DIRECTORY" ? "admin-account-view-button admin-account-view-active ml-admin-tab-with-icon" : "admin-account-view-button ml-admin-tab-with-icon"}
               aria-pressed={view === "DIRECTORY"}
               onClick={() => selectView("DIRECTORY")}
-            >{t("Account directory")}</button>
+            ><AdminSubnavIcon href="/admin/accounts" />{t("Account directory")}</button>
             <button
               type="button"
-              className={view === "CREATE" ? "admin-account-view-button admin-account-view-active" : "admin-account-view-button"}
+              className={view === "CREATE" ? "admin-account-view-button admin-account-view-active ml-admin-tab-with-icon" : "admin-account-view-button ml-admin-tab-with-icon"}
               aria-pressed={view === "CREATE"}
               onClick={() => selectView("CREATE")}
-            >{t("Create account")}</button>
+            ><AdminSubnavIcon href="/admin/accounts?tab=create" />{t("Create account")}</button>
           </div>
         </div>
         {view === "DIRECTORY" ? <div className="admin-account-stats" role="group" aria-label={t("Account overview")}>

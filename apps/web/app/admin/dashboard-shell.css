@@ -289,6 +289,21 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
   background: rgba(255,255,255,.055);
 }
 .ml-admin-dashboard-shell .ml-admin-subnav-icon svg { display: block; }
+.ml-admin-dashboard-shell .ml-admin-tab-with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.ml-admin-dashboard-shell .ml-admin-tab-with-icon > svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+@media (max-width: 550px) {
+  .ml-admin-dashboard-shell .ml-admin-tab-with-icon { gap: 6px; }
+}
 .ml-admin-dashboard-shell .ml-admin-subnav-link:hover .ml-admin-subnav-icon,
 .ml-admin-dashboard-shell .ml-admin-subnav-link-active .ml-admin-subnav-icon {
   color: #fff;

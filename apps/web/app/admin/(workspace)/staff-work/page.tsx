@@ -5,6 +5,7 @@ import { adminApi, friendlyAdminError } from "../../admin-client";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "../../admin-hijri-date-picker";
 import { useAdminWorkspace } from "../../admin-workspace";
 import { useAdminSectionRoute } from "../../admin-section-route";
+import { AdminSubnavIcon } from "../../admin-subnav-icons";
 import { staffWorkText } from "../../../staff/staff-work-i18n";
 import type { WorkTask, MessageDraft } from "../../../staff/staff-work-panel";
 import "../../../staff/staff-work.css";
@@ -105,10 +106,10 @@ export default function StaffWorkAdministration(){
         onClick={()=>void reload().catch(e=>setError(friendlyAdminError(e,"Could not refresh.",locale)))}>{t("Refresh")}</button>
     </header>
     <div className="staff-work-tabs" role="tablist">
-      <button type="button" role="tab" aria-selected={tab==="tasks"}
-        onClick={()=>selectTab("tasks")}>{t("Staff task assignments")}</button>
-      <button type="button" role="tab" aria-selected={tab==="drafts"}
-        onClick={()=>selectTab("drafts")}>{t("Communication review")}
+      <button type="button" role="tab" className="ml-admin-tab-with-icon" aria-selected={tab==="tasks"}
+        onClick={()=>selectTab("tasks")}><AdminSubnavIcon href="/admin/staff-work" />{t("Staff task assignments")}</button>
+      <button type="button" role="tab" className="ml-admin-tab-with-icon" aria-selected={tab==="drafts"}
+        onClick={()=>selectTab("drafts")}><AdminSubnavIcon href="/admin/staff-work?tab=drafts" />{t("Communication review")}
         {" ("+drafts.filter(x=>x.status==="SUBMITTED").length+")"}</button>
     </div>
     {error?<p className="admin-error" role="alert">{error}</p>:null}

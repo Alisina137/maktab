@@ -33,6 +33,7 @@ const translations = read("apps/web/app/admin/admin-i18n.ts");
 const login = read("apps/web/app/admin/page.tsx");
 const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
 const academicIcons = read("apps/web/app/admin/academic-section-icons.tsx");
+const subnavIcons = read("apps/web/app/admin/admin-subnav-icons.tsx");
 const sectionRoute = read("apps/web/app/admin/admin-section-route.ts");
 const attendance = read("apps/web/app/admin/attendance-panel.tsx");
 const learning = read("apps/web/app/admin/learning-panel.tsx");
@@ -128,8 +129,8 @@ for (const route of [
   assert.ok(academicIcons.includes(JSON.stringify(route) + ":"),
     "Academics subtab missing icon: " + route);
 }
-assert.ok(frame.includes('const academicIcon = item.href === "/admin/academics"') &&
-  frame.includes('<AcademicSectionIcon href={entry.href} size={16} />') &&
+assert.ok(frame.includes('const hasIcon = Boolean(adminSubnavIconPaths[entry.href])') &&
+  frame.includes('<AdminSubnavIcon href={entry.href} size={16} />') &&
   frame.includes('ml-admin-subnav-dot') &&
   academic.includes('<AcademicSectionIcon href={tab.href} size={16} />') &&
   academicIcons.includes('aria-hidden="true"') &&
@@ -137,6 +138,36 @@ assert.ok(frame.includes('const academicIcon = item.href === "/admin/academics"'
   css.includes(".ml-admin-subnav-link-active .ml-admin-subnav-icon") &&
   academicCss.includes(".ml-academic-tab > svg"),
   "Academics tab icons must cover the sidebar and overview without changing other submenus");
+
+
+// Every other administrator sidebar subsection must have a route-bound icon.
+const subtabIconRoutes = [
+  "/admin/accounts", "/admin/accounts?tab=create",
+  "/admin/families", "/admin/families?tab=parent-account",
+  "/admin/families?tab=student-account", "/admin/families?tab=bulk-import",
+  "/admin/staff-work", "/admin/staff-work?tab=drafts",
+  "/admin/attendance", ...["registers", "students", "followups", "reports", "audit", "staff_requests"].map(tab => "/admin/attendance?tab=" + tab),
+  "/admin/learning", ...["homework", "exams", "results", "teaching", "reports"].map(tab => "/admin/learning?tab=" + tab),
+  "/admin/communication", "/admin/communication?tab=communication", "/admin/communication?tab=fees",
+  "/admin/pilot", ...["readiness", "onboarding", "adoption", "service", "oversight", "subscription", "audit", "launch"].map(section => "/admin/pilot/" + section)
+];
+for(const route of subtabIconRoutes) {
+  assert.ok(subnavIcons.includes(JSON.stringify(route) + ":"),
+    "Missing administrator sidebar icon: " + route);
+}
+for(const extra of ["invoices", "payments", "balances", "reports"]) {
+  assert.ok(subnavIcons.includes(JSON.stringify("/admin/communication#" + extra) + ":"),
+    "Fee module missing icon: " + extra);
+}
+assert.ok(subnavIcons.includes("...academicSectionIconPaths") &&
+  frame.includes('const hasIcon = Boolean(adminSubnavIconPaths[entry.href])') &&
+  css.includes(".ml-admin-tab-with-icon") &&
+  accounts.includes('<AdminSubnavIcon href="/admin/accounts" />') &&
+  attendance.includes("<AdminSubnavIcon href=") &&
+  learning.includes("<AdminSubnavIcon href=") &&
+  communication.includes("<AdminSubnavIcon href=") &&
+  staffWork.includes('<AdminSubnavIcon href="/admin/staff-work" />'),
+  "All administrator sidebar and page subtabs need icons");
 
 assert.ok(sidebar.includes("PILOT_TABS.map") && sidebar.includes("ATTENDANCE_TABS") &&
   sidebar.includes("sidebarItemIsActive") && frame.includes("sidebarItemIsActive(") &&
