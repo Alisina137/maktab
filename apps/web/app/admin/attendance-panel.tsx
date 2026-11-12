@@ -15,6 +15,7 @@ import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-p
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
 import { AdminSubnavIcon } from "./admin-subnav-icons";
+import "./attendance-polish.css";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import {
   ATTENDANCE_TABS, attendanceRate, type AttendanceTab
