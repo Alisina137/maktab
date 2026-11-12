@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, gte, ilike, isNull, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt } from "drizzle-orm";
 import type {
   CreateParentAccountInput,
   CreateStudentInput,
@@ -446,14 +446,6 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     },
 
     async createStudentAccount(schoolId, studentId, input) {
-      const [student] = await db
-        .select()
-        .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
-        .limit(1);
-      if (!student) throw new FamilyNotFoundError("Student not found.");
-      if (student.userId) throw new FamilyConflictError("This student already has a student account.");
-
       try {
         return await db.transaction(async (tx) => {
           const [user] = await tx
@@ -473,9 +465,22 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
           const [updated] = await tx
             .update(students)
             .set({ userId: user.id, phone: input.phone || null, updatedAt: new Date() })
-            .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+            .where(and(
+              eq(students.schoolId, schoolId),
+              eq(students.id, studentId),
+              eq(students.status, "ACTIVE"),
+              isNull(students.userId)
+            ))
             .returning();
-          if (!updated) throw new FamilyNotFoundError("Student not found.");
+          if (!updated) {
+            // Throw inside the transaction so a simultaneous account creation
+            // rolls back its newly inserted user instead of leaving an orphan.
+            const [student] = await tx.select({ id: students.id })
+              .from(students).where(and(eq(students.schoolId, schoolId),
+                eq(students.id, studentId))).limit(1);
+            if (!student) throw new FamilyNotFoundError("Student not found.");
+            throw new FamilyConflictError("Only an active student without a login can receive a student account.");
+          }
           return { user, student: updated };
         });
       } catch (error) {
@@ -501,70 +506,76 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     },
 
     async updateStudent(schoolId, studentId, input) {
-      const [current] = await db
-        .select()
-        .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
-        .limit(1);
-      if (!current) throw new FamilyNotFoundError("Student not found.");
-
-      const parentUserId = input.parentUserId ?? current.parentUserId;
-      const academicYearId = input.academicYearId ?? current.academicYearId;
-      const classId = input.classId ?? current.classId;
-      await validateParentForStudent(schoolId, parentUserId);
-      await getClassYear(schoolId, academicYearId, classId);
-
+      // Serialize reassignments to one student and base all omitted fields on
+      // the most recent record, never on a snapshot read before the transaction.
       return db.transaction(async (tx) => {
-        const classChanged =
-          current.academicYearId !== academicYearId || current.classId !== classId;
+        const [current] = await tx.select().from(students)
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+          .limit(1).for("update");
+        if (!current) throw new FamilyNotFoundError("Student not found.");
 
-        if (classChanged) {
-          await tx
-            .update(studentClassHistory)
-            .set({ endedAt: new Date() })
-            .where(
-              and(
-                eq(studentClassHistory.schoolId, schoolId),
-                eq(studentClassHistory.studentId, studentId),
-                isNull(studentClassHistory.endedAt)
-              )
-            );
+        const parentUserId = input.parentUserId ?? current.parentUserId;
+        const academicYearId = input.academicYearId ?? current.academicYearId;
+        const classId = input.classId ?? current.classId;
+        const status: StudentStatus = input.status ?? current.status;
+
+        // Read and lock the current parent and academic year inside the write.
+        // A suspended/archived parent or archived year may no longer receive
+        // a fresh student link even if the page was opened earlier.
+        const [parent] = await tx.select({ id: users.id }).from(parentProfiles)
+          .innerJoin(users, and(eq(users.id, parentProfiles.userId),
+            eq(users.schoolId, parentProfiles.schoolId)))
+          .where(and(eq(parentProfiles.schoolId, schoolId),
+            eq(parentProfiles.userId, parentUserId),
+            eq(users.role, "PARENT"), inArray(users.status, ["ACTIVE", "INVITED"])))
+          .limit(1).for("update");
+        if (!parent) throw new FamilyConflictError("The selected parent account is unavailable.");
+        const [year] = await tx.select().from(academicYears)
+          .where(and(eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, academicYearId))).limit(1).for("update");
+        if (!year) throw new FamilyNotFoundError("Academic year not found.");
+        if (year.status === "CLOSED" || year.status === "ARCHIVED") {
+          throw new FamilyConflictError("Students cannot be moved into a closed or archived academic year.");
+        }
+        const [klass] = await tx.select({ id: classSections.id }).from(classSections)
+          .where(and(eq(classSections.schoolId, schoolId),
+            eq(classSections.id, classId),
+            eq(classSections.academicYearId, academicYearId))).limit(1);
+        if (!klass) throw new FamilyValidationError("Class does not belong to the selected academic year.");
+
+        const classChanged = current.academicYearId !== academicYearId || current.classId !== classId;
+        const [open] = await tx.select().from(studentClassHistory)
+          .where(and(eq(studentClassHistory.schoolId, schoolId),
+            eq(studentClassHistory.studentId, studentId),
+            isNull(studentClassHistory.endedAt))).limit(1).for("update");
+        const historyMoved = open &&
+          (open.academicYearId !== academicYearId || open.classId !== classId);
+        const shouldEnd = open && (classChanged || historyMoved || status === "WITHDRAWN");
+        const shouldStart = status === "ACTIVE" &&
+          (!open || classChanged || historyMoved || current.status === "WITHDRAWN");
+        if (shouldEnd) {
+          await tx.update(studentClassHistory).set({ endedAt: new Date() })
+            .where(and(eq(studentClassHistory.schoolId, schoolId),
+              eq(studentClassHistory.studentId, studentId),
+              isNull(studentClassHistory.endedAt)));
+        }
+        // Do not create a brief, misleading "active" enrollment interval
+        // when transferring an already-withdrawn student.
+        if (shouldStart) {
           await tx.insert(studentClassHistory).values({
-            id: randomUUID(),
-            schoolId,
-            studentId,
-            academicYearId,
-            classId
+            id: randomUUID(), schoolId, studentId, academicYearId, classId
           });
         }
-
-        const status: StudentStatus = input.status ?? current.status;
-        if (status === "WITHDRAWN") {
-          await tx
-            .update(studentClassHistory)
-            .set({ endedAt: new Date() })
-            .where(
-              and(
-                eq(studentClassHistory.schoolId, schoolId),
-                eq(studentClassHistory.studentId, studentId),
-                isNull(studentClassHistory.endedAt)
-              )
-            );
-        }
-
-        const [updated] = await tx
-          .update(students)
-          .set({
-            parentUserId,
-            academicYearId,
-            classId,
-            fullName: input.fullName ?? current.fullName,
-            status,
-            updatedAt: new Date()
-          })
-          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
-          .returning();
-        if (!updated) throw new FamilyNotFoundError("Student not found.");
+        const [updated] = await tx.update(students).set({
+          parentUserId,
+          academicYearId,
+          classId,
+          fullName: input.fullName ?? current.fullName,
+          status,
+          updatedAt: new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1))
+        }).where(and(eq(students.schoolId, schoolId), eq(students.id, studentId),
+          eq(students.updatedAt, current.updatedAt))).returning();
+        if (!updated) throw new FamilyConflictError("Student was updated elsewhere. Refresh and retry.");
         return updated;
       });
     },
