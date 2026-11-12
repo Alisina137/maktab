@@ -812,18 +812,27 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async resetPasswordAsAdmin(schoolId, userId, passwordHash, actorUserId) {
       return db.transaction(async (tx) => {
-        await tx
-          .update(authSessions)
-          .set({ revokedAt: new Date() })
-          .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
-
+        // The route checks self-reset and archived status before creating the
+        // temporary password. Enforce those protections in the actual write,
+        // because the account might be archived after that route-level read.
         const [user] = await tx
           .update(users)
           .set({ passwordHash, mustChangePassword: true, updatedAt: new Date() })
-          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId)))
+          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId),
+            sql`${users.status} <> 'ARCHIVED'`, sql`${users.id} <> ${actorUserId}`))
           .returning();
-
         if (!user) return null;
+
+        const now = new Date();
+        await tx.update(authSessions).set({ revokedAt: now })
+          .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId),
+            isNull(authSessions.revokedAt)));
+        // Outstanding email proof belongs to the previous credential. It must
+        // not be usable after a school admin rotates the temporary password.
+        await tx.update(adminPasswordVerifications).set({ consumedAt: now })
+          .where(and(eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            isNull(adminPasswordVerifications.consumedAt)));
 
         await tx.insert(auditLogs).values({
           id: randomUUID(),
@@ -841,31 +850,50 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
 
     async setUserStatusAsAdmin(schoolId, userId, status, actorUserId, auditAction, reason) {
       return db.transaction(async (tx) => {
-        if (status === "ARCHIVED" || status === "SUSPENDED" || status === "ACTIVE" || status === "INVITED") {
-          await tx
-            .update(authSessions)
-            .set({ revokedAt: new Date() })
-            .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
-        }
-
-        const [user] = await tx
-          .update(users)
-          .set({ status, updatedAt: new Date() })
+        // Serialize account lifecycle changes with another administrator. A
+        // stale preflight must not reactivate an archived or already changed
+        // account or bypass a recently added temporary-password requirement.
+        const [current] = await tx.select().from(users)
           .where(and(eq(users.schoolId, schoolId), eq(users.id, userId)))
+          .limit(1).for("update");
+        if (!current) return null;
+        if (current.role === "SCHOOL_ADMIN" && current.id !== actorUserId) {
+          throw new AccountConflictError("A school administrator account cannot be changed through member status actions.");
+        }
+        const suspending = auditAction === "user.suspended" && status === "SUSPENDED";
+        const reactivating = auditAction === "user.reactivated" &&
+          (status === "ACTIVE" || status === "INVITED");
+        if (!suspending && !reactivating) {
+          throw new AccountConflictError("This account status transition is not supported.");
+        }
+        if (suspending && current.status !== "ACTIVE" && current.status !== "INVITED") {
+          throw new AccountConflictError("Only active or invited accounts can be suspended.");
+        }
+        if (reactivating && current.status !== "SUSPENDED") {
+          throw new AccountConflictError("Only suspended accounts can be reactivated.");
+        }
+        const nextStatus: UserStatus = suspending ? "SUSPENDED" :
+          current.mustChangePassword ? "INVITED" : "ACTIVE";
+        const now = new Date();
+        const [user] = await tx.update(users)
+          .set({ status: nextStatus, updatedAt: now })
+          .where(and(eq(users.schoolId, schoolId), eq(users.id, userId),
+            eq(users.status, current.status)))
           .returning();
+        if (!user) throw new AccountConflictError("Account status changed. Refresh and retry.");
 
-        if (!user) return null;
-
+        await tx.update(authSessions).set({ revokedAt: now })
+          .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId),
+            isNull(authSessions.revokedAt)));
+        await tx.update(adminPasswordVerifications).set({ consumedAt: now })
+          .where(and(eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            isNull(adminPasswordVerifications.consumedAt)));
         await tx.insert(auditLogs).values({
-          id: randomUUID(),
-          schoolId,
-          actorUserId,
-          action: auditAction,
-          entityType: "user",
-          entityId: user.id,
+          id: randomUUID(), schoolId, actorUserId,
+          action: auditAction, entityType: "user", entityId: user.id,
           metadata: reason ? { reason } : {}
         });
-
         return user;
       });
     },
