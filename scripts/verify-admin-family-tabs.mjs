@@ -75,8 +75,9 @@ assert.ok(family.indexOf('className="credential-card family-account-preview"') <
   family.includes('exportAccountPreviewPdf(accountPreview)') &&
   family.includes('accountPreviewClosePrompt'),
   "Secure one-time credentials and confirmation must remain visible on every tab");
+assert.ok(family.includes('className="ml-family-tabbar"'),
+  "Family tab switcher must remain mounted for every section");
 for (const phrase of [
-  'className="ml-family-tabbar"',
   ".ml-family-tab-active", ".ml-family-tab-content",
   ".family-account-layout", ".family-account-column",
   "grid-template-columns: minmax(0, 1fr)",
