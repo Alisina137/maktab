@@ -873,13 +873,29 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         }
       }
 
-      const [updated] = await db
-        .update(academicYears)
-        .set({ status, updatedAt: new Date() })
-        .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
-        .returning();
-      if (!updated) throw new AcademicNotFoundError("Academic year not found.");
-      return updated;
+      try {
+        // A compare-and-swap update prevents stale clients from overwriting
+        // the previous state. The partial unique index separately prevents
+        // two different years being activated concurrently.
+        const [updated] = await db
+          .update(academicYears)
+          .set({ status, updatedAt: new Date() })
+          .where(and(
+            eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, yearId),
+            eq(academicYears.status, year.status)
+          ))
+          .returning();
+        if (!updated) {
+          throw new AcademicConflictError("Academic year changed. Refresh before changing its status.");
+        }
+        return updated;
+      } catch (error) {
+        if (isUniqueError(error) && status === "ACTIVE") {
+          throw new AcademicConflictError("Only one academic year may be active for a school.");
+        }
+        throw error;
+      }
     },
 
     async deleteAcademicYear(schoolId, yearId) {
