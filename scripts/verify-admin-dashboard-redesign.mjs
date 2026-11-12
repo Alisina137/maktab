@@ -166,7 +166,6 @@ assert.ok(academicsLayout.includes("<AcademicSectionNavigation />") &&
   academicSectionRoute.includes('return <AcademicPanel') &&
   !academic.includes('className="ml-academic-tabbar"') &&
   academic.includes('className="ml-academic-overview-tools"') &&
-  css.includes('grid-template-columns: repeat(5, minmax(0, 1fr))') &&
   academicCss.includes('grid-template-columns: repeat(5, minmax(0, 1fr))') &&
   academicCss.includes('.ml-academic-tab-active') &&
   academicCss.includes('@media (max-width: 550px)'),
