@@ -14,6 +14,7 @@
     "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "preflight:phase3": "node scripts/integrity-preflight.mjs",
     "demo:parent-dashboard": "tsx src/seed-parent-dashboard-demo.ts",
     "db:check": "node scripts/check-db.mjs"
   },
