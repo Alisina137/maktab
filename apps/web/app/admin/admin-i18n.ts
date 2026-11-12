@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Showing {start}–{end} of {total}": "نمایش {start} تا {end} از {total}",
+  "Parent list pagination": "صفحه‌بندی فهرست والدین",
+  "Student list pagination": "صفحه‌بندی فهرست شاگردان",
   "Family management": "مدیریت خانواده‌ها",
   "Family sections": "بخش‌های خانواده‌ها",
   "Parent account": "حساب والدین",
@@ -2608,6 +2611,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Showing {start}–{end} of {total}": "له {total} څخه د {start} تر {end} پورې ښودل کېږي",
+  "Parent list pagination": "د والدینو د لېست پاڼې",
+  "Student list pagination": "د زده کوونکو د لېست پاڼې",
   "Family management": "د کورنیو مدیریت",
   "Family sections": "د کورنیو برخې",
   "Parent account": "د والدینو حساب",

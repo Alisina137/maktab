@@ -202,3 +202,110 @@
 @media (prefers-reduced-motion: reduce) {
   .ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab { transition: none; }
 }
+
+/* Independent five-record parent and student list carousels. */
+.ml-admin-dashboard-shell .ml-family-list-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 17px;
+  padding: 17px 0 0;
+  border-top: 1px solid #e4edf8;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-family-list-range,
+.ml-admin-dashboard-shell .ml-family-page-count {
+  color: #657b9a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.ml-admin-dashboard-shell .ml-family-list-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-family-list-page-numbers {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ml-admin-dashboard-shell .ml-family-list-pager :is(.ml-family-page-number, .ml-family-page-arrow) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 39px;
+  min-height: 39px;
+  padding: 8px 11px;
+  border: 1px solid #d5e3f6;
+  border-radius: 10px;
+  background: #fff;
+  color: #335e96;
+  font-size: 12px;
+  font-weight: 770;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.ml-admin-dashboard-shell .ml-family-list-pager .ml-family-page-number:hover:not(:disabled),
+.ml-admin-dashboard-shell .ml-family-list-pager .ml-family-page-arrow:hover:not(:disabled) {
+  background: #eaf3ff;
+  color: #1f5ac0;
+  border-color: #91b9ef;
+}
+.ml-admin-dashboard-shell .ml-family-list-pager .ml-family-page-number.ml-family-page-active {
+  border-color: #276bce;
+  background: #2673df;
+  color: #fff;
+  box-shadow: 0 4px 11px rgba(40, 100, 200, .16);
+  opacity: 1;
+  cursor: default;
+}
+.ml-admin-dashboard-shell .ml-family-list-pager button:focus-visible {
+  outline: 3px solid #75a7ef;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .ml-family-list-pager button:disabled:not(.ml-family-page-active) {
+  cursor: not-allowed;
+  opacity: .42;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-list-rows {
+  max-height: none;
+  height: auto;
+  overflow: visible;
+}
+@media (max-width: 850px) {
+  .ml-admin-dashboard-shell .ml-family-list-pager {
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .ml-admin-dashboard-shell .ml-family-list-range,
+  .ml-admin-dashboard-shell .ml-family-page-count {
+    flex: 1 1 100%;
+  }
+}
+@media (max-width: 490px) {
+  .ml-admin-dashboard-shell .ml-family-list-page-controls { gap: 5px; }
+  .ml-admin-dashboard-shell .ml-family-list-page-numbers { gap: 4px; }
+  .ml-admin-dashboard-shell .ml-family-list-pager .ml-family-page-number {
+    min-width: 31px;
+    min-height: 37px;
+    padding: 7px;
+  }
+  .ml-admin-dashboard-shell .ml-family-list-pager .ml-family-page-arrow {
+    min-height: 37px;
+    padding: 7px 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .ml-family-list-pager button { transition: none; }
+}
