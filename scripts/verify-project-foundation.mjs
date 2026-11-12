@@ -48,6 +48,12 @@ assert.equal(
 );
 assert.match(pkg.scripts.verify, /pnpm verify:foundation/, "Full verification must include the foundation checks.");
 
+for (const name of ["verify:admin-grade-codes", "verify:admin-class-codes", "verify:admin-teacher-codes"]) {
+  assert.ok(pkg.scripts.verify.includes("pnpm " + name), "Full verification must run " + name + ".");
+  assert.ok(ci.includes("pnpm " + name), "Main CI must run " + name + ".");
+}
+
+
 const ignored = read(".gitignore");
 assert.match(ignored, /^\*\.tsbuildinfo$/m, "Generated TypeScript build cache must be ignored.");
 assert.match(ignored, /^\.env\.\*$/m, "Local and mobile environment secrets must remain ignored.");
