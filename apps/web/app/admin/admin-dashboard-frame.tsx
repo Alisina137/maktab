@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { adminLocaleOptions, type AdminLocale } from "./admin-i18n";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminSidebarSections, sidebarItemIsActive } from "./admin-sidebar-sections";
@@ -77,6 +77,8 @@ export function AdminDashboardFrame({
     selectedAcademicYearId, setSelectedAcademicYearId } = useAdminWorkspace();
   const [compact, setCompact] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(
     () => Object.keys(adminSidebarSections).find((group) =>
@@ -85,6 +87,7 @@ export function AdminDashboardFrame({
   const [fragment, setFragment] = useState("");
   const [search, setSearch] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(-1);
   const searchRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLFormElement>(null);
   const userName = adminProfile.fullName || stored.session.user.username;
@@ -115,6 +118,28 @@ export function AdminDashboardFrame({
     return () => window.removeEventListener("hashchange", handleHash);
   }, [pathname]);
 
+  // Restore the desktop icon-rail preference without changing mobile drawer state.
+  useEffect(() => {
+    try { setCompact(window.localStorage.getItem("maktablink.admin.sidebar.compact") === "true"); }
+    catch { /* Storage can be disabled by a browser policy. */ }
+  }, []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem("maktablink.admin.sidebar.compact", String(compact)); }
+    catch { /* The navigation remains usable without persistence. */ }
+  }, [compact]);
+
+  useEffect(() => {
+    if (!isMobileLayout || !mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const first = sidebarRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), select'
+    );
+    first?.focus();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [isMobileLayout, mobileOpen]);
+
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 900px)");
     const syncLayout = () => {
@@ -141,7 +166,8 @@ export function AdminDashboardFrame({
         setShowResults(true);
       } else if (event.key === "Escape") {
         setShowResults(false);
-        setMobileOpen(false);
+        setHighlightedSearchIndex(-1);
+        if (mobileOpen) closeMobileSidebar(true);
         if (document.activeElement === searchRef.current) searchRef.current?.blur();
       }
     }
@@ -156,10 +182,60 @@ export function AdminDashboardFrame({
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, []);
+  }, [mobileOpen]);
+
+  function closeMobileSidebar(restoreFocus = false) {
+    setMobileOpen(false);
+    if (restoreFocus) window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  function handleSidebarKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (!isMobileLayout || !mobileOpen || event.key !== "Tab") return;
+    const focusable = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+    ) ?? []).filter((element) => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function handleSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setShowResults(true);
+      if (!searchOptions.length) return;
+      setHighlightedSearchIndex((current) => event.key === "ArrowDown"
+        ? Math.min(searchOptions.length - 1, current + 1)
+        : current <= 0 ? searchOptions.length - 1 : current - 1);
+    } else if (event.key === "Home" && showResults) {
+      event.preventDefault();
+      setHighlightedSearchIndex(searchOptions.length ? 0 : -1);
+    } else if (event.key === "End" && showResults) {
+      event.preventDefault();
+      setHighlightedSearchIndex(searchOptions.length - 1);
+    } else if (event.key === "Enter" && showResults && highlightedSearchIndex >= 0) {
+      const option = searchOptions[highlightedSearchIndex];
+      if (option) {
+        event.preventDefault();
+        navigate(option.href);
+      }
+    } else if (event.key === "Escape") {
+      setShowResults(false);
+      setHighlightedSearchIndex(-1);
+      event.stopPropagation();
+    }
+  }
 
   function navigate(href: string) {
     setShowResults(false);
+    setHighlightedSearchIndex(-1);
     setSearch("");
     setMobileOpen(false);
     router.push(href);
@@ -176,9 +252,15 @@ export function AdminDashboardFrame({
       lang={locale} dir={locale === "en" ? "ltr" : "rtl"}>
       <a className="ml-admin-skip" href="#admin-workspace-content">{t("Skip to content")}</a>
       {mobileOpen ? <button className="ml-admin-sidebar-backdrop" type="button"
-        aria-label={t("Close sidebar")} onClick={() => setMobileOpen(false)} /> : null}
+        aria-label={t("Close sidebar")} onClick={() => closeMobileSidebar(true)} /> : null}
 
-      <aside id="ml-admin-sidebar" className="ml-admin-sidebar" aria-label={t("School Administration")}>
+      <aside id="ml-admin-sidebar" ref={sidebarRef} className="ml-admin-sidebar"
+        aria-label={t("School Administration")}
+        role={isMobileLayout ? "dialog" : "complementary"}
+        aria-modal={isMobileLayout && mobileOpen ? true : undefined}
+        aria-hidden={isMobileLayout && !mobileOpen ? true : undefined}
+        inert={isMobileLayout && !mobileOpen}
+        onKeyDown={handleSidebarKeyDown}>
         <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={() => setMobileOpen(false)}>
           <span className="ml-admin-brand-icon"><Icon name="academic" size={27} /></span>
           <span className="ml-admin-sidebar-brand-text"><strong>MaktabLink</strong><small>{t("School Administration")}</small></span>
@@ -258,7 +340,7 @@ export function AdminDashboardFrame({
 
         <div className="ml-admin-sidebar-footer">
           <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={() => setMobileOpen(false)}>
-            <UserAvatar name={userName} url={adminProfile.imageUrl} />
+            <span className="ml-admin-sidebar-profile-icon" aria-hidden="true"><Icon name="profile" size={20} /></span>
             <span className="ml-admin-sidebar-profile-name"><strong>{userName}</strong><small>{t("School Administration")}</small></span>
           </Link>
           <button className="ml-admin-sign-out" type="button" title={t("Sign out")}
@@ -268,9 +350,9 @@ export function AdminDashboardFrame({
         </div>
       </aside>
 
-      <div className="ml-admin-main-column">
+      <div className="ml-admin-main-column" inert={isMobileLayout && mobileOpen}>
         <header className="ml-admin-topbar">
-          <button className="ml-admin-menu-button" type="button"
+          <button ref={menuButtonRef} className="ml-admin-menu-button" type="button"
             aria-label={t(isMobileLayout
               ? (mobileOpen ? "Close sidebar" : "Open sidebar")
               : (compact ? "Expand sidebar" : "Collapse sidebar"))}
@@ -286,22 +368,35 @@ export function AdminDashboardFrame({
           <form className="ml-admin-search" ref={searchBoxRef} role="search"
             onSubmit={(event) => {
               event.preventDefault();
-              if (searchOptions[0]) navigate(searchOptions[0].href);
+              const option = highlightedSearchIndex < 0 ? searchOptions[0] : searchOptions[highlightedSearchIndex];
+              if (option) navigate(option.href);
             }}>
             <Icon name="search" size={19} />
             <input ref={searchRef} type="search" value={search}
-              onChange={(event) => { setSearch(event.target.value); setShowResults(true); }}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setHighlightedSearchIndex(-1);
+                setShowResults(true);
+              }}
               onFocus={() => setShowResults(true)}
+              onKeyDown={handleSearchKeyDown}
               placeholder={t("Search sections and pages…")}
               aria-label={t("Search sections and pages…")}
-              aria-expanded={showResults} aria-controls="admin-page-search-results"
+              role="combobox" aria-autocomplete="list"
+              aria-expanded={showResults}
+              aria-controls={showResults ? "admin-page-search-results" : undefined}
+              aria-activedescendant={showResults && highlightedSearchIndex >= 0
+                ? "admin-page-search-option-" + highlightedSearchIndex : undefined}
               autoComplete="off" />
             <kbd>Ctrl K</kbd>
             {showResults ? (
               <div className="ml-admin-search-results" id="admin-page-search-results" role="listbox"
                 aria-label={t("Search results")}>
-                {searchOptions.length ? searchOptions.map((item) => (
-                  <button type="button" key={item.href} role="option" aria-selected={currentPath === item.href}
+                {searchOptions.length ? searchOptions.map((item, index) => (
+                  <button type="button" key={item.href} id={"admin-page-search-option-" + index}
+                    role="option" tabIndex={-1}
+                    aria-selected={highlightedSearchIndex === index}
+                    onMouseEnter={() => setHighlightedSearchIndex(index)}
                     onClick={() => navigate(item.href)}>
                     <Icon name={navIcons[item.href] ?? "academic"} size={17} />
                     <span>{t(item.label)}</span><Icon name="arrow" size={15} />
@@ -334,7 +429,7 @@ export function AdminDashboardFrame({
           </div>
         </header>
 
-        <div className="ml-admin-content-area" id="admin-workspace-content">
+        <div className="ml-admin-content-area" id="admin-workspace-content" tabIndex={-1}>
           <section className="admin-route-heading ml-admin-page-heading">
             <div className="ml-admin-page-heading-intro">
               <span className="ml-admin-page-heading-symbol" aria-hidden="true">
