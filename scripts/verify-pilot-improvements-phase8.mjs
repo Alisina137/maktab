@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
 const navigation = read("apps/web/app/admin/pilot-operations-navigation.tsx");
+const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const sidebarFrame = read("apps/web/app/admin/admin-dashboard-frame.tsx");
 const workspace = read("apps/web/app/admin/pilot-readiness-panel.tsx");
 const releaseView = read("apps/web/app/admin/pilot-release-readiness-panel.tsx");
 const releaseModel = read("apps/web/app/admin/pilot-release-readiness-model.ts");
@@ -32,9 +34,13 @@ assert.deepEqual(entries.map(e=>e[3]),
 assert.equal(new Set(entries.map(e=>e[3])).size,9);
 assert.deepEqual(entries.map(e=>e[4]),
   ["START","START","START","MONITOR","MONITOR","MONITOR","MANAGE","MANAGE","MANAGE"]);
-assert.ok(navigation.includes('aria-current={section === tab.section ? "page" : undefined}') &&
-  navigation.includes("router.push(selected.href)") &&
-  workspace.includes("<PilotOperationsNavigation section={section} locale={locale} />"));
+assert.ok(navigation.includes("export const PILOT_GROUP_LABELS") &&
+  !navigation.includes("PilotOperationsNavigation") &&
+  sidebar.includes('"/admin/pilot": PILOT_TABS.map') &&
+  sidebarFrame.includes('aria-current={selected ? "page" : undefined}') &&
+  workspace.includes('className="pilot-section pilot-workspace admin-page-enter"') &&
+  !workspace.includes("<PilotOperationsNavigation"),
+  "Pilot navigation must remain a single accessible sidebar, with no duplicated in-page tabs");
 for (const [section,path] of prior) {
   assert.ok(read(path).length > 200, "Improvement model missing for "+section);
   assert.ok(pkg.scripts["verify:pilot:improvements:phase"+(prior.indexOf(
