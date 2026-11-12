@@ -137,9 +137,6 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   const [editFeeAmount, setEditFeeAmount] = useState("");
   const [editFeeDueDate, setEditFeeDueDate] = useState("");
   const [editFeeDescription, setEditFeeDescription] = useState("");
-  useEffect(() => {
-    feeModuleRefs.current[feesModule]?.scrollIntoView({ behavior:"smooth", block:"nearest", inline:"nearest" });
-  }, [feesModule]);
   const [resourceStatus, setResourceStatus] = useState<Record<ResourceKey, ResourceStatus>>({
     communication: "idle", families: "idle", academics: "idle"
   });
@@ -314,7 +311,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
   }, [feeSearch, feeStatus, feeClassId, feeAcademicYearId, feeStudentId]);
 
   useEffect(() => {
-    if (section !== "FEES") return;
+    if (section !== "FEES" || feesModule !== "INVOICES") return;
     const generation = ++feeGeneration.current;
     const token = accessToken;
     const params = invoiceQuery({
@@ -340,7 +337,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       clearTimeout(timer);
       feeGeneration.current++;
     };
-  }, [section,accessToken,feeSearch,feeStatus,feeClassId,feeAcademicYearId,
+  }, [section,feesModule,accessToken,feeSearch,feeStatus,feeClassId,feeAcademicYearId,
       feeStudentId,feePage,feeReloadKey]);
 
   function refreshInvoiceViews() {
@@ -851,7 +848,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
           <div className="communication-workflow-layout" data-pane={communicationPane}>
             <div className="communication-workflow-form">
               <article className="admin-panel communication-form-card">
-          <div><h2>{t("Create announcement")}</h2><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
+          <div><h4>{t("Create announcement")}</h4><p>{t("Every announcement has an explicit school, class, or role audience.")}</p></div>
           <form className="admin-form" onSubmit={createAnnouncement}>
             <label>{t("Title")}
               <input name="title" minLength={2} maxLength={160} required
@@ -953,7 +950,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         {editingNotice ? (
   
         <article className="admin-panel communication-form-card">
-            <div><h2>{t("Edit scheduled announcement")}</h2>
+            <div><h4>{t("Edit scheduled announcement")}</h4>
               <p>{t("Published announcements are immutable; only future scheduled notices may be edited.")}</p>
             </div>
             <form className="admin-form" onSubmit={saveScheduledEdit}>
@@ -984,7 +981,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
       <article className="admin-panel academic-list-panel communication-announcement-list">
         <div className="admin-section-header">
           <div>
-            <h2>{t("Announcements")}</h2>
+            <h4>{t("Announcements")}</h4>
             <p>{t("Published, scheduled and archived school notices.")}</p>
           </div>
         </div>
@@ -1112,16 +1109,38 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               {t("Refresh fee invoices")}
             </button>
           </div>
-          <nav className="admin-fee-module-tabs" aria-label={t("Fee management sections")}>
+          <nav className="admin-fee-module-tabs" role="tablist"
+            aria-label={t("Fee management sections")} dir={locale === "en" ? "ltr" : "rtl"}>
             {([
               ["INVOICES", "Invoices"],
               ["PAYMENTS", "Payment history"],
               ["BALANCES", "Student balances"],
               ["REPORTS", "Reports & reconciliation"]
             ] as const).map(([key,label]) => (
-              <button type="button" key={key} aria-current={feesModule === key ? "page" : undefined}
+              <button type="button" key={key}
+                role="tab" id={`communication-fee-tab-${key.toLowerCase()}`}
+                aria-controls={`communication-fee-panel-${key.toLowerCase()}`}
+                aria-selected={feesModule === key}
+                tabIndex={feesModule === key ? 0 : -1}
                 ref={element => { feeModuleRefs.current[key] = element; }}
                 className={feesModule === key ? "is-active ml-admin-tab-with-icon" : "ml-admin-tab-with-icon"}
+                onKeyDown={event => {
+                  const keys = ["INVOICES", "PAYMENTS", "BALANCES", "REPORTS"] as const;
+                  const index = keys.indexOf(key);
+                  const forward = locale === "en" ? "ArrowRight" : "ArrowLeft";
+                  const backward = locale === "en" ? "ArrowLeft" : "ArrowRight";
+                  let target = -1;
+                  if (event.key === "Home") target = 0;
+                  else if (event.key === "End") target = keys.length - 1;
+                  else if (event.key === forward) target = (index + 1) % keys.length;
+                  else if (event.key === backward) target = (index - 1 + keys.length) % keys.length;
+                  if (target !== -1) {
+                    event.preventDefault();
+                    const next = keys[target]!;
+                    setFeesModule(next);
+                    feeModuleRefs.current[next]?.focus();
+                  }
+                }}
                 onClick={() => setFeesModule(key)}>
                 <AdminSubnavIcon href={"/admin/communication#" + key.toLowerCase()} />
                 {t(label)}
@@ -1129,23 +1148,31 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             ))}
           </nav>
           {(feesModule === "PAYMENTS" || feesModule === "BALANCES") ? (
-            <AdminFeeOperations mode={feesModule} accessToken={accessToken}
-              locale={locale}
-              students={(visibleFamilies?.students ?? []).map(row => ({
-                id: row.student.id, fullName: row.student.fullName,
-                studentCode: row.student.studentCode
-              }))}
-              refreshVersion={feeReloadKey} />
+            <div role="tabpanel" className="communication-fee-module-panel"
+              id={`communication-fee-panel-${feesModule.toLowerCase()}`}
+              aria-labelledby={`communication-fee-tab-${feesModule.toLowerCase()}`}>
+              <AdminFeeOperations mode={feesModule} accessToken={accessToken}
+                locale={locale}
+                students={(visibleFamilies?.students ?? []).map(row => ({
+                  id: row.student.id, fullName: row.student.fullName,
+                  studentCode: row.student.studentCode
+                }))}
+                refreshVersion={feeReloadKey} />
+            </div>
           ) : null}
           {feesModule === "REPORTS" ? (
-            <AdminFeeFinancialReports accessToken={accessToken} locale={locale}
-              refreshVersion={feeReloadKey}
-              students={(visibleFamilies?.students ?? []).filter(row => row.student.status === "ACTIVE").map(row => ({
-                id: row.student.id, fullName: row.student.fullName, studentCode: row.student.studentCode
-              }))} />
+            <div role="tabpanel" id="communication-fee-panel-reports"
+              aria-labelledby="communication-fee-tab-reports" className="communication-fee-module-panel">
+              <AdminFeeFinancialReports accessToken={accessToken} locale={locale}
+                refreshVersion={feeReloadKey}
+                students={(visibleFamilies?.students ?? []).filter(row => row.student.status === "ACTIVE").map(row => ({
+                  id: row.student.id, fullName: row.student.fullName, studentCode: row.student.studentCode
+                }))} />
+            </div>
           ) : null}
           {feesModule === "INVOICES" ? (
-          <>
+          <div role="tabpanel" id="communication-fee-panel-invoices"
+            aria-labelledby="communication-fee-tab-invoices" className="communication-fee-module-panel">
           <div className="communication-mobile-toggle" role="group" aria-label={t("Choose fee workspace")}>
             <button type="button" className={feesPane === "LIST" ? "is-active" : ""}
               aria-pressed={feesPane === "LIST"} onClick={() => setFeesPane("LIST")}>
@@ -1161,7 +1188,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               {visibleFamilies && resourceStatus.families === "ready" && ready ? (
                 <>
         <article className="admin-panel communication-form-card communication-invoice-create-card">
-          <div><h2>{t("Create fee invoice")}</h2><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
+          <div><h4>{t("Create fee invoice")}</h4><p>{t("Amounts are recorded in whole AFN. Online payment is intentionally outside the MVP.")}</p></div>
           <form className="admin-form" onSubmit={createInvoice}>
             <label>
               {t("Student")}
@@ -1183,7 +1210,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
         <article className="admin-panel communication-reminder-card">
           <header className="communication-reminder-heading">
-            <h2>{t("Fee reminders · days before due")}</h2>
+            <h4>{t("Fee reminders · days before due")}</h4>
             <p>{t("Parents receive one reminder per selected day while the invoice remains unpaid and the student is active.")}</p>
           </header>
           <form className="communication-reminder-form" onSubmit={saveReminderSettings}>
@@ -1229,7 +1256,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <>
       <article className="admin-panel academic-list-panel">
         <div className="admin-section-header">
-          <div><h2>{t("Fee invoices & payments")}</h2><p>{t("Payments are appended; reversals never overwrite the original transaction.")}</p></div>
+          <div><h4>{t("Fee invoices & payments")}</h4><p>{t("Payments are appended; reversals never overwrite the original transaction.")}</p></div>
         </div>
         <div className="communication-invoice-filters">
           <label>{t("Search invoices")}
@@ -1339,10 +1366,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
                 <div className="admin-actions">
                   {item.invoice.status === "DRAFT" ? (
-                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "issue")}>{t("Issue")}</button>
+                    <button type="button" disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "issue")}>{t("Issue")}</button>
                   ) : null}
                   {!["PAID", "CANCELLED"].includes(item.invoice.status) && item.paid === 0 ? (
-                    <button disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "cancel")}>{t("Cancel")}</button>
+                    <button type="button" disabled={busy} onClick={() => void invoiceAction(item.invoice.id, "cancel")}>{t("Cancel")}</button>
                   ) : null}
                 </div>
 
@@ -1382,21 +1409,22 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   </form>
                 ) : null}
                 {["ISSUED", "PARTIALLY_PAID", "OVERDUE"].includes(item.invoice.status) ? (
-                  <div className="communication-payment-form">
-                    <input
-                      type="number"
-                      min="1"
-                      max={item.outstanding}
-                      step="1"
-                      value={draft.amount}
-                      onChange={(event) =>
-                        setPaymentDraft((current) => ({
-                          ...current,
-                          [item.invoice.id]: { ...draft, amount: event.target.value }
-                        }))
-                      }
-                      placeholder={t("Amount")}
-                    />
+                  <div className="communication-payment-form" role="group"
+                    aria-label={t("Record payment")}>
+                    <label className="communication-payment-field">{t("Amount (AFN)")}
+                      <input
+                        type="number" inputMode="numeric"
+                        min="1" max={item.outstanding} step="1"
+                        value={draft.amount}
+                        onChange={event =>
+                          setPaymentDraft(current => ({
+                            ...current,
+                            [item.invoice.id]: { ...draft, amount: event.target.value }
+                          }))
+                        }
+                        placeholder={t("Amount")}
+                      />
+                    </label>
                     <label className="admin-fee-method-label">{t("Method")}
                       <select
                         aria-label={t("Payment method")}
@@ -1412,17 +1440,19 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                         <option value="OTHER">{t("Other")}</option>
                       </select>
                     </label>
-                    <input
-                      value={draft.reference}
-                      onChange={(event) =>
-                        setPaymentDraft((current) => ({
-                          ...current,
-                          [item.invoice.id]: { ...draft, reference: event.target.value }
-                        }))
-                      }
-                      placeholder={t("Reference (optional)")}
-                    />
-                    <button
+                    <label className="communication-payment-field">{t("Reference (optional)")}
+                      <input
+                        value={draft.reference}
+                        onChange={event =>
+                          setPaymentDraft(current => ({
+                            ...current,
+                            [item.invoice.id]: { ...draft, reference: event.target.value }
+                          }))
+                        }
+                        placeholder={t("Reference (optional)")}
+                      />
+                    </label>
+                    <button type="button"
                       className="admin-primary"
                       disabled={busy || !draft.amount || !draft.method.trim()}
                       onClick={() => void recordPayment(item.invoice.id, item.outstanding, item.studentName, invoiceReference(item.invoice.invoiceNumber))}
@@ -1446,13 +1476,16 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                           {payment.reversalReason ? <span>{t("Reason")}: {payment.reversalReason}</span> : null}
                         </div>
                         {payment.kind === "PAYMENT" && !reversedPaymentIds.has(payment.id) ? (
-                          <div className="communication-reversal">
-                            <input
-                              value={reversalReason[payment.id] ?? ""}
-                              onChange={(event) => setReversalReason((current) => ({ ...current, [payment.id]: event.target.value }))}
-                              placeholder={t("Reversal reason")}
-                            />
-                            <button disabled={busy} onClick={() => void reversePayment(payment.id)}>{t("Reverse")}</button>
+                          <div className="communication-reversal" role="group" aria-label={t("Reverse payment")}>
+                            <label className="communication-payment-field">{t("Reversal reason")}
+                              <input
+                                value={reversalReason[payment.id] ?? ""}
+                                onChange={event => setReversalReason(current => ({ ...current, [payment.id]: event.target.value }))}
+                                placeholder={t("Reversal reason")}
+                              />
+                            </label>
+                            <button type="button" disabled={busy || !reversalReason[payment.id]?.trim()}
+                              onClick={() => void reversePayment(payment.id)}>{t("Reverse")}</button>
                           </div>
                         ) : null}
                       </div>
@@ -1487,7 +1520,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               ) : resourceNotice("communication")}
             </div>
           </div>
-          </>
+          </div>
           ) : null}
         </section>
       ) : null}

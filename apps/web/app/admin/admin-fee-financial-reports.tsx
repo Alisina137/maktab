@@ -146,6 +146,9 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
     } finally { if (tokenRef.current === token) setBusy(false); }
   }
 
+  const reconciliationRows = report?.rows.filter(row =>
+    row.kind === "PAYMENT" && (row.method === "CASH" || row.method === "BANK_TRANSFER")
+  ) ?? [];
   return (
     <section className="admin-panel admin-financial-reports">
       <div className="communication-dashboard-heading">
@@ -205,8 +208,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
           <small>{t("CSV includes school-authorized rows and escapes spreadsheet formulas. Exports are audited.")}</small>
           <h4>{t("Payment reconciliation")}</h4>
           <div className="admin-fee-ledger-rows">
-            {report.rows.filter(row=>row.kind==="PAYMENT" && (row.method==="CASH" || row.method==="BANK_TRANSFER"))
-              .slice(0,50).map(row=>(
+            {reconciliationRows.slice(0,50).map(row=>(
               <div className="admin-fee-ledger-row" key={row.paymentId}>
                 <div><strong>{row.studentName} · {invoiceReference(row.invoiceNumber)}</strong>
                   <small>{formatAdminHijriDateTime(locale,row.recordedAt,report.schoolTimezone)}</small>
@@ -220,7 +222,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
                 ) : null}
               </div>
             ))}
-            {!report.rows.length ? <p>{t("No payment transactions in this date range.")}</p> : null}
+            {!reconciliationRows.length ? <p className="admin-copy">{t("No cash or bank payments to reconcile in this date range.")}</p> : null}
           </div>
           <small>{t("Showing up to 50 cash/bank rows; CSV contains all eligible report rows.")}</small>
         </>
