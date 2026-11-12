@@ -11,6 +11,7 @@ import { CurriculumAdminPanel } from "./curriculum-admin";
 import { AdminAcademicOverview } from "./admin-academic-overview";
 import { nextAvailableTeacherEmployeeCode } from "./teacher-employee-code";
 import { matchingNewGradeNumber, nextAvailableGradeNumber, usedGradeNumbers } from "./grade-level-suggestions";
+import { classGradeNumber, matchingClassLetter, nextAvailableClassIdentity, occupiedClassLetters } from "./class-section-suggestions";
 
 export const academicSectionNames = [
   "years",
@@ -466,14 +467,40 @@ export function AcademicPanel({
             key={editing?.id ?? "new-class-" + effectiveYearId}
             onSubmit={(event) => {
               const form = new FormData(event.currentTarget);
+              const gradeLevelId = formValue(form, "gradeLevelId");
+              const code = formValue(form, "code");
+              const name = formValue(form, "name");
+              const grade = overview.gradeLevels.find(item => item.id === gradeLevelId) ?? null;
+              const unchangedLegacy = editing && editing.gradeLevelId === gradeLevelId &&
+                editing.code === code && editing.name === name;
+              if (!unchangedLegacy) {
+                const letter = grade ? matchingClassLetter(grade, code, name) : null;
+                if (!letter) {
+                  event.preventDefault();
+                  showToast({
+                    kind: "error", title: t("Class section"),
+                    message: t("Class code and name must match the grade, for example 7-A and Class 7A.")
+                  });
+                  return;
+                }
+                const number = classGradeNumber(grade!);
+                if (number !== null && occupiedClassLetters(number, selectedClasses, editing?.id).has(letter)) {
+                  event.preventDefault();
+                  showToast({
+                    kind: "error", title: t("Class section"),
+                    message: t("That class letter is already in use for this grade and year.")
+                  });
+                  return;
+                }
+              }
               void submit(
                 event,
                 editing ? "/v1/admin/academics/classes/" + editing.id : "/v1/admin/academics/classes",
                 {
                   academicYearId: effectiveYearId,
-                  gradeLevelId: formValue(form, "gradeLevelId"),
-                  code: formValue(form, "code"),
-                  name: formValue(form, "name")
+                  gradeLevelId,
+                  code,
+                  name
                 },
                 editing ? "Edit class section" : "Class section",
                 editing ? "Class updated." : "Class created.",
@@ -482,9 +509,9 @@ export function AcademicPanel({
             }}
           >
             <ReadOnlyYear year={effectiveYear} locale={locale} />
-            <Select name="gradeLevelId" label={t("Grade")} items={overview.gradeLevels.map((grade) => [grade.id, grade.name])} defaultValue={editing?.gradeLevelId ?? ""} disabled={!selectedYearMutable} />
-            <label>{t("Code")}<input name="code" defaultValue={editing?.code ?? ""} placeholder="7A" required disabled={!selectedYearMutable} /></label>
-            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder={t("Grade 7 A")} required disabled={!selectedYearMutable} /></label>
+            <ClassSectionIdentityFields key={editing?.id ?? "new-class-" + effectiveYearId}
+              locale={locale} grades={overview.gradeLevels} classes={selectedClasses}
+              editing={editing} mutable={selectedYearMutable} />
             <FormActions editing={Boolean(editing)} busy={busy || !selectedYearMutable} createLabel={t("Create class")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
           </form>
         </AcademicForm>
@@ -734,6 +761,97 @@ const academicPaneLabels: Record<Exclude<AcademicSection, "overview">, { form: s
   timetable: { form: "Add timetable period", list: "List of timetable periods" },
   curriculum: { form: "Create curriculum unit", list: "List of curriculum units" }
 };
+
+
+function ClassSectionIdentityFields({
+  locale, grades, classes, editing, mutable
+}: {
+  locale: AdminLocale;
+  grades: GradeLevel[];
+  classes: ClassSection[];
+  editing: ClassSection | null;
+  mutable: boolean;
+}) {
+  const t = (key: string) => adminText(locale, key);
+  const [gradeLevelId, setGradeLevelId] = useState(editing?.gradeLevelId ?? "");
+  const [code, setCode] = useState(editing?.code ?? "");
+  const [name, setName] = useState(editing?.name ?? "");
+  const chosenGrade = grades.find(item => item.id === gradeLevelId) ?? null;
+  const gradeNumber = chosenGrade ? classGradeNumber(chosenGrade) : null;
+  const suggestion = chosenGrade ? nextAvailableClassIdentity(chosenGrade, classes, editing?.id) : null;
+  const classesVersion = classes.map(item => [item.id, item.gradeLevelId, item.code, item.name].join(":")).join("|");
+
+  // After a class is successfully created and the list reloads, advance to
+  // the next free letter without making the administrator reselect the grade.
+  useEffect(() => {
+    if (editing || !gradeLevelId) return;
+    const grade = grades.find(item => item.id === gradeLevelId);
+    const suggested = grade ? nextAvailableClassIdentity(grade, classes) : null;
+    setCode(suggested?.code ?? "");
+    setName(suggested?.name ?? "");
+  }, [classesVersion]);
+
+  const chooseGrade = (id: string) => {
+    setGradeLevelId(id);
+    if (editing && id === editing.gradeLevelId) {
+      setCode(editing.code);
+      setName(editing.name);
+      return;
+    }
+    const selectedGrade = grades.find(item => item.id === id);
+    const next = selectedGrade ? nextAvailableClassIdentity(selectedGrade, classes, editing?.id) : null;
+    setCode(next?.code ?? "");
+    setName(next?.name ?? "");
+  };
+
+  const changeCode = (value: string) => {
+    const next = value.toUpperCase();
+    setCode(next);
+    const matched = /^([1-9][0-9]*)-([A-Z])$/.exec(next);
+    if (matched && gradeNumber !== null && Number(matched[1]) === gradeNumber) {
+      setName("Class " + gradeNumber + matched[2]);
+    }
+  };
+  const changeName = (value: string) => {
+    setName(value);
+    const matched = /^Class\s+([1-9][0-9]*)([A-Z])$/i.exec(value);
+    if (matched && gradeNumber !== null && Number(matched[1]) === gradeNumber) {
+      setCode(gradeNumber + "-" + matched[2].toUpperCase());
+      setName("Class " + gradeNumber + matched[2].toUpperCase());
+    }
+  };
+
+  const legacyEditing = Boolean(editing &&
+    matchingClassLetter(grades.find(item => item.id === editing.gradeLevelId) ?? {
+      id: "", code: "", name: "", sortOrder: 0
+    }, editing.code, editing.name) === null);
+  return (
+    <>
+      <ControlledSelect
+        name="gradeLevelId" label={t("Grade")}
+        items={grades.map(item => [item.id, item.name])}
+        value={gradeLevelId} onChange={chooseGrade} disabled={!mutable}
+      />
+      <label>{t("Code")}
+        <input name="code" value={code} onChange={event => changeCode(event.target.value)}
+          placeholder="x-y" pattern={legacyEditing ? undefined : "[1-9][0-9]*-[A-Z]"}
+          disabled={!mutable || !gradeLevelId} maxLength={32} autoComplete="off" required />
+      </label>
+      <label>{t("Name")}
+        <input name="name" value={name} onChange={event => changeName(event.target.value)}
+          placeholder="Class XY" pattern={legacyEditing ? undefined : "Class [1-9][0-9]*[A-Z]"}
+          disabled={!mutable || !gradeLevelId} maxLength={80} autoComplete="off" required />
+      </label>
+      {!editing && gradeLevelId ? (
+        <p className="admin-form-help" role="status">
+          {gradeNumber === null ? t("Select a numbered grade (G-x) to suggest class details.")
+            : suggestion === null ? t("All class letters A-Z are in use for this grade.")
+            : t("Next available class") + ": " + suggestion.code + " · " + suggestion.name}
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 function NewGradeLevelFields({ suggestedNumber, locale }: {
   suggestedNumber: number | null;
