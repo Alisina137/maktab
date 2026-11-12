@@ -118,4 +118,32 @@ test("Phase 6: issued invoices, append-only collections, aging, reconciliation, 
   await assert.rejects(fees.setFeePaymentReconciliation(schoolA,adminA.id,originalPayment.id,{
     status:"RECONCILED"
   }),/Reversed payments/i);
+
+  // Audit Phase 7: BANK is a legacy method used by older account forms.
+  // Financial reports must classify it as BANK_TRANSFER, not OTHER, and
+  // the admin reconciliation workflow must accept the original ledger row.
+  const bankInvoice = await fees.createFeeInvoice(schoolA,adminA.id,{
+    studentId:student.id,amount:900,dueDate:"2099-02-02",description:"Bank transfer test"
+  });
+  await fees.issueFeeInvoice(schoolA,bankInvoice.id,adminA.id);
+  const bankView = await fees.recordFeePayment(schoolA,adminA.id,bankInvoice.id,{
+    amount:900,method:"BANK",transactionReference:"BANK-LEGACY"
+  });
+  const bankRow=bankView.payments.find(row=>row.kind==="PAYMENT");
+  assert.ok(bankRow);
+  let bankReport=await fees.getFeeFinancialReport(schoolA,{});
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="BANK_TRANSFER")?.gross,900);
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="OTHER")?.gross,0);
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="BANK_TRANSFER")?.pendingAmount,900);
+  const reconciledBank=await fees.setFeePaymentReconciliation(schoolA,adminA.id,bankRow.id,{
+    status:"RECONCILED",reference:"BANK-LEGACY-STATEMENT"
+  });
+  assert.equal(reconciledBank.status,"RECONCILED");
+  bankReport=await fees.getFeeFinancialReport(schoolA,{});
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="BANK_TRANSFER")?.reconciledAmount,900);
+  assert.equal(bankReport.rows.find(row=>row.paymentId===bankRow.id)?.reconciliation,"RECONCILED");
+  await fees.reverseFeePayment(schoolA,adminA.id,bankRow.id,{reason:"Bank receipt canceled"});
+  bankReport=await fees.getFeeFinancialReport(schoolA,{});
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="BANK_TRANSFER")?.reversals,900);
+  assert.equal(bankReport.statement.methods.find(row=>row.method==="BANK_TRANSFER")?.net,0);
 });
