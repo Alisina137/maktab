@@ -35,9 +35,11 @@ export function occupiedClassLetters(
   for (const item of classes) {
     if (item.id === excludeClassId) continue;
     const code = /^0*([1-9][0-9]*)-?([A-Z])$/i.exec(item.code.trim());
-    if (code && Number(code[1]) === gradeNumber) used.add(code[2].toUpperCase());
+    const codeLetter = code?.[2];
+    if (codeLetter && Number(code?.[1]) === gradeNumber) used.add(codeLetter.toUpperCase());
     const name = /^(?:Class|Grade)\s+0*([1-9][0-9]*)\s*([A-Z])$/i.exec(item.name.trim());
-    if (name && Number(name[1]) === gradeNumber) used.add(name[2].toUpperCase());
+    const nameLetter = name?.[2];
+    if (nameLetter && Number(name?.[1]) === gradeNumber) used.add(nameLetter.toUpperCase());
   }
   return used;
 }
@@ -68,6 +70,7 @@ export function matchingClassLetter(
   const number = classGradeNumber(grade);
   if (number === null) return null;
   const match = /^([1-9][0-9]*)-([A-Z])$/.exec(code.trim());
-  if (!match || Number(match[1]) !== number) return null;
-  return name.trim() === "Class " + number + match[2] ? match[2] : null;
+  const letter = match?.[2];
+  if (!letter || Number(match?.[1]) !== number) return null;
+  return name.trim() === "Class " + number + letter ? letter : null;
 }

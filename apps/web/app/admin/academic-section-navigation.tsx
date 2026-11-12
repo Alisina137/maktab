@@ -14,7 +14,7 @@ import { AcademicSectionIcon } from "./academic-section-icons";
 export function AcademicSectionNavigation() {
   const pathname = usePathname();
   const { t } = useAdminWorkspace();
-  const items = adminSidebarSections["/admin/academics"];
+  const items = adminSidebarSections["/admin/academics"] ?? [];
 
   return (
     <nav className="ml-academic-tabbar" aria-label={t("Academic sections")}>
