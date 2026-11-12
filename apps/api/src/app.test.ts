@@ -9395,3 +9395,123 @@ test("Staff Phase 4: draft, submission, approval, duplicate and tenant safety",a
   const hidden=await app.inject({method:"GET",url:"/v1/admin/families",headers:staffHeaders});
   assert.equal(hidden.statusCode,403);
 });
+
+
+test("Security Phase 2: concurrent refresh only grants one valid session", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "SEC-REFRESH-PHASE2");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminToken}` },
+    payload: { username: "phase2parent", fullName: "Security Phase Two Parent" }
+  });
+  assert.equal(created.statusCode, 201, created.body);
+  const temp = created.json<{ temporaryPassword: string }>().temporaryPassword;
+  const login = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "phase2parent", password: temp, expectedRole: "PARENT" }
+  });
+  assert.equal(login.statusCode, 200, login.body);
+  assert.equal(login.headers["cache-control"], "no-store");
+  const changed = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "Phase2ParentSecure2026!" }
+  });
+  assert.equal(changed.statusCode, 200, changed.body);
+  const initial = changed.json<{ accessToken: string; refreshToken: string }>();
+  const [first, second] = await Promise.all([
+    app.inject({ method: "POST", url: "/v1/auth/refresh", payload: { refreshToken: initial.refreshToken } }),
+    app.inject({ method: "POST", url: "/v1/auth/refresh", payload: { refreshToken: initial.refreshToken } })
+  ]);
+  assert.deepEqual([first.statusCode, second.statusCode].sort(), [200, 401],
+    "A refresh token may only win the compare-and-swap once.");
+  const winner = [first, second].find((response) => response.statusCode === 200)!;
+  const session = winner.json<{ accessToken: string; refreshToken: string }>();
+  const me = await app.inject({ method: "GET", url: "/v1/auth/me",
+    headers: { authorization: `Bearer ${session.accessToken}` } });
+  assert.equal(me.statusCode, 200, me.body);
+  assert.equal(me.headers["cache-control"], "no-store");
+  const oldToken = await app.inject({ method: "POST", url: "/v1/auth/refresh",
+    payload: { refreshToken: initial.refreshToken } });
+  assert.equal(oldToken.statusCode, 401);
+  assert.equal(oldToken.json<{ error: string }>().error, "refresh_invalid");
+  const next = await app.inject({ method: "POST", url: "/v1/auth/refresh",
+    payload: { refreshToken: session.refreshToken } });
+  assert.equal(next.statusCode, 200, next.body);
+});
+
+test("Security Phase 2: archived accounts do not disclose existence on wrong passwords", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "SEC-ARCHIVED-PHASE2");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminToken}` },
+    payload: { username: "archivephase2", fullName: "Archived Phase Two" }
+  });
+  assert.equal(created.statusCode, 201, created.body);
+  const temporaryPassword = created.json<{ temporaryPassword: string; user: { id: string } }>();
+  assert.equal(created.headers["cache-control"], "no-store");
+  await client.query("UPDATE users SET status = 'ARCHIVED' WHERE school_id = $1 AND id = $2",
+    [schoolId, temporaryPassword.user.id]);
+  const invalid = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "archivephase2",
+      expectedRole: "PARENT", password: "WrongPassword2026!" }
+  });
+  assert.equal(invalid.statusCode, 401, invalid.body);
+  assert.equal(invalid.json<{ error: string }>().error, "invalid_credentials");
+  const correct = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "archivephase2",
+      expectedRole: "PARENT", password: temporaryPassword.temporaryPassword }
+  });
+  assert.equal(correct.statusCode, 403, correct.body);
+  assert.equal(correct.json<{ error: string }>().error, "account_unavailable");
+});
+
+test("Security Phase 2: concurrent incorrect admin codes cannot evade five-attempt ceiling", async (t) => {
+  const { app, client, passwordVerificationMessages } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "SEC-OTP-PHASE2");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const auth = { authorization: `Bearer ${adminToken}` };
+  const profile = await app.inject({
+    method: "PATCH", url: "/v1/admin/profile", headers: auth,
+    payload: { fullName: "OTP Phase Two", email: "phase2@example.com" }
+  });
+  assert.equal(profile.statusCode, 200, profile.body);
+  const start = async () => app.inject({
+    method: "POST", url: "/v1/auth/admin-password-verification/start", headers: auth,
+    payload: { currentPassword: "AdminSecure2026!" }
+  });
+  const challenge = await start();
+  assert.equal(challenge.statusCode, 200, challenge.body);
+  const verificationId = challenge.json<{ verificationId: string }>().verificationId;
+  const verify = (emailCode: string, id = verificationId) => app.inject({
+    method: "POST", url: "/v1/auth/admin-password-verification/verify", headers: auth,
+    payload: { verificationId: id, emailCode }
+  });
+
+  const guessed = await Promise.all(Array.from({ length: 7 }, () => verify("000000")));
+  for (const result of guessed) {
+    assert.ok([400, 410, 429].includes(result.statusCode), result.body);
+  }
+  const row = await client.query<{ attempts: number; consumed_at: string | null }>(
+    "SELECT attempts, consumed_at FROM admin_password_verifications WHERE id = $1", [verificationId]);
+  assert.equal(row.rows[0]?.attempts, 5, "Concurrent guesses must each increment atomically, never beyond five.");
+  const correctAfterLimit = await verify(passwordVerificationMessages.email[0]!.code);
+  assert.notEqual(correctAfterLimit.statusCode, 200, correctAfterLimit.body);
+
+  const replacement = await start();
+  assert.equal(replacement.statusCode, 200, replacement.body);
+  const replacementId = replacement.json<{ verificationId: string }>().verificationId;
+  const code = passwordVerificationMessages.email[1]!.code;
+  const [first, second] = await Promise.all([verify(code, replacementId), verify(code, replacementId)]);
+  assert.deepEqual([first.statusCode, second.statusCode].sort(), [200, 410],
+    "A verification challenge must issue exactly one proof.");
+});
