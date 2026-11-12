@@ -98,9 +98,11 @@ const adminLoadingTextByRoute: Record<string, string> = {
 };
 
 function loadingTextForAdminRoute(pathname: string): string {
-  const section = Object.keys(adminLoadingTextByRoute).find(
-    route => pathname === route || pathname.startsWith(`${route}/`)
-  );
+  // Match the most specific route first; /admin/pilot must not mask
+  // /admin/pilot/oversight, /service, /adoption, etc.
+  const section = Object.keys(adminLoadingTextByRoute)
+    .sort((left, right) => right.length - left.length)
+    .find(route => pathname === route || pathname.startsWith(`${route}/`));
   return section ? adminLoadingTextByRoute[section]! : "Loading accounts data…";
 }
 
@@ -499,6 +501,12 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
       setAcademicYears(data.academicYears);
       setSelectedAcademicYearIdState((current) => {
         if (current && data.academicYears.some((year) => year.id === current)) return current;
+        // The explicit year selection should survive refresh and page reload,
+        // but must never bleed into another school's workspace.
+        let previous = "";
+        try { previous = window.sessionStorage.getItem(`maktablink.admin.academic-year:${stored.school.id}`) ?? ""; }
+        catch { /* Private browsing may disallow web storage. */ }
+        if (data.academicYears.some((year) => year.id === previous)) return previous;
         return (
           data.academicYears.find((year) => year.status === "ACTIVE")?.id ??
           [...data.academicYears].reverse().find((year) => year.status !== "ARCHIVED")?.id ??
@@ -515,6 +523,8 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   function setSelectedAcademicYearId(yearId: string) {
     if (!academicYears.some((year) => year.id === yearId)) return;
     setSelectedAcademicYearIdState(yearId);
+    try { window.sessionStorage.setItem(`maktablink.admin.academic-year:${stored?.school.id}`, yearId); }
+    catch { /* Continue with the in-memory selection. */ }
   }
 
   function changeLocale(next: AdminLocale) {

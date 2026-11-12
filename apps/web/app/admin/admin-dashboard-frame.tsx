@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { adminLocaleOptions, type AdminLocale } from "./admin-i18n";
 import { useAdminWorkspace } from "./admin-workspace";
 import { adminSidebarSections, sidebarItemIsActive } from "./admin-sidebar-sections";
 import { AdminSubnavIcon, adminSubnavIconPaths } from "./admin-subnav-icons";
 
 type NavItem = { href: string; label: string };
-type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check";
+type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check" | "close";
 
 const navIcons: Record<string, Glyph> = {
   "/admin/dashboard": "dashboard", "/admin/academics": "academic", "/admin/accounts": "accounts",
@@ -37,7 +37,8 @@ const iconPaths: Record<Glyph, string> = {
   bell: "M18 8a6 6 0 0 0-12 0c0 7-3 8-3 9h18c0-1-3-2-3-9M10 21h4",
   logout: "M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M9 12h11",
   school: "M3 20h18M5 20V8l7-4 7 4v12M9 11h.01M15 11h.01M9 15h.01M15 15h.01M10 20v-3h4v3",
-  check: "m5 12 4 4 10-10"
+  check: "m5 12 4 4 10-10",
+  close: "M5 5l14 14M19 5 5 19"
 };
 
 function Icon({ name, size = 20 }: { name: Glyph; size?: number }) {
@@ -76,7 +77,10 @@ export function AdminDashboardFrame({
   const { stored, locale, t, setLocale, signOut, adminProfile, academicYears,
     selectedAcademicYearId, setSelectedAcademicYearId } = useAdminWorkspace();
   const [compact, setCompact] = useState(false);
+  const [compactPreferenceReady, setCompactPreferenceReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(
     () => Object.keys(adminSidebarSections).find((group) =>
@@ -85,22 +89,38 @@ export function AdminDashboardFrame({
   const [fragment, setFragment] = useState("");
   const [search, setSearch] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [highlightedSearchIndex, setHighlightedSearchIndex] = useState(-1);
   const searchRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLFormElement>(null);
   const userName = adminProfile.fullName || stored.session.user.username;
 
   const searchOptions = useMemo(() => {
-    const items = [...navItems,
+    // Keep the parent/child labels separate until rendering. Concatenating
+    // them before translating silently breaks navigation search in Dari/Pashto.
+    const items: Array<NavItem & { groupLabel?: string }> = [
+      ...navItems,
       ...Object.entries(adminSidebarSections).flatMap(([group, children]) =>
-        children.map((child) => ({ ...child, label: navItems.find((item) =>
-          item.href === group)?.label + " · " + child.label }))
-      )];
+        children.map((child) => ({
+          ...child,
+          groupLabel: navItems.find((item) => item.href === group)?.label
+        }))
+      )
+    ];
     const q = search.trim().toLocaleLowerCase();
-    if (!q) return items.slice(0, 7);
-    return items.filter((item) =>
-      item.label.toLocaleLowerCase().includes(q) ||
-      t(item.label).toLocaleLowerCase().includes(q)
-    ).slice(0, 9);
+    const matches = q
+      ? items.filter((item) =>
+          [item.label, t(item.label), item.groupLabel ?? "", item.groupLabel ? t(item.groupLabel) : ""]
+            .some((label) => label.toLocaleLowerCase().includes(q))
+        )
+      : items;
+    const seen = new Set<string>();
+    return matches.filter((item) => {
+      // Top-level and Overview subsections often point at the same URL.
+      // Never render duplicate option keys or duplicate navigation choices.
+      if (seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    }).slice(0, q ? 9 : 7);
   }, [navItems, search, t]);
 
   useEffect(() => {
@@ -114,6 +134,30 @@ export function AdminDashboardFrame({
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, [pathname]);
+
+  // Restore the desktop icon-rail preference without changing mobile drawer state.
+  useEffect(() => {
+    try { setCompact(window.localStorage.getItem("maktablink.admin.sidebar.compact") === "true"); }
+    catch { /* Storage can be disabled by a browser policy. */ }
+    setCompactPreferenceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!compactPreferenceReady) return; // Do not overwrite saved state on initial render.
+    try { window.localStorage.setItem("maktablink.admin.sidebar.compact", String(compact)); }
+    catch { /* The navigation remains usable without persistence. */ }
+  }, [compact, compactPreferenceReady]);
+
+  useEffect(() => {
+    if (!isMobileLayout || !mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const first = sidebarRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), select'
+    );
+    first?.focus();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [isMobileLayout, mobileOpen]);
 
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 900px)");
@@ -141,7 +185,8 @@ export function AdminDashboardFrame({
         setShowResults(true);
       } else if (event.key === "Escape") {
         setShowResults(false);
-        setMobileOpen(false);
+        setHighlightedSearchIndex(-1);
+        if (mobileOpen) closeMobileSidebar(true);
         if (document.activeElement === searchRef.current) searchRef.current?.blur();
       }
     }
@@ -156,10 +201,66 @@ export function AdminDashboardFrame({
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, []);
+  }, [mobileOpen]);
+
+  function closeMobileSidebar(restoreFocus = false) {
+    setMobileOpen(false);
+    if (restoreFocus) window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  function closeSidebarAfterNavigation() {
+    setMobileOpen(false);
+    if (isMobileLayout) window.requestAnimationFrame(() =>
+      document.getElementById("admin-workspace-content")?.focus());
+  }
+
+  function handleSidebarKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (!isMobileLayout || !mobileOpen || event.key !== "Tab") return;
+    const focusable = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+    ) ?? []).filter((element) => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function handleSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setShowResults(true);
+      if (!searchOptions.length) return;
+      setHighlightedSearchIndex((current) => event.key === "ArrowDown"
+        ? Math.min(searchOptions.length - 1, current + 1)
+        : current <= 0 ? searchOptions.length - 1 : current - 1);
+    } else if (event.key === "Home" && showResults) {
+      event.preventDefault();
+      setHighlightedSearchIndex(searchOptions.length ? 0 : -1);
+    } else if (event.key === "End" && showResults) {
+      event.preventDefault();
+      setHighlightedSearchIndex(searchOptions.length - 1);
+    } else if (event.key === "Enter" && showResults && highlightedSearchIndex >= 0) {
+      const option = searchOptions[highlightedSearchIndex];
+      if (option) {
+        event.preventDefault();
+        navigate(option.href);
+      }
+    } else if (event.key === "Escape") {
+      setShowResults(false);
+      setHighlightedSearchIndex(-1);
+      event.stopPropagation();
+    }
+  }
 
   function navigate(href: string) {
     setShowResults(false);
+    setHighlightedSearchIndex(-1);
     setSearch("");
     setMobileOpen(false);
     router.push(href);
@@ -176,10 +277,21 @@ export function AdminDashboardFrame({
       lang={locale} dir={locale === "en" ? "ltr" : "rtl"}>
       <a className="ml-admin-skip" href="#admin-workspace-content">{t("Skip to content")}</a>
       {mobileOpen ? <button className="ml-admin-sidebar-backdrop" type="button"
-        aria-label={t("Close sidebar")} onClick={() => setMobileOpen(false)} /> : null}
+        aria-label={t("Close sidebar")} onClick={() => closeMobileSidebar(true)} /> : null}
 
-      <aside id="ml-admin-sidebar" className="ml-admin-sidebar" aria-label={t("School Administration")}>
-        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={() => setMobileOpen(false)}>
+      <aside id="ml-admin-sidebar" ref={sidebarRef} className="ml-admin-sidebar"
+        aria-label={t("School Administration")}
+        role={isMobileLayout ? "dialog" : "complementary"}
+        aria-modal={isMobileLayout && mobileOpen ? true : undefined}
+        aria-hidden={isMobileLayout && !mobileOpen ? true : undefined}
+        inert={isMobileLayout && !mobileOpen}
+        onKeyDown={handleSidebarKeyDown}>
+        <button className="ml-admin-sidebar-close" type="button"
+          aria-label={t("Close sidebar")} title={t("Close sidebar")}
+          onClick={() => closeMobileSidebar(true)}>
+          <Icon name="close" size={20} />
+        </button>
+        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={closeSidebarAfterNavigation}>
           <span className="ml-admin-brand-icon"><Icon name="academic" size={27} /></span>
           <span className="ml-admin-sidebar-brand-text"><strong>MaktabLink</strong><small>{t("School Administration")}</small></span>
         </Link>
@@ -207,7 +319,7 @@ export function AdminDashboardFrame({
                       (active ? " admin-route-nav-link-active ml-admin-side-link-active" : "")}
                     aria-current={currentPath === item.href && !searchTab && !fragment ? "page" : undefined}
                     onClick={() => {
-                      setMobileOpen(false);
+                      closeSidebarAfterNavigation();
                       setFragment("");
                       if (expandable) setExpandedGroup(item.href);
                     }}>
@@ -237,7 +349,7 @@ export function AdminDashboardFrame({
                           className={selected ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
                           aria-current={selected ? "page" : undefined}
                           onClick={() => {
-                            setMobileOpen(false);
+                            closeSidebarAfterNavigation();
                             setFragment(new URL(entry.href, window.location.origin).hash);
                           }}>
                           {hasIcon ? (
@@ -257,8 +369,8 @@ export function AdminDashboardFrame({
         </nav>
 
         <div className="ml-admin-sidebar-footer">
-          <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={() => setMobileOpen(false)}>
-            <UserAvatar name={userName} url={adminProfile.imageUrl} />
+          <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={closeSidebarAfterNavigation}>
+            <span className="ml-admin-sidebar-profile-icon" aria-hidden="true"><Icon name="profile" size={20} /></span>
             <span className="ml-admin-sidebar-profile-name"><strong>{userName}</strong><small>{t("School Administration")}</small></span>
           </Link>
           <button className="ml-admin-sign-out" type="button" title={t("Sign out")}
@@ -268,9 +380,9 @@ export function AdminDashboardFrame({
         </div>
       </aside>
 
-      <div className="ml-admin-main-column">
+      <div className="ml-admin-main-column" inert={isMobileLayout && mobileOpen}>
         <header className="ml-admin-topbar">
-          <button className="ml-admin-menu-button" type="button"
+          <button ref={menuButtonRef} className="ml-admin-menu-button" type="button"
             aria-label={t(isMobileLayout
               ? (mobileOpen ? "Close sidebar" : "Open sidebar")
               : (compact ? "Expand sidebar" : "Collapse sidebar"))}
@@ -284,27 +396,52 @@ export function AdminDashboardFrame({
           </button>
 
           <form className="ml-admin-search" ref={searchBoxRef} role="search"
+            onBlur={() => {
+              // Delay until after a mouse click on an option has been handled.
+              window.setTimeout(() => {
+                if (!searchBoxRef.current?.contains(document.activeElement)) {
+                  setShowResults(false);
+                  setHighlightedSearchIndex(-1);
+                }
+              }, 0);
+            }}
             onSubmit={(event) => {
               event.preventDefault();
-              if (searchOptions[0]) navigate(searchOptions[0].href);
+              const option = highlightedSearchIndex < 0 ? searchOptions[0] : searchOptions[highlightedSearchIndex];
+              if (option) navigate(option.href);
             }}>
             <Icon name="search" size={19} />
             <input ref={searchRef} type="search" value={search}
-              onChange={(event) => { setSearch(event.target.value); setShowResults(true); }}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setHighlightedSearchIndex(-1);
+                setShowResults(true);
+              }}
               onFocus={() => setShowResults(true)}
+              onKeyDown={handleSearchKeyDown}
               placeholder={t("Search sections and pages…")}
               aria-label={t("Search sections and pages…")}
-              aria-expanded={showResults} aria-controls="admin-page-search-results"
+              role="combobox" aria-autocomplete="list"
+              aria-expanded={showResults}
+              aria-controls={showResults ? "admin-page-search-results" : undefined}
+              aria-activedescendant={showResults && highlightedSearchIndex >= 0
+                ? "admin-page-search-option-" + highlightedSearchIndex : undefined}
               autoComplete="off" />
             <kbd>Ctrl K</kbd>
             {showResults ? (
               <div className="ml-admin-search-results" id="admin-page-search-results" role="listbox"
                 aria-label={t("Search results")}>
-                {searchOptions.length ? searchOptions.map((item) => (
-                  <button type="button" key={item.href} role="option" aria-selected={currentPath === item.href}
+                {searchOptions.length ? searchOptions.map((item, index) => (
+                  <button type="button" key={item.href} id={"admin-page-search-option-" + index}
+                    role="option" tabIndex={-1}
+                    aria-selected={highlightedSearchIndex === index}
+                    onMouseEnter={() => setHighlightedSearchIndex(index)}
+                    data-admin-no-loading="true"
                     onClick={() => navigate(item.href)}>
                     <Icon name={navIcons[item.href] ?? "academic"} size={17} />
-                    <span>{t(item.label)}</span><Icon name="arrow" size={15} />
+                    <span>{item.groupLabel
+                      ? `${t(item.groupLabel)} · ${t(item.label)}`
+                      : t(item.label)}</span><Icon name="arrow" size={15} />
                   </button>
                 )) : <span className="ml-admin-search-empty">{t("No matching pages")}</span>}
               </div>
@@ -334,7 +471,7 @@ export function AdminDashboardFrame({
           </div>
         </header>
 
-        <div className="ml-admin-content-area" id="admin-workspace-content">
+        <div className="ml-admin-content-area" id="admin-workspace-content" tabIndex={-1}>
           <section className="admin-route-heading ml-admin-page-heading">
             <div className="ml-admin-page-heading-intro">
               <span className="ml-admin-page-heading-symbol" aria-hidden="true">

@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 4 admin accessibility, responsive navigation and UI consistency
+        run: pnpm verify:admin:phase4
+
       - name: Phase 3 migrations, school isolation and academic-year concurrency
         run: pnpm verify:db:phase3
 
@@ -290,6 +293,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 4 admin accessibility, responsive navigation and UI consistency
+        run: pnpm verify:admin:phase4
+
       - name: Phase 3 migrations, school isolation and academic-year concurrency
         run: pnpm verify:db:phase3
 
