@@ -9515,3 +9515,45 @@ test("Security Phase 2: concurrent incorrect admin codes cannot evade five-attem
   assert.deepEqual([first.statusCode, second.statusCode].sort(), [200, 410],
     "A verification challenge must issue exactly one proof.");
 });
+
+
+test("Security Phase 2: current-password probes are rate-limited across routes", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "SEC-PASSWORD-PHASE2");
+  const adminToken = await bootstrapAdmin(app, schoolId);
+  const created = await app.inject({
+    method: "POST", url: "/v1/admin/families/parents",
+    headers: { authorization: `Bearer ${adminToken}` },
+    payload: { username: "passwordphase2", fullName: "Password Phase Two Parent" }
+  });
+  assert.equal(created.statusCode, 201, created.body);
+  const temp = created.json<{ temporaryPassword: string }>().temporaryPassword;
+  const login = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId, username: "passwordphase2", expectedRole: "PARENT", password: temp }
+  });
+  assert.equal(login.statusCode, 200, login.body);
+  const changed = await app.inject({
+    method: "POST", url: "/v1/auth/change-temporary-password",
+    headers: { authorization: `Bearer ${login.json<{ accessToken: string }>().accessToken}` },
+    payload: { newPassword: "ParentSecurePhase2!" }
+  });
+  assert.equal(changed.statusCode, 200, changed.body);
+  const auth = { authorization: `Bearer ${changed.json<{ accessToken: string }>().accessToken}` };
+  for (let i = 0; i < 10; i++) {
+    const wrong = await app.inject({
+      method: "POST", url: "/v1/auth/change-password", headers: auth,
+      payload: { currentPassword: "WrongParentPassword!", newPassword: "DifferentSecure2026!" }
+    });
+    assert.equal(wrong.statusCode, 401, wrong.body);
+  }
+  const limited = await app.inject({
+    method: "POST", url: "/v1/auth/change-password", headers: auth,
+    payload: { currentPassword: "ParentSecurePhase2!", newPassword: "DifferentSecure2026!" }
+  });
+  assert.equal(limited.statusCode, 429, limited.body);
+  assert.equal(limited.json<{ error: string }>().error, "current_password_rate_limited");
+  const stillSignedIn = await app.inject({ method: "GET", url: "/v1/auth/me", headers: auth });
+  assert.equal(stillSignedIn.statusCode, 200, stillSignedIn.body);
+});
