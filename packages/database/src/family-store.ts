@@ -594,48 +594,45 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     },
 
     async deleteStudent(schoolId, studentId) {
-      const [student] = await db
-        .select()
-        .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
-        .limit(1);
-      if (!student) throw new FamilyNotFoundError("Student not found.");
-
-      const [attendance, grade, invoice] = await Promise.all([
-        db
-          .select({ id: studentAttendances.id })
-          .from(studentAttendances)
-          .where(and(eq(studentAttendances.schoolId, schoolId), eq(studentAttendances.studentId, studentId)))
-          .limit(1),
-        db
-          .select({ id: gradeRecords.id })
-          .from(gradeRecords)
-          .where(and(eq(gradeRecords.schoolId, schoolId), eq(gradeRecords.studentId, studentId)))
-          .limit(1),
-        db
-          .select({ id: feeInvoices.id })
-          .from(feeInvoices)
-          .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.studentId, studentId)))
-          .limit(1)
-      ]);
-
-      if (attendance[0] || grade[0] || invoice[0]) {
-        throw new FamilyConflictError(
-          "This student cannot be deleted because attendance, grade, or fee data is linked to the student."
-        );
-      }
-
-      await db.transaction(async (tx) => {
-        await tx
-          .delete(students)
-          .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)));
-
-        if (student.userId) {
-          await tx
-            .delete(users)
-            .where(and(eq(users.schoolId, schoolId), eq(users.id, student.userId)));
+      try {
+        await db.transaction(async (tx) => {
+          // Lock first, then inspect linked data. In particular, a concurrent
+          // login attachment must not leave a student-only orphan user.
+          const [student] = await tx.select().from(students)
+            .where(and(eq(students.schoolId, schoolId), eq(students.id, studentId)))
+            .limit(1).for("update");
+          if (!student) throw new FamilyNotFoundError("Student not found.");
+          const [attendance, grade, invoice] = await Promise.all([
+            tx.select({ id: studentAttendances.id }).from(studentAttendances)
+              .where(and(eq(studentAttendances.schoolId, schoolId),
+                eq(studentAttendances.studentId, studentId))).limit(1),
+            tx.select({ id: gradeRecords.id }).from(gradeRecords)
+              .where(and(eq(gradeRecords.schoolId, schoolId),
+                eq(gradeRecords.studentId, studentId))).limit(1),
+            tx.select({ id: feeInvoices.id }).from(feeInvoices)
+              .where(and(eq(feeInvoices.schoolId, schoolId),
+                eq(feeInvoices.studentId, studentId))).limit(1)
+          ]);
+          if (attendance.length || grade.length || invoice.length) {
+            throw new FamilyConflictError(
+              "This student cannot be deleted because attendance, grade, or fee data is linked to the student."
+            );
+          }
+          const [deleted] = await tx.delete(students).where(and(
+            eq(students.schoolId, schoolId), eq(students.id, studentId)
+          )).returning({ id: students.id });
+          if (!deleted) throw new FamilyNotFoundError("Student not found.");
+          if (student.userId) {
+            await tx.delete(users).where(and(eq(users.schoolId, schoolId),
+              eq(users.id, student.userId), eq(users.role, "STUDENT")));
+          }
+        });
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new FamilyConflictError("This student cannot be deleted while school records reference the student.");
         }
-      });
+        throw error;
+      }
     },
 
     async importParents(schoolId, rows, batch) {
