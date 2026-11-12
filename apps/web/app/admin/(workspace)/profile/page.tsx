@@ -394,26 +394,95 @@ export default function AdminProfilePage() {
 
   return (
     <section className="admin-profile-page admin-page-enter ml-profile-redesign">
-      <div className="ml-profile-cover">
-        <div className="ml-profile-cover-eyebrow">{t("School Administration")} / {t("Administrator profile")}</div>
-        <div className="ml-profile-cover-main">
-          <div className="ml-profile-cover-avatar" aria-hidden="true">
-            {imageUrl && !imageFailed ? (
-              <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
-            ) : (
-              <span>{contactPreview.fullName.slice(0, 1).toUpperCase()}</span>
-            )}
+      <header className="ml-profile-cover">
+        <div className="ml-profile-cover-topline">
+          <div className="ml-profile-cover-eyebrow">
+            {t("School Administration")} / {t("Administrator profile")}
           </div>
-          <div className="ml-profile-cover-info">
-            <h2>{contactPreview.fullName}</h2>
-            <p>{contactPreview.jobTitle || t("School admin")}</p>
-            <div className="ml-profile-cover-badges">
-              <span>{t("School admin")}</span>
-              <span>{stored.school.name}</span>
+          <span className="ml-profile-cover-live">{t("Live preview")}</span>
+        </div>
+        <div className="ml-profile-cover-content">
+          <div className="ml-profile-cover-identity">
+            <div className="ml-profile-cover-main">
+              <div className="ml-profile-cover-avatar" aria-hidden="true">
+                {imageUrl && !imageFailed ? (
+                  <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
+                ) : (
+                  <span>{contactPreview.fullName.slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
+              <div className="ml-profile-cover-info">
+                <h2>{contactPreview.fullName}</h2>
+                <p>{contactPreview.jobTitle || t("School admin")}</p>
+                <div className="ml-profile-cover-badges">
+                  <span>{t("School admin")}</span>
+                  <span>{stored.school.name}</span>
+                </div>
+              </div>
+            </div>
+            {contactPreview.bio ? (
+              <p className="ml-profile-cover-bio">{contactPreview.bio}</p>
+            ) : null}
+            {imageFailed && imageUrl ? (
+              <p className="ml-profile-cover-image-error" role="status">
+                {t("The saved image could not be loaded. Check the image URL or choose an image from your PC.")}
+              </p>
+            ) : null}
+          </div>
+          <div className="ml-profile-cover-contact">
+            <h3>{t("Contact details")}</h3>
+            <div className="ml-profile-cover-contact-grid">
+              {contactPreview.email ? (
+                <a className="ml-profile-cover-contact-item"
+                  href={"mailto:" + contactPreview.email}>
+                  <span className="ml-profile-cover-contact-label">{t("Email")}</span>
+                  <strong dir="ltr">{contactPreview.email}</strong>
+                </a>
+              ) : null}
+              {contactPreview.whatsapp ? (
+                whatsappHref(contactPreview.whatsapp) ? (
+                  <a className="ml-profile-cover-contact-item"
+                    href={whatsappHref(contactPreview.whatsapp)}
+                    target="_blank" rel="noopener noreferrer">
+                    <span className="ml-profile-cover-contact-label">{t("WhatsApp")}</span>
+                    <strong dir="ltr">{contactPreview.whatsapp}</strong>
+                  </a>
+                ) : (
+                  <div className="ml-profile-cover-contact-item">
+                    <span className="ml-profile-cover-contact-label">{t("WhatsApp")}</span>
+                    <strong dir="ltr">{contactPreview.whatsapp}</strong>
+                  </div>
+                )
+              ) : null}
+              {contactPreview.phone ? (
+                <a className="ml-profile-cover-contact-item"
+                  href={"tel:" + contactPreview.phone}>
+                  <span className="ml-profile-cover-contact-label">{t("Phone")}</span>
+                  <strong dir="ltr">{contactPreview.phone}</strong>
+                </a>
+              ) : null}
+              {contactPreview.officeLocation ? (
+                <div className="ml-profile-cover-contact-item">
+                  <span className="ml-profile-cover-contact-label">{t("Office / location")}</span>
+                  <strong>{contactPreview.officeLocation}</strong>
+                </div>
+              ) : null}
+              {contactPreview.officeHours ? (
+                <div className="ml-profile-cover-contact-item">
+                  <span className="ml-profile-cover-contact-label">{t("Office hours")}</span>
+                  <strong>{contactPreview.officeHours}</strong>
+                </div>
+              ) : null}
+              {!contactPreview.email && !contactPreview.whatsapp && !contactPreview.phone &&
+               !contactPreview.officeLocation && !contactPreview.officeHours ? (
+                <p className="ml-profile-cover-contact-empty">
+                  {t("Add your contact details to see them here.")}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="admin-profile-grid">
         <article className="admin-panel admin-profile-card ml-profile-editor" id="ml-profile-edit">
@@ -520,7 +589,7 @@ export default function AdminProfilePage() {
               </div>
 
               <div className="ml-profile-save-row">
-                <p>{t("Your contact card preview updates as you type. Save to apply your changes.")}</p>
+                <p>{t("The profile header updates as you type. Save to apply your changes.")}</p>
                 <button className="admin-primary" disabled={busy || imageProcessing} type="submit">
                   {t(busy ? "Saving…" : "Save changes")}
                 </button>
@@ -529,53 +598,7 @@ export default function AdminProfilePage() {
           )}
         </article>
 
-        <aside className="admin-profile-side" aria-label={t("Contact card preview")}>
-          <article className="admin-panel admin-contact-preview" id="ml-profile-preview">
-            <div className="ml-profile-preview-top">
-              <span className="admin-kicker">{t("Contact card preview")}</span>
-              <span className="ml-profile-live-pill">{t("Live preview")}</span>
-            </div>
-            <div className="admin-contact-avatar">
-              {imageUrl && !imageFailed ? (
-                <img
-                  key={imageUrl}
-                  src={imageUrl}
-                  alt=""
-                  onLoad={() => setImageFailed(false)}
-                  onError={() => setImageFailed(true)}
-                />
-              ) : (
-                <span aria-hidden="true">{contactPreview.fullName.slice(0, 1).toUpperCase()}</span>
-              )}
-            </div>
-            {imageFailed && imageUrl ? (
-              <p className="admin-profile-image-error">{t("The saved image could not be loaded. Check the image URL or choose an image from your PC.")}</p>
-            ) : null}
-            <h3>{contactPreview.fullName}</h3>
-            {contactPreview.jobTitle ? <p className="admin-contact-title">{contactPreview.jobTitle}</p> : null}
-            {contactPreview.bio ? <p className="admin-contact-bio">{contactPreview.bio}</p> : null}
-
-            <div className="admin-contact-links">
-              {!contactPreview.email && !contactPreview.whatsapp && !contactPreview.phone &&
-               !contactPreview.officeLocation && !contactPreview.officeHours ? (
-                <p className="ml-profile-preview-empty">{t("Add your contact details to see them here.")}</p>
-              ) : null}
-              {contactPreview.email ? (
-                <a href={`mailto:${contactPreview.email}`}>{t("Email")}: {contactPreview.email}</a>
-              ) : null}
-              {contactPreview.whatsapp ? (
-                <a href={whatsappHref(contactPreview.whatsapp)} target="_blank" rel="noreferrer">
-                  {t("WhatsApp")}: {contactPreview.whatsapp}
-                </a>
-              ) : null}
-              {contactPreview.phone ? <a href={`tel:${contactPreview.phone}`}>{t("Phone")}: {contactPreview.phone}</a> : null}
-              {contactPreview.officeLocation ? <span>{t("Office / location")}: {contactPreview.officeLocation}</span> : null}
-              {contactPreview.officeHours ? <span>{t("Office hours")}: {contactPreview.officeHours}</span> : null}
-            </div>
-          </article>
-
-        </aside>
-      </div>
+     </div>
 
       <section className="ml-profile-private-section" aria-labelledby="ml-profile-private-heading">
         <header className="ml-profile-private-heading">

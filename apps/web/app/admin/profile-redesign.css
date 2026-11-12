@@ -38,7 +38,7 @@
 .ml-admin-dashboard-shell .ml-profile-cover-eyebrow {
   position: relative;
   z-index: 1;
-  margin-bottom: 20px;
+  margin: 0;
   color: #a8c8fb;
   font-size: 12px;
   font-weight: 830;
@@ -114,6 +114,167 @@
   overflow-wrap: anywhere;
 }
 
+
+/* The former separate contact-preview card is merged into the blue header.
+   One source of truth (profile form state) drives all contact values live. */
+.ml-admin-dashboard-shell .ml-profile-cover-topline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 24px;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid rgba(195, 240, 216, .28);
+  border-radius: 999px;
+  background: rgba(46, 178, 125, .18);
+  color: #d1f7e4;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 740;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #74edac;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: clamp(22px, 3vw, 42px);
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-identity {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-bio {
+  max-width: 48ch;
+  margin: 0;
+  padding-inline-start: 14px;
+  border-inline-start: 3px solid rgba(193, 220, 255, .52);
+  color: #deecff;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-image-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 205, 145, .4);
+  border-radius: 9px;
+  background: rgba(116, 65, 21, .29);
+  color: #fff1d8;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact {
+  min-width: 0;
+  padding-inline-start: clamp(18px, 2.4vw, 30px);
+  border-inline-start: 1px solid rgba(221, 236, 255, .24);
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact h3 {
+  margin: 0 0 12px;
+  color: #e3efff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  min-height: 62px;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(222, 235, 255, .17);
+  border-radius: 12px;
+  background: rgba(235, 246, 255, .095);
+  color: #fff;
+  text-align: start;
+  text-decoration: none;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-label {
+  display: block;
+  color: #b8d5fb;
+  font-size: 11px;
+  font-weight: 725;
+  line-height: 1.35;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-item strong {
+  max-width: 100%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 685;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-item[href]:hover {
+  background: rgba(242, 248, 255, .18);
+  border-color: rgba(224, 241, 255, .43);
+  text-decoration: none;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-item[href]:focus-visible {
+  outline: 3px solid #b4e1ff;
+  outline-offset: 3px;
+}
+.ml-admin-dashboard-shell .ml-profile-cover-contact-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 13px 15px;
+  border: 1px dashed rgba(220, 238, 255, .36);
+  border-radius: 11px;
+  color: #d9e9ff;
+  font-size: 13px;
+  line-height: 1.55;
+}
+@media (max-width: 1080px) {
+  .ml-admin-dashboard-shell .ml-profile-cover-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .ml-admin-dashboard-shell .ml-profile-cover-contact {
+    padding-inline-start: 0;
+    padding-block-start: 20px;
+    border-inline-start: 0;
+    border-block-start: 1px solid rgba(221, 236, 255, .24);
+  }
+  .ml-admin-dashboard-shell .ml-profile-cover-bio { max-width: none; }
+}
+@media (max-width: 520px) {
+  .ml-admin-dashboard-shell .ml-profile-cover-contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .ml-profile-cover-contact-item {
+    min-height: 54px;
+  }
+}
+
 /* Public contact information is edited above; credentials and security
    belong to a separate private section below with an aligned sidebar. */
 .ml-admin-dashboard-shell .ml-profile-private-section {
@@ -163,12 +324,11 @@
 
 .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.47fr) minmax(300px, .73fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
 .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-card,
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-preview,
 .ml-admin-dashboard-shell .ml-profile-redesign .admin-password-card {
   min-width: 0;
   border: 1px solid #e0e8f4;
@@ -318,107 +478,6 @@
   font-weight: 840;
   box-shadow: 0 8px 18px rgba(26, 91, 203, .14);
 }
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-side {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
-  min-width: 0;
-  align-content: start;
-  align-self: start;
-  position: sticky;
-  top: 24px;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-preview {
-  gap: 10px;
-  justify-items: center;
-  padding: 25px 22px;
-  background: linear-gradient(180deg,#f6f9ff 0,#fff 36%);
-}
-.ml-admin-dashboard-shell .ml-profile-preview-top {
-  display: flex;
-  flex-wrap: wrap;
-  width: 100%;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 7px;
-}
-.ml-admin-dashboard-shell .ml-profile-preview-top .admin-kicker {
-  font-size: 11px;
-  line-height: 1.5;
-}
-.ml-admin-dashboard-shell .ml-profile-live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 4px 9px;
-  border: 1px solid #cfebda;
-  border-radius: 99px;
-  background: #effbf3;
-  color: #218457;
-  font-size: 10px;
-  font-weight: 800;
-}
-.ml-admin-dashboard-shell .ml-profile-live-pill::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #26a86b;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-avatar {
-  width: 91px;
-  height: 91px;
-  border-radius: 24px;
-  margin-bottom: 4px;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-preview h3 {
-  margin: 0;
-  color: #1c3150;
-  font-size: 20px;
-  line-height: 1.35;
-  font-weight: 850;
-  overflow-wrap: anywhere;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-title {
-  margin: 0;
-  color: #657b99;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-bio {
-  width: 100%;
-  padding: 10px 0;
-  border-top: 1px solid #e6edf7;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-links { gap: 8px; margin-top: 12px; }
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-links a,
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-links span {
-  padding: 11px 13px;
-  border: 1px solid #e2e9f5;
-  border-radius: 10px;
-  background: #fff;
-  color: #495f7f;
-  line-height: 1.6;
-  font-size: 13px;
-  text-align: start;
-  overflow-wrap: anywhere;
-}
-.ml-admin-dashboard-shell .ml-profile-redesign .admin-contact-links a:hover {
-  color: #2058be;
-  border-color: #bdd0f2;
-  background: #f4f8ff;
-}
-.ml-admin-dashboard-shell .ml-profile-preview-empty {
-  margin: 0;
-  padding: 19px 12px;
-  border-radius: 12px;
-  background: #f5f8fd;
-  color: #8796ab;
-  font-size: 12px;
-  line-height: 1.6;
-  text-align: center;
-}
 .ml-admin-dashboard-shell .ml-profile-account {
   padding: 25px 22px;
 }
@@ -479,9 +538,6 @@
   background: #fff;
 }
 @media (max-width: 1140px) {
-  .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-grid {
-    grid-template-columns: minmax(0, 1.3fr) minmax(270px, .8fr);
-  }
   .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -489,10 +545,6 @@
 }
 @media (max-width: 950px) {
   .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-side {
-    position: static;
     grid-template-columns: minmax(0, 1fr);
   }
   .ml-admin-dashboard-shell .ml-profile-private-grid {
@@ -504,7 +556,6 @@
   }
 }
 @media (max-width: 700px) {
-  .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-side { grid-template-columns: minmax(0, 1fr); }
   .ml-admin-dashboard-shell .ml-profile-cover-main { align-items: flex-start; gap: 14px; }
   .ml-admin-dashboard-shell .ml-profile-cover-avatar {
     width: 67px;
@@ -526,11 +577,6 @@
   .ml-admin-dashboard-shell .ml-profile-private-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
-  }
-}
-@media (max-height: 700px) {
-  .ml-admin-dashboard-shell .ml-profile-redesign .admin-profile-side {
-    position: static;
   }
 }
 @media (max-width: 700px) {
