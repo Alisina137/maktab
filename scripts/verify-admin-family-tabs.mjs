@@ -1,0 +1,92 @@
+// Four real Family workflows remain functional, with exactly one content
+// panel mounted and a single URL-backed active tab at a time.
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const read = (path) => readFileSync(resolve(process.cwd(), path), "utf8");
+const family = read("apps/web/app/admin/family-panel.tsx");
+const tabs = read("apps/web/app/admin/family-tabs-model.ts");
+const nav = read("apps/web/app/admin/admin-sidebar-sections.ts");
+const css = read("apps/web/app/admin/family-tabs.css");
+const i18n = read("apps/web/app/admin/admin-i18n.ts");
+const routes = read("apps/web/app/admin/admin-section-route.ts");
+const layout = read("apps/web/app/admin/(workspace)/layout.tsx");
+
+const sections = ["add-student", "parent-account", "student-account", "bulk-import"];
+assert.equal((tabs.match(/\{ id: "/g) ?? []).length, 4,
+  "Family navigation must have exactly four tabs");
+for (const [index, id] of sections.entries()) {
+  assert.ok(tabs.includes('id: "' + id + '"'),
+    "Family navigation tab missing: " + id);
+  assert.ok(family.includes('activeTab === "' + id + '"') &&
+    family.includes('id="family-panel-' + id + '"') &&
+    family.includes('aria-labelledby="family-tab-' + id + '"') &&
+    family.includes('role="tabpanel"'),
+    "Only the selected family workflow should be rendered: " + id);
+  assert.ok(tabs.indexOf('id: "' + id + '"') >
+    (index === 0 ? -1 : tabs.indexOf('id: "' + sections[index - 1] + '"')),
+    "Family workflow order must be preserved");
+}
+assert.ok(family.includes('useAdminSectionRoute<FamilyTab>(') &&
+  family.includes('"/admin/families", FAMILY_TABS.map((tab) => tab.id), "add-student"') &&
+  family.includes('role="tablist" aria-label={t("Family sections")}') &&
+  family.includes('aria-selected={selected}') &&
+  family.includes('tabIndex={selected ? 0 : -1}') &&
+  family.includes('data-admin-no-loading="true"') &&
+  family.includes('event.key === "ArrowRight"') &&
+  family.includes('event.key === "ArrowLeft"') &&
+  family.includes('event.key === "Home"') &&
+  family.includes('event.key === "End"') &&
+  family.includes('locale === "en" ? 1 : -1') &&
+  routes.includes('searchParams.get("tab")') &&
+  layout.includes("Suspense"),
+  "Accessible bilingual keyboard navigation, deep links and Back/Forward are required");
+assert.ok(nav.includes('"/admin/families": FAMILY_TABS.map') &&
+  nav.includes('href: index === 0 ? "/admin/families" : "/admin/families?tab=" + tab.id') &&
+  !nav.includes("/admin/families#family-parents"),
+  "Sidebar must link to visible tab panels rather than hidden anchors");
+const bounds = sections.map((id) => family.indexOf('activeTab === "' + id + '"'));
+assert.ok(bounds.every((index) => index > 0) &&
+  bounds.every((index, i) => i === 0 || index > bounds[i - 1]),
+  "Family content tabs must be in the expected order");
+const ranges = sections.map((id,i) =>
+  family.slice(bounds[i],i === sections.length-1 ?
+    family.indexOf("\n    </section>\n  );\n}",bounds[i]) : bounds[i+1]));
+assert.ok(ranges[0].includes('onSubmit={createStudent}') &&
+  !ranges[0].includes('onSubmit={createParent}') &&
+  !ranges[0].includes('onSubmit={createStudentAccount}'),
+  "Add student must be the default standalone form");
+assert.ok(ranges[1].includes('onSubmit={createParent}') &&
+  ranges[1].includes('id="family-parents"') &&
+  ranges[1].indexOf('onSubmit={createParent}') < ranges[1].indexOf('id="family-parents"') &&
+  !ranges[1].includes('onSubmit={createStudentAccount}'),
+  "Parent account tab must show its creation form above the parent list");
+assert.ok(ranges[2].includes('onSubmit={createStudentAccount}') &&
+  ranges[2].includes('id="family-students"') &&
+  ranges[2].indexOf('onSubmit={createStudentAccount}') < ranges[2].indexOf('id="family-students"') &&
+  !ranges[2].includes('onSubmit={createParent}'),
+  "Student account tab must show its login form above the student list");
+assert.ok(ranges[3].includes('id="family-import"') &&
+  ranges[3].includes('commitImport()') &&
+  ranges[3].includes('validateImport()'),
+  "Bulk Import must retain file validation and confirmed import actions");
+assert.ok(family.indexOf('className="credential-card family-account-preview"') < bounds[0] &&
+  family.includes('exportAccountPreviewPdf(accountPreview)') &&
+  family.includes('accountPreviewClosePrompt'),
+  "Secure one-time credentials and confirmation must remain visible on every tab");
+for (const phrase of [
+  'className="ml-family-tabbar"',
+  ".ml-family-tab-active", ".ml-family-tab-content",
+  ".family-account-layout", ".family-account-column",
+  "grid-template-columns: minmax(0, 1fr)",
+  "@media (max-width: 1160px)", "@media (max-width: 520px)",
+  "@media (prefers-reduced-motion: reduce)"
+]) {
+  assert.ok(css.includes(phrase), "Family tab layout missing " + phrase);
+}
+for (const key of ["Family management","Family sections","Parent account","Student account"]) {
+  assert.equal(i18n.split(JSON.stringify(key) + ":").length, 3,
+    "Family tab needs Dari and Pashto translations: " + key);
+}
+console.log("Admin Families verified: default Add Student, parent form + list, student form + list, bulk import, URL-backed accessible tabs and RTL.");
