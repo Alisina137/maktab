@@ -760,6 +760,22 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
       // Serialize same-class/day edits. Handle competing first submissions via
       // ON CONFLICT, and accept exact network retries without duplicate writes.
       const result = await db.transaction(async (tx) => {
+        // Match the lock taken by administrator day-closure writes. Without a
+        // shared lock, a closure and first class submission could both see
+        // "no rows" and commit, leaving marks on a closed school day.
+        const [lockedYear] = await tx.select({ status: academicYears.status })
+          .from(academicYears).where(and(eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, negaran.academicYearId))).limit(1).for("update");
+        if (lockedYear?.status !== "ACTIVE") {
+          throw new AttendanceConflictError("Attendance requires an active academic year.");
+        }
+        const [dayClosure] = await tx.select({ id: attendanceClosures.id })
+          .from(attendanceClosures).where(and(
+            eq(attendanceClosures.schoolId, schoolId),
+            eq(attendanceClosures.academicYearId, negaran.academicYearId),
+            eq(attendanceClosures.date, input.date)
+          )).limit(1);
+        if (dayClosure) throw new AttendanceConflictError("Attendance is closed for this school day.");
         const [existing] = await tx
           .select()
           .from(dailyAttendances)
