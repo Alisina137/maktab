@@ -28,37 +28,13 @@ const provisioningKey = "phase-3-test-provisioning-key";
 
 async function createTestApp() {
   const client = new PGlite();
-  for (const file of [
-    "0000_phase1_foundation.sql",
-    "0001_phase2_auth_accounts.sql",
-    "0002_phase3_academic_structure.sql",
-    "0003_phase4_student_family.sql",
-    "0004_phase4_parent_profile_backfill.sql",
-    "0005_phase5_attendance.sql",
-    "0006_phase6_learning.sql",
-    "0007_phase7_communication_fees.sql",
-    "0008_phase8_pilot_readiness.sql",
-    "0009_school_image.sql",
-    "0010_admin_profiles.sql",
-    "0011_admin_contact_profile.sql",
-    "0012_admin_password_2fa.sql",
-    "0014_student_phone.sql",
-    "0015_teacher_learning_workflows.sql",
-    "0016_teacher_teaching_plans.sql",
-    "0017_teacher_productivity.sql",
-    "0018_exam_subject_dates.sql",
-    "0019_fee_payment_idempotency.sql",
-    "0020_pilot_import_history.sql",
-    "0021_pilot_launch_support.sql",
-    "0022_fee_invoice_numbers.sql",
-    "0023_notification_scheduler_health.sql",
-    "0024_fee_payment_reconciliation.sql",
-    "0025_notification_push_lease.sql",
-    "0026_admin_attendance_calendar.sql",
-    "0027_admin_attendance_followups.sql",
-    "0028_staff_profiles_permissions.sql",
-    "0029_staff_registration_requests.sql"
-  ]) {
+  // Use the same canonical migration journal as production. A hand-maintained
+  // test-only list previously skipped historical constraints and new tables.
+  const migrationJournal = JSON.parse(
+    await readFile(new URL("../../../packages/database/drizzle/meta/_journal.json", import.meta.url), "utf8")
+  ) as { entries: Array<{ tag: string }> };
+  for (const entry of migrationJournal.entries) {
+    const file = `${entry.tag}.sql`;
     const sql = await readFile(
       new URL(`../../../packages/database/drizzle/${file}`, import.meta.url),
       "utf8"
