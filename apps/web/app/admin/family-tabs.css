@@ -1,0 +1,204 @@
+/* Four authenticated family workflows — one visible form/list per tab.
+   Uses existing school-scoped data and form handlers unchanged. */
+.ml-admin-dashboard-shell .ml-family-tabs {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-family-tabs > .admin-section-header {
+  margin-bottom: 0;
+}
+.ml-admin-dashboard-shell .ml-family-tabbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #dde8f6;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(27, 66, 127, .045);
+}
+.ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 49px;
+  min-width: 0;
+  padding: 10px 13px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: #55708f;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 810;
+  line-height: 1.45;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: background .17s ease, color .17s ease, border-color .17s ease;
+}
+.ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab:hover:not(.ml-family-tab-active) {
+  background: #f1f6ff;
+  color: #225db5;
+}
+.ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab:focus-visible {
+  outline: 2px solid #357fe8;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab-active {
+  background: linear-gradient(115deg,#1d5ece,#2d82e2);
+  border-color: #2b75d1;
+  color: #fff;
+  box-shadow: 0 5px 13px rgba(27, 87, 187, .15);
+  cursor: default;
+}
+.ml-admin-dashboard-shell .ml-family-tab-number {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  border: 1px solid #e0e9f6;
+  border-radius: 8px;
+  color: #6484b5;
+  background: #f5f8fd;
+  font-size: 10.5px;
+  font-weight: 830;
+  font-variant-numeric: tabular-nums;
+}
+.ml-admin-dashboard-shell .ml-family-tab-active .ml-family-tab-number {
+  background: rgba(255,255,255,.17);
+  border-color: rgba(255,255,255,.26);
+  color: #fff;
+}
+.ml-admin-dashboard-shell .ml-family-tab-content {
+  display: grid;
+  gap: 17px;
+  min-width: 0;
+  width: 100%;
+  align-content: start;
+}
+.ml-admin-dashboard-shell .ml-family-tab-content:focus-visible {
+  outline: 2px solid #5590ed;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+.ml-admin-dashboard-shell .ml-family-tab-content > :is(
+  .academic-summary-grid, .family-add-student-layout,
+  .family-account-layout, .family-import-panel
+) {
+  min-width: 0;
+  width: 100%;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+  gap: 18px;
+  align-items: start;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column,
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column:first-child,
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column:last-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  grid-column: 1;
+  grid-row: auto;
+  align-items: start;
+  gap: 17px;
+  min-width: 0;
+  width: 100%;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card,
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-list-panel,
+.ml-admin-dashboard-shell .ml-family-tabs .family-add-student-card,
+.ml-admin-dashboard-shell .ml-family-tabs .family-import-panel {
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  padding: clamp(19px, 2.2vw, 27px);
+  border: 1px solid #e0e9f5;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(32, 72, 130, .045);
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card {
+  background: linear-gradient(150deg,#fff 65%,#f7faff);
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  align-items: start;
+  column-gap: 18px;
+  row-gap: 13px;
+  max-width: 920px;
+  margin-top: 18px;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form > :where(p, button) {
+  grid-column: 1 / -1;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form > .admin-primary {
+  justify-self: start;
+  min-width: 180px;
+  min-height: 43px;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-summary-grid {
+  gap: 12px;
+  margin: 0;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-list-filters {
+  gap: 12px;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .academic-rows.family-list-rows {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-family-tabs .family-import-panel {
+  background: linear-gradient(150deg,#fff,#fbfdff);
+}
+.ml-admin-dashboard-shell[dir="rtl"] .ml-family-tabbar .ml-family-tab { letter-spacing: 0; }
+@media (max-width: 1160px) {
+  .ml-admin-dashboard-shell .ml-family-tabbar { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 760px) {
+  .ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form > :where(p, button) {
+    grid-column: auto;
+  }
+  .ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card .admin-form > .admin-primary {
+    justify-self: stretch;
+  }
+}
+@media (max-width: 520px) {
+  .ml-admin-dashboard-shell .ml-family-tabbar {
+    padding: 6px;
+    gap: 5px;
+  }
+  .ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab {
+    gap: 6px;
+    font-size: 11.5px;
+    padding: 8px;
+    min-height: 46px;
+  }
+  .ml-admin-dashboard-shell .ml-family-tab-number {
+    flex-basis: 22px;
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+  .ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-form-card,
+  .ml-admin-dashboard-shell .ml-family-tabs .family-account-column > .academic-list-panel,
+  .ml-admin-dashboard-shell .ml-family-tabs .family-add-student-card,
+  .ml-admin-dashboard-shell .ml-family-tabs .family-import-panel {
+    padding: 17px 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .ml-family-tabbar .ml-family-tab { transition: none; }
+}
