@@ -113,7 +113,7 @@ export function registerAuthRoutes(
   app.post("/v1/auth/login", async (request, reply) => {
     try {
       const input = loginInputSchema.parse(request.body);
-      const rateKey = `${request.ip}:${input.schoolId}:${input.username}`;
+      const rateKey = `${request.ip}:${input.schoolId}:${input.username.toLowerCase()}`;
       if (!schoolSourceLimiter.consume(`${request.ip}:${input.schoolId}`) || !limiter.consume(rateKey)) {
         return reply.code(429).send({ error: "rate_limited", message: "Too many login attempts. Try again later." });
       }
