@@ -10,6 +10,7 @@ import { adminText, type AdminLocale } from "./admin-i18n";
 import { CurriculumAdminPanel } from "./curriculum-admin";
 import { AdminAcademicOverview } from "./admin-academic-overview";
 import { nextAvailableTeacherEmployeeCode } from "./teacher-employee-code";
+import { matchingNewGradeNumber, nextAvailableGradeNumber, usedGradeNumbers } from "./grade-level-suggestions";
 
 export const academicSectionNames = [
   "years",
@@ -350,21 +351,39 @@ export function AcademicPanel({
 
   if (section === "grades") {
     const editing = overview.gradeLevels.find((item) => item.id === editingId) ?? null;
+    const suggestedGradeNumber = nextAvailableGradeNumber(overview.gradeLevels);
     return (
       <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit grade level" : "Grade level")} hint={t("Reusable grade definition such as Grade 7.")}>
           <form
             id="academic-entity-form"
             className="admin-form"
-            key={editing?.id ?? "new-grade"}
+            key={editing?.id ?? "new-grade-" + String(suggestedGradeNumber)}
             onSubmit={(event) => {
               const form = new FormData(event.currentTarget);
+              const code = formValue(form, "code");
+              const name = formValue(form, "name");
+              if (!editing) {
+                const gradeNumber = matchingNewGradeNumber(code, name);
+                const occupied = usedGradeNumbers(overview.gradeLevels);
+                if (gradeNumber === null || occupied.has(gradeNumber)) {
+                  event.preventDefault();
+                  showToast({
+                    kind: "error",
+                    title: t("Grade level"),
+                    message: t(gradeNumber === null
+                      ? "Grade code and name must have the same number, for example G-1 and Grade 1."
+                      : "That grade number is already in use. Choose another number.")
+                  });
+                  return;
+                }
+              }
               void submit(
                 event,
                 editing ? "/v1/admin/academics/grades/" + editing.id : "/v1/admin/academics/grades",
                 {
-                  code: formValue(form, "code"),
-                  name: formValue(form, "name"),
+                  code,
+                  name,
                   sortOrder: Number(formValue(form, "sortOrder") || "0")
                 },
                 editing ? "Edit grade level" : "Grade level",
@@ -373,9 +392,14 @@ export function AcademicPanel({
               );
             }}
           >
-            <label>{t("Code")}<input name="code" defaultValue={editing?.code ?? ""} placeholder="G7" required /></label>
-            <label>{t("Name")}<input name="name" defaultValue={editing?.name ?? ""} placeholder={t("Grade 7")} required /></label>
-            <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue={editing?.sortOrder ?? 7} required /></label>
+            {editing ? (
+              <>
+                <label>{t("Code")}<input name="code" defaultValue={editing.code} placeholder="G-x" required /></label>
+                <label>{t("Name")}<input name="name" defaultValue={editing.name} placeholder="Grade x" required /></label>
+                <label>{t("Sort order")}<input name="sortOrder" type="number" min="0" max="100" defaultValue={editing.sortOrder} required /></label>
+              </>
+            ) : <NewGradeLevelFields key={String(suggestedGradeNumber)}
+                  suggestedNumber={suggestedGradeNumber} locale={locale} />}
             <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create grade")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
           </form>
         </AcademicForm>
@@ -710,6 +734,59 @@ const academicPaneLabels: Record<Exclude<AcademicSection, "overview">, { form: s
   timetable: { form: "Add timetable period", list: "List of timetable periods" },
   curriculum: { form: "Create curriculum unit", list: "List of curriculum units" }
 };
+
+function NewGradeLevelFields({ suggestedNumber, locale }: {
+  suggestedNumber: number | null;
+  locale: AdminLocale;
+}) {
+  const t = (label: string) => adminText(locale, label);
+  const [code, setCode] = useState(suggestedNumber === null ? "" : `G-${suggestedNumber}`);
+  const [name, setName] = useState(suggestedNumber === null ? "" : `Grade ${suggestedNumber}`);
+  const [sortOrder, setSortOrder] = useState(suggestedNumber === null ? "" : String(suggestedNumber));
+
+  // Changing either identifier propagates the same x to the other identifier
+  // and re-suggests that x as sort order. Sort order is still editable.
+  const syncFromCode = (value: string) => {
+    setCode(value);
+    const matched = /^G-(\\d*)$/i.exec(value);
+    if (!matched) return;
+    const suffix = matched[1];
+    setName(`Grade ${suffix}`);
+    setSortOrder(suffix);
+  };
+  const syncFromName = (value: string) => {
+    setName(value);
+    const matched = /^Grade\\s+(\\d*)$/i.exec(value);
+    if (!matched) return;
+    const suffix = matched[1];
+    setCode(`G-${suffix}`);
+    setSortOrder(suffix);
+  };
+
+  return (
+    <>
+      <label>{t("Code")}
+        <input name="code" value={code} onChange={event => syncFromCode(event.target.value)}
+          placeholder="G-x" pattern="G-[1-9][0-9]*" maxLength={32}
+          autoComplete="off" autoCapitalize="characters" required />
+      </label>
+      <label>{t("Name")}
+        <input name="name" value={name} onChange={event => syncFromName(event.target.value)}
+          placeholder="Grade x" pattern="Grade [1-9][0-9]*" maxLength={80}
+          autoComplete="off" required />
+      </label>
+      <label>{t("Sort order")}
+        <input name="sortOrder" type="number" min="1" max="100" value={sortOrder}
+          onChange={event => setSortOrder(event.target.value)} required />
+      </label>
+      <p className="admin-form-help" role="status">
+        {suggestedNumber === null
+          ? t("All grade numbers from 1 to 100 are in use.")
+          : `${t("Next available grade")}: G-${suggestedNumber} · Grade ${suggestedNumber} · ${suggestedNumber}`}
+      </p>
+    </>
+  );
+}
 
 function AcademicEntityPage({
   section,
