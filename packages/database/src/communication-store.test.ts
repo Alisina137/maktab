@@ -236,6 +236,67 @@ test("Phase 7 reminder jobs are idempotent and push failure does not roll back s
   assert.equal(attempts.filter(token => token.includes("secondary")).length, 2);
   assert.equal(attempts.filter(token => token === "ExponentPushToken[test-phase7]").length, 1);
 
+  // Audit Phase 7: one provider throwing must not abort the batch or leak
+  // raw exception details (push tokens may appear inside SDK messages).
+  const thrownAnnouncement = await communication.createAnnouncement(schoolId, admin.id, {
+    title: "Provider exception", content: "Durable inbox despite SDK throw",
+    audienceScope: "ROLE", audienceRole: "PARENT"
+  });
+  const exceptionTokens: string[] = [];
+  const afterException = await communication.deliverPendingPush({
+    async send(message) {
+      exceptionTokens.push(message.token);
+      if (message.token === "ExponentPushToken[test-phase7]") {
+        throw new Error("SDK exception contains secret token: " + message.token);
+      }
+      return { ok: true, providerMessageId: "phase7-secondary-ok" };
+    }
+  });
+  assert.equal(afterException.failed, 1);
+  assert.equal(afterException.sent, 1);
+  const failedPush = (await communication.getUserNotifications(schoolId, parent.user.id))
+    .find(row => row.metadata.announcementId === thrownAnnouncement.id);
+  assert.equal(failedPush?.deliveryStatus, "FAILED");
+  const perDevice = await client.query<{ last_error: string | null; status: string }>(
+    "SELECT last_error, status FROM notification_push_deliveries WHERE notification_id=$1 ORDER BY status",
+    [failedPush?.id]
+  );
+  assert.ok(perDevice.rows.some(row => row.status === "FAILED" &&
+    row.last_error === "Push provider transport failed."));
+  assert.ok(perDevice.rows.every(row => !row.last_error?.includes("secret token")));
+  const recoveredException = await communication.deliverPendingPush({
+    async send(message) {
+      exceptionTokens.push(message.token);
+      return { ok: true, providerMessageId: "phase7-exception-recovered" };
+    }
+  });
+  assert.equal(recoveredException.sent, 1, "Only the failed device should be retried.");
+  assert.equal(exceptionTokens.filter(token => token === "ExponentPushToken[test-phase7]").length, 2);
+  assert.equal(exceptionTokens.filter(token => token.includes("secondary")).length, 1);
+
+  // Two parallel registration attempts for one token must reference one row.
+  const token = "ExponentPushToken[phase7-concurrent-device]";
+  const attached = await Promise.all([
+    communication.registerDevice(schoolId, parent.user.id, token, "ANDROID"),
+    communication.registerDevice(schoolId, parent.user.id, token, "ANDROID")
+  ]);
+  assert.equal(attached[0]?.id, attached[1]?.id);
+  const tokenRows = await client.query<{ total: number }>(
+    "SELECT count(*)::integer AS total FROM devices WHERE push_token=$1", [token]
+  );
+  assert.equal(tokenRows.rows[0]?.total, 1);
+  const otherSchool = await schools.createSchool({
+    code: "COMM-OTHER", name: "Other Push School", slug: "other-push-school",
+    province: "Herat", city: "Herat", defaultLanguage: "en"
+  });
+  const otherParent = await families.createParentAccount(otherSchool.school.id, {
+    username: "other.push", passwordHash: "hash", fullName: "Another Parent"
+  });
+  await assert.rejects(
+    communication.registerDevice(otherSchool.school.id, otherParent.user.id, token, "ANDROID"),
+    /already registered to another account/i,
+    "Device tokens cannot be claimed across school accounts."
+  );
 });
 
 // Step 17: a real PostgreSQL-compatible ledger, not mocked arithmetic.
@@ -377,4 +438,19 @@ test("Step 17 fees: tenant isolation, replay, exact balances, immutable reversal
   const finished = latest.invoices.find(row => row.invoice.id === concurrent.id);
   assert.equal(finished?.invoice.status, "PAID");
   assert.equal(finished?.outstanding, 0);
+
+  // Audit Phase 7: no invoice may be drafted or issued after withdrawal.
+  // A checked school-year form can be stale by the time the save arrives.
+  const draftBeforeWithdrawal = await fees.createFeeInvoice(schoolId, admin.id, {
+    studentId: student.id, amount: 100, dueDate: "2099-01-01", description: "Not yet issued"
+  });
+  await families.updateStudent(schoolId, student.id, { status: "WITHDRAWN" });
+  await assert.rejects(
+    fees.createFeeInvoice(schoolId, admin.id, {
+      studentId: student.id, amount: 100, dueDate: "2099-01-01", description: "Withdrawn"
+    }), /withdrawn/i
+  );
+  await assert.rejects(
+    fees.issueFeeInvoice(schoolId, draftBeforeWithdrawal.id, admin.id), /withdrawn/i
+  );
 });
