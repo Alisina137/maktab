@@ -550,7 +550,6 @@ export default function AccountsPage() {
       <div className={`admin-grid admin-account-grid ${view === "CREATE" ? "admin-account-grid-creating" : "admin-account-grid-directory"}`}>
         {view === "CREATE" ? (
         <article className="admin-panel admin-create-account-card" id="account-create-panel">
-          <div className="admin-panel-icon" aria-hidden="true">+</div>
           <h3>{t("Create account")}</h3>
           <p className="admin-copy">{t("Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.")}</p>
           <form className="admin-form account-create-form" noValidate onSubmit={createUser}>
