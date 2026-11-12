@@ -105,6 +105,21 @@ export function createStaffAttendanceCorrectionStore(db:FoundationDatabase):Staf
           eq(staffAttendanceCorrectionRequests.status,"PENDING"))).returning();
         if(!request)throw conflict("Request is no longer pending.");
         if(input.action==="APPROVE"){
+          // The Negaran and administrator writers lock year -> day -> mark.
+          // Use the same ordering here; otherwise a pending correction could
+          // deadlock while a teacher updates the original attendance mark.
+          const [attendanceRef]=await tx.select({academicYearId:dailyAttendances.academicYearId})
+            .from(dailyAttendances).where(and(eq(dailyAttendances.schoolId,schoolId),
+              eq(dailyAttendances.id,request.attendanceId))).limit(1);
+          if(!attendanceRef)throw new StaffAttendanceCorrectionError(404,"Attendance record not found.");
+          const [lockedYear]=await tx.select({status:academicYears.status}).from(academicYears)
+            .where(and(eq(academicYears.schoolId,schoolId),
+              eq(academicYears.id,attendanceRef.academicYearId))).limit(1).for("update");
+          if(lockedYear?.status!=="ACTIVE")throw conflict("Historical attendance is read-only.");
+          const [lockedDay]=await tx.select({id:dailyAttendances.id}).from(dailyAttendances)
+            .where(and(eq(dailyAttendances.schoolId,schoolId),
+              eq(dailyAttendances.id,request.attendanceId))).limit(1).for("update");
+          if(!lockedDay)throw new StaffAttendanceCorrectionError(404,"Attendance record not found.");
           const current=await mark(schoolId,request.attendanceId,request.studentId,
             tx as unknown as Pick<FoundationDatabase,"select">);
           if(current.entry.updatedAt.getTime()!==request.expectedUpdatedAt.getTime() ||
