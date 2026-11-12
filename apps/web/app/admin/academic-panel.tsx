@@ -815,9 +815,11 @@ function ClassSectionIdentityFields({
   const changeName = (value: string) => {
     setName(value);
     const matched = /^Class\s+([1-9][0-9]*)([A-Z])$/i.exec(value);
-    if (matched && gradeNumber !== null && Number(matched[1]) === gradeNumber) {
-      setCode(gradeNumber + "-" + matched[2].toUpperCase());
-      setName("Class " + gradeNumber + matched[2].toUpperCase());
+    const letter = matched?.[2];
+    if (letter && gradeNumber !== null && Number(matched?.[1]) === gradeNumber) {
+      const upperLetter = letter.toUpperCase();
+      setCode(gradeNumber + "-" + upperLetter);
+      setName("Class " + gradeNumber + upperLetter);
     }
   };
 
@@ -868,7 +870,7 @@ function NewGradeLevelFields({ suggestedNumber, locale }: {
     setCode(value);
     const matched = /^G-(\d*)$/i.exec(value);
     if (!matched) return;
-    const suffix = matched[1];
+    const suffix = matched[1] ?? "";
     setName(`Grade ${suffix}`);
     setSortOrder(suffix);
   };
@@ -876,7 +878,7 @@ function NewGradeLevelFields({ suggestedNumber, locale }: {
     setName(value);
     const matched = /^Grade\s+(\d*)$/i.exec(value);
     if (!matched) return;
-    const suffix = matched[1];
+    const suffix = matched[1] ?? "";
     setCode(`G-${suffix}`);
     setSortOrder(suffix);
   };

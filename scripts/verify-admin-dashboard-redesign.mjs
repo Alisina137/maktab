@@ -132,7 +132,7 @@ for (const route of [
 assert.ok(frame.includes('const hasIcon = Boolean(adminSubnavIconPaths[entry.href])') &&
   frame.includes('<AdminSubnavIcon href={entry.href} size={16} />') &&
   frame.includes('ml-admin-subnav-dot') &&
-  academic.includes('<AcademicSectionIcon href={tab.href} size={16} />') &&
+  academicNavigation.includes('<AcademicSectionIcon href={item.href} size={16} />') &&
   academicIcons.includes('aria-hidden="true"') &&
   css.includes(".ml-admin-subnav-icon") &&
   css.includes(".ml-admin-subnav-link-active .ml-admin-subnav-icon") &&

@@ -1989,15 +1989,17 @@ function FamilyAccountCarousel({
       }}
       onTouchStart={(event) => {
         if (event.touches.length !== 1) { touchStart.current = null; return; }
-        const touch = event.touches[0];
+        const touch = event.touches.item(0);
+        if (!touch) { touchStart.current = null; return; }
         touchStart.current = { x: touch.clientX, y: touch.clientY };
       }}
       onTouchEnd={(event) => {
         const from = touchStart.current;
         touchStart.current = null;
-        if (!from || event.changedTouches.length !== 1) return;
-        const dx = event.changedTouches[0].clientX - from.x;
-        const dy = event.changedTouches[0].clientY - from.y;
+        const touch = event.changedTouches.item(0);
+        if (!from || event.changedTouches.length !== 1 || !touch) return;
+        const dx = touch.clientX - from.x;
+        const dy = touch.clientY - from.y;
         if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.25) {
           goToPage(page + (dx < 0 ? horizontalStep : -horizontalStep));
         }
