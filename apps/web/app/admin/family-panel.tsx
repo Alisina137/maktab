@@ -9,7 +9,8 @@ import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
 import { FAMILY_TABS, type FamilyTab } from "./family-tabs-model";
 import "./family-tabs.css";
-import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
+import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
+import { paginateFamilyRows, FAMILY_LIST_PAGE_SIZE } from "./family-list-paging";
 
 type User = {
   id: string;
@@ -416,10 +417,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const [parentUsernameFilter, setParentUsernameFilter] = useState("");
   const [parentStatusFilter, setParentStatusFilter] = useState("");
   const [parentChildFilter, setParentChildFilter] = useState("");
+  const [parentListPage, setParentListPage] = useState(1);
   const [studentUsernameFilter, setStudentUsernameFilter] = useState("");
   const [studentClassFilter, setStudentClassFilter] = useState("");
   const [studentParentFilter, setStudentParentFilter] = useState("");
   const [studentStatusFilter, setStudentStatusFilter] = useState("");
+  const [studentListPage, setStudentListPage] = useState(1);
   const [usernamePopup, setUsernamePopup] = useState("");
   const [importEntity, setImportEntity] = useState<ImportEntity>("PARENT");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -512,18 +515,39 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
     studentStatusFilter
   ]);
 
+  // Filtered records are divided into groups of five, independently for each tab.
+  const parentsPage = useMemo(
+    () => paginateFamilyRows(listedParents, parentListPage),
+    [listedParents, parentListPage]
+  );
+  const studentsPage = useMemo(
+    () => paginateFamilyRows(listedStudents, studentListPage),
+    [listedStudents, studentListPage]
+  );
+
+  // A deletion, account creation or academic-year switch may shrink the list.
+  // Clamp the page rather than leaving a blank view.
+  useEffect(() => {
+    if (parentListPage !== parentsPage.page) setParentListPage(parentsPage.page);
+  }, [parentListPage, parentsPage.page]);
+  useEffect(() => {
+    if (studentListPage !== studentsPage.page) setStudentListPage(studentsPage.page);
+  }, [studentListPage, studentsPage.page]);
+
   const parentListHasFilters = Boolean(parentUsernameFilter.trim() || parentStatusFilter || parentChildFilter);
   const studentListHasFilters = Boolean(
     studentUsernameFilter.trim() || studentClassFilter || studentParentFilter || studentStatusFilter
   );
 
   function clearParentListFilters() {
+    setParentListPage(1);
     setParentUsernameFilter("");
     setParentStatusFilter("");
     setParentChildFilter("");
   }
 
   function clearStudentListFilters() {
+    setStudentListPage(1);
     setStudentUsernameFilter("");
     setStudentClassFilter("");
     setStudentParentFilter("");
@@ -557,6 +581,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
   useEffect(() => {
     if (selectedAcademicYearId) setStudentYearId(selectedAcademicYearId);
+    setStudentListPage(1);
   }, [selectedAcademicYearId]);
 
   useEffect(() => {
@@ -1536,7 +1561,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <input
               type="search"
               value={parentUsernameFilter}
-              onChange={(event) => setParentUsernameFilter(event.target.value)}
+              onChange={(event) => { setParentUsernameFilter(event.target.value); setParentListPage(1); }}
               placeholder={t("Search username")}
               autoCapitalize="none"
               autoComplete="off"
@@ -1545,7 +1570,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
           <label>
             <span>{t("Account status")}</span>
-            <select value={parentStatusFilter} onChange={(event) => setParentStatusFilter(event.target.value)}>
+            <select value={parentStatusFilter} onChange={(event) => { setParentStatusFilter(event.target.value); setParentListPage(1); }}>
               <option value="">{t("All statuses")}</option>
               {parentStatuses.map((status) => (
                 <option key={status} value={status}>{t(status)}</option>
@@ -1554,7 +1579,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
           <label>
             <span>{t("Child count")}</span>
-            <select value={parentChildFilter} onChange={(event) => setParentChildFilter(event.target.value)}>
+            <select value={parentChildFilter} onChange={(event) => { setParentChildFilter(event.target.value); setParentListPage(1); }}>
               <option value="">{t("All child counts")}</option>
               <option value="NONE">{t("No children")}</option>
               <option value="ONE">{t("One child")}</option>
@@ -1563,10 +1588,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
         </div>
 
-        <div
-          className={`academic-rows family-list-rows ${listedParents.length > 4 ? "family-list-scroll" : ""}`}
-        >
-          {listedParents.map((parent) => (
+        <div className="academic-rows family-list-rows">
+          {parentsPage.items.map((parent) => (
             <div className="academic-row" key={parent.user.id}>
               <div>
                 <strong>{parent.profile.fullName}</strong>
@@ -1599,6 +1622,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <p className="admin-copy">{t("No parents match the selected filters.")}</p>
           ) : null}
         </div>
+        <FamilyListPager
+          locale={locale}
+          label={t("Parent list pagination")}
+          page={parentsPage.page}
+          pages={parentsPage.pages}
+          start={parentsPage.start}
+          end={parentsPage.end}
+          total={parentsPage.total}
+          disabled={busy}
+          onPage={setParentListPage}
+        />
       </article>
         </div>
           </div>
@@ -1675,7 +1709,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <input
               type="search"
               value={studentUsernameFilter}
-              onChange={(event) => setStudentUsernameFilter(event.target.value)}
+              onChange={(event) => { setStudentUsernameFilter(event.target.value); setStudentListPage(1); }}
               placeholder={t("Search username")}
               autoCapitalize="none"
               autoComplete="off"
@@ -1684,7 +1718,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
           <label>
             <span>{t("Class")}</span>
-            <select value={studentClassFilter} onChange={(event) => setStudentClassFilter(event.target.value)}>
+            <select value={studentClassFilter} onChange={(event) => { setStudentClassFilter(event.target.value); setStudentListPage(1); }}>
               <option value="">{t("All classes")}</option>
               {studentClassOptions.map(([id, name]) => (
                 <option key={id} value={id}>{name}</option>
@@ -1693,7 +1727,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
           <label>
             <span>{t("Parent")}</span>
-            <select value={studentParentFilter} onChange={(event) => setStudentParentFilter(event.target.value)}>
+            <select value={studentParentFilter} onChange={(event) => { setStudentParentFilter(event.target.value); setStudentListPage(1); }}>
               <option value="">{t("All parents")}</option>
               {studentParentOptions.map((parent) => (
                 <option key={parent.user.id} value={parent.user.id}>{parent.profile.fullName}</option>
@@ -1702,7 +1736,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
           <label>
             <span>{t("Student status")}</span>
-            <select value={studentStatusFilter} onChange={(event) => setStudentStatusFilter(event.target.value)}>
+            <select value={studentStatusFilter} onChange={(event) => { setStudentStatusFilter(event.target.value); setStudentListPage(1); }}>
               <option value="">{t("All statuses")}</option>
               {studentStatuses.map((status) => (
                 <option key={status} value={status}>{t(status)}</option>
@@ -1711,10 +1745,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
         </div>
 
-        <div
-          className={`academic-rows family-list-rows ${listedStudents.length > 4 ? "family-list-scroll" : ""}`}
-        >
-          {listedStudents.map((item) => {
+        <div className="academic-rows family-list-rows">
+          {studentsPage.items.map((item) => {
             const parent = parentMap.get(item.student.parentUserId);
             return (
               <div className="academic-row" key={item.student.id}>
@@ -1783,6 +1815,17 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <p className="admin-copy">{t("No students match the selected filters.")}</p>
           ) : null}
         </div>
+        <FamilyListPager
+          locale={locale}
+          label={t("Student list pagination")}
+          page={studentsPage.page}
+          pages={studentsPage.pages}
+          start={studentsPage.start}
+          end={studentsPage.end}
+          total={studentsPage.total}
+          disabled={busy}
+          onPage={setStudentListPage}
+        />
       </article>
         </div>
       </div>
@@ -1889,6 +1932,60 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </section>
       ) : null}
     </section>
+  );
+}
+
+
+function FamilyListPager({
+  locale, label, page, pages, start, end, total, disabled, onPage
+}: {
+  locale: AdminLocale;
+  label: string;
+  page: number;
+  pages: number;
+  start: number;
+  end: number;
+  total: number;
+  disabled: boolean;
+  onPage: (page: number) => void;
+}) {
+  const t = (value: string) => adminText(locale, value);
+  const first = Math.min(Math.max(1, page - 2), Math.max(1, pages - 4));
+  const pageNumbers = Array.from(
+    { length: Math.min(5, pages) }, (_, index) => first + index
+  );
+  return (
+    <nav className="ml-family-list-pager" aria-label={label}>
+      <span className="ml-family-list-range" aria-live="polite">
+        {adminFormat(locale, "Showing {start}–{end} of {total}", { start, end, total })}
+      </span>
+      {total > FAMILY_LIST_PAGE_SIZE ? (
+        <div className="ml-family-list-page-controls">
+          <button type="button" className="ml-family-page-arrow" data-admin-no-loading="true"
+            disabled={disabled || page === 1} onClick={() => onPage(page - 1)}>
+            {t("Previous")}
+          </button>
+          <div className="ml-family-list-page-numbers">
+            {pageNumbers.map((number) => (
+              <button key={number} type="button" data-admin-no-loading="true"
+                className={"ml-family-page-number" + (number === page ? " ml-family-page-active" : "")}
+                aria-current={number === page ? "page" : undefined}
+                aria-label={adminFormat(locale, "Page {page} of {pages}", { page: number, pages })}
+                disabled={disabled || number === page} onClick={() => onPage(number)}>
+                {number}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="ml-family-page-arrow" data-admin-no-loading="true"
+            disabled={disabled || page === pages} onClick={() => onPage(page + 1)}>
+            {t("Next")}
+          </button>
+        </div>
+      ) : null}
+      <span className="ml-family-page-count">
+        {adminFormat(locale, "Page {page} of {pages}", { page, pages })}
+      </span>
+    </nav>
   );
 }
 
