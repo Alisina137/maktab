@@ -96,7 +96,7 @@ Copy `.env.example` to the root `.env`, then configure `DATABASE_URL`, `DATABASE
 
 ```powershell
 cd C:\projects\maktab
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 pnpm install --frozen-lockfile
 pnpm db:check
 pnpm db:migrate
