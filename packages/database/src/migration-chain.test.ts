@@ -174,4 +174,27 @@ test("Step 20: the complete migration journal applies in order to a fresh Postgr
     "SELECT indexname FROM pg_indexes WHERE indexname = 'academic_years_one_active_per_school'"
   );
   assert.equal(phases.rows.length, 1);
+
+  // Audit Phase 6: duplicate usernames with different letter case must be
+  // rejected by PostgreSQL itself, regardless of which import creates them.
+  const usernameIndex = await client.query<{ indexname: string }>(
+    "SELECT indexname FROM pg_indexes WHERE indexname = 'users_school_username_casefold_unique'"
+  );
+  assert.equal(usernameIndex.rows.length, 1);
+  await client.query(
+    "INSERT INTO users(id,school_id,username,password_hash,role) VALUES($1,$2,$3,'hash','TEACHER')",
+    [uuid(40), schoolA, "MixedCase"]
+  );
+  await assert.rejects(
+    client.query(
+      "INSERT INTO users(id,school_id,username,password_hash,role) VALUES($1,$2,$3,'hash','TEACHER')",
+      [uuid(41), schoolA, "mixedcase"]
+    ),
+    /duplicate key|unique/i,
+    "One school cannot have two accounts with the same case-insensitive username."
+  );
+  await client.query(
+    "INSERT INTO users(id,school_id,username,password_hash,role) VALUES($1,$2,$3,'hash','TEACHER')",
+    [uuid(42), schoolB, "mixedcase"]
+  );
 });
