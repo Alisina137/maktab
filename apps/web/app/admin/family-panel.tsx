@@ -1,7 +1,7 @@
 "use client";
 import { useTransientAdminFeedback } from "./admin-feedback";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
@@ -1588,6 +1588,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
         </div>
 
+        <FamilyAccountCarousel locale={locale} label={t("Parent account")} page={parentsPage.page}
+          pages={parentsPage.pages} disabled={busy} onPage={setParentListPage}>
         <div className="academic-rows family-list-rows">
           {parentsPage.items.map((parent) => (
             <div className="academic-row" key={parent.user.id}>
@@ -1622,6 +1624,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <p className="admin-copy">{t("No parents match the selected filters.")}</p>
           ) : null}
         </div>
+        </FamilyAccountCarousel>
         <FamilyListPager
           locale={locale}
           label={t("Parent list pagination")}
@@ -1745,6 +1748,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </label>
         </div>
 
+        <FamilyAccountCarousel locale={locale} label={t("Student account")} page={studentsPage.page}
+          pages={studentsPage.pages} disabled={busy} onPage={setStudentListPage}>
         <div className="academic-rows family-list-rows">
           {studentsPage.items.map((item) => {
             const parent = parentMap.get(item.student.parentUserId);
@@ -1815,6 +1820,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
             <p className="admin-copy">{t("No students match the selected filters.")}</p>
           ) : null}
         </div>
+        </FamilyAccountCarousel>
         <FamilyListPager
           locale={locale}
           label={t("Student list pagination")}
@@ -1935,6 +1941,73 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   );
 }
 
+
+/** Accessible five-record slide, navigable by buttons, swipe, or keyboard. */
+function FamilyAccountCarousel({
+  children, label, locale, page, pages, disabled, onPage
+}: {
+  children: ReactNode;
+  label: string;
+  locale: AdminLocale;
+  page: number;
+  pages: number;
+  disabled: boolean;
+  onPage: (page: number) => void;
+}) {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const renderedPage = useRef(page);
+  const movement = page > renderedPage.current ? "next" :
+    page < renderedPage.current ? "previous" : "none";
+  useEffect(() => { renderedPage.current = page; }, [page]);
+  const horizontalStep = locale === "en" ? 1 : -1;
+  const t = (value: string) => adminText(locale, value);
+  const goToPage = (requestedPage: number) => {
+    if (disabled) return;
+    const nextPage = Math.min(pages, Math.max(1, requestedPage));
+    if (nextPage !== page) onPage(nextPage);
+  };
+
+  return (
+    <div className="ml-family-carousel" role="region"
+      aria-roledescription={t("Carousel")} aria-label={label}
+      tabIndex={pages > 1 ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+          event.preventDefault();
+          goToPage(page + (event.key === "ArrowRight" ? horizontalStep : -horizontalStep));
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          goToPage(1);
+        } else if (event.key === "End") {
+          event.preventDefault();
+          goToPage(pages);
+        }
+      }}
+      onTouchStart={(event) => {
+        if (event.touches.length !== 1) { touchStart.current = null; return; }
+        const touch = event.touches[0];
+        touchStart.current = { x: touch.clientX, y: touch.clientY };
+      }}
+      onTouchEnd={(event) => {
+        const from = touchStart.current;
+        touchStart.current = null;
+        if (!from || event.changedTouches.length !== 1) return;
+        const dx = event.changedTouches[0].clientX - from.x;
+        const dy = event.changedTouches[0].clientY - from.y;
+        if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+          goToPage(page + (dx < 0 ? horizontalStep : -horizontalStep));
+        }
+      }}
+      onTouchCancel={() => { touchStart.current = null; }}
+    >
+      <div key={page} className="ml-family-carousel-slide" data-direction={movement}
+        role="group" aria-label={adminFormat(locale, "Page {page} of {pages}", { page, pages })}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function FamilyListPager({
   locale, label, page, pages, start, end, total, disabled, onPage

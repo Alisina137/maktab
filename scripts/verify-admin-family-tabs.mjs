@@ -134,4 +134,24 @@ for(const marker of [
   "@media (max-width: 850px)", "@media (max-width: 490px)"
 ]) assert.ok(css.includes(marker), "Family carousel CSS missing: " + marker);
 
+
+assert.equal((family.match(/<FamilyAccountCarousel\b/g) ?? []).length, 2,
+  "Parent and student account lists each need a carousel");
+assert.ok(family.includes('aria-roledescription={t("Carousel")}') &&
+  family.includes('onTouchStart={(event) => {') &&
+  family.includes('onTouchEnd={(event) => {') &&
+  family.includes('onTouchCancel={() => { touchStart.current = null; }}') &&
+  family.includes('Math.abs(dx) >= 60') &&
+  family.includes('event.key === "ArrowRight"') &&
+  family.includes('event.key === "ArrowLeft"') &&
+  family.includes('event.key === "Home"') &&
+  family.includes('event.key === "End"') &&
+  family.includes('const horizontalStep = locale === "en" ? 1 : -1;') &&
+  family.includes('data-direction={movement}') &&
+  css.includes("touch-action: pan-y") &&
+  css.includes("@keyframes ml-family-carousel-from-right") &&
+  css.includes("@keyframes ml-family-carousel-from-left") &&
+  i18n.split('"Carousel":').length === 3,
+  "Family carousels require RTL-aware gestures, keyboard access, transitions, and translations");
+
 console.log("Admin Families verified: default Add Student, parent form + list, student form + list, bulk import, URL-backed accessible tabs and RTL.");

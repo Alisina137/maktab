@@ -309,3 +309,39 @@
 @media (prefers-reduced-motion: reduce) {
   .ml-admin-dashboard-shell .ml-family-list-pager button { transition: none; }
 }
+
+/* The visible slide contains at most five filtered accounts. */
+.ml-admin-dashboard-shell .ml-family-carousel {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  touch-action: pan-y;
+}
+.ml-admin-dashboard-shell .ml-family-carousel:focus-visible {
+  outline: 3px solid #75a7ef;
+  outline-offset: 3px;
+}
+.ml-admin-dashboard-shell .ml-family-carousel-slide { min-width: 0; }
+.ml-admin-dashboard-shell .ml-family-carousel-slide[data-direction="next"] {
+  animation: ml-family-carousel-from-right .28s cubic-bezier(.2,.7,.2,1) both;
+}
+.ml-admin-dashboard-shell .ml-family-carousel-slide[data-direction="previous"] {
+  animation: ml-family-carousel-from-left .28s cubic-bezier(.2,.7,.2,1) both;
+}
+.ml-admin-dashboard-shell[dir="rtl"] .ml-family-carousel-slide[data-direction="next"] {
+  animation-name: ml-family-carousel-from-left;
+}
+.ml-admin-dashboard-shell[dir="rtl"] .ml-family-carousel-slide[data-direction="previous"] {
+  animation-name: ml-family-carousel-from-right;
+}
+@keyframes ml-family-carousel-from-right {
+  from { transform: translateX(16%); opacity: .3; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ml-family-carousel-from-left {
+  from { transform: translateX(-16%); opacity: .3; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .ml-family-carousel-slide { animation: none !important; }
+}
