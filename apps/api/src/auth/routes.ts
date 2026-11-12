@@ -103,6 +103,9 @@ export function registerAuthRoutes(
   }
 ) {
   const verificationLimiter = new LoginRateLimiter(3, 10 * 60 * 1000);
+  // A stolen access token must not allow unlimited guessing of the current
+  // password through /change-password or /verification/start.
+  const currentPasswordLimiter = new LoginRateLimiter(10, 5 * 60 * 1000);
   // Per-account limits alone can be evaded by spraying distinct usernames.
   // Bound authentication attempts per IP + school as a second line of defense.
   // These are per-process limits; a shared limiter is a deployment follow-up.
@@ -207,6 +210,12 @@ export function registerAuthRoutes(
       }
 
       const input = startAdminPasswordVerificationSchema.parse(request.body);
+      if (!currentPasswordLimiter.consume(`${context.user.schoolId}:${context.user.id}`)) {
+        return reply.code(429).send({
+          error: "current_password_rate_limited",
+          message: "Too many password checks. Try again later."
+        });
+      }
       if (!(await verifyPassword(input.currentPassword, context.user.passwordHash))) {
         return reply.code(401).send({
           error: "current_password_invalid",
@@ -423,6 +432,12 @@ export function registerAuthRoutes(
       if (!context) return;
 
       const input = changePasswordSchema.parse(request.body);
+      if (!currentPasswordLimiter.consume(`${context.user.schoolId}:${context.user.id}`)) {
+        return reply.code(429).send({
+          error: "current_password_rate_limited",
+          message: "Too many password checks. Try again later."
+        });
+      }
       if (!(await verifyPassword(input.currentPassword, context.user.passwordHash))) {
         return reply.code(401).send({
           error: "current_password_invalid",
