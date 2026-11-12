@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -24,9 +31,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.13.1
+          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Repository foundation and dependency consistency
+        run: pnpm verify:foundation
+
+      - name: Academic identifier suggestion regressions
+        run: |
+          pnpm verify:admin-grade-codes
+          pnpm verify:admin-class-codes
+          pnpm verify:admin-teacher-codes
 
       - name: Operational scripts syntax
         run: pnpm ops:check
@@ -263,9 +280,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.1
+          node-version: "24"
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Repository foundation and dependency consistency (Windows)
+        run: pnpm verify:foundation
+
+      - name: Academic identifier suggestion regressions (Windows)
+        run: |
+          pnpm verify:admin-grade-codes
+          pnpm verify:admin-class-codes
+          pnpm verify:admin-teacher-codes
+
       - name: Release evidence and parent locale/resilience (Windows)
         run: |
           pnpm verify:accounts
