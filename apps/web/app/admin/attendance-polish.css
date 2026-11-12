@@ -1,0 +1,610 @@
+/* Attendance visual system — shared across Overview, Registers, Students,
+   Follow-ups, Reports, Audit and Staff Requests.
+   Scoped to the admin Attendance route; no global/admin-wide overrides. */
+.ml-admin-dashboard-shell .attendance-section {
+  --attendance-space-xs: 6px;
+  --attendance-space-sm: 10px;
+  --attendance-space-md: 16px;
+  --attendance-space-lg: 20px;
+  --attendance-radius: 14px;
+  --attendance-border: #dbe5f1;
+  --attendance-ink: #243b59;
+  --attendance-subtle: #5c718d;
+  --attendance-blue: #2459b7;
+  --attendance-surface: #ffffff;
+  --attendance-panel-shadow: 0 6px 20px rgba(24, 60, 105, .045);
+  display: grid;
+  gap: var(--attendance-space-lg);
+  min-width: 0;
+  padding-top: 0;
+  border-top: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--attendance-ink);
+}
+
+/* Crucial: the tabpanel was a plain div, so its cards and modules touched
+   each other even though the outer Attendance section had a grid gap. */
+.ml-admin-dashboard-shell .attendance-section > [role="tabpanel"] {
+  display: grid;
+  align-content: start;
+  gap: var(--attendance-space-lg);
+  width: 100%;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-overview-grid, .attendance-register-layout,
+  .attendance-monitor-workspace, .attendance-students-layout,
+  .attendance-followups, .attendance-analytics, .attendance-followup-body,
+  .attendance-audit, .staff-reg-columns
+) { min-width: 0; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-register-layout, .attendance-monitor-workspace,
+  .attendance-followups, .attendance-analytics, .attendance-audit,
+  .attendance-history-content, .attendance-followup-detail-group
+) { gap: var(--attendance-space-md); }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-head, .attendance-module-heading,
+  .attendance-analytics > .admin-section-header,
+  .attendance-followups > .admin-section-header,
+  .attendance-audit > .admin-section-header,
+  .staff-attendance > .admin-section-header
+) {
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-head h3, .attendance-module-heading h3,
+  .attendance-empty-selection h3, .attendance-closure-panel h3,
+  .attendance-history-days h4, .attendance-analytics-table h4,
+  .attendance-followup-detail h4, .staff-attendance-detail h4
+) {
+  margin: 0;
+  color: var(--attendance-ink);
+  font-size: 17px;
+  font-weight: 780;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-head p, .attendance-module-heading p,
+  .attendance-empty-selection p, .attendance-hint,
+  .attendance-monitor-footnote, .attendance-analytics-caption,
+  .attendance-period-caption, .attendance-analytics-table > p,
+  .attendance-closure-panel > p,
+  .attendance-dashboard-card > p, .admin-section-header p, .admin-copy
+) {
+  color: var(--attendance-subtle);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-detail > p, .attendance-followup-activity p,
+  .attendance-audit-detail p, .attendance-closure-item span,
+  .staff-attendance-detail p
+) {
+  font-size: 13.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-head p, .attendance-module-heading p,
+  .attendance-followup-detail > p, .staff-attendance-detail > p
+) { margin-block: 4px 0; }
+
+/* Make all seven navigation choices visible, not hidden in a scroll rail.
+   Wrapped labels have equal touch targets in English, Dari and Pashto. */
+.ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  padding: 9px;
+  border: 1px solid var(--attendance-border);
+  border-radius: var(--attendance-radius);
+  background: var(--attendance-surface);
+  box-shadow: var(--attendance-panel-shadow);
+  scroll-snap-type: none;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs > button {
+  display: inline-flex;
+  flex: initial;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 11px;
+  border: 1px solid #e3eaf4;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #4b617f;
+  font-size: 13px;
+  font-weight: 740;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-snap-align: none;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs > button svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs > button[aria-selected="true"] {
+  color: #fff;
+  border-color: #2454ae;
+  background: var(--attendance-blue);
+  box-shadow: 0 5px 13px rgba(32, 83, 173, .16);
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs > button:not([aria-selected="true"]):hover {
+  background: #ebf3ff;
+  border-color: #a9c8ef;
+}
+
+/* Same card radius, internal breathing room and control rhythm on every tab. */
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-dashboard-card, .attendance-closure-panel,
+  .attendance-students-directory, .attendance-student-history,
+  .attendance-class-detail, .attendance-followup-list,
+  .attendance-followup-detail, .attendance-analytics-table,
+  .attendance-audit, .staff-attendance
+) {
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--attendance-radius);
+  border-color: var(--attendance-border);
+  background: var(--attendance-surface);
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-filter, .attendance-followup-filter,
+  .attendance-analytics-filter
+) {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--attendance-radius);
+  border-color: var(--attendance-border);
+  background: var(--attendance-surface);
+  align-items: end;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-filter label, .attendance-report-row label,
+  .attendance-monitor-filters label, .attendance-closure-form label,
+  .attendance-students-search label, .attendance-followup-filter label,
+  .attendance-followup-detail label, .attendance-followup-activity-form label,
+  .attendance-analytics-filter label, .attendance-audit-filter label,
+  .staff-attendance-admin-summary label, .staff-attendance-detail label
+) {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #435a79;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .attendance-section :is(input, select, textarea) {
+  max-width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-filter input, .attendance-filter select,
+  .attendance-report-row input, .attendance-report-row select,
+  .attendance-monitor-filters input, .attendance-monitor-filters select,
+  .attendance-closure-form input, .attendance-students-search input,
+  .attendance-followup-filter input, .attendance-followup-filter select,
+  .attendance-followup-detail input, .attendance-followup-detail select,
+  .attendance-followup-detail textarea, .attendance-analytics-filter select,
+  .attendance-audit-filter input, .attendance-audit-filter select,
+  .staff-attendance select, .staff-attendance textarea
+) {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cfdbeb;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--attendance-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .attendance-section textarea { resize: vertical; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  button, input, select, textarea, [tabindex="0"]
+):focus-visible {
+  outline: 3px solid #80b0ef;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .attendance-section :is(.admin-primary, .admin-secondary) {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 730;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-period-caption, .attendance-readonly-note,
+  .attendance-monitor-warning, .attendance-calendar-closure
+) { font-size: 13px; line-height: 1.6; }
+.ml-admin-dashboard-shell .attendance-section .attendance-period-caption {
+  margin: -6px 0 0;
+}
+
+/* Overview: consistent dashboard cards and KPI labels, without oversized
+   numbers making the other tabs feel denser. */
+.ml-admin-dashboard-shell .attendance-section .attendance-overview-grid { gap: 14px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-summary-grid { gap: 12px; }
+.ml-admin-dashboard-shell .attendance-section .academic-summary {
+  min-width: 0;
+  padding: 14px;
+  border-radius: 12px;
+}
+.ml-admin-dashboard-shell .attendance-section .academic-summary strong,
+.ml-admin-dashboard-shell .attendance-section .attendance-monitor-metric strong,
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-metric strong,
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-summary strong {
+  font-size: clamp(21px, 2vw, 27px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-dashboard-card { gap: 10px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-dashboard-card > strong {
+  font-size: clamp(24px, 2.3vw, 32px);
+  line-height: 1.2;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .academic-summary span, .attendance-dashboard-card > span,
+  .attendance-monitor-metric span, .attendance-analytics-metric span,
+  .attendance-followup-summary span, .attendance-student-summary span,
+  .attendance-class-detail-summary span
+) {
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-metrics, .attendance-analytics-metrics,
+  .attendance-followup-summary, .attendance-student-summary
+) { gap: 12px; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-metric, .attendance-analytics-metric,
+  .attendance-followup-summary > div, .attendance-student-summary > div,
+  .attendance-class-detail-summary > div
+) { padding: 13px; gap: 7px; border-radius: 12px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-monitor-kpi { padding: 18px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-monitor-kpi small {
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-class, .attendance-closure-item, .attendance-monitor-attention
+) { gap: 12px; padding: 14px; border-radius: 12px; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-class-head strong, .attendance-monitor-attention strong,
+  .attendance-student-card strong, .attendance-history-day strong,
+  .attendance-class-student strong, .attendance-followup-row strong,
+  .attendance-audit-title strong, .staff-reg-item strong
+) { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-class-head small, .attendance-monitor-class-meta,
+  .attendance-closure-item span, .attendance-student-card small,
+  .attendance-history-day small, .attendance-class-student small,
+  .attendance-followup-row small, .attendance-audit-title span,
+  .attendance-audit-card footer, .staff-reg-item small
+) { font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-monitor-footnote, .attendance-day-state,
+  .attendance-mark, .attendance-followup-tag, .attendance-student-card-count,
+  .attendance-audit-status
+) { font-size: 12px; line-height: 1.4; }
+
+/* Registers: correction entries are readable separate cards rather than
+   edge-to-edge divider rows; layout still switches to two/one columns. */
+.ml-admin-dashboard-shell .attendance-section .attendance-report-list { gap: 12px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-report-row {
+  min-width: 0;
+  gap: 12px 14px;
+  padding: 14px;
+  border: 1px solid var(--attendance-border);
+  border-radius: 12px;
+  background: #fff;
+  align-items: end;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-record-main strong {
+  font-size: 14px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-record-main span,
+.ml-admin-dashboard-shell .attendance-section .attendance-original-note span {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-original-note p {
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+/* Students: readable directory rows, calendar day names and 44px controls. */
+.ml-admin-dashboard-shell .attendance-section .attendance-students-layout { gap: 18px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-student-list,
+.ml-admin-dashboard-shell .attendance-section .attendance-history-days,
+.ml-admin-dashboard-shell .attendance-section .attendance-class-students { gap: 10px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-student-card,
+.ml-admin-dashboard-shell .attendance-section .attendance-history-day,
+.ml-admin-dashboard-shell .attendance-section .attendance-class-student {
+  gap: 12px;
+  padding: 13px;
+  border-radius: 12px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-student-card.is-active,
+.ml-admin-dashboard-shell .attendance-section .staff-reg-item-active,
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-select[aria-pressed="true"] {
+  border-color: #4488d3;
+  background: #edf5ff;
+  box-shadow: inset 3px 0 0 #286ac9;
+}
+.ml-admin-dashboard-shell[dir="rtl"] .attendance-section :is(
+  .attendance-student-card.is-active, .staff-reg-item-active,
+  .attendance-followup-select[aria-pressed="true"]
+) { box-shadow: inset -3px 0 0 #286ac9; }
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-grid { gap: 6px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-weekday {
+  font-size: 12px;
+  line-height: 1.35;
+  padding-block: 9px;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-day {
+  min-width: 0;
+  min-height: 68px;
+  gap: 5px;
+  padding: 7px 3px;
+  border-radius: 10px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-day strong { font-size: 14px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-day small {
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-calendar-toolbar strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-history-days h4 { margin: 0; }
+
+/* Follow-ups: consistent nested tabs, case cards, log spacing and actions. */
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-tabs, .attendance-analytics-tabs
+) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+  padding: 0;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-tabs button, .attendance-analytics-tabs button
+) {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--attendance-border);
+  background: #f7faff;
+  color: #45617f;
+  font-size: 13px;
+  font-weight: 740;
+  line-height: 1.4;
+  white-space: normal;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-tabs button.is-active,
+  .attendance-analytics-tabs button.is-active
+) { color: white; background: var(--attendance-blue); border-color: #2454ae; }
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-row {
+  min-width: 0;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-row > div {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-list, .attendance-followup-detail,
+  .attendance-followup-detail-group, .attendance-followup-activity-form
+) { gap: 14px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-activity {
+  gap: 6px;
+  padding-block: 14px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-followup-activity span { font-size: 12.5px; }
+.ml-admin-dashboard-shell .attendance-section :is(
+  .attendance-followup-pagination, .attendance-followup-actions,
+  .attendance-audit-pagination, .attendance-analytics-page,
+  .attendance-pagination
+) { gap: 12px; flex-wrap: wrap; font-size: 13px; }
+
+/* Reports: harmonized metric sizes, distinguishable table headers and
+   intentional horizontal scroll only where multi-column data requires it. */
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-scroll {
+  min-width: 0;
+  border: 1px solid var(--attendance-border);
+  border-radius: 12px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-scroll table {
+  width: 100%;
+  min-width: 620px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-scroll th {
+  background: #f1f6fd;
+  color: #355172;
+  font-size: 13px;
+  font-weight: 750;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-scroll :is(th, td) {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--attendance-border);
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-scroll tr:last-child td { border-bottom: 0; }
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-trends { gap: 10px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-day {
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  padding-block: 4px;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-day > strong { font-size: 13px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-analytics-export { gap: 9px; }
+
+/* Audit and staff corrections: matching record spacing and legible details. */
+.ml-admin-dashboard-shell .attendance-section .attendance-audit-list { gap: 12px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-audit-card {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border-color: var(--attendance-border);
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-audit-detail { gap: 12px; }
+.ml-admin-dashboard-shell .attendance-section .attendance-audit-detail small {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ml-admin-dashboard-shell .attendance-section .attendance-audit-transition { flex-wrap: wrap; gap: 9px; }
+.ml-admin-dashboard-shell .attendance-section .staff-reg-queue {
+  display: grid;
+  gap: 18px;
+}
+.ml-admin-dashboard-shell .attendance-section .staff-reg-columns { gap: 18px; }
+.ml-admin-dashboard-shell .attendance-section .staff-reg-items { gap: 10px; }
+.ml-admin-dashboard-shell .attendance-section .staff-reg-item {
+  min-width: 0;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-detail {
+  min-width: 0;
+  padding: 16px;
+  gap: 14px;
+  border-radius: 12px;
+}
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-admin-summary { gap: 12px 18px; }
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-admin-summary > strong {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-detail .pilot-detail-grid { gap: 10px; margin: 0; }
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-detail .pilot-detail-grid > div {
+  padding: 12px;
+  border-radius: 10px;
+}
+.ml-admin-dashboard-shell .attendance-section .staff-attendance-detail .pilot-detail-grid dt { font-size: 12.5px; }
+
+/* Responsive spacing and type hierarchy. No clipped horizontal nav or inputs. */
+@media (max-width: 1200px) {
+  .ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .attendance-section .attendance-students-layout,
+  .ml-admin-dashboard-shell .attendance-section .staff-reg-columns { grid-template-columns: minmax(0, 1fr); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-report-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  .ml-admin-dashboard-shell .attendance-section { gap: 16px; }
+  .ml-admin-dashboard-shell .attendance-section > [role="tabpanel"] { gap: 16px; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-filter, .attendance-followup-filter, .attendance-analytics-filter,
+    .attendance-audit-filter, .attendance-closure-form, .attendance-monitor-filters
+  ) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-monitor-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-filter > button, .attendance-analytics-filter > button,
+    .attendance-closure-form > button, .attendance-followup-filter > button
+  ) { grid-column: 1 / -1; justify-self: stretch; }
+}
+@media (max-width: 620px) {
+  .ml-admin-dashboard-shell .attendance-section { gap: 14px; font-size: 14px; }
+  .ml-admin-dashboard-shell .attendance-section > [role="tabpanel"] { gap: 14px; }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-dashboard-card, .attendance-closure-panel,
+    .attendance-students-directory, .attendance-student-history,
+    .attendance-class-detail, .attendance-followup-list, .attendance-followup-detail,
+    .attendance-analytics-table, .attendance-audit, .staff-attendance
+  ) { padding: 14px; }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-filter, .attendance-followup-filter, .attendance-analytics-filter
+  ) { padding: 14px; }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-filter, .attendance-followup-filter, .attendance-analytics-filter,
+    .attendance-audit-filter, .attendance-closure-form, .attendance-monitor-filters,
+    .attendance-report-row
+  ) { grid-template-columns: minmax(0, 1fr); }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-summary-grid, .attendance-overview-grid,
+    .attendance-student-summary, .attendance-monitor-metrics
+  ) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-followup-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-filter > button, .attendance-followup-filter > button,
+    .attendance-analytics-filter > button, .attendance-closure-form > button
+  ) { grid-column: auto; width: 100%; }
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-monitor-class-head, .attendance-closure-item
+  ) { align-items: flex-start; flex-direction: column; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-calendar-day {
+    min-height: 64px;
+    padding: 6px 2px;
+  }
+  .ml-admin-dashboard-shell .attendance-section .attendance-calendar-day small { font-size: 10px; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-calendar-weekday { font-size: 10.5px; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-student-card { flex-wrap: wrap; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-analytics-day { gap: 8px; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-audit-detail { grid-template-columns: minmax(0, 1fr); }
+  .ml-admin-dashboard-shell .attendance-section :is(.attendance-followup-actions, .staff-reg-decision-actions) {
+    justify-content: stretch;
+  }
+}
+@media (max-width: 390px) {
+  .ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs { grid-template-columns: minmax(0, 1fr); }
+  .ml-admin-dashboard-shell .attendance-section .attendance-workspace-tabs > button { justify-content: flex-start; }
+  .ml-admin-dashboard-shell .attendance-section .attendance-calendar-grid { gap: 3px; }
+}
+@media (max-width: 900px) {
+  .ml-admin-dashboard-shell .attendance-section :is(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .attendance-section :is(
+    .attendance-workspace-tabs, .attendance-workspace-tabs button,
+    .attendance-monitor-meter > div
+  ) { transition: none; scroll-behavior: auto; }
+}
