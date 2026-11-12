@@ -62,6 +62,12 @@ export function buildApp(options: BuildAppOptions) {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    // User-scoped API data includes tokens, temporary credentials and private
+    // school records. Prevent browsers and intermediary HTTP caches from
+    // persisting responses; the mobile app uses its own scoped offline cache.
+    if (request.url.startsWith("/v1/") && !request.url.startsWith("/v1/public/")) {
+      reply.header("cache-control", "no-store");
+    }
   });
 
   app.addHook("onResponse", async (request, reply) => {
