@@ -278,6 +278,22 @@ main.ml-admin-dashboard-shell.admin-workspace.admin-shell-premium {
 .ml-admin-dashboard-shell .ml-admin-subnav-link:hover { color: white; background: rgba(255,255,255,.09); }
 .ml-admin-dashboard-shell .ml-admin-subnav-link-active { color: white; background: rgba(255,255,255,.13); }
 .ml-admin-dashboard-shell .ml-admin-subnav-dot { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: currentColor; }
+.ml-admin-dashboard-shell .ml-admin-subnav-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 6px;
+  color: #c3d6ed;
+  background: rgba(255,255,255,.055);
+}
+.ml-admin-dashboard-shell .ml-admin-subnav-icon svg { display: block; }
+.ml-admin-dashboard-shell .ml-admin-subnav-link:hover .ml-admin-subnav-icon,
+.ml-admin-dashboard-shell .ml-admin-subnav-link-active .ml-admin-subnav-icon {
+  color: #fff;
+  background: rgba(255,255,255,.16);
+}
 .ml-admin-dashboard-shell[dir="rtl"] .ml-admin-subnav { margin-inline-start: 18px; margin-inline-end: 0; }
 .ml-admin-dashboard-shell [id^="family-"] { scroll-margin-top: 106px; }
 .ml-admin-dashboard-shell .ml-admin-sidebar-footer {
