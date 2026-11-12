@@ -225,6 +225,13 @@
       "when": 1790850800000,
       "tag": "0031_staff_workflow",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790859200000,
+      "tag": "0032_phase3_integrity_constraints",
+      "breakpoints": true
     }
   ]
 }
