@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 7 communication, fee ledger and notification reliability regression
+        run: pnpm verify:communication:phase7
+
       - name: Phase 6 account lifecycle, families, staff and identity uniqueness regression
         run: pnpm verify:accounts:phase6
 
@@ -299,6 +302,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 7 communication, fee ledger and notification reliability regression
+        run: pnpm verify:communication:phase7
+
       - name: Phase 6 account lifecycle, families, staff and identity uniqueness regression
         run: pnpm verify:accounts:phase6
 
