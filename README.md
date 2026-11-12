@@ -240,4 +240,4 @@ pnpm verify             # full regressions, typechecks, tests and production bui
 
 Automated tests are not a production go-live sign-off. Record the exact deployed SHA, real Android/browser journeys, production database migrations, push delivery, a backup/restore drill, external schedulers, accessibility, and operator approval.
 
-See [Phase 1 foundation audit](docs/FINAL-AUDIT-PHASE1.md), [Phase 2 security audit](docs/FINAL-AUDIT-PHASE2.md), [project state](docs/PROJECT-STATE.md), [production operations](docs/PRODUCTION-OPERATIONS.md), and [Step 20 release readiness](docs/RELEASE-READINESS-STEP20.md).
+See [Phase 1 foundation audit](docs/FINAL-AUDIT-PHASE1.md), [Phase 2 security audit](docs/FINAL-AUDIT-PHASE2.md), [Phase 3 database integrity audit](docs/FINAL-AUDIT-PHASE3.md), [project state](docs/PROJECT-STATE.md), [production operations](docs/PRODUCTION-OPERATIONS.md), and [Step 20 release readiness](docs/RELEASE-READINESS-STEP20.md).

@@ -16,7 +16,8 @@ const paths=[
 const sources=Object.fromEntries(paths.map(path=>[path,read(path)]));
 const workflow=sources[paths[2]],store=sources[paths[1]],dashboard=sources[paths[5]];
 const journal=JSON.parse(read("packages/database/drizzle/meta/_journal.json"));
-assert.equal(journal.entries.at(-1)?.tag,"0031_staff_workflow");
+// This staff migration remains present even when later integrity migrations are appended.
+assert.equal(journal.entries[31]?.tag,"0031_staff_workflow");
 assert.equal(new Set(journal.entries.map(x=>x.tag)).size,journal.entries.length);
 for(const part of [
   'eq(staffWorkTasks.schoolId,schoolId)',
