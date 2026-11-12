@@ -577,7 +577,29 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
       if (new Date(input.dueAt).getTime() <= Date.now()) {
         throw new LearningValidationError("Homework deadline must be in the future.");
       }
-      const [homework] = await db
+      return db.transaction(async (tx) => {
+        // Assignment validation ran before the transaction; verify its school,
+        // teacher and academic year again while the year row is locked.
+        // This prevents a draft being created after the year is archived.
+        const [lockedYear] = await tx.select({ status: academicYears.status })
+          .from(academicYears).where(and(eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, assignment.academicYearId))).limit(1).for("update");
+        if (lockedYear?.status !== "ACTIVE") {
+          throw new LearningConflictError("Homework requires the active academic year.");
+        }
+        const [currentAssignment] = await tx.select({ id: teacherAssignments.id })
+          .from(teacherAssignments).where(and(
+            eq(teacherAssignments.schoolId, schoolId),
+            eq(teacherAssignments.id, assignment.id),
+            eq(teacherAssignments.teacherUserId, teacherUserId),
+            eq(teacherAssignments.classId, assignment.classId),
+            eq(teacherAssignments.subjectId, assignment.subjectId),
+            eq(teacherAssignments.academicYearId, assignment.academicYearId)
+          )).limit(1);
+        if (!currentAssignment) {
+          throw new LearningConflictError("Teacher assignment changed. Refresh before creating homework.");
+        }
+        const [homework] = await tx
         .insert(homeworks)
         .values({
           id: randomUUID(),
@@ -594,8 +616,9 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           status: "DRAFT"
         })
         .returning();
-      if (!homework) throw new Error("Homework insert did not return a row.");
-      return homework;
+        if (!homework) throw new Error("Homework insert did not return a row.");
+        return homework;
+      });
     },
 
     async updateHomework(schoolId, teacherUserId, homeworkId, input) {
@@ -657,9 +680,41 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
 
       const now = new Date();
       return db.transaction(async (tx) => {
+        if (status === "PUBLISHED") {
+          // Lock the year before the homework row, matching academic-year
+          // transitions and assignment-sensitive draft creation.
+          const [lockedYear] = await tx.select({ status: academicYears.status })
+            .from(academicYears).where(and(eq(academicYears.schoolId, schoolId),
+              eq(academicYears.id, current.academicYearId))).limit(1).for("update");
+          if (lockedYear?.status !== "ACTIVE") {
+            throw new LearningConflictError("Homework publication requires the active academic year.");
+          }
+        }
+        const [lockedHomework] = await tx.select().from(homeworks).where(and(
+          eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId),
+          eq(homeworks.teacherUserId, teacherUserId)
+        )).limit(1).for("update");
+        if (!lockedHomework || lockedHomework.status !== current.status) {
+          throw new LearningConflictError("Homework status changed. Refresh and retry.");
+        }
+        if (status === "PUBLISHED") {
+          const [assigned] = await tx.select({ id: teacherAssignments.id })
+            .from(teacherAssignments).where(and(
+              eq(teacherAssignments.schoolId, schoolId),
+              eq(teacherAssignments.id, lockedHomework.assignmentId),
+              eq(teacherAssignments.academicYearId, lockedHomework.academicYearId),
+              eq(teacherAssignments.classId, lockedHomework.classId),
+              eq(teacherAssignments.subjectId, lockedHomework.subjectId),
+              eq(teacherAssignments.teacherUserId, teacherUserId)
+            )).limit(1);
+          if (!assigned) throw new LearningConflictError("Teacher assignment changed before publication.");
+          if (lockedHomework.dueAt.getTime() <= Date.now()) {
+            throw new LearningConflictError("Homework due date must be after publication.");
+          }
+        }
         const [updated] = await tx.update(homeworks).set({
-          status, publishedAt: status === "PUBLISHED" ? now : current.publishedAt,
-          scheduledAt: status === "PUBLISHED" ? null : current.scheduledAt,
+          status, publishedAt: status === "PUBLISHED" ? now : lockedHomework.publishedAt,
+          scheduledAt: status === "PUBLISHED" ? null : lockedHomework.scheduledAt,
           updatedAt: now
         }).where(and(eq(homeworks.schoolId, schoolId), eq(homeworks.id, homeworkId),
           eq(homeworks.teacherUserId, teacherUserId), eq(homeworks.status, current.status)))
@@ -739,6 +794,26 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
           .limit(1).for("update");
         if (lockedExam?.status !== "IN_PROGRESS") {
           throw new LearningConflictError("Mark entry closed because the exam status changed.");
+        }
+        const [currentAssignment] = await tx.select({ id: teacherAssignments.id })
+          .from(teacherAssignments).where(and(
+            eq(teacherAssignments.schoolId, schoolId),
+            eq(teacherAssignments.teacherUserId, teacherUserId),
+            eq(teacherAssignments.academicYearId, row.exam.academicYearId),
+            eq(teacherAssignments.classId, row.examSubject.classId),
+            eq(teacherAssignments.subjectId, row.examSubject.subjectId)
+          )).limit(1);
+        if (!currentAssignment) {
+          throw new LearningConflictError("You are no longer assigned to this exam subject.");
+        }
+        const latestRoster = await tx.select({ id: students.id }).from(students)
+          .where(and(eq(students.schoolId, schoolId),
+            eq(students.classId, row.examSubject.classId),
+            eq(students.academicYearId, row.exam.academicYearId),
+            eq(students.status, "ACTIVE")));
+        const currentStudentIds = new Set(latestRoster.map((student) => student.id));
+        if (entries.some((entry) => !currentStudentIds.has(entry.studentId))) {
+          throw new LearningConflictError("The class roster changed. Reload the grade sheet.");
         }
         let changed = 0;
         for (const entry of entries) {

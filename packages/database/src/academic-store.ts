@@ -360,6 +360,21 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
     }
   }
 
+  async function lockWritableYear(
+    tx: Parameters<Parameters<FoundationDatabase["transaction"]>[0]>[0],
+    schoolId: string, yearId: string
+  ): Promise<AcademicYear> {
+    // All Negaran and timetable create/update paths lock the SAME academic
+    // year row before checking overlapping intervals. Under READ COMMITTED,
+    // a waiting transaction rechecks after the winning transaction commits.
+    const [year] = await tx.select().from(academicYears)
+      .where(and(eq(academicYears.schoolId, schoolId), eq(academicYears.id, yearId)))
+      .limit(1).for("update");
+    if (!year) throw new AcademicNotFoundError("Academic year not found.");
+    requireMutableYear(year);
+    return year;
+  }
+
   async function validateClassYear(schoolId: string, yearId: string, classId: string) {
     const [year, classSection] = await Promise.all([
       getYear(schoolId, yearId),
@@ -1499,7 +1514,13 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicValidationError("Negaran end date must fall inside the academic year.");
       }
 
-      const existing = await db
+return db.transaction(async (tx) => {
+        const lockedYear = await lockWritableYear(tx, schoolId, input.academicYearId);
+        if (input.startDate < lockedYear.startDate || input.startDate > lockedYear.endDate ||
+          (input.endDate && (input.endDate < input.startDate || input.endDate > lockedYear.endDate))) {
+          throw new AcademicValidationError("Negaran assignment dates must fall inside the academic year.");
+        }
+      const existing = await tx
         .select()
         .from(negaranAssignments)
         .where(and(
@@ -1521,7 +1542,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicConflictError("This teacher is already Negaran for another class during the selected date range.");
       }
 
-      const [assignment] = await db
+      const [assignment] = await tx
         .insert(negaranAssignments)
         .values({
           id: randomUUID(),
@@ -1532,6 +1553,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         .returning();
       if (!assignment) throw new Error("Negaran assignment insert did not return a row.");
       return assignment;
+      });
     },
 
     async updateNegaranAssignment(schoolId, assignmentId, input) {
@@ -1552,7 +1574,19 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       ) {
         throw new AcademicValidationError("Negaran assignment dates must fall inside the academic year.");
       }
-      const overlaps = await db
+return db.transaction(async (tx) => {
+        const lockedYear = await lockWritableYear(tx, schoolId, input.academicYearId);
+        if (input.startDate < lockedYear.startDate || input.startDate > lockedYear.endDate ||
+          (input.endDate && (input.endDate < input.startDate || input.endDate > lockedYear.endDate))) {
+          throw new AcademicValidationError("Negaran assignment dates must fall inside the academic year.");
+        }
+        const [fresh] = await tx.select().from(negaranAssignments)
+          .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+          .limit(1);
+        if (!fresh || fresh.updatedAt.getTime() !== current.updatedAt.getTime()) {
+          throw new AcademicConflictError("Negaran assignment changed while editing. Reload and retry.");
+        }
+      const overlaps = await tx
         .select({
           id: negaranAssignments.id,
           classId: negaranAssignments.classId,
@@ -1579,19 +1613,21 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       if (overlap?.teacherUserId === input.teacherUserId) {
         throw new AcademicConflictError("This teacher is already Negaran for another class during the selected date range.");
       }
-      const [updated] = await db
+      const [updated] = await tx
         .update(negaranAssignments)
         .set({
           classId: input.classId,
           teacherUserId: input.teacherUserId,
           startDate: input.startDate,
           endDate: input.endDate ?? null,
-          updatedAt: new Date()
+          updatedAt: new Date(Math.max(Date.now(), fresh.updatedAt.getTime() + 1))
         })
-        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId),
+          eq(negaranAssignments.updatedAt, fresh.updatedAt)))
         .returning();
       if (!updated) throw new AcademicNotFoundError("Negaran assignment not found.");
       return updated;
+      });
     },
 
     async deleteNegaranAssignment(schoolId, assignmentId) {
@@ -1639,9 +1675,10 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       const [updated] = await db
         .update(negaranAssignments)
         .set({ endDate: input.endDate, updatedAt: new Date() })
-        .where(and(eq(negaranAssignments.schoolId, schoolId), eq(negaranAssignments.id, assignmentId)))
+        .where(and(eq(negaranAssignments.schoolId, schoolId),
+          eq(negaranAssignments.id, assignmentId), isNull(negaranAssignments.endDate)))
         .returning();
-      if (!updated) throw new AcademicNotFoundError("Negaran assignment not found.");
+      if (!updated) throw new AcademicConflictError("Negaran assignment was already ended by another request.");
       return updated;
     },
 
@@ -1652,7 +1689,9 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         getTeacher(schoolId, input.teacherUserId)
       ]);
 
-      const [assignment] = await db
+return db.transaction(async (tx) => {
+        await lockWritableYear(tx, schoolId, input.academicYearId);
+      const [assignment] = await tx
         .select({ id: teacherAssignments.id })
         .from(teacherAssignments)
         .where(
@@ -1669,7 +1708,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         throw new AcademicValidationError("Create the teacher-subject-class assignment before adding its timetable period.");
       }
 
-      const candidates = await db
+      const candidates = await tx
         .select()
         .from(timetablePeriods)
         .where(
@@ -1690,12 +1729,13 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         }
       }
 
-      const [period] = await db
+      const [period] = await tx
         .insert(timetablePeriods)
         .values({ id: randomUUID(), schoolId, ...input })
         .returning();
       if (!period) throw new Error("Timetable period insert did not return a row.");
       return period;
+      });
     },
 
     async updateTimetablePeriod(schoolId, periodId, input) {
@@ -1710,7 +1750,16 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
         getSubject(schoolId, input.subjectId),
         getTeacher(schoolId, input.teacherUserId)
       ]);
-      const [assignment] = await db
+return db.transaction(async (tx) => {
+        await lockWritableYear(tx, schoolId, input.academicYearId);
+        const [fresh] = await tx.select().from(timetablePeriods).where(and(
+          eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)
+        )).limit(1);
+        if (!fresh || ["classId", "subjectId", "teacherUserId", "weekday", "startsAt", "endsAt"]
+          .some((key) => fresh[key as keyof typeof fresh] !== current[key as keyof typeof current])) {
+          throw new AcademicConflictError("Timetable period changed while editing. Reload and retry.");
+        }
+      const [assignment] = await tx
         .select({ id: teacherAssignments.id })
         .from(teacherAssignments)
         .where(and(
@@ -1724,7 +1773,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
       if (!assignment) {
         throw new AcademicValidationError("Timetable period requires an existing matching teacher assignment.");
       }
-      const conflicts = await db
+      const conflicts = await tx
         .select()
         .from(timetablePeriods)
         .where(and(
@@ -1742,7 +1791,7 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           throw new AcademicConflictError("The teacher already has another timetable period at that time.");
         }
       }
-      const [updated] = await db
+      const [updated] = await tx
         .update(timetablePeriods)
         .set({
           classId: input.classId,
@@ -1752,10 +1801,15 @@ export function createAcademicStore(db: FoundationDatabase): AcademicStore {
           startsAt: input.startsAt,
           endsAt: input.endsAt
         })
-        .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId)))
+        .where(and(eq(timetablePeriods.schoolId, schoolId), eq(timetablePeriods.id, periodId),
+          eq(timetablePeriods.classId, fresh.classId), eq(timetablePeriods.subjectId, fresh.subjectId),
+          eq(timetablePeriods.teacherUserId, fresh.teacherUserId),
+          eq(timetablePeriods.weekday, fresh.weekday),
+          eq(timetablePeriods.startsAt, fresh.startsAt), eq(timetablePeriods.endsAt, fresh.endsAt)))
         .returning();
       if (!updated) throw new AcademicNotFoundError("Timetable period not found.");
       return updated;
+      });
     },
 
     async deleteTimetablePeriod(schoolId, periodId) {

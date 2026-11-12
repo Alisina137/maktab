@@ -291,3 +291,115 @@ test("academic structure remains tenant scoped and only one year can be active",
     /Subject not found/i
   );
 });
+
+
+test("Audit Phase 5: overlapping supervision and timetable writes cannot both succeed", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schoolStore = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const academics = createAcademicStore(db);
+
+  const school = await schoolStore.createSchool({
+    code: "PHASE5-SCHOOL", name: "Phase Five School", slug: "phase5-school",
+    province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+  });
+  const schoolId = school.school.id;
+  const teacherUsers = await Promise.all(["phase5.one", "phase5.two"].map(async (username, index) => {
+    const user = await accounts.createUser({
+      schoolId, username, passwordHash: "hash", role: "TEACHER"
+    });
+    await academics.createTeacherProfile(schoolId, {
+      userId: user.id, employeeCode: "T-5" + (index + 1), fullName: username
+    });
+    return user;
+  }));
+  const year = await academics.createAcademicYear(schoolId, {
+    name: "Phase Five", startDate: "2026-01-01", endDate: "2027-12-31"
+  });
+  await academics.setAcademicYearStatus(schoolId, year.id, "ACTIVE");
+  const grade = await academics.createGradeLevel(schoolId, {
+    code: "G1", name: "Grade One", sortOrder: 1
+  });
+  const [klassA, klassB] = await Promise.all([
+    academics.createClassSection(schoolId, {
+      academicYearId: year.id, gradeLevelId: grade.id, code: "1-A", name: "Class 1A"
+    }),
+    academics.createClassSection(schoolId, {
+      academicYearId: year.id, gradeLevelId: grade.id, code: "1-B", name: "Class 1B"
+    })
+  ]);
+  const [subjectA, subjectB] = await Promise.all([
+    academics.createSubject(schoolId, { code: "P5-MATH", name: "Phase Five Mathematics" }),
+    academics.createSubject(schoolId, { code: "P5-SCI", name: "Phase Five Science" })
+  ]);
+  for (const input of [
+    { classId: klassA.id, subjectId: subjectA.id, teacherUserId: teacherUsers[0]!.id },
+    { classId: klassB.id, subjectId: subjectB.id, teacherUserId: teacherUsers[0]!.id },
+    { classId: klassA.id, subjectId: subjectB.id, teacherUserId: teacherUsers[1]!.id }
+  ]) {
+    await academics.createTeacherAssignment(schoolId, { academicYearId: year.id, ...input });
+  }
+
+  const supervision = await Promise.allSettled([
+    academics.createNegaranAssignment(schoolId, {
+      academicYearId: year.id, classId: klassA.id,
+      teacherUserId: teacherUsers[0]!.id, startDate: "2026-02-01"
+    }),
+    academics.createNegaranAssignment(schoolId, {
+      academicYearId: year.id, classId: klassA.id,
+      teacherUserId: teacherUsers[1]!.id, startDate: "2026-02-15"
+    })
+  ]);
+  assert.equal(supervision.filter(row => row.status === "fulfilled").length, 1,
+    "Two competing supervisors must not cover the same class/date");
+  assert.equal(supervision.filter(row => row.status === "rejected").length, 1);
+  const selectedSupervisor = supervision.find(row => row.status === "fulfilled");
+  assert.equal(selectedSupervisor?.status, "fulfilled");
+  if (selectedSupervisor?.status !== "fulfilled") throw new Error("No selected Negaran.");
+  const closed = await academics.endNegaranAssignment(schoolId, selectedSupervisor.value.id, {
+    endDate: "2026-03-31"
+  });
+  assert.equal(closed.endDate, "2026-03-31");
+  await assert.rejects(
+    academics.endNegaranAssignment(schoolId, selectedSupervisor.value.id, { endDate: "2026-04-01" }),
+    /already closed/i,
+    "Ending the same supervision twice must not overwrite the recorded end date"
+  );
+
+  const timetable = await Promise.allSettled([
+    academics.createTimetablePeriod(schoolId, {
+      academicYearId: year.id, classId: klassA.id, subjectId: subjectA.id,
+      teacherUserId: teacherUsers[0]!.id, weekday: "SATURDAY",
+      startsAt: "08:00", endsAt: "08:50"
+    }),
+    academics.createTimetablePeriod(schoolId, {
+      academicYearId: year.id, classId: klassB.id, subjectId: subjectB.id,
+      teacherUserId: teacherUsers[0]!.id, weekday: "SATURDAY",
+      startsAt: "08:30", endsAt: "09:10"
+    })
+  ]);
+  assert.equal(timetable.filter(row => row.status === "fulfilled").length, 1,
+    "A teacher cannot be scheduled in overlapping classes even under concurrent writes");
+  assert.equal(timetable.filter(row => row.status === "rejected").length, 1);
+  const activeTimetable = await academics.getTeacherView(schoolId, teacherUsers[0]!.id);
+  assert.equal(activeTimetable.schedule.length, 1);
+
+  const winningSlot = timetable.find(row => row.status === "fulfilled");
+  if (winningSlot?.status !== "fulfilled") throw new Error("No timetable period inserted.");
+  const alternative = winningSlot.value.classId === klassA.id
+    ? { classId: klassB.id, subjectId: subjectB.id, teacherUserId: teacherUsers[0]!.id }
+    : { classId: klassA.id, subjectId: subjectA.id, teacherUserId: teacherUsers[0]!.id };
+  const overlappingReassignment = await academics.createTimetablePeriod(schoolId, {
+    academicYearId: year.id, classId: alternative.classId,
+    subjectId: alternative.subjectId, teacherUserId: alternative.teacherUserId,
+    weekday: "MONDAY", startsAt: "10:00", endsAt: "10:45"
+  });
+  await assert.rejects(
+    academics.updateTimetablePeriod(schoolId, overlappingReassignment.id, {
+      academicYearId: year.id, ...alternative,
+      weekday: "SATURDAY", startsAt: "08:20", endsAt: "08:45"
+    }),
+    /already has another timetable period|already has another timetable|already scheduled/i
+  );
+});
