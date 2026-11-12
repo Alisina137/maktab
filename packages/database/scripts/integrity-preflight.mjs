@@ -60,11 +60,10 @@ async function main() {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(new URL(`file://${process.argv[1].replaceAll("\\", "/")}`))) {
-  main().catch((error) => {
-    // Raw PostgreSQL errors can include connection or record details. Keep logs sanitized.
-    console.error("[integrity] Preflight failed. Check database connectivity and migration 0031 baseline. " +
-      (error instanceof Error && error.message.includes("integrity issue(s)") ? error.message : "No changes were made."));
-    process.exitCode = 1;
-  });
-}
+main().catch((error) => {
+  // Raw PostgreSQL errors can include connection or record details. Keep logs sanitized.
+  console.error("[integrity] Preflight failed. Check database connectivity and migration 0031 baseline. " +
+    (error instanceof Error && error.message.includes("integrity issue(s)")
+      ? error.message : "No changes were made."));
+  process.exitCode = 1;
+});
