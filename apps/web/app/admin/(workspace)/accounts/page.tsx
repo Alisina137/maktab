@@ -16,6 +16,7 @@ import { shouldAcceptAccountDirectoryResult, updateAccountSelection } from "../.
 import { AdminLoader, AdminSkeleton } from "../../admin-loader";
 import { useAdminWorkspace } from "../../admin-workspace";
 import { useAdminSectionRoute } from "../../admin-section-route";
+import "../../account-create-layout.css";
 
 type AccountView = "DIRECTORY" | "CREATE";
 
@@ -553,7 +554,12 @@ export default function AccountsPage() {
           <h3>{t("Create account")}</h3>
           <p className="admin-copy">{t("Create school accounts here. Parent profiles are created with their login, and student logins are linked to an existing student record.")}</p>
           <form className="admin-form account-create-form" noValidate onSubmit={createUser}>
-            <div className="account-form-kicker">{t("Step 1 · Account role")}</div>
+            <div className="account-create-step-grid">
+              <section className="account-create-step account-create-step-role"
+                aria-labelledby="account-create-role-heading">
+                <div className="account-form-kicker" id="account-create-role-heading">
+                  {t("Step 1 · Account role")}
+                </div>
             <label>
               {t("Role")}
               <select
@@ -579,7 +585,12 @@ export default function AccountsPage() {
               </select>
             </label>
             <p id="account-create-role-help" className="account-create-role-help">{t(roleCreationHelp(newRole))}</p>
-            <div className="account-form-kicker">{t("Step 2 · Account information")}</div>
+              </section>
+              <section className="account-create-step account-create-step-details"
+                aria-labelledby="account-create-information-heading">
+                <div className="account-form-kicker" id="account-create-information-heading">
+                  {t("Step 2 · Account information")}
+                </div>
 
             {newRole === "PARENT" ? (
               <>
@@ -693,14 +704,18 @@ export default function AccountsPage() {
                 </span>
               ) : null}
             </label>
-            <div className="account-create-notice">{t("A temporary password will be generated. The account holder must change it on first login.")}</div>
-            <button
+              </section>
+            </div>
+            <div className="account-create-footer">
+              <div className="account-create-notice">{t("A temporary password will be generated. The account holder must change it on first login.")}</div>
+              <button
               className="admin-primary"
               disabled={busy || (newRole === "STUDENT" && (familyLoading || availableStudentRecords.length === 0))}
               type="submit"
             >
-              {t(busy ? "Working…" : "Generate account")}
-            </button>
+                {t(busy ? "Working…" : "Generate account")}
+              </button>
+            </div>
           </form>
         </article>
         ) : null}
