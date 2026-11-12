@@ -9,7 +9,7 @@ import { adminSidebarSections, sidebarItemIsActive } from "./admin-sidebar-secti
 import { AdminSubnavIcon, adminSubnavIconPaths } from "./admin-subnav-icons";
 
 type NavItem = { href: string; label: string };
-type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check";
+type Glyph = "dashboard" | "academic" | "accounts" | "staff" | "families" | "registrations" | "attendance" | "learning" | "communication" | "pilot" | "profile" | "search" | "menu" | "chevron" | "arrow" | "bell" | "logout" | "school" | "check" | "close";
 
 const navIcons: Record<string, Glyph> = {
   "/admin/dashboard": "dashboard", "/admin/academics": "academic", "/admin/accounts": "accounts",
@@ -37,7 +37,8 @@ const iconPaths: Record<Glyph, string> = {
   bell: "M18 8a6 6 0 0 0-12 0c0 7-3 8-3 9h18c0-1-3-2-3-9M10 21h4",
   logout: "M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M9 12h11",
   school: "M3 20h18M5 20V8l7-4 7 4v12M9 11h.01M15 11h.01M9 15h.01M15 15h.01M10 20v-3h4v3",
-  check: "m5 12 4 4 10-10"
+  check: "m5 12 4 4 10-10",
+  close: "M5 5l14 14M19 5 5 19"
 };
 
 function Icon({ name, size = 20 }: { name: Glyph; size?: number }) {
@@ -261,6 +262,11 @@ export function AdminDashboardFrame({
         aria-hidden={isMobileLayout && !mobileOpen ? true : undefined}
         inert={isMobileLayout && !mobileOpen}
         onKeyDown={handleSidebarKeyDown}>
+        <button className="ml-admin-sidebar-close" type="button"
+          aria-label={t("Close sidebar")} title={t("Close sidebar")}
+          onClick={() => closeMobileSidebar(true)}>
+          <Icon name="close" size={20} />
+        </button>
         <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={() => setMobileOpen(false)}>
           <span className="ml-admin-brand-icon"><Icon name="academic" size={27} /></span>
           <span className="ml-admin-sidebar-brand-text"><strong>MaktabLink</strong><small>{t("School Administration")}</small></span>
