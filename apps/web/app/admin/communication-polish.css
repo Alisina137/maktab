@@ -1,0 +1,926 @@
+/* Admin Communication & Fees: shared, route-scoped visual design.
+ * Normalizes the 3 main tabs, all announcement workflows, and 4 nested fee
+ * modules without changing public, parent, teacher or staff experiences. */
+.ml-admin-dashboard-shell .communication-section {
+  --cf-ink: #213752;
+  --cf-muted: #5d728d;
+  --cf-border: #dae5f2;
+  --cf-brand: #2459b7;
+  --cf-soft: #f6f9fe;
+  --cf-card: #fff;
+  --cf-gap: 18px;
+  display: grid;
+  align-content: start;
+  gap: var(--cf-gap);
+  width: 100%;
+  min-width: 0;
+  color: var(--cf-ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-tab-panel, .communication-dashboard-group,
+  .communication-fee-module-panel, .communication-fees-page,
+  .communication-workflow-layout, .communication-workflow-list,
+  .communication-workflow-form, .admin-fee-operations,
+  .admin-financial-reports, .admin-financial-bulk
+) { min-width: 0; }
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-tab-panel, .communication-dashboard-group,
+  .communication-fee-module-panel, .communication-workflow-form,
+  .communication-workflow-list, .admin-fee-operations,
+  .admin-financial-reports
+) {
+  display: grid;
+  align-content: start;
+  gap: var(--cf-gap);
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-dashboard-heading, .communication-announcement-row-head,
+  .communication-invoice-header, .communication-invoice-topline,
+  .communication-reminder-heading, .admin-section-header
+) {
+  gap: 10px 16px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-dashboard-heading, .communication-announcement-row-head,
+  .communication-invoice-header, .admin-section-header
+) { align-items: flex-start; }
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-dashboard-heading h3, .communication-recent-card h3,
+  .communication-resource-state h3,
+  .admin-financial-reports > h4,
+  .admin-fee-operations > h4
+) {
+  margin: 0;
+  color: var(--cf-ink);
+  font-size: 18px;
+  font-weight: 790;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-form-card h4, .communication-invoice-create-card h4,
+  .communication-reminder-heading h4, .communication-announcement-list h4,
+  .communication-workflow-list h4, .communication-draft-edit h3
+) {
+  margin: 0 0 7px;
+  color: var(--cf-ink);
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 785;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-dashboard-heading p, .communication-form-card p,
+  .communication-reminder-heading p, .communication-preview small,
+  .communication-announcement-details dd, .admin-financial-reports > small,
+  .admin-financial-bulk p, .communication-workflow-list .admin-copy,
+  .communication-recent-card .admin-copy, .communication-resource-state p
+) {
+  margin-block: 0;
+  color: var(--cf-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-dashboard-heading > button, .admin-section-header > button,
+  .communication-form-card .admin-primary, .communication-reminder-card .admin-primary,
+  .admin-financial-reports .admin-primary, .admin-fee-operations .admin-secondary,
+  .communication-invoice .admin-primary, .communication-invoice .admin-secondary
+) {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 740;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  button, a, input, select, textarea, [tabindex="0"]
+):focus-visible {
+  outline: 3px solid #7eaded;
+  outline-offset: 2px;
+}
+
+/* Main three tabs: one visible row without horizontal clipping. */
+.ml-admin-dashboard-shell .communication-section .communication-main-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  align-items: stretch;
+  padding: 8px;
+  overflow: visible;
+  scroll-snap-type: none;
+  border: 1px solid var(--cf-border);
+  border-radius: 14px;
+  background: var(--cf-card);
+  box-shadow: 0 5px 18px rgba(28, 65, 108, .045);
+}
+.ml-admin-dashboard-shell .communication-section .communication-main-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  flex: initial;
+  padding: 9px 12px;
+  border: 1px solid #e2eaf4;
+  border-radius: 10px;
+  color: #4a617e;
+  background: #f7faff;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.45;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-main-tabs > button svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-main-tabs > button[aria-selected="true"] {
+  color: #fff;
+  background: var(--cf-brand);
+  border-color: #2454ad;
+  box-shadow: 0 5px 14px rgba(36, 89, 183, .18);
+}
+.ml-admin-dashboard-shell .communication-section .communication-main-tabs > button:not([aria-selected="true"]):hover {
+  background: #ebf3ff;
+  border-color: #adc8ea;
+}
+
+/* Overview KPI groups and recent lists. */
+.ml-admin-dashboard-shell .communication-section .communication-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-overview-grid .academic-summary {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--cf-border);
+  border-radius: 13px;
+  background: var(--cf-card);
+  gap: 8px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-overview-grid .academic-summary strong {
+  font-size: clamp(21px, 2vw, 27px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-overview-grid .academic-summary span {
+  color: var(--cf-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-overview-recent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-recent-card {
+  align-content: start;
+  padding: 18px;
+  border: 1px solid var(--cf-border);
+  border-radius: 14px;
+  gap: 11px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-recent-row {
+  display: flex;
+  gap: 7px 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 11px;
+  background: var(--cf-soft);
+}
+.ml-admin-dashboard-shell .communication-section .communication-recent-row strong {
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-recent-row span {
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-recent-row:hover {
+  background: #eaf3ff;
+  border-color: #adc8e9;
+}
+
+/* The old 600px hard caps left empty desktop space and cramped invoice lists.
+   Creation panels and records now have explicit, unequal content columns. */
+.ml-admin-dashboard-shell .communication-section .communication-workflow-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, .78fr) minmax(0, 1.22fr);
+  align-items: start;
+  justify-content: stretch;
+  gap: 18px;
+  min-width: 0;
+  width: 100%;
+}
+.ml-admin-dashboard-shell .communication-section .communication-workflow-form,
+.ml-admin-dashboard-shell .communication-section .communication-workflow-list {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  align-content: start;
+}
+.ml-admin-dashboard-shell .communication-section .communication-workflow-form > .admin-panel,
+.ml-admin-dashboard-shell .communication-section .communication-workflow-list > .admin-panel {
+  min-width: 0;
+  padding: 19px;
+  border: 1px solid var(--cf-border);
+  border-radius: 15px;
+  background: var(--cf-card);
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-form-card,
+.ml-admin-dashboard-shell .communication-section .communication-reminder-card {
+  display: grid;
+  gap: 15px;
+  align-content: start;
+}
+.ml-admin-dashboard-shell .communication-section .communication-workflow-list .academic-rows,
+.ml-admin-dashboard-shell .communication-section .communication-workflow-list .communication-invoice-list,
+.ml-admin-dashboard-shell .communication-section .communication-announcement-items {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row,
+.ml-admin-dashboard-shell .communication-section .communication-invoice {
+  min-width: 0;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--cf-border);
+  border-radius: 13px;
+  background: var(--cf-card);
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row-head {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px 14px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row-head > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row-head strong,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-header strong {
+  color: var(--cf-ink);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row-head span,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-header span {
+  color: var(--cf-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-details {
+  gap: 9px;
+  margin: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-details dt,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-detail-fields dt {
+  color: var(--cf-muted);
+  font-size: 12px;
+  font-weight: 730;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-details dd,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-detail-fields dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-preview,
+.ml-admin-dashboard-shell .communication-section .communication-announcement-full {
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-status,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-status {
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-row .admin-actions,
+.ml-admin-dashboard-shell .communication-section .communication-invoice .admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-more-button {
+  min-height: 44px;
+  justify-self: center;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-topline > strong {
+  color: #285eab;
+  font-size: 14px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot,
+.ml-admin-dashboard-shell .communication-section .communication-money-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot > div,
+.ml-admin-dashboard-shell .communication-section .communication-money-grid > span {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px;
+  border-radius: 10px;
+  background: var(--cf-soft);
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot dt,
+.ml-admin-dashboard-shell .communication-section .communication-money-grid > span {
+  color: var(--cf-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot dd,
+.ml-admin-dashboard-shell .communication-section .communication-money-grid strong {
+  margin: 0;
+  color: #1b3555;
+  font-size: 14px;
+  font-weight: 790;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-expanded {
+  gap: 15px;
+  padding-top: 15px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-history {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-row {
+  display: flex;
+  gap: 10px 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--cf-border);
+  border-radius: 11px;
+  background: #fafcff;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-row > div {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-row strong {
+  color: var(--cf-ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-row span {
+  color: var(--cf-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Forms: every input has a visible label, consistent action spacing and
+   comfortable touch target. Never shrink numbers / references to 10px. */
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-form-card .admin-form, .communication-invoice-create-card .admin-form,
+  .communication-draft-edit, .communication-reminder-form, .admin-financial-bulk .admin-form
+) { display: grid; gap: 14px; min-width: 0; }
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-form-card label, .communication-invoice-create-card label,
+  .communication-payment-field, .admin-fee-method-label,
+  .communication-draft-edit label, .communication-reminder-form label,
+  .communication-announcement-filters label, .communication-invoice-filters label,
+  .admin-fee-filters label, .admin-financial-bulk .admin-form > label
+) {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #435a77;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .communication-section :is(input:not([type="radio"]):not([type="checkbox"]), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #cfdbea;
+  border-radius: 10px;
+  background: var(--cf-card);
+  color: var(--cf-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .communication-section textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-preview {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid var(--cf-border);
+  border-radius: 12px;
+  background: var(--cf-soft);
+}
+.ml-admin-dashboard-shell .communication-section .communication-preview > strong {
+  font-size: 13px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-preview p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ml-admin-dashboard-shell .communication-section .communication-publish-choices {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 13px;
+  border-radius: 12px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-publish-choices label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  font-size: 13.5px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-publish-choices input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.ml-admin-dashboard-shell .communication-section :is(
+  .communication-announcement-filters, .communication-invoice-filters,
+  .admin-fee-filters
+) {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--cf-border);
+  border-radius: 13px;
+  background: var(--cf-soft);
+  align-items: end;
+}
+.ml-admin-dashboard-shell .communication-section .communication-announcement-filters,
+.ml-admin-dashboard-shell .communication-section .communication-invoice-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ml-admin-dashboard-shell .communication-section .communication-reminder-card {
+  padding: 18px;
+  gap: 15px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-reminder-heading {
+  display: grid;
+  gap: 6px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-reminder-form {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+.ml-admin-dashboard-shell .communication-section .admin-reminder-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto);
+  align-items: end;
+  gap: 11px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .admin-reminder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .admin-reminder-chip {
+  min-width: 0;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-reminder-chip button {
+  min-height: 32px;
+  min-width: 32px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-reminder-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 15px;
+  border: 1px solid #d2e1f3;
+  border-radius: 12px;
+  background: #f6faff;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-payment-form > button {
+  min-height: 44px;
+  align-self: end;
+}
+.ml-admin-dashboard-shell .communication-section .communication-reversal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: end;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .communication-reversal > button {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #e0b9b9;
+  border-radius: 10px;
+  background: #fff4f4;
+  color: #a52f2f;
+  font-size: 13px;
+  font-weight: 740;
+}
+
+/* Fee subnavigation: semantic tabs share predictable active, focus and
+   responsive states; all 4 options are visible without horizontal scrolling. */
+.ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 9px;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+  border: 1px solid var(--cf-border);
+  border-radius: 14px;
+  background: var(--cf-card);
+  box-shadow: 0 5px 16px rgba(28, 65, 108, .045);
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  flex: initial;
+  min-height: 46px;
+  padding: 9px 11px;
+  border: 1px solid #e0e9f4;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #516783;
+  font-size: 12.5px;
+  font-weight: 760;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs > button svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs > button[aria-selected="true"] {
+  color: #fff;
+  border-color: #2454ae;
+  background: var(--cf-brand);
+  box-shadow: 0 5px 14px rgba(36, 89, 183, .18);
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs > button:not([aria-selected="true"]):hover {
+  background: #ebf3ff;
+  border-color: #acc9ed;
+}
+.ml-admin-dashboard-shell .communication-section .communication-fee-module-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+.ml-admin-dashboard-shell .communication-section :is(.admin-fee-operations, .admin-financial-reports) {
+  gap: 17px;
+  padding: 20px;
+  border: 1px solid var(--cf-border);
+  border-radius: 15px;
+  background: var(--cf-card);
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-filters {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  padding: 15px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-rows,
+.ml-admin-dashboard-shell .communication-section .admin-financial-methods,
+.ml-admin-dashboard-shell .communication-section .admin-financial-bulk {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--cf-border);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-row strong {
+  color: var(--cf-ink);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-row small,
+.ml-admin-dashboard-shell .communication-section .admin-financial-reports > small,
+.ml-admin-dashboard-shell .communication-section .admin-financial-bulk > p {
+  color: var(--cf-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-fee-ledger-amount {
+  text-align: end;
+}
+.ml-admin-dashboard-shell .communication-section .admin-delivery-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
+  gap: 12px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-delivery-metrics > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--cf-border);
+  border-radius: 12px;
+  background: #fafdff;
+}
+.ml-admin-dashboard-shell .communication-section .admin-delivery-metrics span {
+  color: var(--cf-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .communication-section .admin-delivery-metrics strong {
+  color: var(--cf-ink);
+  font-size: clamp(19px, 1.9vw, 25px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-reports > h4,
+.ml-admin-dashboard-shell .communication-section .admin-financial-bulk > h4 {
+  margin: 12px 0 0;
+  padding-block-start: 10px;
+  border-block-start: 1px solid #e5edf7;
+  font-size: 17px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-methods {
+  border: 0;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-bulk {
+  padding: 18px;
+  border: 1px solid var(--cf-border);
+  border-radius: 14px;
+  background: var(--cf-soft);
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-students {
+  max-height: 290px;
+  padding: 9px;
+  border: 1px solid var(--cf-border);
+  border-radius: 12px;
+  background: var(--cf-card);
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-students label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--cf-ink);
+  border-radius: 9px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-students label:hover {
+  background: #f0f6ff;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-students input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-preview {
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  min-width: 0;
+  background: #f4fbf7;
+  border: 1px solid #b4dcca;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ml-admin-dashboard-shell .communication-section .admin-financial-preview ul {
+  margin: 0;
+  padding-inline-start: 20px;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  padding-block: 14px 2px;
+  font-size: 13px;
+}
+.ml-admin-dashboard-shell .communication-section .communication-invoice-pager span {
+  color: var(--cf-muted);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Respect list/create workflow toggles on narrow screens and keep all fields
+   visible in RTL, without 600px width caps and mid-word wrapping. */
+@media (max-width: 1320px) {
+  .ml-admin-dashboard-shell .communication-section .communication-workflow-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-workflow-list {
+    grid-row: 1;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-workflow-form {
+    grid-row: 2;
+  }
+}
+@media (max-width: 1100px) {
+  .ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-overview-recent {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 850px) {
+  .ml-admin-dashboard-shell .communication-section { gap: 16px; }
+  .ml-admin-dashboard-shell .communication-section .communication-main-tabs > button {
+    padding: 9px 7px;
+    font-size: 12.5px;
+    gap: 5px;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-main-tabs > button svg {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-workflow-layout[data-pane="FORM"] > .communication-workflow-form,
+  .ml-admin-dashboard-shell .communication-section .communication-workflow-layout[data-pane="LIST"] > .communication-workflow-list {
+    grid-row: auto;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-announcement-filters,
+  .ml-admin-dashboard-shell .communication-section .communication-invoice-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .ml-admin-dashboard-shell .communication-section { gap: 14px; }
+  .ml-admin-dashboard-shell .communication-section .communication-tab-panel { gap: 14px; }
+  .ml-admin-dashboard-shell .communication-section :is(
+    .communication-workflow-form > .admin-panel, .communication-workflow-list > .admin-panel,
+    .admin-fee-operations, .admin-financial-reports
+  ) { padding: 14px; }
+  .ml-admin-dashboard-shell .communication-section .communication-main-tabs {
+    gap: 5px;
+    padding: 6px;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-main-tabs > button {
+    min-height: 44px;
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-announcement-filters,
+  .ml-admin-dashboard-shell .communication-section .communication-invoice-filters,
+  .ml-admin-dashboard-shell .communication-section .communication-payment-form,
+  .ml-admin-dashboard-shell .communication-section .communication-invoice-detail-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot,
+  .ml-admin-dashboard-shell .communication-section .communication-money-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .communication-section .admin-reminder-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-reversal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section :is(
+    .communication-payment-form > button, .communication-reversal > button,
+    .admin-reminder-actions > button
+  ) { width: 100%; }
+  .ml-admin-dashboard-shell .communication-section .communication-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .communication-section .admin-financial-reports .admin-delivery-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .communication-section .admin-fee-ledger-amount {
+    text-align: start;
+  }
+}
+@media (max-width: 440px) {
+  .ml-admin-dashboard-shell .communication-section .communication-main-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section .admin-fee-module-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section .communication-overview-grid,
+  .ml-admin-dashboard-shell .communication-section .communication-invoice-snapshot,
+  .ml-admin-dashboard-shell .communication-section .communication-money-grid,
+  .ml-admin-dashboard-shell .communication-section .admin-financial-reports .admin-delivery-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .communication-section :is(
+    .communication-main-tabs > button, .admin-fee-module-tabs > button
+  ) { justify-content: flex-start; }
+}
+@media (max-width: 900px) {
+  .ml-admin-dashboard-shell .communication-section :is(
+    input:not([type="radio"]):not([type="checkbox"]), select, textarea
+  ) { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .communication-section :is(
+    .communication-main-tabs button, .admin-fee-module-tabs button,
+    .communication-recent-row, .communication-workflow-layout
+  ) { transition: none; scroll-behavior: auto; }
+}

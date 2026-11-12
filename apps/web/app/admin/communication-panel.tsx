@@ -20,6 +20,7 @@ import {
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
 import { AdminSubnavIcon } from "./admin-subnav-icons";
+import "./communication-polish.css";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 import { adminApi } from "./admin-client";
 
