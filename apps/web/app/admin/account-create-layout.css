@@ -49,7 +49,7 @@
   container-type: inline-size;
 }
 .ml-admin-dashboard-shell .admin-create-account-card > h3 {
-  margin-top: 12px;
+  margin-top: 0;
   font-size: clamp(19px, 1.6vw, 23px);
 }
 .ml-admin-dashboard-shell .admin-create-account-card > .admin-copy {
