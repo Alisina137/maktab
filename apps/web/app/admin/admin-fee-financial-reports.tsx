@@ -5,6 +5,7 @@ import { adminApi } from "./admin-client";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { invoiceReference } from "./communication-invoices-model";
+import { AdminLoader } from "./admin-loader";
 
 type Method = { method: string; gross: number; reversals: number; net: number;
   pendingCount: number; reconciledCount: number; pendingAmount: number; reconciledAmount: number };
@@ -146,6 +147,9 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
     } finally { if (tokenRef.current === token) setBusy(false); }
   }
 
+  const reconciliationRows = report?.rows.filter(row =>
+    row.kind === "PAYMENT" && (row.method === "CASH" || row.method === "BANK_TRANSFER")
+  ) ?? [];
   return (
     <section className="admin-panel admin-financial-reports">
       <div className="communication-dashboard-heading">
@@ -160,7 +164,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
       {invalidRange ? <p role="alert" className="admin-error">{t("Report date range must be chronological.")}</p> : null}
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
-      {reportStatus === "loading" ? <p role="status">{t("Loading fee records…")}</p> : null}
+      {reportStatus === "loading" ? <AdminLoader compact label={t("Loading fee records…")} /> : null}
       {reportStatus === "ready" && report ? (
         <>
           <small>{t("School-local as of")}: {formatAdminHijriDate(locale, report.asOf)} · {report.schoolTimezone}</small>
@@ -197,16 +201,15 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
             ))}
           </div>
           <div className="admin-reminder-actions">
-            <button className="admin-secondary" type="button" disabled={busy}
+            <button className="admin-secondary" type="button" disabled={busy || invalidRange}
               onClick={() => void exportCsv("payments")}>{t("Export transactions CSV")}</button>
-            <button className="admin-secondary" type="button" disabled={busy}
+            <button className="admin-secondary" type="button" disabled={busy || invalidRange}
               onClick={() => void exportCsv("outstanding")}>{t("Export outstanding CSV")}</button>
           </div>
           <small>{t("CSV includes school-authorized rows and escapes spreadsheet formulas. Exports are audited.")}</small>
           <h4>{t("Payment reconciliation")}</h4>
           <div className="admin-fee-ledger-rows">
-            {report.rows.filter(row=>row.kind==="PAYMENT" && (row.method==="CASH" || row.method==="BANK_TRANSFER"))
-              .slice(0,50).map(row=>(
+            {reconciliationRows.slice(0,50).map(row=>(
               <div className="admin-fee-ledger-row" key={row.paymentId}>
                 <div><strong>{row.studentName} · {invoiceReference(row.invoiceNumber)}</strong>
                   <small>{formatAdminHijriDateTime(locale,row.recordedAt,report.schoolTimezone)}</small>
@@ -220,7 +223,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
                 ) : null}
               </div>
             ))}
-            {!report.rows.length ? <p>{t("No payment transactions in this date range.")}</p> : null}
+            {!reconciliationRows.length ? <p className="admin-copy">{t("No cash or bank payments to reconcile in this date range.")}</p> : null}
           </div>
           <small>{t("Showing up to 50 cash/bank rows; CSV contains all eligible report rows.")}</small>
         </>
