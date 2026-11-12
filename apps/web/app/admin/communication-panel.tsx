@@ -19,6 +19,7 @@ import {
 } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
+import { AdminSubnavIcon } from "./admin-subnav-icons";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 import { adminApi } from "./admin-client";
 
@@ -732,7 +733,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             aria-controls={`communication-panel-${key.toLowerCase()}`}
             id={`communication-tab-${key.toLowerCase()}`}
             tabIndex={section === key ? 0 : -1}
-            className={section === key ? "communication-main-tab is-active" : "communication-main-tab"}
+            className={section === key ? "communication-main-tab is-active ml-admin-tab-with-icon" : "communication-main-tab ml-admin-tab-with-icon"}
             onKeyDown={event => {
               const keys: Section[] = ["OVERVIEW", "COMMUNICATION", "FEES"];
               const index = keys.indexOf(key);
@@ -750,7 +751,10 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 sectionRefs.current[next]?.focus();
               }
             }}
-            onClick={() => selectSection(key)}>{t(label)}</button>
+            onClick={() => selectSection(key)}>
+              <AdminSubnavIcon href={key === "OVERVIEW" ? "/admin/communication" : "/admin/communication?tab=" + key.toLowerCase()} />
+              {t(label)}
+            </button>
         ))}
       </nav>
 
@@ -1117,8 +1121,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
             ] as const).map(([key,label]) => (
               <button type="button" key={key} aria-current={feesModule === key ? "page" : undefined}
                 ref={element => { feeModuleRefs.current[key] = element; }}
-                className={feesModule === key ? "is-active" : ""}
-                onClick={() => setFeesModule(key)}>{t(label)}</button>
+                className={feesModule === key ? "is-active ml-admin-tab-with-icon" : "ml-admin-tab-with-icon"}
+                onClick={() => setFeesModule(key)}>
+                <AdminSubnavIcon href={"/admin/communication#" + key.toLowerCase()} />
+                {t(label)}
+              </button>
             ))}
           </nav>
           {(feesModule === "PAYMENTS" || feesModule === "BALANCES") ? (

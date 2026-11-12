@@ -8,6 +8,7 @@ import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
 import { FAMILY_TABS, type FamilyTab } from "./family-tabs-model";
+import { AdminSubnavIcon } from "./admin-subnav-icons";
 import "./family-tabs.css";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { paginateFamilyRows, FAMILY_LIST_PAGE_SIZE } from "./family-list-paging";
@@ -1341,7 +1342,9 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
                 document.getElementById("family-tab-" + FAMILY_TABS[next]!.id)?.focus();
                 if (!busy) navigateTab(FAMILY_TABS[next]!.id);
               }}>
-              <span className="ml-family-tab-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <span className="ml-family-tab-number" aria-hidden="true">
+                <AdminSubnavIcon href={index === 0 ? "/admin/families" : "/admin/families?tab=" + tab.id} size={15} />
+              </span>
               {t(tab.label)}
             </button>
           );

@@ -14,6 +14,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { AdminHijriDatePicker, formatAdminHijriDate } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
+import { AdminSubnavIcon } from "./admin-subnav-icons";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import {
   ATTENDANCE_TABS, attendanceRate, type AttendanceTab
@@ -253,7 +254,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
 
       <nav className="attendance-workspace-tabs" role="tablist" aria-label={t("Attendance sections")}>
         {ATTENDANCE_TABS.map(({ id, label }) => (
-          <button key={id} type="button" role="tab"
+          <button key={id} type="button" role="tab" className="ml-admin-tab-with-icon"
             id={`attendance-tab-${id.toLowerCase()}`}
             aria-selected={activeTab === id}
             aria-controls={`attendance-panel-${id.toLowerCase()}`}
@@ -261,6 +262,7 @@ export function AttendancePanel({ accessToken }: { accessToken: string }) {
             ref={element => { tabRefs.current[id] = element; }}
             onKeyDown={event => onTabKeyDown(event, id)}
             onClick={() => selectTab(id)}>
+            <AdminSubnavIcon href={id === "OVERVIEW" ? "/admin/attendance" : "/admin/attendance?tab=" + id.toLowerCase()} />
             {t(label)}
           </button>
         ))}
