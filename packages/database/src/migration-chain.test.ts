@@ -60,7 +60,7 @@ test("Step 20: the complete migration journal applies in order to a fresh Postgr
   const parentA = uuid(11), parentB = uuid(12), adminA = uuid(13), adminB = uuid(14);
   const studentA = uuid(15), subjectA = uuid(16), invoiceA = uuid(17);
 
-  for (const [schoolId, code] of [[schoolA, "PHASE3A"], [schoolB, "PHASE3B"]]) {
+  for (const [schoolId, code] of [[schoolA, "PHASE3A"], [schoolB, "PHASE3B"]] as Array<[string, string]>) {
     await client.query(
       "INSERT INTO schools(id,code,name,slug,province,city) VALUES($1,$2,$3,$4,'Kabul','Kabul')",
       [schoolId, code, code, code.toLowerCase()]
