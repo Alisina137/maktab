@@ -312,6 +312,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     const target = await store.findUserById(context.user.schoolId, request.params.userId);
     if (!target) return reply.code(404).send({ error: "not_found", message: "User not found." });
     if (target.status === "ARCHIVED") return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be reset." });
+    if (target.role === "SCHOOL_ADMIN" && target.id !== context.user.id) {
+      return reply.code(409).send({ error: "admin_account_protected", message: "Administrator credentials must be managed by their owner." });
+    }
 
     if (target.id === context.user.id) {
       return reply.code(409).send({
@@ -346,6 +349,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       const { reason } = suspendAccountSchema.parse(request.body ?? {});
       const existing = await store.findUserById(context.user.schoolId, request.params.userId);
       if (!existing) return reply.code(404).send({ error: "not_found", message: "User not found." });
+      if (existing.role === "SCHOOL_ADMIN") {
+        return reply.code(409).send({ error: "admin_account_protected", message: "Administrator accounts cannot be suspended through member management." });
+      }
       if (existing.status === "ARCHIVED") {
         return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be suspended." });
       }
@@ -364,6 +370,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       return { user: safeUser(user) };
     } catch (error) {
       if (error instanceof ZodError) return reply.code(400).send({ error: "validation_error", issues: error.issues });
+      if (error instanceof AccountConflictError) {
+        return reply.code(409).send({ error: "account_status_conflict", message: error.message });
+      }
       throw error;
     }
   });
@@ -375,6 +384,9 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
     if (!context) return;
     const existing = await store.findUserById(context.user.schoolId, request.params.userId);
     if (!existing) return reply.code(404).send({ error: "not_found", message: "User not found." });
+    if (existing.role === "SCHOOL_ADMIN") {
+      return reply.code(409).send({ error: "admin_account_protected", message: "Administrator accounts cannot be reactivated through member management." });
+    }
     if (existing.status === "ARCHIVED") {
       return reply.code(409).send({ error: "account_archived", message: "Archived accounts cannot be reactivated." });
     }
@@ -382,15 +394,22 @@ export function registerUserRoutes(app: FastifyInstance, store: AccountStore) {
       return reply.code(409).send({ error: "not_suspended", message: "Only suspended accounts can be reactivated." });
     }
 
-    const status = existing.mustChangePassword ? "INVITED" : "ACTIVE";
-    const user = await store.setUserStatusAsAdmin(
-      context.user.schoolId,
-      existing.id,
-      status,
-      context.user.id,
-      "user.reactivated"
-    );
-    if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
-    return { user: safeUser(user) };
+    try {
+      const status = existing.mustChangePassword ? "INVITED" : "ACTIVE";
+      const user = await store.setUserStatusAsAdmin(
+        context.user.schoolId,
+        existing.id,
+        status,
+        context.user.id,
+        "user.reactivated"
+      );
+      if (!user) return reply.code(404).send({ error: "not_found", message: "User not found." });
+      return { user: safeUser(user) };
+    } catch (error) {
+      if (error instanceof AccountConflictError) {
+        return reply.code(409).send({ error: "account_status_conflict", message: error.message });
+      }
+      throw error;
+    }
   });
 }

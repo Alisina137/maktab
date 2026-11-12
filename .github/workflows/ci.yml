@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 6 account lifecycle, families, staff and identity uniqueness regression
+        run: pnpm verify:accounts:phase6
+
       - name: Phase 5 academic assignment, attendance and learning workflow regression
         run: pnpm verify:academic:phase5
 
@@ -296,6 +299,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 6 account lifecycle, families, staff and identity uniqueness regression
+        run: pnpm verify:accounts:phase6
+
       - name: Phase 5 academic assignment, attendance and learning workflow regression
         run: pnpm verify:academic:phase5
 

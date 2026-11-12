@@ -64,7 +64,8 @@ async function createTestApp() {
     "0029_staff_registration_requests.sql",
     "0030_staff_attendance_corrections.sql",
     "0031_staff_workflow.sql",
-    "0032_phase3_integrity_constraints.sql"
+    "0032_phase3_integrity_constraints.sql",
+    "0033_phase6_casefold_usernames.sql"
   ];
   const migrationJournal = JSON.parse(
     await readFile(new URL("../../../packages/database/drizzle/meta/_journal.json", import.meta.url), "utf8")

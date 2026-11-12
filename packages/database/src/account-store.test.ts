@@ -16,7 +16,9 @@ async function createTestDatabase() {
     "0002_phase3_academic_structure.sql", "0003_phase4_student_family.sql",
     "0004_phase4_parent_profile_backfill.sql", "0006_phase6_learning.sql",
     "0008_phase8_pilot_readiness.sql", "0009_school_image.sql",
-    "0014_student_phone.sql", "0028_staff_profiles_permissions.sql"]) {
+    "0010_admin_profiles.sql", "0011_admin_contact_profile.sql",
+    "0012_admin_password_2fa.sql", "0014_student_phone.sql",
+    "0028_staff_profiles_permissions.sql"]) {
     const sql = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
     await client.exec(sql.replaceAll("--> statement-breakpoint", ""));
   }
@@ -259,4 +261,86 @@ test("Phase 5 batch actions are atomic, bounded, audited and protect other schoo
   assert.equal(returned.length,2);
   assert.ok(returned.every(u=>u.status==="INVITED"));
   assert.equal((await accounts.findUserById(foreign, foreignUser.id))?.status,"INVITED");
+});
+
+
+test("Audit Phase 6: concurrent account status actions do not create duplicate lifecycle transitions", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const school = await schools.createSchool({
+    code: "P6-STATUS", name: "Phase Six Account Lifecycle", slug: "phase6-status",
+    province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+  });
+  const schoolId = school.school.id;
+  const admin = await accounts.createUser({
+    schoolId, username: "phase6admin", passwordHash: "hash", role: "SCHOOL_ADMIN"
+  });
+  const learner = await accounts.createUser({
+    schoolId, username: "phase6learner", passwordHash: "hash", role: "STUDENT"
+  });
+  await accounts.createSession({
+    schoolId, userId: learner.id, accessTokenHash: "6".repeat(64),
+    refreshTokenHash: "7".repeat(64), accessExpiresAt: new Date(Date.now() + 60_000),
+    refreshExpiresAt: new Date(Date.now() + 120_000)
+  });
+  const concurrent = await Promise.allSettled([
+    accounts.setUserStatusAsAdmin(schoolId, learner.id, "SUSPENDED", admin.id, "user.suspended"),
+    accounts.setUserStatusAsAdmin(schoolId, learner.id, "SUSPENDED", admin.id, "user.suspended")
+  ]);
+  assert.equal(concurrent.filter(row => row.status === "fulfilled").length, 1);
+  assert.equal(concurrent.filter(row => row.status === "rejected").length, 1);
+  assert.equal((await accounts.findUserById(schoolId, learner.id))?.status, "SUSPENDED");
+  assert.equal(await accounts.findByAccessTokenHash("6".repeat(64)), null);
+  const logs = await accounts.listAccountAuditLogs(schoolId, learner.id);
+  assert.equal(logs.filter(entry => entry.action === "user.suspended").length, 1);
+
+  const returned = await accounts.setUserStatusAsAdmin(
+    schoolId, learner.id, "ACTIVE", admin.id, "user.reactivated"
+  );
+  assert.equal(returned?.status, "INVITED", "Reactivation cannot skip an outstanding password-change requirement.");
+  await assert.rejects(
+    accounts.setUserStatusAsAdmin(schoolId, learner.id, "ACTIVE", admin.id, "user.reactivated"),
+    /only suspended/i
+  );
+  await assert.rejects(
+    accounts.setUserStatusAsAdmin(schoolId, admin.id, "SUSPENDED", learner.id, "user.suspended"),
+    /administrator account/i
+  );
+  const otherSchool = await schools.createSchool({
+    code: "P6-STATUS-OTHER", name: "Separate School", slug: "phase6-status-other",
+    province: "Herat", city: "Herat", defaultLanguage: "ps-AF"
+  });
+  assert.equal(await accounts.setUserStatusAsAdmin(
+    otherSchool.school.id, learner.id, "SUSPENDED", admin.id, "user.suspended"
+  ), null, "Cross-school member status writes must be no-ops.");
+});
+
+test("Audit Phase 6: administrator resets are rejected for archived, self, and foreign accounts", async (t) => {
+  const { client, db } = await createTestDatabase();
+  t.after(async () => client.close());
+  const schools = createSchoolStore(db);
+  const accounts = createAccountStore(db);
+  const school = await schools.createSchool({
+    code: "P6-RESET", name: "Phase Six Password Reset", slug: "phase6-reset",
+    province: "Kabul", city: "Kabul", defaultLanguage: "fa-AF"
+  });
+  const schoolId = school.school.id;
+  const admin = await accounts.createUser({
+    schoolId, username: "phase6owner", passwordHash: "hash", role: "SCHOOL_ADMIN"
+  });
+  const parent = await accounts.createUser({
+    schoolId, username: "phase6parent", passwordHash: "original", role: "PARENT"
+  });
+  assert.equal(await accounts.resetPasswordAsAdmin(schoolId, admin.id, "new-hash", admin.id), null);
+  assert.equal((await accounts.findUserById(schoolId, admin.id))?.passwordHash, "hash");
+  await accounts.setUserStatus(schoolId, parent.id, "ARCHIVED");
+  assert.equal(await accounts.resetPasswordAsAdmin(schoolId, parent.id, "new-hash", admin.id), null);
+  assert.equal((await accounts.findUserById(schoolId, parent.id))?.passwordHash, "original");
+  const foreign = await schools.createSchool({
+    code: "P6-RESET-OTHER", name: "Other Reset School", slug: "phase6-reset-other",
+    province: "Herat", city: "Herat", defaultLanguage: "fa-AF"
+  });
+  assert.equal(await accounts.resetPasswordAsAdmin(foreign.school.id, parent.id, "new-hash", admin.id), null);
 });
