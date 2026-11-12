@@ -14,6 +14,7 @@ import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { useAdminWorkspace } from "./admin-workspace";
 import { useAdminSectionRoute } from "./admin-section-route";
 import { AdminSubnavIcon } from "./admin-subnav-icons";
+import "./learning-polish.css";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 
 type LearningOverview = {

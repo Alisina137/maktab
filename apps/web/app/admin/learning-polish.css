@@ -1,0 +1,642 @@
+/* Learning workspace visual consistency.
+ * Scope all overrides to authenticated Admin Learning pages; keep student,
+ * teacher and staff modules unchanged. Applies to exam deep-links as they
+ * mount the same LearningPanel, including its detail subsections. */
+.ml-admin-dashboard-shell .learning-section {
+  --learning-space-xs: 6px;
+  --learning-space-sm: 10px;
+  --learning-space-md: 16px;
+  --learning-space-lg: 20px;
+  --learning-radius: 14px;
+  --learning-border: #dce5f1;
+  --learning-ink: #243b59;
+  --learning-muted: #5d718b;
+  --learning-primary: #2459b7;
+  --learning-surface: #fff;
+  display: grid;
+  gap: var(--learning-space-lg);
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--learning-ink);
+}
+.ml-admin-dashboard-shell .learning-section .learning-tab-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--learning-space-lg);
+  min-width: 0;
+  width: 100%;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-workspace, .learning-homework-workspace,
+  .learning-results-workspace, .learning-teaching-workspace,
+  .learning-report-workspace, .learning-exam-details-panel
+) {
+  display: grid;
+  align-content: start;
+  gap: var(--learning-space-md);
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-heading, .learning-panel-heading,
+  .learning-homework-roster-head, .learning-teaching-card-head,
+  .learning-results-card-header, .learning-exam-card-head,
+  .learning-section .admin-section-header
+) {
+  align-items: flex-start;
+  gap: 12px 16px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-panel-heading h3, .learning-exam-heading h3,
+  .learning-exam-create h3, .learning-exam-editor h3,
+  .learning-exam-info h4, .learning-exam-warning h4,
+  .learning-exam-workspace .learning-module-summary h3,
+  .learning-homework-roster-head h4,
+  .learning-results-history h4
+) {
+  margin: 0;
+  color: var(--learning-ink);
+  font-size: 17px;
+  font-weight: 775;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-panel-heading p, .learning-exam-heading p,
+  .learning-exam-create p, .learning-exam-editor p,
+  .learning-exam-info p, .learning-exam-warning p,
+  .learning-homework-detail p, .learning-report-export small,
+  .learning-results-actions span, .learning-exam-details-panel .admin-copy,
+  .learning-section .admin-copy, .learning-empty p
+) {
+  color: var(--learning-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .admin-primary, .admin-secondary,
+  .learning-exam-back, .learning-module-link
+) {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 735;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Show all six Learning tabs without hidden scroll-only destinations. */
+.ml-admin-dashboard-shell .learning-section .learning-main-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+  padding: 9px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+  box-shadow: 0 6px 20px rgba(24, 60, 105, .045);
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+}
+.ml-admin-dashboard-shell .learning-section .learning-main-tabs > button {
+  display: inline-flex;
+  flex: initial;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid #e2eaf4;
+  border-radius: 10px;
+  background: #f7faff;
+  color: #4b617e;
+  font-size: 13px;
+  font-weight: 735;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ml-admin-dashboard-shell .learning-section .learning-main-tabs > button svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-main-tabs > button.is-active {
+  background: var(--learning-primary);
+  color: white;
+  border-color: #2454ae;
+  box-shadow: 0 5px 13px rgba(32, 83, 173, .16);
+}
+.ml-admin-dashboard-shell .learning-section .learning-main-tabs > button:not(.is-active):hover {
+  background: #ebf3ff;
+  color: #2459a7;
+  border-color: #a9c8ef;
+}
+
+/* Shared filter bars, labels, inputs, headings and actions across submodules. */
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-filters, .learning-results-filters,
+  .learning-teaching-filters, .learning-report-filters,
+  .learning-exam-filters
+) {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+  align-items: end;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-filters label, .learning-homework-roster-head label,
+  .learning-exam-filters label, .learning-results-filters label,
+  .learning-results-edit label, .learning-teaching-filters label,
+  .learning-teaching-detail-controls label, .learning-report-filters label,
+  .learning-exam-workspace .admin-form label, .learning-marks-filter
+) {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #425a79;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .learning-section :is(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--learning-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-filters input, .learning-homework-filters select,
+  .learning-homework-roster-head select, .learning-exam-filters input,
+  .learning-exam-filters select, .learning-results-filters input,
+  .learning-results-filters select, .learning-results-edit input,
+  .learning-results-edit textarea, .learning-teaching-filters input,
+  .learning-teaching-filters select, .learning-teaching-detail-controls select,
+  .learning-report-filters input, .learning-report-filters select,
+  .learning-exam-workspace .admin-form input,
+  .learning-exam-workspace .admin-form select, .learning-marks-filter select
+) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #d0dced;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .learning-section textarea { resize: vertical; }
+.ml-admin-dashboard-shell .learning-section :is(
+  button, a, input, select, textarea, [tabindex="0"]
+):focus-visible {
+  outline: 3px solid #82b2ef;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-create, .learning-exam-editor,
+  .learning-exam-info, .learning-exam-warning,
+  .learning-attention-card, .learning-empty
+) {
+  min-width: 0;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--learning-radius);
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-create, .learning-exam-editor,
+  .learning-exam-info, .learning-attention-card
+) {
+  border-color: var(--learning-border);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section .learning-empty {
+  border: 1px solid var(--learning-border);
+  background: #f8fbff;
+}
+.ml-admin-dashboard-shell .learning-section .learning-empty strong {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Shared numeric hierarchy across Overview, Homework, Exams, Teaching
+   and Reports. Secondary labels remain readable even with RTL wrapping. */
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-metric-grid, .learning-homework-metrics,
+  .learning-exam-stats, .learning-teaching-overview,
+  .learning-teaching-counts, .learning-report-metrics
+) { gap: 12px; }
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-metric-card, .learning-homework-metrics > div,
+  .learning-exam-stats > div, .learning-teaching-overview > div,
+  .learning-teaching-counts > div, .learning-report-metrics > div
+) {
+  min-width: 0;
+  gap: 8px;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid var(--learning-border);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-metric-card strong, .learning-exam-stats strong,
+  .learning-homework-metrics strong, .learning-teaching-overview strong,
+  .learning-report-metrics strong, .learning-teaching-counts strong,
+  .learning-attention-count
+) {
+  font-size: clamp(21px, 2vw, 28px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-metric-card span, .learning-homework-metrics span,
+  .learning-exam-stats span, .learning-teaching-overview span,
+  .learning-teaching-counts span, .learning-report-metrics span
+) {
+  color: var(--learning-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section .learning-metric-card {
+  min-height: 125px;
+  text-align: start;
+}
+.ml-admin-dashboard-shell .learning-section .learning-metric-card small {
+  font-size: 12.5px;
+  color: var(--learning-primary);
+}
+.ml-admin-dashboard-shell .learning-section .learning-attention-list { gap: 10px; }
+.ml-admin-dashboard-shell .learning-section .learning-attention-item {
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-attention-info strong {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .learning-section .learning-attention-info small {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .learning-section .learning-attention-count {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 6px 10px;
+  font-size: 15px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-attention-action { font-size: 12.5px; }
+
+/* Homework: align assignment cards, badges, submission progress and roster. */
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-list, .learning-homework-students,
+  .learning-homework-detail, .learning-homework-roster
+) { gap: 12px; min-width: 0; }
+.ml-admin-dashboard-shell .learning-section .learning-homework-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .learning-section .learning-homework-title strong,
+.ml-admin-dashboard-shell .learning-section .learning-exam-card-head > strong,
+.ml-admin-dashboard-shell .learning-section .learning-results-identity strong,
+.ml-admin-dashboard-shell .learning-section .learning-teaching-card-title strong,
+.ml-admin-dashboard-shell .learning-section .learning-report-row strong {
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-title small, .learning-homework-student small,
+  .learning-exam-card small, .learning-exam-subject-row small,
+  .learning-results-card small, .learning-results-event small,
+  .learning-teaching-card-title small, .learning-report-row small
+) {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--learning-muted);
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-pill, .learning-homework-warning,
+  .learning-teaching-warning, .learning-teaching-ok
+) { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-homework-counts, .learning-teaching-counts
+) { gap: 10px; }
+.ml-admin-dashboard-shell .learning-section .learning-homework-counts > div {
+  gap: 6px;
+  padding: 12px;
+  border-radius: 11px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-homework-counts strong { font-size: 19px; }
+.ml-admin-dashboard-shell .learning-section .learning-homework-counts span { font-size: 12.5px; line-height: 1.5; }
+.ml-admin-dashboard-shell .learning-section .learning-homework-detail {
+  padding-top: 16px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-homework-roster-head {
+  gap: 12px 16px;
+  align-items: flex-start;
+}
+.ml-admin-dashboard-shell .learning-section .learning-homework-student {
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--learning-border);
+  border-radius: 11px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .learning-section .learning-homework-student strong { font-size: 14px; }
+.ml-admin-dashboard-shell .learning-section .learning-homework-roster-head h4 { font-size: 17px; }
+
+/* Exams: consistent directory cards, detail tabs, panels, date editors and
+   marks/publish checklist. The deep-linked route uses the same styles. */
+.ml-admin-dashboard-shell .learning-section .learning-exam-directory { gap: 14px; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-card {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-detail-tabs, .learning-report-tabs,
+  .learning-teaching-detail-switch
+) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  overflow: visible;
+  scroll-behavior: auto;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-detail-tabs button, .learning-report-tabs button,
+  .learning-teaching-detail-switch button
+) {
+  flex: 0 1 auto;
+  min-height: 44px;
+  padding: 10px 15px;
+  border: 1px solid var(--learning-border);
+  border-radius: 10px;
+  background: #f7faff;
+  color: #486080;
+  font-size: 13px;
+  font-weight: 730;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-detail-tabs button.is-active,
+  .learning-report-tabs button[aria-selected="true"],
+  .learning-teaching-detail-switch button[aria-selected="true"]
+) {
+  color: white;
+  background: var(--learning-primary);
+  border-color: #2454ae;
+  box-shadow: 0 4px 10px rgba(33, 79, 165, .14);
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-rows, .learning-exam-checks
+) { gap: 12px; min-width: 0; }
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-exam-subject-row, .learning-exam-check
+) { gap: 12px; padding: 14px; border-radius: 12px; border-color: var(--learning-border); }
+.ml-admin-dashboard-shell .learning-section .learning-exam-subject-row strong,
+.ml-admin-dashboard-shell .learning-section .learning-exam-check strong {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .learning-section .learning-exam-check small { font-size: 12.5px; line-height: 1.5; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-stats > div { padding: 15px; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-stats strong { font-size: 24px; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-card-stats { gap: 8px 14px; font-size: 13px; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-info { gap: 10px; }
+.ml-admin-dashboard-shell .learning-section .learning-exam-warning { gap: 12px; }
+
+/* Results: high-contrast score, readable correction rows and history
+   details; never shrink actions to inaccessible touch targets. */
+.ml-admin-dashboard-shell .learning-section .learning-results-list,
+.ml-admin-dashboard-shell .learning-section .learning-results-history { gap: 12px; }
+.ml-admin-dashboard-shell .learning-section .learning-results-card {
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section .learning-results-card-header { gap: 12px 16px; }
+.ml-admin-dashboard-shell .learning-section .learning-results-score { gap: 4px; }
+.ml-admin-dashboard-shell .learning-section .learning-results-score strong {
+  font-size: 21px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.ml-admin-dashboard-shell .learning-section .learning-results-detail { margin-top: 14px; padding-top: 16px; }
+.ml-admin-dashboard-shell .learning-section .learning-results-edit { gap: 12px; }
+.ml-admin-dashboard-shell .learning-section .learning-results-event {
+  gap: 7px;
+  padding: 13px 14px;
+  border: 1px solid var(--learning-border);
+  border-radius: 11px;
+}
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-results-pagination, .learning-exam-pagination
+) { gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-results-pagination > span, .learning-exam-pagination > span
+) { font-size: 13px; line-height: 1.45; }
+
+/* Teaching: consistent progress KPIs, classroom cards and inner controls. */
+.ml-admin-dashboard-shell .learning-section .learning-teaching-card {
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section .learning-teaching-rows,
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-list { gap: 12px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-card-head { gap: 12px 16px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-progress { gap: 8px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-progress :is(span, small) { font-size: 12.5px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-counts strong { font-size: 19px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-counts > div { padding: 12px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail { padding-top: 16px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-body { gap: 14px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-list > div {
+  gap: 12px;
+  padding: 13px;
+  border-radius: 11px;
+}
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-list strong { font-size: 14px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-list small,
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-list span { font-size: 12.5px; }
+.ml-admin-dashboard-shell .learning-section .learning-teaching-detail-controls { gap: 12px; }
+
+/* Reports & audit: balanced KPI cards, filter spacing, event list and
+   exports with wrapped labels on narrow screens. */
+.ml-admin-dashboard-shell .learning-section .learning-report-rows,
+.ml-admin-dashboard-shell .learning-section .learning-report-audit-list { gap: 12px; }
+.ml-admin-dashboard-shell .learning-section :is(
+  .learning-report-row, .learning-report-audit-item
+) {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+  background: var(--learning-surface);
+}
+.ml-admin-dashboard-shell .learning-section .learning-report-row-values { gap: 10px; }
+.ml-admin-dashboard-shell .learning-section .learning-report-row-values span {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #e5ecf6;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .learning-section .learning-report-audit-item small { font-size: 12.5px; line-height: 1.5; }
+.ml-admin-dashboard-shell .learning-section .learning-report-export {
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--learning-border);
+  border-radius: var(--learning-radius);
+}
+.ml-admin-dashboard-shell .learning-section .learning-report-export small { font-size: 13px; }
+
+/* Consistent responsive columns and touch-friendly typography. */
+@media (max-width: 1100px) {
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-overview,
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-counts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 850px) {
+  .ml-admin-dashboard-shell .learning-section { gap: 16px; }
+  .ml-admin-dashboard-shell .learning-section .learning-tab-panel { gap: 16px; }
+  .ml-admin-dashboard-shell .learning-section .learning-main-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .learning-section :is(
+    .learning-homework-filters, .learning-results-filters,
+    .learning-teaching-filters, .learning-report-filters,
+    .learning-exam-filters
+  ) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ml-admin-dashboard-shell .learning-section :is(
+    .learning-homework-filters > button, .learning-results-filters > button,
+    .learning-teaching-filters > button, .learning-report-filters > button,
+    .learning-exam-filters > button
+  ) { justify-self: stretch; }
+  .ml-admin-dashboard-shell .learning-section .learning-report-row-values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-exam-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 620px) {
+  .ml-admin-dashboard-shell .learning-section { gap: 14px; }
+  .ml-admin-dashboard-shell .learning-section .learning-tab-panel { gap: 14px; }
+  .ml-admin-dashboard-shell .learning-section :is(
+    .learning-exam-create, .learning-exam-editor, .learning-exam-info,
+    .learning-exam-warning, .learning-attention-card, .learning-empty,
+    .learning-homework-card, .learning-results-card, .learning-teaching-card,
+    .learning-report-row, .learning-report-audit-item
+  ) { padding: 14px; }
+  .ml-admin-dashboard-shell .learning-section :is(
+    .learning-homework-filters, .learning-results-filters,
+    .learning-teaching-filters, .learning-report-filters,
+    .learning-exam-filters
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-exam-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-metric-grid,
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-overview,
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-counts,
+  .ml-admin-dashboard-shell .learning-section .learning-homework-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-homework-student,
+  .ml-admin-dashboard-shell .learning-section .learning-report-row-values {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-exam-directory {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-results-card-header > button {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-badges {
+    justify-content: flex-start;
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-exam-detail-tabs > button,
+  .ml-admin-dashboard-shell .learning-section .learning-report-tabs > button {
+    flex: 1 1 130px;
+  }
+  .ml-admin-dashboard-shell .learning-section :is(input,select,textarea) {
+    font-size: max(16px, 1em);
+  }
+}
+@media (max-width: 410px) {
+  .ml-admin-dashboard-shell .learning-section .learning-main-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-main-tabs > button {
+    justify-content: flex-start;
+  }
+  .ml-admin-dashboard-shell .learning-section .learning-metric-grid,
+  .ml-admin-dashboard-shell .learning-section .learning-teaching-overview,
+  .ml-admin-dashboard-shell .learning-section .learning-report-metrics,
+  .ml-admin-dashboard-shell .learning-section .learning-exam-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .learning-section :is(
+    .learning-main-tabs, .learning-main-tabs button, .learning-metric-card,
+    .learning-exam-detail-tabs, .learning-report-tabs
+  ) { scroll-behavior: auto; transition: none; }
+}
