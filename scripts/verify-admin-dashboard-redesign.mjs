@@ -10,6 +10,22 @@ const dashboardRoute = read("apps/web/app/admin/(workspace)/dashboard/page.tsx")
 const layout = read("apps/web/app/admin/(workspace)/layout.tsx");
 const css = read("apps/web/app/admin/dashboard-shell.css");
 const academicCss = read("apps/web/app/admin/academic-overview.css");
+const adminType = read("apps/web/app/admin/admin-typography.css");
+assert.ok(adminType.includes("--ml-admin-type-body: 13.5px") &&
+  adminType.includes("--ml-admin-type-list-title: 14px") &&
+  adminType.includes("--ml-admin-type-meta: 12px") &&
+  adminType.includes("--ml-admin-type-action: 12.5px") &&
+  adminType.includes(".account-directory-scaled .admin-user-identity > div > strong") &&
+  adminType.includes(".account-directory-scaled .admin-user-identity > div > span") &&
+  adminType.includes(".account-directory-scaled .admin-user-row-premium .admin-actions button") &&
+  adminType.includes("min-height: 42px") &&
+  adminType.includes(".academic-list-panel") &&
+  adminType.includes(".learning-section") &&
+  adminType.includes(".family-section") &&
+  adminType.includes(".communication-section") &&
+  adminType.includes("@media (max-width: 650px)") &&
+  layout.includes('import "../admin-typography.css"'),
+  "Admin typography should balance directory/list text and controls without changing other app surfaces");
 const translations = read("apps/web/app/admin/admin-i18n.ts");
 const login = read("apps/web/app/admin/page.tsx");
 const sidebar = read("apps/web/app/admin/admin-sidebar-sections.ts");

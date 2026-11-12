@@ -1,0 +1,190 @@
+/* MaktabLink administration: shared, comfortable type rhythm.
+ * Scope everything to authenticated admin pages so login, staff and mobile UI
+ * keep their own typography. Font sizes are not zoom transforms: controls keep
+ * their touch targets and the browser's font scaling remains functional. */
+.ml-admin-dashboard-shell {
+  --ml-admin-type-body: 13.5px;
+  --ml-admin-type-list-title: 14px;
+  --ml-admin-type-label: 12.5px;
+  --ml-admin-type-meta: 12px;
+  --ml-admin-type-action: 12.5px;
+  --ml-admin-type-card-title: 17px;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content {
+  font-size: var(--ml-admin-type-body);
+  line-height: 1.55;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading h1 {
+  font-size: clamp(24px, 2.15vw, 30px);
+  line-height: 1.24;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading p {
+  font-size: 12.5px;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-section-header > div > h2,
+  .admin-section-header > div > h3,
+  .learning-panel-heading > h3,
+  .communication-dashboard-heading > h3
+) {
+  font-size: clamp(16px, 1.45vw, 19px);
+  line-height: 1.35;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-section-header p,
+  .admin-copy,
+  .admin-form-help
+) {
+  font-size: var(--ml-admin-type-label);
+  line-height: 1.6;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-primary,
+  .admin-secondary,
+  .admin-actions button
+) {
+  font-size: var(--ml-admin-type-action);
+  line-height: 1.35;
+}
+/* Give form copy a consistent hierarchy without affecting native control
+ * dimensions or any more-specific individual module styles. */
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-form label,
+  .admin-account-filters input,
+  .admin-account-filters select
+) {
+  font-size: 13px;
+}
+
+/* Accounts: compact directory rows, not tiny targets.
+ * Existing 44px action buttons remain at least 44px tall. */
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-list-premium {
+  gap: 8px;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium {
+  gap: 10px 13px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-identity {
+  gap: 10px !important;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-identity > div {
+  gap: 3px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-identity > div > strong {
+  color: #1c3557;
+  font-size: var(--ml-admin-type-list-title);
+  font-weight: 780;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-identity > div > span {
+  color: #667a96;
+  font-size: var(--ml-admin-type-meta);
+  font-weight: 520;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-identity .admin-user-avatar {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  font-size: 12px;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-meta {
+  gap: 5px !important;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-meta :is(
+  .admin-status-badge,
+  .admin-password-badge,
+  .admin-current-account-badge
+) {
+  min-height: 25px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 770;
+  line-height: 1.35;
+  letter-spacing: 0;
+  white-space: normal;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium .admin-actions {
+  gap: 6px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium .admin-actions button {
+  min-height: 42px;
+  height: auto;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-size: var(--ml-admin-type-action);
+  line-height: 1.35;
+  font-weight: 740;
+  white-space: normal;
+  text-align: center;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .account-directory-filters :is(input, select) {
+  min-height: 42px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .account-directory-select-row {
+  font-size: var(--ml-admin-type-label);
+  line-height: 1.5;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .admin-account-tab {
+  font-size: 12px;
+  min-height: 40px;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .account-directory-pagination {
+  font-size: var(--ml-admin-type-label);
+}
+
+/* Other directory / management panels share readable list typography, while
+ * KPI figures, specialized lesson tables and security dialogs retain their
+ * explicit size rules. */
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .academic-list-panel,
+  .attendance-dashboard-card,
+  .learning-section,
+  .family-section,
+  .communication-section,
+  .staff-work-area,
+  .staff-reg-queue
+) {
+  font-size: var(--ml-admin-type-body);
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .academic-list-panel .admin-actions button,
+  .family-section .admin-actions button,
+  .staff-work-area button,
+  .staff-reg-queue button
+) {
+  font-size: var(--ml-admin-type-action);
+  line-height: 1.4;
+}
+
+/* Keep comfortable input sizes on small touch screens, and never clip long
+ * Pashto/Dari labels or browser-level text enlargement. */
+@media (max-width: 900px) {
+  .ml-admin-dashboard-shell .ml-admin-route-content :where(input, select, textarea) {
+    font-size: max(16px, 1em);
+  }
+}
+@media (max-width: 650px) {
+  .ml-admin-dashboard-shell .ml-admin-page-heading h1 { font-size: 24px; }
+  .ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium {
+    gap: 9px;
+    padding: 10px;
+  }
+  .ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium .admin-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .ml-admin-dashboard-shell .account-directory-scaled .admin-user-row-premium .admin-actions button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
