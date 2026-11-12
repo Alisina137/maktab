@@ -145,6 +145,7 @@ export function friendlyAdminError(
     invalid_request: "The request could not be processed. Please try again.",
     username_conflict: "That username already exists in this school.",
     current_password_invalid: "The current password is incorrect.",
+    current_password_rate_limited: "Too many password checks. Try again later.",
     password_unchanged: "Choose a new password that is different from the current password.",
     two_factor_delivery_unavailable: "Email verification delivery is not configured for this server.",
     two_factor_delivery_failed: "MaktabLink could not deliver the verification email. Try again later.",
