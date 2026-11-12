@@ -204,7 +204,7 @@ export default function AccountsPage() {
 
   function refreshDirectory() { resetSelection(); setRefreshNonce((current) => current + 1); }
   function resetSelection() { setSelectedIds(new Set()); }
-  function updateGroup(next: AccountGroup) { setGroup(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
+  function updateGroup(next: AccountGroup) { if (next === group) return; setDirectoryLoading(true); setGroup(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateStatus(next: "ALL" | User["status"]) { setStatus(next); setHighlight("ALL"); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateQuery(next: string) { queryIntentRef.current = next.trim(); setQuery(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateSort(next: AccountSort) { setSortBy(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
