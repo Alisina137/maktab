@@ -18,7 +18,10 @@ const css=read("apps/web/app/staff/staff-work.css");
 const i18n=read("apps/web/app/staff/staff-work-i18n.ts");
 const tests=read("apps/api/src/staff/workflow-phase7.integration.test.ts");
 assert.equal(journal.entries[31]?.tag,"0031_staff_workflow");
-assert.equal(journal.entries.at(-1)?.tag,"0031_staff_workflow");
+// Phase 7 must remain indexed at 31, but later migrations may be appended safely.
+assert.ok(journal.entries.length >= 32, "The Phase 7 staff migration must remain registered.");
+assert.deepEqual(journal.entries.map((entry,index)=>entry.idx===index),
+  journal.entries.map(()=>true), "Migration journal indexes must remain contiguous.");
 assert.equal(new Set(journal.entries.map(x=>x.tag)).size,journal.entries.length);
 for(const key of [
  'CREATE TABLE "staff_work_tasks"', 'CREATE TABLE "staff_message_drafts"',
