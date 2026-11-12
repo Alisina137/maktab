@@ -1159,6 +1159,21 @@ export function createAttendanceStore(db: FoundationDatabase): AttendanceStore {
       }
 
       const { attendance, entry } = await db.transaction(async (tx) => {
+        // Consistent lock order for teacher and administrator corrections:
+        // academic year -> daily register -> individual student mark.
+        // Taking a mark lock first can deadlock against a teacher editing
+        // the same register (teacher already locks the daily row first).
+        const [lockedYear] = await tx.select({ status: academicYears.status })
+          .from(academicYears).where(and(eq(academicYears.schoolId, schoolId),
+            eq(academicYears.id, current.attendance.academicYearId)))
+          .limit(1).for("update");
+        if (lockedYear?.status !== "ACTIVE") {
+          throw new AttendanceConflictError("Historical attendance is read-only.");
+        }
+        const [lockedDay] = await tx.select({ id: dailyAttendances.id })
+          .from(dailyAttendances).where(and(eq(dailyAttendances.schoolId, schoolId),
+            eq(dailyAttendances.id, attendanceId))).limit(1).for("update");
+        if (!lockedDay) throw new AttendanceNotFoundError("Attendance record not found.");
         // Compare-and-swap inside the write. Concurrent edits that arrive after
         // our initial read must not overwrite a newer teacher/admin mark.
         const [entry] = await tx
