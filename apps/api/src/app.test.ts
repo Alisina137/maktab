@@ -9533,3 +9533,42 @@ test("Security Phase 2: current-password probes are rate-limited across routes",
   const stillSignedIn = await app.inject({ method: "GET", url: "/v1/auth/me", headers: auth });
   assert.equal(stillSignedIn.statusCode, 200, stillSignedIn.body);
 });
+
+
+test("Database Phase 3: only one academic year activates under concurrent requests", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolA = await provisionSchool(app, "DB-PHASE3-A");
+  const schoolB = await provisionSchool(app, "DB-PHASE3-B");
+  const adminA = { authorization: `Bearer ${await bootstrapAdmin(app, schoolA)}` };
+  const adminB = { authorization: `Bearer ${await bootstrapAdmin(app, schoolB)}` };
+  async function createYear(auth: typeof adminA, name: string) {
+    const result = await app.inject({
+      method: "POST", url: "/v1/admin/academics/years", headers: auth,
+      payload: { name, startDate: "2026-01-01", endDate: "2027-12-31" }
+    });
+    assert.equal(result.statusCode, 201, result.body);
+    return result.json<{ academicYear: { id: string } }>().academicYear.id;
+  }
+
+  const yearA1 = await createYear(adminA, "2026");
+  const yearA2 = await createYear(adminA, "2027");
+  const yearB = await createYear(adminB, "2026");
+  const activate = (yearId: string, auth: typeof adminA) => app.inject({
+    method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`, headers: auth
+  });
+  const [first, second] = await Promise.all([
+    activate(yearA1, adminA), activate(yearA2, adminA)
+  ]);
+  assert.deepEqual([first.statusCode, second.statusCode].sort(), [200, 409],
+    "The DB unique constraint must reject one concurrent activation.");
+  const denied = [first, second].find(value => value.statusCode === 409)!;
+  assert.equal(denied.json<{ error: string }>().error, "academic_conflict");
+  const overview = await app.inject({ method: "GET", url: "/v1/admin/academics", headers: adminA });
+  assert.equal(overview.statusCode, 200, overview.body);
+  const years = overview.json<{ academicYears: Array<{ id: string; status: string }> }>().academicYears;
+  assert.equal(years.filter(value => value.status === "ACTIVE").length, 1);
+  // The partial unique index is scoped to each school, not global.
+  const other = await activate(yearB, adminB);
+  assert.equal(other.statusCode, 200, other.body);
+});
