@@ -39,6 +39,12 @@ jobs:
       - name: Repository foundation and dependency consistency
         run: pnpm verify:foundation
 
+      - name: Academic identifier suggestion regressions
+        run: |
+          pnpm verify:admin-grade-codes
+          pnpm verify:admin-class-codes
+          pnpm verify:admin-teacher-codes
+
       - name: Operational scripts syntax
         run: pnpm ops:check
 
@@ -280,6 +286,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Repository foundation and dependency consistency (Windows)
         run: pnpm verify:foundation
+
+      - name: Academic identifier suggestion regressions (Windows)
+        run: |
+          pnpm verify:admin-grade-codes
+          pnpm verify:admin-class-codes
+          pnpm verify:admin-teacher-codes
 
       - name: Release evidence and parent locale/resilience (Windows)
         run: |
