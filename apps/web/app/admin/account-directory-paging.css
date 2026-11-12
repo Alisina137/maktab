@@ -1,0 +1,150 @@
+/* Account Directory: role-change loader and five-account carousel pagination.
+   The loading message is retained for screen readers only. */
+.ml-admin-dashboard-shell .account-directory-scaled .ml-account-directory-loading {
+  display: grid;
+  min-height: 230px;
+  width: 100%;
+  place-items: center;
+  padding: 28px;
+  border: 1px solid #e0e9f8;
+  border-radius: 15px;
+  background: radial-gradient(circle at 50% 55%, #f3f8ff, #fff 66%);
+}
+.ml-admin-dashboard-shell .account-directory-scaled .ml-account-directory-spinner {
+  display: block;
+  width: 41px;
+  height: 41px;
+  border: 4px solid #dae8fd;
+  border-top-color: #216ddd;
+  border-inline-end-color: #60a0ee;
+  border-radius: 50%;
+  animation: ml-account-directory-spinner-spin .7s linear infinite;
+}
+.ml-admin-dashboard-shell .account-directory-scaled .ml-account-directory-screenreader-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@keyframes ml-account-directory-spinner-spin {
+  to { transform: rotate(360deg); }
+}
+.ml-admin-dashboard-shell .ml-account-directory-pager {
+  gap: 12px;
+  padding-top: 17px;
+  margin-top: 18px;
+}
+.ml-admin-dashboard-shell .ml-account-page-size,
+.ml-admin-dashboard-shell .ml-account-page-count {
+  color: #637b9b;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.ml-admin-dashboard-shell .ml-account-page-size strong {
+  color: #2258ab;
+  padding: 4px 9px;
+  margin-inline-start: 4px;
+  border: 1px solid #dce7fb;
+  border-radius: 8px;
+  background: #f2f7ff;
+  font-weight: 820;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-controls .ml-account-page-arrow {
+  min-height: 39px;
+  padding: 8px 13px;
+  border: 1px solid #d7e3f4;
+  border-radius: 10px;
+  background: #fff;
+  color: #385f9a;
+  font-size: 12px;
+  font-weight: 750;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-pages {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-pages .ml-account-page-number {
+  display: grid;
+  place-items: center;
+  min-width: 35px;
+  min-height: 39px;
+  padding: 7px 9px;
+  border: 1px solid #d7e3f4;
+  border-radius: 10px;
+  background: #fff;
+  color: #405e88;
+  font-size: 12.5px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-pages .ml-account-page-number:hover:not(:disabled),
+.ml-admin-dashboard-shell .ml-account-carousel-controls .ml-account-page-arrow:hover:not(:disabled) {
+  background: #ecf4ff;
+  border-color: #9abef1;
+  color: #1c59b4;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-pages .ml-account-page-number.ml-account-page-number-active {
+  border-color: #2670d9;
+  background: #246bda;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(35, 103, 208, .16);
+  opacity: 1;
+  cursor: default;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-controls :is(button):focus-visible {
+  outline: 3px solid #79a7ed;
+  outline-offset: 2px;
+}
+.ml-admin-dashboard-shell .ml-account-carousel-controls button:disabled:not(.ml-account-page-number-active) {
+  opacity: .42;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .ml-admin-dashboard-shell .ml-account-directory-pager {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .ml-admin-dashboard-shell .ml-account-carousel-controls {
+    width: 100%;
+  }
+  .ml-admin-dashboard-shell .ml-account-page-count {
+    width: 100%;
+  }
+}
+@media (max-width: 460px) {
+  .ml-admin-dashboard-shell .ml-account-carousel-controls { gap: 7px; }
+  .ml-admin-dashboard-shell .ml-account-carousel-pages { gap: 4px; }
+  .ml-admin-dashboard-shell .ml-account-carousel-pages .ml-account-page-number {
+    min-width: 31px;
+    min-height: 36px;
+    padding: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell .account-directory-scaled .ml-account-directory-spinner {
+    animation-duration: 1.9s;
+  }
+  .ml-admin-dashboard-shell .ml-account-carousel-pages .ml-account-page-number {
+    transition: none;
+  }
+}
