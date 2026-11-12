@@ -1,0 +1,260 @@
+/* Final audit Phase 4 — shared admin workspace rhythm, responsive navigation,
+ * accessible focus and dense-data overflow. Scoped to the authenticated web
+ * workspace: school login, staff portal and mobile do not inherit these rules. */
+.ml-admin-dashboard-shell {
+  --ml-admin-ui-radius: 14px;
+  --ml-admin-ui-gap: clamp(12px, 1.5vw, 20px);
+  --ml-admin-ui-border: #dae4f2;
+  --ml-admin-ui-text: #213a59;
+  --ml-admin-ui-muted: #536981;
+  --ml-admin-ui-focus: #2563eb;
+  --ml-admin-ui-control-height: 44px;
+}
+.ml-admin-dashboard-shell .ml-admin-main-column,
+.ml-admin-dashboard-shell .ml-admin-content-area,
+.ml-admin-dashboard-shell .ml-admin-route-content {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-admin-content-area {
+  scroll-margin-top: 90px;
+}
+.ml-admin-dashboard-shell #admin-workspace-content:focus {
+  outline: none;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading {
+  scroll-margin-top: 94px;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading h1,
+.ml-admin-dashboard-shell .ml-admin-page-heading p,
+.ml-admin-dashboard-shell .ml-admin-page-heading-text {
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading p {
+  color: var(--ml-admin-ui-muted);
+  max-width: 76ch;
+}
+.ml-admin-dashboard-shell .ml-admin-page-eyebrow {
+  color: #365c9c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading-intro {
+  align-items: flex-start;
+}
+.ml-admin-dashboard-shell .ml-admin-page-heading-symbol {
+  margin-top: 3px;
+}
+
+/* Keep highly translated administrative labels readable instead of forcing
+   fixed columns that crop Dari/Pashto or large browser font preferences. */
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-panel, .academic-list-panel, .family-section, .learning-section,
+  .communication-section, .attendance-section, .staff-work-area,
+  .account-directory-scaled
+) {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-panel h2, .admin-panel h3, .academic-list-panel h3,
+  .family-section h3, .learning-section h3, .communication-section h3
+) {
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  label, input, select, textarea, button
+) {
+  max-width: 100%;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-form input, .admin-form select, .admin-form textarea
+) {
+  min-height: var(--ml-admin-ui-control-height);
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-form textarea
+) {
+  min-height: 96px;
+  resize: vertical;
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-form, .admin-actions, .admin-section-header, .admin-list,
+  .academic-list-panel
+) {
+  row-gap: var(--ml-admin-ui-gap);
+}
+.ml-admin-dashboard-shell .ml-admin-route-content :where(
+  .admin-primary, .admin-secondary, .admin-actions button
+) {
+  min-height: var(--ml-admin-ui-control-height);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Avoid visually missing focus indicators after route changes or on tab and
+   dialog controls. Focus tokens are shared across all admin subsections. */
+.ml-admin-dashboard-shell :where(
+  a, button, input, select, textarea, [role="tab"], [role="option"]
+):focus-visible {
+  outline: 3px solid var(--ml-admin-ui-focus);
+  outline-offset: 3px;
+}
+.ml-admin-dashboard-shell .ml-admin-search:focus-within input:focus-visible {
+  outline: none;
+}
+.ml-admin-dashboard-shell .ml-admin-search:focus-within {
+  border-color: var(--ml-admin-ui-focus);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+.ml-admin-dashboard-shell .ml-admin-search-results [role="option"][aria-selected="true"] {
+  background: #e7f0ff;
+  color: #174d9b;
+}
+.ml-admin-dashboard-shell .ml-admin-search-results [role="option"] {
+  min-height: var(--ml-admin-ui-control-height);
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .ml-admin-topbar-icon,
+.ml-admin-dashboard-shell .ml-admin-menu-button,
+.ml-admin-dashboard-shell .ml-admin-topbar-user {
+  min-width: var(--ml-admin-ui-control-height);
+  min-height: var(--ml-admin-ui-control-height);
+}
+.ml-admin-dashboard-shell .ml-admin-topbar-language select {
+  min-height: var(--ml-admin-ui-control-height);
+}
+.ml-admin-dashboard-shell .ml-admin-sidebar-profile-icon {
+  display: grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(206,226,250,.26);
+  border-radius: 11px;
+  background: rgba(255,255,255,.09);
+  color: #d4e9ff;
+}
+.ml-admin-dashboard-shell .ml-admin-sidebar-profile-name strong {
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ml-admin-dashboard-shell .ml-admin-sidebar-profile-name small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.ml-admin-dashboard-shell .ml-admin-sidebar-profile:focus-visible,
+.ml-admin-dashboard-shell .ml-admin-sign-out:focus-visible {
+  outline: 3px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
+/* Mobile drawer is an actual modal navigation surface (focus is trapped
+   by the component and the underlying content is inert). */
+.ml-admin-dashboard-shell .ml-admin-sidebar-close {
+  display: none;
+}
+@media (max-width: 900px) {
+  .ml-admin-dashboard-shell .ml-admin-sidebar {
+    padding-top: 23px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .ml-admin-dashboard-shell .ml-admin-sidebar-close {
+    position: absolute;
+    top: 23px;
+    inset-inline-end: 12px;
+    z-index: 2;
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.24);
+    border-radius: 10px;
+    background: rgba(255,255,255,.09);
+    color: white;
+  }
+  .ml-admin-dashboard-shell .ml-admin-sidebar-brand {
+    padding-inline-end: 43px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-sidebar-close:focus-visible {
+    outline-color: #bfdbfe;
+  }
+  .ml-admin-dashboard-shell .ml-admin-topbar {
+    gap: 9px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-search input {
+    font-size: 16px; /* Prevent iOS zoom; accessible on small touch devices. */
+  }
+  .ml-admin-dashboard-shell .ml-admin-search-results {
+    max-height: min(420px, 55dvh);
+    overscroll-behavior: contain;
+  }
+  .ml-admin-dashboard-shell .ml-admin-route-content :where(
+    .admin-form input, .admin-form select, .admin-form textarea
+  ) {
+    font-size: 16px;
+  }
+}
+@media (max-width: 650px) {
+  .ml-admin-dashboard-shell .admin-route-heading.ml-admin-page-heading {
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-page-heading h1 {
+    font-size: clamp(22px, 6vw, 25px);
+    line-height: 1.32;
+  }
+  .ml-admin-dashboard-shell .ml-admin-year-picker {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 7px 12px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-year-picker select {
+    max-width: 100%;
+    flex: 1 1 180px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-search {
+    flex-basis: 70px;
+    min-width: 70px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-topbar-actions {
+    flex: 0 0 auto;
+    margin-inline-start: 0;
+  }
+}
+@media (max-width: 390px) {
+  /* Do not hide the only in-workspace locale picker on narrow phones. */
+  .ml-admin-dashboard-shell .ml-admin-topbar-language {
+    display: block;
+  }
+  .ml-admin-dashboard-shell .ml-admin-topbar-icon {
+    display: none; /* Communication is always available from the sidebar. */
+  }
+  .ml-admin-dashboard-shell .ml-admin-topbar-language select {
+    max-width: 78px;
+    font-size: 12px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-topbar {
+    gap: 6px;
+    padding-inline: 9px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-search {
+    min-width: 55px;
+    padding-inline: 7px;
+  }
+}
+@media (min-width: 901px) {
+  .ml-admin-dashboard-shell.ml-admin-compact .ml-admin-sidebar-profile-icon {
+    flex-basis: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ml-admin-dashboard-shell :where(a, button, input, select, textarea) {
+    scroll-behavior: auto;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
