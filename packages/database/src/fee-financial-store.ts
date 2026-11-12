@@ -69,7 +69,12 @@ async function bounded<T>(request: Promise<T[]>, label: string): Promise<T[]> {
 }
 
 function safeMethod(raw: string): Method {
-  return METHODS.includes(raw as Method) ? raw as Method : "OTHER";
+  // Prior fee forms and imported payments wrote BANK rather than
+  // BANK_TRANSFER; accepting one and reporting the other incorrectly placed
+  // actual bank collections in OTHER and forbade reconciliation.
+  const normalized = raw.trim().toUpperCase().replace(/[ -]+/g, "_");
+  if (normalized === "BANK" || normalized === "BANK_TRANSFER") return "BANK_TRANSFER";
+  return METHODS.includes(normalized as Method) ? normalized as Method : "OTHER";
 }
 
 export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialStore {
@@ -201,7 +206,7 @@ export function createFeeFinancialStore(db: FoundationDatabase): FeeFinancialSto
           .where(and(eq(feeInvoices.schoolId, schoolId), eq(feeInvoices.id, payment.invoiceId)))
           .limit(1).for("update");
         if (!invoice) throw new CommunicationNotFoundError("Invoice not found.");
-        if (payment.method !== "CASH" && payment.method !== "BANK_TRANSFER")
+        if (safeMethod(payment.method) !== "CASH" && safeMethod(payment.method) !== "BANK_TRANSFER")
           throw new CommunicationConflictError("Only cash and bank payments can be reconciled here.");
         const [reversal] = await tx.select({ id: feePayments.id }).from(feePayments).where(and(
           eq(feePayments.schoolId, schoolId), eq(feePayments.reversalOfPaymentId, paymentId)

@@ -203,8 +203,10 @@ export function createExpoPushProvider(fetchImpl: typeof fetch = fetch): PushPro
         const body = await response.json() as { data?: { status?: string; id?: string; message?: string } };
         if (body.data?.status === "ok") return { ok: true, providerMessageId: body.data.id };
         return { ok: false, error: body.data?.message ?? "Expo push rejected the message." };
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : "Push delivery failed." };
+      } catch {
+        // Do not persist a transport exception which could contain endpoint
+        // credentials, token data or upstream response details.
+        return { ok: false, error: "Expo push transport failed." };
       }
     }
   };
@@ -777,7 +779,8 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         if (original.updatedAt.getTime() !== Date.parse(input.expectedUpdatedAt))
           throw new CommunicationConflictError("This draft changed. Refresh before editing it again.");
         const [targetStudent] = await tx.select({ status: students.status }).from(students)
-          .where(and(eq(students.schoolId, schoolId),eq(students.id,input.studentId))).limit(1);
+          .where(and(eq(students.schoolId, schoolId),eq(students.id,input.studentId)))
+          .limit(1).for("update");
         if (!targetStudent) throw new CommunicationNotFoundError("Student not found.");
         if (targetStudent.status !== "ACTIVE")
           throw new CommunicationConflictError("A withdrawn student cannot receive an invoice.");
@@ -806,6 +809,13 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
       const student = await getStudent(schoolId, input.studentId);
       if (student.status !== "ACTIVE") throw new CommunicationValidationError("Cannot bill a withdrawn student.");
       return db.transaction(async tx => {
+        // Recheck the student's enrollment under a row lock; an administrator
+        // may withdraw the student after the initial form preflight.
+        const [lockedStudent] = await tx.select({ status: students.status }).from(students)
+          .where(and(eq(students.schoolId, schoolId),
+            eq(students.id, input.studentId))).limit(1).for("update");
+        if (!lockedStudent || lockedStudent.status !== "ACTIVE")
+          throw new CommunicationConflictError("A withdrawn or missing student cannot receive a new fee invoice.");
         // The UPSERT serializes numbering independently within each school.
         const [counter] = await tx.insert(feeInvoiceCounters)
           .values({ schoolId, lastNumber: 1 })
@@ -837,7 +847,8 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
         if (!current) throw new CommunicationNotFoundError("Fee invoice not found.");
         if (current.status !== "DRAFT") throw new CommunicationConflictError("Only a draft fee invoice can be issued.");
         const [student] = await tx.select({ status: students.status }).from(students)
-          .where(and(eq(students.schoolId, schoolId), eq(students.id, current.studentId))).limit(1);
+          .where(and(eq(students.schoolId, schoolId), eq(students.id, current.studentId)))
+          .limit(1).for("update");
         if (!student || student.status !== "ACTIVE")
           throw new CommunicationConflictError("A withdrawn student cannot receive a new invoice.");
         const [updated] = await tx.update(feeInvoices)
@@ -1209,20 +1220,19 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
 
     async registerDevice(schoolId, userId, pushToken, platform) {
       await getUser(schoolId, userId);
-      const [existing] = await db.select().from(devices).where(eq(devices.pushToken, pushToken)).limit(1);
-      if (existing) {
-        if (existing.schoolId !== schoolId || existing.userId !== userId) {
-          throw new CommunicationConflictError("This push token is already registered to another account.");
-        }
-        const [updated] = await db.update(devices).set({ platform, active: true, lastSeenAt: new Date(), updatedAt: new Date() })
-          .where(eq(devices.id, existing.id)).returning();
-        return updated ?? existing;
-      }
+      // A preflight SELECT followed by INSERT is unsafe with two logins or
+      // workers registering the same token. The unique token index is the
+      // arbitrator: only one row can be inserted, even across API instances.
       const [created] = await db.insert(devices).values({
         id: randomUUID(), schoolId, userId, pushToken, platform
-      }).returning();
-      if (!created) throw new Error("Device insert did not return a row.");
-      return created;
+      }).onConflictDoNothing({ target: devices.pushToken }).returning();
+      if (created) return created;
+      const [updated] = await db.update(devices).set({
+        platform, active: true, lastSeenAt: new Date(), updatedAt: new Date()
+      }).where(and(eq(devices.pushToken, pushToken),
+        eq(devices.schoolId, schoolId), eq(devices.userId, userId))).returning();
+      if (updated) return updated;
+      throw new CommunicationConflictError("This push token is already registered to another account.");
     },
 
     async deactivateDevice(schoolId, userId, pushToken) {
@@ -1366,10 +1376,19 @@ export function createCommunicationStore(db: FoundationDatabase): CommunicationS
             }
             if (!delivery) throw new Error("Could not establish push delivery row.");
             if (delivery.status === "SENT") { anySent = true; continue; }
-            const result = await provider.send({
-              token: device.pushToken, title: notification.title, body: notification.message,
-              data: { notificationId: notification.id, deepLink: notification.deepLink, ...notification.metadata }
-            });
+            // Providers may throw (network/SDK failure) instead of returning
+            // { ok: false }. Convert to a bounded FAILED delivery so one
+            // unavailable device cannot abort the entire school-wide batch.
+            // Do not persist raw errors; SDK messages may contain push tokens.
+            let result: PushResult;
+            try {
+              result = await provider.send({
+                token: device.pushToken, title: notification.title, body: notification.message,
+                data: { notificationId: notification.id, deepLink: notification.deepLink, ...notification.metadata }
+              });
+            } catch {
+              result = { ok: false, error: "Push provider transport failed." };
+            }
             if (result.ok) {
               anySent = true; sent += 1;
               await db.update(notificationPushDeliveries).set({
