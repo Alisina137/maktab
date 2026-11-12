@@ -415,13 +415,6 @@ export default function AdminProfilePage() {
         </div>
       </div>
 
-      <nav className="ml-profile-navigation" aria-label={t("Profile sections")}>
-        <a href="#ml-profile-edit"><span aria-hidden="true">01</span>{t("Profile details")}</a>
-        <a href="#ml-profile-preview"><span aria-hidden="true">02</span>{t("Contact card preview")}</a>
-        <a href="#ml-profile-account"><span aria-hidden="true">03</span>{t("Account information")}</a>
-        <a href="#ml-profile-security"><span aria-hidden="true">04</span>{t("Security")}</a>
-      </nav>
-
       <div className="admin-profile-grid">
         <article className="admin-panel admin-profile-card ml-profile-editor" id="ml-profile-edit">
           <div className="admin-section-header ml-profile-editor-heading">
@@ -536,7 +529,7 @@ export default function AdminProfilePage() {
           )}
         </article>
 
-        <aside className="admin-profile-side">
+        <aside className="admin-profile-side" aria-label={t("Contact card preview")}>
           <article className="admin-panel admin-contact-preview" id="ml-profile-preview">
             <div className="ml-profile-preview-top">
               <span className="admin-kicker">{t("Contact card preview")}</span>
@@ -581,30 +574,16 @@ export default function AdminProfilePage() {
             </div>
           </article>
 
-          <article className="admin-panel admin-profile-card ml-profile-account" id="ml-profile-account">
-            <span className="admin-kicker">{t("Account information")}</span>
-            <h3>{t("School account")}</h3>
-            <p className="ml-profile-account-description">{t("Your school sign-in and access details.")}</p>
-            <dl className="admin-profile-details">
-              <div><dt>{t("Username")}</dt><dd>{stored.session.user.username}</dd></div>
-              <div><dt>{t("Role")}</dt><dd>{t("School admin")}</dd></div>
-              <div><dt>{t("School")}</dt><dd>{stored.school.name}</dd></div>
-              <div><dt>{t("School code")}</dt><dd>{stored.school.code}</dd></div>
-            </dl>
-            <div className="admin-profile-signout">
-              <button
-                className="admin-secondary admin-profile-signout-button"
-                type="button"
-                disabled={signingOut}
-                onClick={() => void handleSignOut()}
-              >
-                {t("Sign out")}
-              </button>
-            </div>
-          </article>
         </aside>
       </div>
 
+      <section className="ml-profile-private-section" aria-labelledby="ml-profile-private-heading">
+        <header className="ml-profile-private-heading">
+          <span className="admin-kicker">{t("Private settings")}</span>
+          <h2 id="ml-profile-private-heading">{t("Account & security")}</h2>
+          <p>{t("Manage account access and password separately from your school contact details.")}</p>
+        </header>
+        <div className="ml-profile-private-grid">
       <article className="admin-panel admin-password-card admin-password-2fa-card ml-profile-security" id="ml-profile-security">
         <div>
           <span className="admin-kicker">{t("Security")}</span>
@@ -739,6 +718,31 @@ export default function AdminProfilePage() {
           ) : null}
         </div>
       </article>
+          <aside className="ml-profile-private-side" aria-label={t("Account information")}>
+          <article className="admin-panel admin-profile-card ml-profile-account" id="ml-profile-account">
+            <span className="admin-kicker">{t("Account information")}</span>
+            <h3>{t("School account")}</h3>
+            <p className="ml-profile-account-description">{t("Your school sign-in and access details.")}</p>
+            <dl className="admin-profile-details">
+              <div><dt>{t("Username")}</dt><dd>{stored.session.user.username}</dd></div>
+              <div><dt>{t("Role")}</dt><dd>{t("School admin")}</dd></div>
+              <div><dt>{t("School")}</dt><dd>{stored.school.name}</dd></div>
+              <div><dt>{t("School code")}</dt><dd>{stored.school.code}</dd></div>
+            </dl>
+            <div className="admin-profile-signout">
+              <button
+                className="admin-secondary admin-profile-signout-button"
+                type="button"
+                disabled={signingOut}
+                onClick={() => void handleSignOut()}
+              >
+                {t("Sign out")}
+              </button>
+            </div>
+          </article>
+          </aside>
+        </div>
+      </section>
     </section>
   );
 }
