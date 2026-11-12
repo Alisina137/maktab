@@ -781,7 +781,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 <div className="communication-dashboard-heading">
                   <h3>{t("Financial overview")}</h3>
                   <button type="button" className="admin-secondary"
-                    onClick={() => selectSection("FEES")}>{t("View fee invoices")}</button>
+                    onClick={() => { setFeesModule("INVOICES"); setFeesPane("LIST"); selectSection("FEES"); }}>{t("View fee invoices")}</button>
                 </div>
                 <p className="admin-copy">{t("Issued school invoices only. Drafts and cancelled invoices do not count toward balances.")}</p>
                 <div className="academic-summary-grid communication-overview-grid">
@@ -812,7 +812,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                   <h3>{t("Recent fee invoices")}</h3>
                   {visibleOverview.invoices.slice(0, 4).map(item => (
                     <button type="button" className="communication-recent-row" key={item.invoice.id}
-                      onClick={() => { selectSection("FEES"); setFeesPane("LIST"); }}>
+                      onClick={() => { setFeesModule("INVOICES"); selectSection("FEES"); setFeesPane("LIST"); }}>
                       <strong>{item.studentName}</strong>
                       <span>{t(item.invoice.status)} · {formatMoney(item.outstanding)}</span>
                     </button>
@@ -1106,8 +1106,9 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
               <h3>{t("Fee invoices & payments")}</h3>
               <p>{t("Manage draft invoices and the append-only payment ledger.")}</p>
             </div>
-            <button type="button" className="admin-secondary" onClick={() => void loadResource("communication")}>
-              {t("Refresh fee invoices")}
+            <button type="button" className="admin-secondary"
+              onClick={() => { void loadResource("communication"); setFeeReloadKey(value => value + 1); }}>
+              {t(feesModule === "INVOICES" ? "Refresh fee invoices" : "Refresh")}
             </button>
           </div>
           <nav className="admin-fee-module-tabs" role="tablist"
@@ -1492,7 +1493,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                       </div>
                     ))}
                   </div>
-                ) : null}                  </div>
+                ) : null}
+                  </div>
                 ) : null}
               </div>
             );
