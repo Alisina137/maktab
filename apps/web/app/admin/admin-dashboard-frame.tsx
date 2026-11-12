@@ -95,17 +95,32 @@ export function AdminDashboardFrame({
   const userName = adminProfile.fullName || stored.session.user.username;
 
   const searchOptions = useMemo(() => {
-    const items = [...navItems,
+    // Keep the parent/child labels separate until rendering. Concatenating
+    // them before translating silently breaks navigation search in Dari/Pashto.
+    const items: Array<NavItem & { groupLabel?: string }> = [
+      ...navItems,
       ...Object.entries(adminSidebarSections).flatMap(([group, children]) =>
-        children.map((child) => ({ ...child, label: navItems.find((item) =>
-          item.href === group)?.label + " · " + child.label }))
-      )];
+        children.map((child) => ({
+          ...child,
+          groupLabel: navItems.find((item) => item.href === group)?.label
+        }))
+      )
+    ];
     const q = search.trim().toLocaleLowerCase();
-    if (!q) return items.slice(0, 7);
-    return items.filter((item) =>
-      item.label.toLocaleLowerCase().includes(q) ||
-      t(item.label).toLocaleLowerCase().includes(q)
-    ).slice(0, 9);
+    const matches = q
+      ? items.filter((item) =>
+          [item.label, t(item.label), item.groupLabel ?? "", item.groupLabel ? t(item.groupLabel) : ""]
+            .some((label) => label.toLocaleLowerCase().includes(q))
+        )
+      : items;
+    const seen = new Set<string>();
+    return matches.filter((item) => {
+      // Top-level and Overview subsections often point at the same URL.
+      // Never render duplicate option keys or duplicate navigation choices.
+      if (seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    }).slice(0, q ? 9 : 7);
   }, [navItems, search, t]);
 
   useEffect(() => {
@@ -424,7 +439,9 @@ export function AdminDashboardFrame({
                     data-admin-no-loading="true"
                     onClick={() => navigate(item.href)}>
                     <Icon name={navIcons[item.href] ?? "academic"} size={17} />
-                    <span>{t(item.label)}</span><Icon name="arrow" size={15} />
+                    <span>{item.groupLabel
+                      ? `${t(item.groupLabel)} · ${t(item.label)}`
+                      : t(item.label)}</span><Icon name="arrow" size={15} />
                   </button>
                 )) : <span className="ml-admin-search-empty">{t("No matching pages")}</span>}
               </div>
