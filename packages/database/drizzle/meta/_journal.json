@@ -232,6 +232,13 @@
       "when": 1790859200000,
       "tag": "0032_phase3_integrity_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790867600000,
+      "tag": "0033_phase6_casefold_usernames",
+      "breakpoints": true
     }
   ]
 }
