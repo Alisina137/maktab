@@ -1,0 +1,205 @@
+/* Account workspace — style only the authenticated admin Accounts view.
+ * The view selector is one horizontal control; the create form retains the
+ * existing role-specific fields, validation and secure submission behavior. */
+.ml-admin-dashboard-shell .admin-account-overview-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 362px);
+  align-items: center;
+  gap: 24px;
+}
+.ml-admin-dashboard-shell .admin-account-overview-heading > div:first-child {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .admin-account-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  justify-self: end;
+  width: min(100%, 362px);
+  min-width: 0;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+.ml-admin-dashboard-shell .admin-account-view-switch .admin-account-view-button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 11px;
+  font-size: 12.5px;
+  font-weight: 790;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .admin-account-grid-creating {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  justify-items: center;
+}
+.ml-admin-dashboard-shell .admin-account-grid-creating .admin-create-account-card {
+  width: min(100%, 1160px);
+  max-width: 100%;
+  min-width: 0;
+  padding: clamp(20px, 2.6vw, 32px);
+  border: 1px solid #dfe8f5;
+  border-radius: 20px;
+  box-shadow: 0 9px 27px rgba(35, 70, 125, .06);
+  container-type: inline-size;
+}
+.ml-admin-dashboard-shell .admin-create-account-card > h3 {
+  margin-top: 12px;
+  font-size: clamp(19px, 1.6vw, 23px);
+}
+.ml-admin-dashboard-shell .admin-create-account-card > .admin-copy {
+  max-width: 780px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.ml-admin-dashboard-shell .account-create-form {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .account-create-step-grid {
+  display: grid;
+  grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr);
+  gap: 17px;
+  align-items: stretch;
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .account-create-step {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid #e0e8f4;
+  border-radius: 16px;
+  background: #fff;
+}
+.ml-admin-dashboard-shell .account-create-step-role {
+  background: linear-gradient(156deg, #f2f7ff 0%, #fafcff 72%);
+  border-color: #d7e5f8;
+}
+.ml-admin-dashboard-shell .account-create-step-details {
+  background: linear-gradient(145deg, #ffffff 0%, #fcfdff 100%);
+}
+.ml-admin-dashboard-shell .account-create-step .account-form-kicker {
+  margin-bottom: 1px;
+  padding: 0 0 13px;
+  color: #265ba7;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 840;
+}
+.ml-admin-dashboard-shell .account-create-step label {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  color: #385372;
+  font-size: 12.5px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+.ml-admin-dashboard-shell .account-create-step label :where(input, select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 45px;
+  padding-inline: 12px;
+  border: 1px solid #d7e3f2;
+  border-radius: 10px;
+  background-color: #fff;
+  font-size: 13px;
+  color: #1c3150;
+}
+.ml-admin-dashboard-shell .account-create-step label :where(input, select):focus-visible {
+  outline: 3px solid rgba(42, 107, 220, .17);
+  outline-offset: 0;
+  border-color: #6ea0e5;
+}
+.ml-admin-dashboard-shell .account-create-step .account-create-role-help {
+  margin: 0;
+  padding: 14px;
+  border-radius: 11px;
+  color: #496783;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.ml-admin-dashboard-shell .account-create-step .admin-field-hint,
+.ml-admin-dashboard-shell .account-create-step .account-create-field-error {
+  font-size: 11.5px;
+  line-height: 1.55;
+  font-weight: 510;
+}
+.ml-admin-dashboard-shell .account-create-step .account-create-field-error {
+  color: #ad423d;
+  font-weight: 675;
+}
+.ml-admin-dashboard-shell .account-create-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 17px;
+  min-width: 0;
+  padding-top: 18px;
+  border-top: 1px solid #e5edf7;
+}
+.ml-admin-dashboard-shell .account-create-footer .account-create-notice {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ml-admin-dashboard-shell .account-create-footer > .admin-primary {
+  flex: 0 0 auto;
+  min-width: 180px;
+  min-height: 46px;
+  padding-inline: 20px;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+@media (max-width: 1100px) {
+  .ml-admin-dashboard-shell .admin-account-overview-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .ml-admin-dashboard-shell .admin-account-view-switch {
+    width: min(100%, 362px);
+    justify-self: start;
+  }
+}
+@container (max-width: 780px) {
+  .ml-admin-dashboard-shell .account-create-step-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 950px) {
+  .ml-admin-dashboard-shell .account-create-step-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  .ml-admin-dashboard-shell .admin-account-view-switch {
+    justify-self: stretch;
+    width: 100%;
+  }
+  .ml-admin-dashboard-shell .account-create-step { padding: 17px 15px; }
+  .ml-admin-dashboard-shell .account-create-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ml-admin-dashboard-shell .account-create-footer .account-create-notice {
+    flex: 1 1 auto;
+  }
+  .ml-admin-dashboard-shell .account-create-footer > .admin-primary {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+  }
+}
