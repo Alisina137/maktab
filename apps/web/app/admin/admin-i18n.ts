@@ -3756,7 +3756,7 @@ const ps: Record<string, string> = {
   "Reference must be 120 characters or less.": "حواله باید ۱۲۰ توري یا لږ وي.",
   "Reconciliation status updated and audited.": "د تطبیق حالت بدل او ثبت شو.",
   "Could not update reconciliation.": "د تطبیق حالت بدل نه شو.",
-  "No payment transactions in this date range.": "په دې نېټو کې د پخلاینې لپاره نغدي یا بانکي تادیات نشته.",
+  "No payment transactions in this date range.": "په دې نېټو کې د پیسو راکړه ورکړه نشته.",
   "No cash or bank payments to reconcile in this date range.": "په دې نېټو کې د حسابونو د پخلاینې لپاره نغدي یا بانکي تادیات نشته.",
   "Showing up to 50 cash/bank rows; CSV contains all eligible report rows.": "تر ۵۰ نغدو/بانکي ریکارډونو ښودل کېږي؛ CSV ټول مجاز ریکارډونه لري.",
   "Bulk draft-invoice preview": "د مسودې بلونو ډله‌ییز مخکتنه",
