@@ -103,11 +103,15 @@ export function registerAuthRoutes(
   }
 ) {
   const verificationLimiter = new LoginRateLimiter(3, 10 * 60 * 1000);
+  // Per-account limits alone can be evaded by spraying distinct usernames.
+  // Bound authentication attempts per IP + school as a second line of defense.
+  // These are per-process limits; a shared limiter is a deployment follow-up.
+  const schoolSourceLimiter = new LoginRateLimiter(180, 5 * 60 * 1000);
   app.post("/v1/auth/login", async (request, reply) => {
     try {
       const input = loginInputSchema.parse(request.body);
       const rateKey = `${request.ip}:${input.schoolId}:${input.username}`;
-      if (!limiter.consume(rateKey)) {
+      if (!schoolSourceLimiter.consume(`${request.ip}:${input.schoolId}`) || !limiter.consume(rateKey)) {
         return reply.code(429).send({ error: "rate_limited", message: "Too many login attempts. Try again later." });
       }
 
@@ -115,11 +119,13 @@ export function registerAuthRoutes(
       if (!context || context.school.status !== "ACTIVE") {
         return reply.code(401).send({ error: "invalid_credentials", message: "Invalid school, username, or password." });
       }
-      if (context.user.status === "ARCHIVED") {
-        return reply.code(403).send({ error: "account_unavailable", message: "This account is no longer active." });
-      }
+      // Never disclose archived account existence to someone without its
+      // password: account state is evaluated only after credential validation.
       if (!(await verifyPassword(input.password, context.user.passwordHash))) {
         return reply.code(401).send({ error: "invalid_credentials", message: "Invalid school, username, or password." });
+      }
+      if (context.user.status === "ARCHIVED") {
+        return reply.code(403).send({ error: "account_unavailable", message: "This account is no longer active." });
       }
       if (context.user.role !== input.expectedRole) {
         return reply.code(403).send({ error: "role_mismatch", message: "This account does not belong to the selected role." });
@@ -376,12 +382,19 @@ export function registerAuthRoutes(
       }
 
       const verificationToken = generateVerificationToken();
-      await store.markAdminPasswordVerificationVerified(
+      const verified = await store.markAdminPasswordVerificationVerified(
         context.user.schoolId,
         context.user.id,
         input.verificationId,
         hashVerificationToken(options.passwordVerificationSecret, verificationToken)
       );
+      if (!verified) {
+        // A concurrent attempt, cancellation, or expiry may have won.
+        return reply.code(410).send({
+          error: "two_factor_verification_expired",
+          message: "This verification request has expired. Request a new code."
+        });
+      }
 
       await store.writeAudit({
         schoolId: context.user.schoolId,
@@ -394,7 +407,7 @@ export function registerAuthRoutes(
 
       return {
         verificationToken,
-        expiresAt: verification.expiresAt.toISOString()
+        expiresAt: verified.expiresAt.toISOString()
       };
     } catch (error) {
       if (error instanceof ZodError) {
