@@ -201,9 +201,9 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
             ))}
           </div>
           <div className="admin-reminder-actions">
-            <button className="admin-secondary" type="button" disabled={busy}
+            <button className="admin-secondary" type="button" disabled={busy || invalidRange}
               onClick={() => void exportCsv("payments")}>{t("Export transactions CSV")}</button>
-            <button className="admin-secondary" type="button" disabled={busy}
+            <button className="admin-secondary" type="button" disabled={busy || invalidRange}
               onClick={() => void exportCsv("outstanding")}>{t("Export outstanding CSV")}</button>
           </div>
           <small>{t("CSV includes school-authorized rows and escapes spreadsheet formulas. Exports are audited.")}</small>

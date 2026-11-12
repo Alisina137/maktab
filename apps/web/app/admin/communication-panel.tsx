@@ -582,8 +582,8 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
 
   async function reversePayment(paymentId: string) {
     const reason = reversalReason[paymentId]?.trim() ?? "";
-    if (!reason) {
-      setError(t("Enter a reversal reason first."));
+    if (reason.length < 2) {
+      setError(t("Enter at least 2 characters to reverse a payment."));
       return;
     }
     if (!window.confirm(adminFormat(locale,
@@ -1203,7 +1203,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                 ))}
               </select>
             </label>
-            <label>{t("Amount (AFN)")}<input name="amount" type="number" min="1" step="1" required /></label>
+            <label>{t("Amount (AFN)")}<input name="amount" type="number" inputMode="numeric" min="1" max="100000000" step="1" required /></label>
             <label>{t("Due date")}<AdminHijriDatePicker locale={locale} name="dueDate" required /></label>
             <label>{t("Description")}<input name="description" maxLength={240} placeholder={t("Monthly tuition, transport…")} /></label>
             <button className="admin-primary" disabled={busy}>{t("Create draft invoice")}</button>
@@ -1262,7 +1262,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
         </div>
         <div className="communication-invoice-filters">
           <label>{t("Search invoices")}
-            <input type="search" value={feeSearch}
+            <input type="search" value={feeSearch} maxLength={120}
               onChange={event=>setFeeSearch(event.target.value)}
               placeholder={t("Student name, code, description or invoice number")} />
           </label>
@@ -1452,6 +1452,7 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                           }))
                         }
                         placeholder={t("Reference (optional)")}
+                        maxLength={120}
                       />
                     </label>
                     <button type="button"
@@ -1483,10 +1484,11 @@ export function CommunicationPanel({ accessToken }: { accessToken: string }) {
                               <input
                                 value={reversalReason[payment.id] ?? ""}
                                 onChange={event => setReversalReason(current => ({ ...current, [payment.id]: event.target.value }))}
-                                placeholder={t("Reversal reason")}
+                                placeholder={t("Reversal reason")} minLength={2} maxLength={240}
                               />
+                              <small>{t("Enter at least 2 characters to reverse a payment.")}</small>
                             </label>
-                            <button type="button" disabled={busy || !reversalReason[payment.id]?.trim()}
+                            <button type="button" disabled={busy || (reversalReason[payment.id]?.trim().length ?? 0) < 2}
                               onClick={() => void reversePayment(payment.id)}>{t("Reverse")}</button>
                           </div>
                         ) : null}
