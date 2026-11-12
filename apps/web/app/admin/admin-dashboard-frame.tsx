@@ -381,6 +381,15 @@ export function AdminDashboardFrame({
           </button>
 
           <form className="ml-admin-search" ref={searchBoxRef} role="search"
+            onBlur={() => {
+              // Delay until after a mouse click on an option has been handled.
+              window.setTimeout(() => {
+                if (!searchBoxRef.current?.contains(document.activeElement)) {
+                  setShowResults(false);
+                  setHighlightedSearchIndex(-1);
+                }
+              }, 0);
+            }}
             onSubmit={(event) => {
               event.preventDefault();
               const option = highlightedSearchIndex < 0 ? searchOptions[0] : searchOptions[highlightedSearchIndex];
