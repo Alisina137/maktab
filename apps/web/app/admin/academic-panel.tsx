@@ -9,6 +9,7 @@ import { useAdminWorkspace } from "./admin-workspace";
 import { adminText, type AdminLocale } from "./admin-i18n";
 import { CurriculumAdminPanel } from "./curriculum-admin";
 import { AdminAcademicOverview } from "./admin-academic-overview";
+import { nextAvailableTeacherEmployeeCode } from "./teacher-employee-code";
 
 export const academicSectionNames = [
   "years",
@@ -478,13 +479,16 @@ export function AcademicPanel({
 
   if (section === "teachers") {
     const editing = overview.teachers.find((item) => item.userId === editingId) ?? null;
+    const suggestedEmployeeCode = nextAvailableTeacherEmployeeCode(
+      overview.teachers.map((teacher) => teacher.employeeCode)
+    );
     return (
       <AcademicEntityPage section={section} title={t(pageTitle[section])} locale={locale} busy={busy}>
         <AcademicForm title={t(editing ? "Edit teacher profile" : "Teacher profile")} hint={t("Attach school details to an existing TEACHER account.")}>
           <form
             id="academic-entity-form"
             className="admin-form"
-            key={editing?.userId ?? "new-teacher"}
+            key={editing?.userId ?? "new-teacher-" + suggestedEmployeeCode}
             onSubmit={(event) => {
               const form = new FormData(event.currentTarget);
               const profile = {
@@ -511,7 +515,23 @@ export function AcademicPanel({
                 items={teacherAccounts.filter((user) => !profiledTeacherIds.has(user.id)).map((user) => [user.id, user.username])}
               />
             )}
-            <label>{t("Employee code")}<input name="employeeCode" defaultValue={editing?.employeeCode ?? ""} placeholder="T-001" required /></label>
+            <label>
+              {t("Employee code")}
+              <input
+                name="employeeCode"
+                defaultValue={editing?.employeeCode ?? suggestedEmployeeCode}
+                placeholder="T-x"
+                pattern={!editing || /^T-[1-9][0-9]*$/.test(editing.employeeCode) ? "T-[1-9][0-9]*" : undefined}
+                title={t("Use a code such as T-1, T-2, or T-3.")}
+                autoCapitalize="characters"
+                autoComplete="off"
+                maxLength={32}
+                required
+              />
+              {!editing ? <small className="admin-form-help">
+                {t("Next available employee code")}: <strong>{suggestedEmployeeCode}</strong>
+              </small> : null}
+            </label>
             <label>{t("Full name")}<input name="fullName" defaultValue={editing?.fullName ?? ""} placeholder={t("Teacher full name")} required /></label>
             <label>{t("Phone")}<input name="phone" defaultValue={editing?.phone ?? ""} placeholder="07xxxxxxxx" /></label>
             <FormActions editing={Boolean(editing)} busy={busy} createLabel={t("Create teacher profile")} saveLabel={t("Save changes")} cancelLabel={t("Cancel edit")} onCancel={() => setEditingId(null)} />
