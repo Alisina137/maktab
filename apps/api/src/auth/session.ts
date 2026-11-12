@@ -49,7 +49,7 @@ export async function rotateSession(store: AccountStore, context: AuthenticatedS
   const accessExpiresAt = new Date(Date.now() + ACCESS_TTL_MS);
   const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL_MS);
 
-  const rotated = await store.rotateSession(context.session.id, {
+  const rotated = await store.rotateSession(context.session.id, context.session.refreshTokenHash, {
     accessTokenHash: hashSessionToken(accessToken),
     refreshTokenHash: hashSessionToken(refreshToken),
     accessExpiresAt,
