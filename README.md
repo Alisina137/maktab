@@ -6,7 +6,9 @@ This repository follows the approved **MaktabLink Product Specification V1** and
 
 ## Current implementation
 
-Phase 7 adds scoped school-family communication, manual fee visibility, reminder jobs, and push-delivery plumbing on top of the verified Phase 1–6 foundations.
+Phases 1–8 provide the core school platform. Later refinements add expanded administrator workflows, the independent school-staff web portal, and improved teacher, parent, and student experiences.
+
+**Release status: NO-GO for unrestricted production rollout.** Automated CI success does not establish deployed PostgreSQL, live-device, push, backup/restore, scheduler, accessibility, or operator acceptance. See [the final release-readiness report](docs/RELEASE-READINESS-STEP20.md) and [Phase 1 foundation audit](docs/FINAL-AUDIT-PHASE1.md).
 
 Implemented:
 
@@ -81,19 +83,32 @@ Implemented:
 - push-provider failure isolation from school business actions
 - school-admin communication and fee workspace
 - Teacher/Parent/Student Phase 7 mobile communication UI
+- Phase 8 school subscription lifecycle, suspension safeguards, pilot-readiness exports and audit controls
+- independent school staff portal at `/staff` with explicitly scoped permissions and workflows
+- administrator refinements for Accounts, Academics, Families, Attendance, Learning, Communication/Fees, Profile and Pilot Operations
+- teacher, parent and student navigation, learning, security and resilience refinements
 
 ## Setup
 
+Use **Node.js 22.13+** and **pnpm 12.5.1**, as pinned in `package.json`. CI exercises Node 22 on Linux and Node 24 on Windows. Use the committed lockfile rather than resolving new dependencies during installation.
+
+Copy `.env.example` to the root `.env`, then configure `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (the direct Neon connection for migrations), and required platform/auth secrets. Never commit credentials or paste connection strings into logs.
+
 ```powershell
 cd C:\projects\maktab
-pnpm install
+Copy-Item .env.example .env
+pnpm install --frozen-lockfile
+pnpm db:check
 pnpm db:migrate
+pnpm verify:foundation
 pnpm verify
 ```
 
+If `.env` already exists, **do not overwrite it**. Review the example for new configuration keys. Back up existing data before migrating. `db:check` probes the real database and cannot be proven by CI.
+
 ## Run locally
 
-Use separate terminals:
+Start the API first, then launch web and mobile from separate terminals:
 
 ```powershell
 pnpm dev:api
@@ -101,24 +116,16 @@ pnpm dev:web
 pnpm dev:mobile
 ```
 
-For normal LAN development, the mobile app derives the API host from Expo and uses port 4000.
+`pnpm dev:api` starts the API on port **4000**, waits for `/ready`, then launches `ngrok http 4000` when ngrok is installed/configured. After checking the public HTTPS tunnel, it synchronizes the ignored `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL`. Port **4040** is the ngrok **inspector**, not the API. `pnpm dev:mobile` launches Expo Go through an Expo tunnel; restart Expo if the API URL changes.
 
-For Expo tunnel development, Metro and the API need separate public endpoints. Set `EXPO_PUBLIC_API_URL` to the public HTTPS URL that forwards to the local API before starting Expo:
+The API continues running locally if ngrok is unavailable. To use an Expo tunnel without ngrok, configure an independently reachable HTTPS endpoint. The mobile client falls back to a detected LAN host when no explicit API URL is supplied. Do not expose production data or credentials through a development tunnel.
 
-```powershell
-$env:EXPO_PUBLIC_API_URL="https://YOUR-API-TUNNEL.example"
-pnpm --filter @maktablink/mobile exec expo start --tunnel --clear
-```
+Web routes:
 
-The mobile client prefers `EXPO_PUBLIC_API_URL` when provided and otherwise falls back to LAN host detection. Mobile API requests time out after 10 seconds instead of leaving loading states indefinitely.
+- School administrator: `http://localhost:3000/admin`
+- School staff (separate role and session): `http://localhost:3000/staff`
 
-School administration:
-
-```text
-http://localhost:3000/admin
-```
-
-The admin workspace contains account management, academic structure, student/family onboarding, attendance, exams/results, announcements, and fee administration.
+See [staff portal](docs/STAFF-WEB-PORTAL.md) for role-specific access and onboarding.
 
 ## Database
 
@@ -147,11 +154,17 @@ Phase 6 migration:
 packages/database/drizzle/0006_phase6_learning.sql
 ```
 
-Phase 7 migration:
+Phase 7 and later migrations:
 
 ```text
 packages/database/drizzle/0007_phase7_communication_fees.sql
+packages/database/drizzle/0008_phase8_pilot_readiness.sql
+packages/database/drizzle/0009_school_image.sql
+...
+packages/database/drizzle/0031_staff_workflow.sql
 ```
+
+Apply the **full ordered Drizzle journal** with `pnpm db:migrate`; do not cherry-pick migrations. Later migrations cover administrator security, teaching workflows, fee reconciliation, attendance follow-ups and staff operations.
 
 Phase 4 adds:
 
@@ -169,7 +182,7 @@ Phase 5 adds:
 - `notifications`
 - attendance/record/delivery status enums
 
-Attendance notifications are currently in-app queue records. Push delivery remains a later notification phase.
+Attendance notifications are stored as in-app queue records; Phase 7 additionally supports queued remote push deliveries. Actual push delivery still needs provider credentials and a supported device build.
 
 Phase 6 adds:
 
@@ -221,7 +234,10 @@ A deployment scheduler should invoke it regularly. Each run materializes due sch
 ## Verification
 
 ```powershell
-pnpm verify
+pnpm verify:foundation  # fast tooling, lockfile, CI and repository-hygiene guard
+pnpm verify             # full regressions, typechecks, tests and production builds
 ```
 
-See `docs/PROJECT-STATE.md`, `docs/PHASE-03-ACADEMIC-STRUCTURE.md`, `docs/PHASE-04-STUDENT-FAMILY.md`, `docs/PHASE-05-ATTENDANCE.md`, `docs/PHASE-06-HOMEWORK-EXAMS-RESULTS.md`, and `docs/PHASE-07-COMMUNICATION-FEES.md`.
+Automated tests are not a production go-live sign-off. Record the exact deployed SHA, real Android/browser journeys, production database migrations, push delivery, a backup/restore drill, external schedulers, accessibility, and operator approval.
+
+See [Phase 1 foundation audit](docs/FINAL-AUDIT-PHASE1.md), [project state](docs/PROJECT-STATE.md), [production operations](docs/PRODUCTION-OPERATIONS.md), and [Step 20 release readiness](docs/RELEASE-READINESS-STEP20.md).
