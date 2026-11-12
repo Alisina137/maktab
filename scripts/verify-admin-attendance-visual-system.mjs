@@ -15,7 +15,7 @@ const expected = [
   ["AUDIT", "attendance-audit-card"],
   ["STAFF_REQUESTS", "staff-attendance-detail"]
 ];
-const actual = [...model.matchAll(/\\{\\s*id:\\s*"([A-Z_]+)"\\s*,\\s*label:/g)].map((match) => match[1]);
+const actual = [...model.matchAll(/\{\s*id:\s*"([A-Z_]+)"\s*,\s*label:/g)].map((match) => match[1]);
 assert.deepEqual(actual, expected.map(([name]) => name),
   "Visual system must cover all seven configured Attendance tabs.");
 
