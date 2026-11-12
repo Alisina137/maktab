@@ -429,20 +429,33 @@ export function createFamilyStore(db: FoundationDatabase): FamilyStore {
     },
 
     async deleteParentAccount(schoolId, parentUserId) {
-      await getParent(schoolId, parentUserId);
-      const [linkedStudent] = await db
-        .select({ id: students.id })
-        .from(students)
-        .where(and(eq(students.schoolId, schoolId), eq(students.parentUserId, parentUserId)))
-        .limit(1);
-
-      if (linkedStudent) {
-        throw new FamilyConflictError("This parent cannot be deleted because students are linked to the account.");
+      try {
+        await db.transaction(async (tx) => {
+          const [parent] = await tx.select({ id: users.id }).from(parentProfiles)
+            .innerJoin(users, and(eq(users.id, parentProfiles.userId),
+              eq(users.schoolId, parentProfiles.schoolId)))
+            .where(and(eq(parentProfiles.schoolId, schoolId),
+              eq(parentProfiles.userId, parentUserId),
+              eq(users.role, "PARENT"))).limit(1).for("update");
+          if (!parent) throw new FamilyNotFoundError("Parent account not found.");
+          const [linkedStudent] = await tx.select({ id: students.id }).from(students)
+            .where(and(eq(students.schoolId, schoolId),
+              eq(students.parentUserId, parentUserId))).limit(1);
+          if (linkedStudent) {
+            throw new FamilyConflictError("This parent cannot be deleted because students are linked to the account.");
+          }
+          const [deleted] = await tx.delete(users)
+            .where(and(eq(users.schoolId, schoolId),
+              eq(users.id, parentUserId), eq(users.role, "PARENT")))
+            .returning({ id: users.id });
+          if (!deleted) throw new FamilyNotFoundError("Parent account not found.");
+        });
+      } catch (error) {
+        if (isForeignKeyError(error)) {
+          throw new FamilyConflictError("This parent cannot be deleted while school records reference the account.");
+        }
+        throw error;
       }
-
-      await db
-        .delete(users)
-        .where(and(eq(users.schoolId, schoolId), eq(users.id, parentUserId)));
     },
 
     async createStudentAccount(schoolId, studentId, input) {
