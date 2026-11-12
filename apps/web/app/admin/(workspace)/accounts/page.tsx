@@ -209,7 +209,7 @@ export default function AccountsPage() {
   function updateQuery(next: string) { queryIntentRef.current = next.trim(); setQuery(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateSort(next: AccountSort) { setSortBy(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateOrder(next: AccountOrder) { setOrder(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
-  function updatePage(next: number) { setPage(next); resetSelection(); setSelectedAccountId(null); }
+  function updatePage(next: number) { if (next === page) return; setDirectoryLoading(true); setPage(next); resetSelection(); setSelectedAccountId(null); }
   function setSelection(ids: string[], selected: boolean) {
     setSelectedIds((old) => updateAccountSelection(old, ids, selected, users, stored.session.user.id));
   }
