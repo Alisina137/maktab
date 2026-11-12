@@ -5,6 +5,7 @@ import { adminApi } from "./admin-client";
 import { AdminHijriDatePicker, formatAdminHijriDate, formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { adminErrorText, adminFormat, adminText, type AdminLocale } from "./admin-i18n";
 import { invoiceReference } from "./communication-invoices-model";
+import { AdminLoader } from "./admin-loader";
 
 type Method = { method: string; gross: number; reversals: number; net: number;
   pendingCount: number; reconciledCount: number; pendingAmount: number; reconciledAmount: number };
@@ -163,7 +164,7 @@ export function AdminFeeFinancialReports({ accessToken, locale, students, refres
       {invalidRange ? <p role="alert" className="admin-error">{t("Report date range must be chronological.")}</p> : null}
       {error ? <div className="admin-error" role="alert">{error}</div> : null}
       {notice ? <div className="admin-success" role="status">{notice}</div> : null}
-      {reportStatus === "loading" ? <p role="status">{t("Loading fee records…")}</p> : null}
+      {reportStatus === "loading" ? <AdminLoader compact label={t("Loading fee records…")} /> : null}
       {reportStatus === "ready" && report ? (
         <>
           <small>{t("School-local as of")}: {formatAdminHijriDate(locale, report.asOf)} · {report.schoolTimezone}</small>
