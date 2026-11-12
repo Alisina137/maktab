@@ -6,6 +6,9 @@ import { createPortal } from "react-dom";
 import { AdminLoader, AdminSkeleton } from "./admin-loader";
 import { formatAdminHijriDateTime } from "./admin-hijri-date-picker";
 import { useAdminWorkspace } from "./admin-workspace";
+import { useAdminSectionRoute } from "./admin-section-route";
+import { FAMILY_TABS, type FamilyTab } from "./family-tabs-model";
+import "./family-tabs.css";
 import { adminErrorText, adminFormat, adminText } from "./admin-i18n";
 
 type User = {
@@ -374,17 +377,25 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   const { locale, selectedAcademicYearId, selectedAcademicYear } = useAdminWorkspace();
   const t = (english: string) => adminText(locale, english);
   const toastPortalTarget = typeof document === "undefined" ? null : document.body;
+  const { routedTab, navigateTab } = useAdminSectionRoute<FamilyTab>(
+    "/admin/families", FAMILY_TABS.map((tab) => tab.id), "add-student"
+  );
+  const activeTab = routedTab;
   const [overview, setOverview] = useState<FamilyOverview | null>(null);
-  // Hash links are mounted only after protected school data loads. Replay the
-  // scroll once the real section exists, while respecting any current hash.
+
+  // Older sidebar links used anchors. Keep existing bookmarks usable by
+  // taking visitors to the corresponding real tab instead of a hidden card.
   useEffect(() => {
-    if (!overview || !window.location.hash.startsWith("#family-")) return;
-    const targetId = window.location.hash.slice(1);
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [overview]);
+    const oldHash = window.location.hash;
+    const mapped: Record<string, FamilyTab> = {
+      "#family-add-student": "add-student",
+      "#family-parents": "parent-account",
+      "#family-students": "student-account",
+      "#family-import": "bulk-import"
+    };
+    const destination = mapped[oldHash];
+    if (destination && destination !== activeTab) navigateTab(destination);
+  }, [activeTab]);
 
   const [academics, setAcademics] = useState<AcademicOverview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1196,7 +1207,7 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
   }
 
   return (
-    <section className="family-section admin-page-enter">
+    <section className="family-section ml-family-tabs admin-page-enter">
       {accountPreviewClosePrompt && toastPortalTarget
         ? createPortal(
             <div className="family-username-popup-backdrop" role="presentation">
@@ -1276,10 +1287,40 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
 
       <div className="admin-section-header academic-heading">
         <div>
-          <span className="eyebrow">{t("Phase 4 · Student & Family System")}</span>
+          <span className="eyebrow">{t("Family management")}</span>
           <h2>{t("Onboard families")}</h2>
           <p>{t("Create school-controlled parent accounts, link each student to exactly one parent, and import validated school data.")}</p>
         </div>
+      </div>
+
+      <div className="ml-family-tabbar" role="tablist" aria-label={t("Family sections")}>
+        {FAMILY_TABS.map((tab, index) => {
+          const selected = activeTab === tab.id;
+          return (
+            <button key={tab.id} id={"family-tab-" + tab.id}
+              type="button" role="tab"
+              aria-selected={selected}
+              aria-controls={"family-panel-" + tab.id}
+              tabIndex={selected ? 0 : -1}
+              data-admin-no-loading="true"
+              className={"ml-family-tab" + (selected ? " ml-family-tab-active" : "")}
+              onClick={() => { if (!busy && !selected) navigateTab(tab.id); }}
+              onKeyDown={(event) => {
+                const delta = event.key === "ArrowRight" ? (locale === "en" ? 1 : -1)
+                  : event.key === "ArrowLeft" ? (locale === "en" ? -1 : 1) : 0;
+                if (!delta && event.key !== "Home" && event.key !== "End") return;
+                event.preventDefault();
+                const next = event.key === "Home" ? 0 : event.key === "End"
+                  ? FAMILY_TABS.length - 1
+                  : (index + delta + FAMILY_TABS.length) % FAMILY_TABS.length;
+                document.getElementById("family-tab-" + FAMILY_TABS[next]!.id)?.focus();
+                if (!busy) navigateTab(FAMILY_TABS[next]!.id);
+              }}>
+              <span className="ml-family-tab-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              {t(tab.label)}
+            </button>
+          );
+        })}
       </div>
 
       {accountPreview ? (
@@ -1361,7 +1402,10 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </section>
       ) : null}
 
-      <div className="academic-summary-grid family-summary-grid">
+      {activeTab === "add-student" ? (
+        <section className="ml-family-tab-content" id="family-panel-add-student" role="tabpanel"
+          aria-labelledby="family-tab-add-student" tabIndex={0}>
+          <div className="academic-summary-grid family-summary-grid">
         <Summary label={t("Parents")} value={overview.parents.length} />
         <Summary label={t("Students")} value={selectedYearStudents.length} />
         <Summary label={t("Active students")} value={selectedYearStudents.filter((item) => item.student.status === "ACTIVE").length} />
@@ -1438,8 +1482,13 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </form>
       </article>
       </div>
+        </section>
+      ) : null}
 
-      <div className="family-account-layout">
+      {activeTab === "parent-account" ? (
+        <section className="ml-family-tab-content" id="family-panel-parent-account" role="tabpanel"
+          aria-labelledby="family-tab-parent-account" tabIndex={0}>
+          <div className="family-account-layout">
         <div className="family-account-column">
       <article className="admin-panel academic-form-card">
         <div><h2>{t("Create parent account")}</h2><p>{t("Creates a PARENT identity and profile together and generates a one-time temporary password.")}</p></div>
@@ -1552,8 +1601,15 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
         </div>
       </article>
         </div>
+          </div>
+        </section>
+      ) : null}
 
-        <div className="family-account-column">
+      {activeTab === "student-account" ? (
+        <section className="ml-family-tab-content" id="family-panel-student-account" role="tabpanel"
+          aria-labelledby="family-tab-student-account" tabIndex={0}>
+          <div className="family-account-layout">
+            <div className="family-account-column">
       <article className="admin-panel academic-form-card">
         <div><h2>{t("Create student login")}</h2><p>{t("Creates a school-issued STUDENT account and links it to exactly one existing student record.")}</p></div>
         <form className="admin-form" onSubmit={createStudentAccount}>
@@ -1730,7 +1786,12 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
       </article>
         </div>
       </div>
+        </section>
+      ) : null}
 
+      {activeTab === "bulk-import" ? (
+        <section className="ml-family-tab-content" id="family-panel-bulk-import" role="tabpanel"
+          aria-labelledby="family-tab-bulk-import" tabIndex={0}>
       <article id="family-import" className="admin-panel family-import-panel">
         <div className="admin-section-header">
           <div>
@@ -1825,6 +1886,8 @@ export function FamilyPanel({ accessToken }: { accessToken: string }) {
           </div>
         ) : null}
       </article>
+        </section>
+      ) : null}
     </section>
   );
 }

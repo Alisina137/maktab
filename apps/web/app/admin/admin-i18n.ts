@@ -10,6 +10,10 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Family management": "مدیریت خانواده‌ها",
+  "Family sections": "بخش‌های خانواده‌ها",
+  "Parent account": "حساب والدین",
+  "Student account": "حساب شاگرد",
   "Subscription status": "وضعیت اشتراک",
   "Profile sections": "بخش‌های پروفایل",
   "Profile details": "جزئیات پروفایل",
@@ -2604,6 +2608,10 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Family management": "د کورنیو مدیریت",
+  "Family sections": "د کورنیو برخې",
+  "Parent account": "د والدینو حساب",
+  "Student account": "د زده کوونکي حساب",
   "Subscription status": "د ګډون حالت",
   "Profile sections": "د پروفایل برخې",
   "Profile details": "د پروفایل معلومات",

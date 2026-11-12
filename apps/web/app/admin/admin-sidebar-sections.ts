@@ -1,8 +1,9 @@
 import { ATTENDANCE_TABS } from "./attendance-workspace-model";
 import { PILOT_TABS } from "./pilot-operations-navigation";
+import { FAMILY_TABS } from "./family-tabs-model";
 
-/** Real destinations only: standalone routes, routable existing page tabs,
- * and anchored family sections. No mock screens or new permissions. */
+/** Real destinations only: standalone routes and routable existing tabs.
+ * No mock screens or new permissions. */
 export type AdminSidebarItem = { label: string; href: string };
 
 const academicItems: AdminSidebarItem[] = [
@@ -31,13 +32,10 @@ export const adminSidebarSections: Record<string, readonly AdminSidebarItem[]> =
     { id: "DIRECTORY", label: "Account directory" },
     { id: "CREATE", label: "Create account" }
   ]),
-  "/admin/families": [
-    { label: "Overview", href: "/admin/families" },
-    { label: "Add student", href: "/admin/families#family-add-student" },
-    { label: "Parents", href: "/admin/families#family-parents" },
-    { label: "Students", href: "/admin/families#family-students" },
-    { label: "Bulk import", href: "/admin/families#family-import" }
-  ],
+  "/admin/families": FAMILY_TABS.map((tab, index) => ({
+    label: index === 0 ? "Overview" : tab.label,
+    href: index === 0 ? "/admin/families" : "/admin/families?tab=" + tab.id
+  })),
   "/admin/staff-work": tabItems("/admin/staff-work", [
     { id: "tasks", label: "Staff work" },
     { id: "drafts", label: "Communication drafts" }
