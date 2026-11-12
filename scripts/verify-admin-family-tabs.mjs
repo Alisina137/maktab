@@ -135,7 +135,7 @@ for(const marker of [
 ]) assert.ok(css.includes(marker), "Family carousel CSS missing: " + marker);
 
 
-assert.equal((family.match(/<FamilyAccountCarousel\\b/g) ?? []).length, 2,
+assert.equal((family.match(/<FamilyAccountCarousel\b/g) ?? []).length, 2,
   "Parent and student account lists each need a carousel");
 assert.ok(family.includes('aria-roledescription={t("Carousel")}') &&
   family.includes('onTouchStart={(event) => {') &&
