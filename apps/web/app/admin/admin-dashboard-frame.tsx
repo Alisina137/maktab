@@ -77,6 +77,7 @@ export function AdminDashboardFrame({
   const { stored, locale, t, setLocale, signOut, adminProfile, academicYears,
     selectedAcademicYearId, setSelectedAcademicYearId } = useAdminWorkspace();
   const [compact, setCompact] = useState(false);
+  const [compactPreferenceReady, setCompactPreferenceReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -123,12 +124,14 @@ export function AdminDashboardFrame({
   useEffect(() => {
     try { setCompact(window.localStorage.getItem("maktablink.admin.sidebar.compact") === "true"); }
     catch { /* Storage can be disabled by a browser policy. */ }
+    setCompactPreferenceReady(true);
   }, []);
 
   useEffect(() => {
+    if (!compactPreferenceReady) return; // Do not overwrite saved state on initial render.
     try { window.localStorage.setItem("maktablink.admin.sidebar.compact", String(compact)); }
     catch { /* The navigation remains usable without persistence. */ }
-  }, [compact]);
+  }, [compact, compactPreferenceReady]);
 
   useEffect(() => {
     if (!isMobileLayout || !mobileOpen) return;
@@ -188,6 +191,12 @@ export function AdminDashboardFrame({
   function closeMobileSidebar(restoreFocus = false) {
     setMobileOpen(false);
     if (restoreFocus) window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  function closeSidebarAfterNavigation() {
+    setMobileOpen(false);
+    if (isMobileLayout) window.requestAnimationFrame(() =>
+      document.getElementById("admin-workspace-content")?.focus());
   }
 
   function handleSidebarKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
@@ -267,7 +276,7 @@ export function AdminDashboardFrame({
           onClick={() => closeMobileSidebar(true)}>
           <Icon name="close" size={20} />
         </button>
-        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={() => setMobileOpen(false)}>
+        <Link className="ml-admin-sidebar-brand" href="/admin/dashboard" title="MaktabLink" aria-label="MaktabLink" onClick={closeSidebarAfterNavigation}>
           <span className="ml-admin-brand-icon"><Icon name="academic" size={27} /></span>
           <span className="ml-admin-sidebar-brand-text"><strong>MaktabLink</strong><small>{t("School Administration")}</small></span>
         </Link>
@@ -295,7 +304,7 @@ export function AdminDashboardFrame({
                       (active ? " admin-route-nav-link-active ml-admin-side-link-active" : "")}
                     aria-current={currentPath === item.href && !searchTab && !fragment ? "page" : undefined}
                     onClick={() => {
-                      setMobileOpen(false);
+                      closeSidebarAfterNavigation();
                       setFragment("");
                       if (expandable) setExpandedGroup(item.href);
                     }}>
@@ -325,7 +334,7 @@ export function AdminDashboardFrame({
                           className={selected ? "ml-admin-subnav-link ml-admin-subnav-link-active" : "ml-admin-subnav-link"}
                           aria-current={selected ? "page" : undefined}
                           onClick={() => {
-                            setMobileOpen(false);
+                            closeSidebarAfterNavigation();
                             setFragment(new URL(entry.href, window.location.origin).hash);
                           }}>
                           {hasIcon ? (
@@ -345,7 +354,7 @@ export function AdminDashboardFrame({
         </nav>
 
         <div className="ml-admin-sidebar-footer">
-          <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={() => setMobileOpen(false)}>
+          <Link className="ml-admin-sidebar-profile" href="/admin/profile" title={t("Administrator profile")} aria-label={t("Administrator profile")} onClick={closeSidebarAfterNavigation}>
             <span className="ml-admin-sidebar-profile-icon" aria-hidden="true"><Icon name="profile" size={20} /></span>
             <span className="ml-admin-sidebar-profile-name"><strong>{userName}</strong><small>{t("School Administration")}</small></span>
           </Link>
@@ -403,6 +412,7 @@ export function AdminDashboardFrame({
                     role="option" tabIndex={-1}
                     aria-selected={highlightedSearchIndex === index}
                     onMouseEnter={() => setHighlightedSearchIndex(index)}
+                    data-admin-no-loading="true"
                     onClick={() => navigate(item.href)}>
                     <Icon name={navIcons[item.href] ?? "academic"} size={17} />
                     <span>{t(item.label)}</span><Icon name="arrow" size={15} />
