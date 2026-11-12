@@ -14,6 +14,7 @@
     "verify:accounts": "node scripts/verify-admin-accounts-phase6.mjs",
     "verify:admin-teacher-codes": "pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-teacher-employee-code.test.ts",
     "verify:admin-grade-codes": "pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-grade-level-suggestions.test.ts",
+    "verify:admin-class-codes": "pnpm --filter @maktablink/api exec tsx --test ../../scripts/test-class-section-suggestions.test.ts",
     "verify:parent-localization": "node scripts/verify-parent-localization.mjs",
     "verify:parent-resilience": "node scripts/verify-parent-resilience.mjs",
     "verify:dev-api": "node --check scripts/dev-api.mjs && node --check scripts/ngrok-health.mjs && node scripts/test-ngrok-health.mjs && node --check scripts/mobile-api-env.mjs && node scripts/test-mobile-api-env.mjs && node scripts/test-dev-api-startup.mjs && node scripts/test-db-check.mjs",
