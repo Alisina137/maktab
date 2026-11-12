@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { adminApi } from "./admin-client";
 import { adminText, type AdminLocale } from "./admin-i18n";
-import { AcademicSectionIcon } from "./academic-section-icons";
 
 type Overview = {
   academicYears: Array<{ id: string; name: string; status: string }>;
@@ -15,15 +14,6 @@ type Overview = {
   assignments: Array<{ id: string; academicYearId: string; teacherUserId: string; subjectId: string; classId: string }>;
   timetable: Array<{ id: string; academicYearId: string; teacherUserId: string; subjectId: string; classId: string; weekday: string; startsAt: string; endsAt: string }>;
 };
-
-const tabs = [
-  { label: "Overview", href: "/admin/academics" },
-  { label: "Classes", href: "/admin/academics/classes" },
-  { label: "Teacher profiles", href: "/admin/academics/teachers" },
-  { label: "Subjects", href: "/admin/academics/subjects" },
-  { label: "Timetable", href: "/admin/academics/timetable" },
-  { label: "Academic years", href: "/admin/academics/years" }
-] as const;
 
 type SymbolName = "students" | "teachers" | "classes" | "subjects" | "calendar" | "chart" | "arrow" | "clock" | "refresh";
 
@@ -139,13 +129,7 @@ export function AdminAcademicOverview({
 
   return (
     <section className="ml-academic-overview admin-page-enter" aria-label={t("Academic Management")}>
-      <div className="ml-academic-tabbar" role="navigation" aria-label={t("Academic sections")}>
-        {tabs.map((tab) => (
-          <Link key={tab.href} href={tab.href} className={tab.href === "/admin/academics" ? "ml-academic-tab ml-academic-tab-active" : "ml-academic-tab"}
-            aria-current={tab.href === "/admin/academics" ? "page" : undefined}>
-              <AcademicSectionIcon href={tab.href} size={16} />{t(tab.label)}
-            </Link>
-        ))}
+      <div className="ml-academic-overview-tools">
         <button className="ml-academic-refresh" type="button" onClick={() => void refreshAll()}
           disabled={refreshBusy} aria-label={t("Refresh")} title={t("Refresh")}><Icon name="refresh" size={17} /></button>
       </div>

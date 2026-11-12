@@ -6,6 +6,9 @@ const shell = read("apps/web/app/admin/admin-workspace.tsx");
 const frame = read("apps/web/app/admin/admin-dashboard-frame.tsx");
 const academic = read("apps/web/app/admin/admin-academic-overview.tsx");
 const academicsRoute = read("apps/web/app/admin/(workspace)/academics/page.tsx");
+const academicsLayout = read("apps/web/app/admin/(workspace)/academics/layout.tsx");
+const academicNavigation = read("apps/web/app/admin/academic-section-navigation.tsx");
+const academicSectionRoute = read("apps/web/app/admin/(workspace)/academics/[section]/page.tsx");
 const dashboardRoute = read("apps/web/app/admin/(workspace)/dashboard/page.tsx");
 const layout = read("apps/web/app/admin/(workspace)/layout.tsx");
 const css = read("apps/web/app/admin/dashboard-shell.css");
@@ -152,6 +155,22 @@ assert.ok(dashboardRoute.includes("<AcademicPanel") &&
   academicsRoute.includes("<AcademicPanel") &&
   login.includes('router.push("/admin/dashboard")'),
   "The dashboard and Academic overview must both route to the real academic workspace");
+assert.ok(academicsLayout.includes("<AcademicSectionNavigation />") &&
+  academicsLayout.includes("{children}") &&
+  academicNavigation.includes('adminSidebarSections["/admin/academics"]') &&
+  academicNavigation.includes('usePathname()') &&
+  academicNavigation.includes('pathname === item.href') &&
+  academicNavigation.includes('aria-current={selected ? "page" : undefined}') &&
+  academicNavigation.includes('<AcademicSectionIcon href={item.href} size={16} />') &&
+  academicNavigation.includes('aria-label={t("Academic sections")}') &&
+  academicSectionRoute.includes('return <AcademicPanel') &&
+  !academic.includes('className="ml-academic-tabbar"') &&
+  academic.includes('className="ml-academic-overview-tools"') &&
+  css.includes('grid-template-columns: repeat(5, minmax(0, 1fr))') &&
+  academicCss.includes('grid-template-columns: repeat(5, minmax(0, 1fr))') &&
+  academicCss.includes('.ml-academic-tab-active') &&
+  academicCss.includes('@media (max-width: 550px)'),
+  "Academic navigation must be complete, persistent on every section route, and highlight the current page");
 assert.ok(academic.includes('"/v1/admin/pilot/readiness"') &&
   academic.includes("Number.isSafeInteger(count)") &&
   academic.includes('value: studentLoading ? "…" : studentTotal === null ? "—"') &&
