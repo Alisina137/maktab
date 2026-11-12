@@ -748,7 +748,7 @@ function NewGradeLevelFields({ suggestedNumber, locale }: {
   // and re-suggests that x as sort order. Sort order is still editable.
   const syncFromCode = (value: string) => {
     setCode(value);
-    const matched = /^G-(\\d*)$/i.exec(value);
+    const matched = /^G-(\d*)$/i.exec(value);
     if (!matched) return;
     const suffix = matched[1];
     setName(`Grade ${suffix}`);
@@ -756,7 +756,7 @@ function NewGradeLevelFields({ suggestedNumber, locale }: {
   };
   const syncFromName = (value: string) => {
     setName(value);
-    const matched = /^Grade\\s+(\\d*)$/i.exec(value);
+    const matched = /^Grade\s+(\d*)$/i.exec(value);
     if (!matched) return;
     const suffix = matched[1];
     setCode(`G-${suffix}`);

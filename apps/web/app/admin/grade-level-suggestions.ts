@@ -10,7 +10,7 @@ export function gradeNumberFromCode(code: string): number | null {
 }
 
 function gradeNumberFromName(name: string): number | null {
-  const match = /^Grade\\s+0*([1-9][0-9]*)$/i.exec(name.trim());
+  const match = /^Grade\s+0*([1-9][0-9]*)$/i.exec(name.trim());
   if (!match) return null;
   const number = Number(match[1]);
   return Number.isSafeInteger(number) && number <= 100 ? number : null;
