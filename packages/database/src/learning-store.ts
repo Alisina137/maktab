@@ -795,6 +795,26 @@ export function createLearningStore(db: FoundationDatabase): LearningStore {
         if (lockedExam?.status !== "IN_PROGRESS") {
           throw new LearningConflictError("Mark entry closed because the exam status changed.");
         }
+        const [currentAssignment] = await tx.select({ id: teacherAssignments.id })
+          .from(teacherAssignments).where(and(
+            eq(teacherAssignments.schoolId, schoolId),
+            eq(teacherAssignments.teacherUserId, teacherUserId),
+            eq(teacherAssignments.academicYearId, row.exam.academicYearId),
+            eq(teacherAssignments.classId, row.examSubject.classId),
+            eq(teacherAssignments.subjectId, row.examSubject.subjectId)
+          )).limit(1);
+        if (!currentAssignment) {
+          throw new LearningConflictError("You are no longer assigned to this exam subject.");
+        }
+        const latestRoster = await tx.select({ id: students.id }).from(students)
+          .where(and(eq(students.schoolId, schoolId),
+            eq(students.classId, row.examSubject.classId),
+            eq(students.academicYearId, row.exam.academicYearId),
+            eq(students.status, "ACTIVE")));
+        const currentStudentIds = new Set(latestRoster.map((student) => student.id));
+        if (entries.some((entry) => !currentStudentIds.has(entry.studentId))) {
+          throw new LearningConflictError("The class roster changed. Reload the grade sheet.");
+        }
         let changed = 0;
         for (const entry of entries) {
           const [existing] = await tx
