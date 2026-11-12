@@ -14,6 +14,7 @@ import {
   uuid,
   varchar
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const schoolStatusEnum = pgEnum("school_status", ["ACTIVE", "INACTIVE"]);
 export const languageCodeEnum = pgEnum("language_code", ["fa-AF", "ps-AF", "en"]);
@@ -162,6 +163,11 @@ export const authSessions = pgTable(
   },
   (table) => [
     uniqueIndex("auth_sessions_access_hash_unique").on(table.accessTokenHash),
+    foreignKey({
+      name: "auth_sessions_user_school_fk",
+      columns: [table.schoolId, table.userId],
+      foreignColumns: [users.schoolId, users.id]
+    }).onDelete("cascade"),
     uniqueIndex("auth_sessions_refresh_hash_unique").on(table.refreshTokenHash),
     index("auth_sessions_user_idx").on(table.schoolId, table.userId)
   ]
@@ -188,6 +194,11 @@ export const adminPasswordVerifications = pgTable(
   },
   (table) => [
     index("admin_password_verifications_user_idx").on(table.schoolId, table.userId),
+    foreignKey({
+      name: "admin_password_verifications_user_school_fk",
+      columns: [table.schoolId, table.userId],
+      foreignColumns: [users.schoolId, users.id]
+    }).onDelete("cascade"),
     uniqueIndex("admin_password_verifications_token_unique").on(table.verificationTokenHash)
   ]
 );
@@ -225,6 +236,8 @@ export const academicYears = pgTable(
   },
   (table) => [
     uniqueIndex("academic_years_school_name_unique").on(table.schoolId, table.name),
+    uniqueIndex("academic_years_school_id_unique").on(table.schoolId, table.id),
+    uniqueIndex("academic_years_one_active_per_school").on(table.schoolId).where(sql`${table.status} = 'ACTIVE'`),
     index("academic_years_school_status_idx").on(table.schoolId, table.status)
   ]
 );
@@ -244,6 +257,7 @@ export const gradeLevels = pgTable(
   },
   (table) => [
     uniqueIndex("grade_levels_school_code_unique").on(table.schoolId, table.code),
+    uniqueIndex("grade_levels_school_id_unique").on(table.schoolId, table.id),
     uniqueIndex("grade_levels_school_name_unique").on(table.schoolId, table.name)
   ]
 );
@@ -268,6 +282,17 @@ export const classSections = pgTable(
   },
   (table) => [
     uniqueIndex("class_sections_school_year_code_unique").on(table.schoolId, table.academicYearId, table.code),
+    uniqueIndex("class_sections_school_year_id_unique").on(table.schoolId, table.academicYearId, table.id),
+    foreignKey({
+      name: "class_sections_year_school_fk",
+      columns: [table.schoolId, table.academicYearId],
+      foreignColumns: [academicYears.schoolId, academicYears.id]
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "class_sections_grade_school_fk",
+      columns: [table.schoolId, table.gradeLevelId],
+      foreignColumns: [gradeLevels.schoolId, gradeLevels.id]
+    }).onDelete("restrict"),
     index("class_sections_school_year_idx").on(table.schoolId, table.academicYearId),
     index("class_sections_grade_idx").on(table.gradeLevelId)
   ]
@@ -287,6 +312,7 @@ export const subjects = pgTable(
   },
   (table) => [
     uniqueIndex("subjects_school_code_unique").on(table.schoolId, table.code),
+    uniqueIndex("subjects_school_id_unique").on(table.schoolId, table.id),
     uniqueIndex("subjects_school_name_unique").on(table.schoolId, table.name)
   ]
 );
@@ -305,7 +331,15 @@ export const parentProfiles = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => [index("parent_profiles_school_idx").on(table.schoolId)]
+  (table) => [
+    index("parent_profiles_school_idx").on(table.schoolId),
+    uniqueIndex("parent_profiles_school_user_unique").on(table.schoolId, table.userId),
+    foreignKey({
+      name: "parent_profiles_owner_school_fk",
+      columns: [table.schoolId, table.userId],
+      foreignColumns: [users.schoolId, users.id]
+    }).onDelete("cascade")
+  ]
 );
 
 export const adminProfiles = pgTable(
@@ -360,6 +394,17 @@ export const students = pgTable(
   },
   (table) => [
     uniqueIndex("students_school_code_unique").on(table.schoolId, table.studentCode),
+    uniqueIndex("students_school_id_unique").on(table.schoolId, table.id),
+    foreignKey({
+      name: "students_parent_school_fk",
+      columns: [table.schoolId, table.parentUserId],
+      foreignColumns: [parentProfiles.schoolId, parentProfiles.userId]
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "students_class_year_school_fk",
+      columns: [table.schoolId, table.academicYearId, table.classId],
+      foreignColumns: [classSections.schoolId, classSections.academicYearId, classSections.id]
+    }).onDelete("restrict"),
     uniqueIndex("students_user_unique").on(table.userId),
     index("students_school_class_idx").on(table.schoolId, table.classId),
     index("students_parent_idx").on(table.parentUserId)
@@ -387,6 +432,16 @@ export const studentClassHistory = pgTable(
   },
   (table) => [
     index("student_class_history_student_idx").on(table.schoolId, table.studentId),
+    foreignKey({
+      name: "student_history_student_school_fk",
+      columns: [table.schoolId, table.studentId],
+      foreignColumns: [students.schoolId, students.id]
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "student_history_class_year_school_fk",
+      columns: [table.schoolId, table.academicYearId, table.classId],
+      foreignColumns: [classSections.schoolId, classSections.academicYearId, classSections.id]
+    }).onDelete("restrict"),
     index("student_class_history_class_idx").on(table.schoolId, table.classId)
   ]
 );
@@ -407,6 +462,12 @@ export const teacherProfiles = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => [
+    uniqueIndex("teacher_profiles_school_user_unique").on(table.schoolId, table.userId),
+    foreignKey({
+      name: "teacher_profiles_owner_school_fk",
+      columns: [table.schoolId, table.userId],
+      foreignColumns: [users.schoolId, users.id]
+    }).onDelete("cascade"),
     uniqueIndex("teacher_profiles_school_employee_unique").on(table.schoolId, table.employeeCode),
     index("teacher_profiles_school_idx").on(table.schoolId)
   ]
@@ -441,6 +502,21 @@ export const teacherAssignments = pgTable(
       table.subjectId
     ),
     index("teacher_assignments_teacher_idx").on(table.schoolId, table.teacherUserId),
+    foreignKey({
+      name: "teacher_assignments_teacher_school_fk",
+      columns: [table.schoolId, table.teacherUserId],
+      foreignColumns: [teacherProfiles.schoolId, teacherProfiles.userId]
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "teacher_assignments_subject_school_fk",
+      columns: [table.schoolId, table.subjectId],
+      foreignColumns: [subjects.schoolId, subjects.id]
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "teacher_assignments_class_year_school_fk",
+      columns: [table.schoolId, table.academicYearId, table.classId],
+      foreignColumns: [classSections.schoolId, classSections.academicYearId, classSections.id]
+    }).onDelete("restrict"),
     index("teacher_assignments_class_idx").on(table.schoolId, table.classId)
   ]
 );
@@ -944,6 +1020,12 @@ export const feeInvoices = pgTable(
   },
   (table) => [
     uniqueIndex("fee_invoices_school_number_unique").on(table.schoolId, table.invoiceNumber),
+    uniqueIndex("fee_invoices_school_id_unique").on(table.schoolId, table.id),
+    foreignKey({
+      name: "fee_invoices_student_school_fk",
+      columns: [table.schoolId, table.studentId],
+      foreignColumns: [students.schoolId, students.id]
+    }).onDelete("restrict"),
     index("fee_invoices_student_idx").on(table.schoolId, table.studentId),
     index("fee_invoices_due_idx").on(table.schoolId, table.dueDate),
     index("fee_invoices_status_idx").on(table.schoolId, table.status)
@@ -968,6 +1050,11 @@ export const feePayments = pgTable(
   },
   (table) => [
     index("fee_payments_invoice_idx").on(table.schoolId, table.invoiceId),
+    foreignKey({
+      name: "fee_payments_invoice_school_fk",
+      columns: [table.schoolId, table.invoiceId],
+      foreignColumns: [feeInvoices.schoolId, feeInvoices.id]
+    }).onDelete("restrict"),
     uniqueIndex("fee_payments_reversal_unique").on(table.schoolId, table.reversalOfPaymentId),
     uniqueIndex("fee_payments_idempotency_unique").on(table.schoolId, table.invoiceId, table.idempotencyKey)
   ]
