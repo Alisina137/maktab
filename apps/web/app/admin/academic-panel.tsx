@@ -521,7 +521,7 @@ export function AcademicPanel({
                 name="employeeCode"
                 defaultValue={editing?.employeeCode ?? suggestedEmployeeCode}
                 placeholder="T-x"
-                pattern="T-[1-9][0-9]*"
+                pattern={!editing || /^T-[1-9][0-9]*$/.test(editing.employeeCode) ? "T-[1-9][0-9]*" : undefined}
                 title={t("Use a code such as T-1, T-2, or T-3.")}
                 autoCapitalize="characters"
                 autoComplete="off"
