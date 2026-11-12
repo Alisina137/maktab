@@ -29,20 +29,25 @@ assert.ok(dashboardCss.includes(".ml-admin-topbar-user:focus-visible") &&
 assert.ok(profile.includes('import "../../profile-redesign.css"') &&
   profile.includes('className="admin-profile-page admin-page-enter ml-profile-redesign"') &&
   profile.includes('className="ml-profile-cover"') &&
+  profile.includes('className="ml-profile-cover-content"') &&
+  profile.includes('className="ml-profile-cover-contact-grid"') &&
+  !profile.includes('className="admin-contact-preview"') &&
+  !profile.includes('className="admin-profile-side"') &&
+  !profile.includes('id="ml-profile-preview"') &&
   !profile.includes('className="ml-profile-navigation"') &&
   !profile.includes('href="#ml-profile-') &&
   profile.includes('className="ml-profile-private-section"') &&
   profile.includes('className="ml-profile-private-grid"') &&
   profile.includes('aria-labelledby="ml-profile-private-heading"') &&
-  profile.includes('aria-label={t("Contact card preview")}') &&
+  profile.includes('className="ml-profile-cover-bio"') &&
   profile.includes('id="ml-profile-edit"') &&
-  profile.includes('id="ml-profile-preview"') &&
+  profile.includes('className="ml-profile-cover-contact-item"') &&
   profile.includes('id="ml-profile-account"') &&
   profile.includes('id="ml-profile-security"') &&
   profile.includes('className="ml-profile-save-row"') &&
-  profile.includes('className="ml-profile-live-pill"') &&
+  profile.includes('className="ml-profile-cover-live"') &&
   profile.includes('className="admin-panel admin-profile-card ml-profile-account"'),
-  "Profile cover, editor/preview and separate account/security layout must stay intact.");
+  "Profile hero must show live contact data without a duplicate preview card, and retain account/security.");
 for (const label of ["Personal details", "Profile picture", "Contact details", "Office & availability"]) {
   assert.ok(profile.includes('t("' + label + '")'), "Profile form missing section: " + label);
 }
@@ -58,7 +63,7 @@ for (const marker of [
 }
 for (const marker of [
   ".ml-profile-cover", ".ml-profile-private-section", ".ml-profile-private-grid", ".ml-profile-form-heading",
-  ".ml-profile-save-row", ".ml-profile-preview-top", ".ml-profile-account",
+  ".ml-profile-save-row", ".ml-profile-cover-contact-grid", ".ml-profile-cover-contact-item", ".ml-profile-account",
   ".ml-profile-security", "@media (max-width: 950px)",
   "@media (max-width: 700px)", "scroll-margin-top",
   "prefers-reduced-motion"
@@ -70,11 +75,11 @@ for (const key of [
   "Manage account access and password separately from your school contact details.",
   "Profile details", "Your name and position at the school.",
   "Profile picture", "Contact details", "Office & availability",
-  "Your contact card preview updates as you type. Save to apply your changes.",
+  "The profile header updates as you type. Save to apply your changes.",
   "Live preview", "Add your contact details to see them here.",
   "School account", "Your school sign-in and access details."
 ]) {
   assert.equal(translations.split(JSON.stringify(key) + ":").length, 3,
     "Administrator profile must remain bilingual (Dari/Pashto): " + key);
 }
-console.log("Admin profile redesigned: no four-link navigation, separated contact/private sections, RTL translations, live preview and secure password flow.");
+console.log("Admin profile verified: live contact details integrated into blue hero, no duplicate preview card, editable profile, RTL translations and secure password flow.");
