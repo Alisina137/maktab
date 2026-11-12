@@ -258,3 +258,72 @@
     animation-duration: .01ms !important;
   }
 }
+
+/* Route transitions and failures keep the same visual card and button system
+   as the rest of the administrator workspace. */
+.ml-admin-dashboard-shell .ml-admin-route-loading-card {
+  padding: clamp(24px, 3vw, 42px);
+  border: 1px solid var(--ml-admin-ui-border);
+  border-radius: var(--ml-admin-ui-radius);
+}
+.ml-admin-dashboard-shell .ml-admin-route-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid #f3cfbf;
+  border-radius: var(--ml-admin-ui-radius);
+  background: #fffdfb;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error-mark {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff0e7;
+  color: #af4021;
+  font-size: 23px;
+  font-weight: 850;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error > div {
+  min-width: 0;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error h2 {
+  margin: 0 0 9px;
+  font-size: clamp(17px, 1.5vw, 21px);
+  line-height: 1.3;
+  color: #633221;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error p {
+  max-width: 58ch;
+  margin: 0 0 16px;
+  color: #725b53;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ml-admin-dashboard-shell .ml-admin-route-error-actions :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ml-admin-ui-control-height);
+  padding: 9px 15px;
+  border-radius: 9px;
+  text-decoration: none;
+}
+@media (max-width: 480px) {
+  .ml-admin-dashboard-shell .ml-admin-route-error {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ml-admin-dashboard-shell .ml-admin-route-error-actions > * {
+    flex: 1 1 100%;
+  }
+}
