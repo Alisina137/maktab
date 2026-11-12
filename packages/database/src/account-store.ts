@@ -819,7 +819,8 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           .update(users)
           .set({ passwordHash, mustChangePassword: true, updatedAt: new Date() })
           .where(and(eq(users.schoolId, schoolId), eq(users.id, userId),
-            sql`${users.status} <> 'ARCHIVED'`, sql`${users.id} <> ${actorUserId}`))
+            sql`${users.status} <> 'ARCHIVED'`,
+            sql`${users.role} <> 'SCHOOL_ADMIN'`, sql`${users.id} <> ${actorUserId}`))
           .returning();
         if (!user) return null;
 
@@ -857,7 +858,7 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           .where(and(eq(users.schoolId, schoolId), eq(users.id, userId)))
           .limit(1).for("update");
         if (!current) return null;
-        if (current.role === "SCHOOL_ADMIN" && current.id !== actorUserId) {
+        if (current.role === "SCHOOL_ADMIN") {
           throw new AccountConflictError("A school administrator account cannot be changed through member status actions.");
         }
         const suspending = auditAction === "user.suspended" && status === "SUSPENDED";
@@ -936,7 +937,8 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
         .from(users)
         .innerJoin(schools, eq(schools.id, users.schoolId))
         .innerJoin(subscriptions, eq(subscriptions.schoolId, users.schoolId))
-        .where(and(eq(users.schoolId, schoolId), eq(users.username, username)))
+        .where(and(eq(users.schoolId, schoolId),
+          sql`lower(${users.username}) = lower(${username})`))
         .limit(1);
       return rows[0] ?? null;
     },
