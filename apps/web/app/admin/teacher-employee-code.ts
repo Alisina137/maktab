@@ -6,7 +6,7 @@
 export function nextAvailableTeacherEmployeeCode(codes: readonly string[]): string {
   const used = new Set<number>();
   for (const value of codes) {
-    const match = /^T-(\\d+)$/i.exec(value.trim());
+    const match = /^T-(\d+)$/i.exec(value.trim());
     if (!match) continue;
     const number = Number(match[1]);
     if (Number.isSafeInteger(number) && number > 0) used.add(number);
