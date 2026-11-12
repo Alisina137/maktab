@@ -36,7 +36,7 @@ const directoryQuerySchema = z.object({
   sortBy: z.enum(["name", "username", "role", "status", "createdAt", "lastLoginAt"]).default("username"),
   order: z.enum(["asc", "desc"]).default("asc"),
   page: z.coerce.number().int().min(1).max(100000).default(1),
-  pageSize: z.coerce.number().int().refine((value) => [10, 20, 50].includes(value)).default(20)
+  pageSize: z.coerce.number().int().refine((value) => [5, 10, 20, 50].includes(value)).default(20)
 }).strict();
 
 const accountBatchSchema = z.object({

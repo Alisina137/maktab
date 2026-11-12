@@ -43,7 +43,8 @@ export default function AccountsPage() {
   const visibleDirectory = directoryToken === sessionToken ? directory : emptyDirectory;
   const users = visibleDirectory.users;
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  // Each carousel page contains at most five school accounts.
+  const pageSize = 5;
   const [sortBy, setSortBy] = useState<AccountSort>("username");
   const [order, setOrder] = useState<AccountOrder>("asc");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -209,7 +210,6 @@ export default function AccountsPage() {
   function updateSort(next: AccountSort) { setSortBy(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updateOrder(next: AccountOrder) { setOrder(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function updatePage(next: number) { setPage(next); resetSelection(); setSelectedAccountId(null); }
-  function updatePageSize(next: number) { setPageSize(next); setPage(1); resetSelection(); setSelectedAccountId(null); }
   function setSelection(ids: string[], selected: boolean) {
     setSelectedIds((old) => updateAccountSelection(old, ids, selected, users, stored.session.user.id));
   }
@@ -744,7 +744,6 @@ export default function AccountsPage() {
           onSortBy={updateSort}
           onOrder={updateOrder}
           onPage={updatePage}
-          onPageSize={updatePageSize}
           onSelect={(id, selected) => setSelection([id], selected)}
           onSelectPage={setSelection}
           onClear={clearFilters}

@@ -3,6 +3,7 @@
 import type { User } from "./admin-client";
 import { adminFormat, type AdminLocale } from "./admin-i18n";
 import { isSelectableAccount, MAX_ACCOUNT_BULK_SELECTION } from "./account-directory-safety";
+import "./account-directory-paging.css";
 
 export type AccountGroup = "ALL" | "PARENT" | "TEACHER" | "STUDENT" | "STAFF";
 export type AccountHighlight = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
@@ -28,7 +29,7 @@ export type AccountDirectoryResult = {
 };
 
 export const emptyDirectory: AccountDirectoryResult = {
-  users: [], total: 0, page: 1, pageSize: 20, pages: 1,
+  users: [], total: 0, page: 1, pageSize: 5, pages: 1,
   counts: { total: 0, active: 0, pending: 0, suspended: 0, parent: 0, teacher: 0, student: 0, staff: 0 }
 };
 
@@ -56,7 +57,6 @@ type Props = {
   onSortBy: (sort: AccountSort) => void;
   onOrder: (order: AccountOrder) => void;
   onPage: (page: number) => void;
-  onPageSize: (size: number) => void;
   onSelect: (id: string, selected: boolean) => void;
   onSelectPage: (ids: string[], selected: boolean) => void;
   onClear: () => void;
@@ -81,14 +81,15 @@ function roleLabel(role: User["role"]) {
 export function AdminAccountDirectory({
   result, group, status, highlight, query, sortBy, order, page, pageSize, selectedIds,
   loading, error, busy, credentialOpen, currentAdminId, locale, t,
-  onGroup, onStatus, onQuery, onSortBy, onOrder, onPage, onPageSize,
+  onGroup, onStatus, onQuery, onSortBy, onOrder, onPage,
   onSelect, onSelectPage, onClear, onRefresh, onDetails, onAction, onBulk
 }: Props) {
   const count = result.counts;
   const groupCounts: Record<AccountGroup, number> = {
     ALL: count.total, PARENT: count.parent, TEACHER: count.teacher, STUDENT: count.student, STAFF: count.staff
   };
-  const users = result.users;
+  // Keep the visible carousel limited to five even if an older server returns more.
+  const users = result.users.slice(0, Math.min(5, pageSize));
   const eligiblePage = users.filter((user) => isSelectableAccount(user, currentAdminId));
   const pageSelected = eligiblePage.length > 0 && eligiblePage.every((user) => selectedIds.has(user.id));
   const partial = eligiblePage.some((user) => selectedIds.has(user.id)) && !pageSelected;
@@ -97,6 +98,9 @@ export function AdminAccountDirectory({
   const canReactivate = selected.length > 0 && selected.length <= MAX_ACCOUNT_BULK_SELECTION && selected.every((user) => user.status === "SUSPENDED");
   const start = result.total ? (result.page - 1) * result.pageSize + 1 : 0;
   const end = result.total ? start + users.length - 1 : 0;
+  const pageCount = Math.max(1, result.pages);
+  const firstPageNumber = Math.max(1, Math.min(page - 2, pageCount - 4));
+  const pageNumbers = Array.from({ length: Math.min(5, pageCount) }, (_, index) => firstPageNumber + index);
 
   return (
     <article className="admin-panel admin-users-panel admin-users-panel-premium account-directory-scaled" id="account-directory-panel">
@@ -189,7 +193,12 @@ export function AdminAccountDirectory({
           <button type="button" className="admin-secondary" onClick={onRefresh}>{t("Retry")}</button>
         </div>
       ) : null}
-      {loading ? <p className="admin-copy" role="status">{t("Loading accounts data…")}</p> : null}
+      {loading ? (
+        <div className="ml-account-directory-loading" role="status" aria-live="polite">
+          <span className="ml-account-directory-spinner" aria-hidden="true" />
+          <span className="ml-account-directory-screenreader-only">{t("Loading accounts data…")}</span>
+        </div>
+      ) : null}
 
       <div className="admin-user-list admin-user-list-premium" aria-busy={loading}>
         {!loading && !error && users.map((user) => {
@@ -245,20 +254,29 @@ export function AdminAccountDirectory({
         ) : null}
       </div>
 
-      <div className="account-directory-pagination">
-        <label>{t("Accounts per page")}
-          <select value={pageSize} aria-label={t("Accounts per page")}
-            onChange={(event) => onPageSize(Number(event.target.value))} disabled={busy || loading}>
-            {[10, 20, 50].map((size) => <option value={size} key={size}>{size}</option>)}
-          </select>
-        </label>
-        <div role="group" aria-label={t("Account pagination")}>
-          <button type="button" className="admin-secondary" disabled={loading || busy || page <= 1}
+      <div className="account-directory-pagination ml-account-directory-pager">
+        <span className="ml-account-page-size">{t("Accounts per page")}: <strong>5</strong></span>
+        <div className="ml-account-carousel-controls" role="group" aria-label={t("Account pagination")}>
+          <button type="button" className="admin-secondary ml-account-page-arrow"
+            disabled={loading || busy || page <= 1}
             onClick={() => onPage(page - 1)}>{t("Previous")}</button>
-          <span>{adminFormat(locale, "Page {page} of {pages}", { page: result.page, pages: result.pages })}</span>
-          <button type="button" className="admin-secondary" disabled={loading || busy || page >= result.pages}
+          <div className="ml-account-carousel-pages">
+            {pageNumbers.map((number) => (
+              <button key={number} type="button"
+                className={"ml-account-page-number" + (number === page ? " ml-account-page-number-active" : "")}
+                aria-current={number === page ? "page" : undefined}
+                aria-label={adminFormat(locale, "Page {page} of {pages}", { page: number, pages: pageCount })}
+                disabled={loading || busy || number === page}
+                onClick={() => onPage(number)}>{number}</button>
+            ))}
+          </div>
+          <button type="button" className="admin-secondary ml-account-page-arrow"
+            disabled={loading || busy || page >= pageCount}
             onClick={() => onPage(page + 1)}>{t("Next")}</button>
         </div>
+        <span className="ml-account-page-count" role="status">
+          {adminFormat(locale, "Page {page} of {pages}", { page: result.page, pages: pageCount })}
+        </span>
       </div>
     </article>
   );
