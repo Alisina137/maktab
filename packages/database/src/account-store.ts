@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { categorizeAuditAction, safeAuditMetadata, type AuditCategory } from "./audit-safe.js";
 import type { UserRole, UserStatus } from "@maktablink/contracts";
@@ -221,7 +221,7 @@ export interface AccountStore {
   createSession(input: CreateSessionInput): Promise<AuthSession>;
   findByAccessTokenHash(accessTokenHash: string): Promise<AuthenticatedSessionContext | null>;
   findByRefreshTokenHash(refreshTokenHash: string): Promise<AuthenticatedSessionContext | null>;
-  rotateSession(sessionId: string, input: Omit<CreateSessionInput, "schoolId" | "userId">): Promise<AuthSession | null>;
+  rotateSession(sessionId: string, expectedRefreshTokenHash: string, input: Omit<CreateSessionInput, "schoolId" | "userId">): Promise<AuthSession | null>;
   revokeSession(sessionId: string): Promise<void>;
   revokeAllUserSessions(schoolId: string, userId: string): Promise<void>;
   writeAudit(input: AuditInput): Promise<void>;
@@ -690,31 +690,35 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
     },
 
     async createAdminPasswordVerification(input) {
-      const now = new Date();
-      await db
-        .update(adminPasswordVerifications)
-        .set({ consumedAt: now })
-        .where(
-          and(
-            eq(adminPasswordVerifications.schoolId, input.schoolId),
-            eq(adminPasswordVerifications.userId, input.userId),
-            isNull(adminPasswordVerifications.consumedAt)
-          )
-        );
+      // Expire all previous challenges and insert the replacement as one
+      // transaction. If the insert fails, the prior challenge remains valid.
+      return db.transaction(async (tx) => {
+        const now = new Date();
+        await tx
+          .update(adminPasswordVerifications)
+          .set({ consumedAt: now })
+          .where(
+            and(
+              eq(adminPasswordVerifications.schoolId, input.schoolId),
+              eq(adminPasswordVerifications.userId, input.userId),
+              isNull(adminPasswordVerifications.consumedAt)
+            )
+          );
 
-      const [verification] = await db
-        .insert(adminPasswordVerifications)
-        .values({
-          id: input.id,
-          schoolId: input.schoolId,
-          userId: input.userId,
-          emailCodeHash: input.emailCodeHash,
-          smsCodeHash: input.smsCodeHash,
-          expiresAt: input.expiresAt
-        })
-        .returning();
-      if (!verification) throw new Error("Admin password verification insert did not return a row.");
-      return verification;
+        const [verification] = await tx
+          .insert(adminPasswordVerifications)
+          .values({
+            id: input.id,
+            schoolId: input.schoolId,
+            userId: input.userId,
+            emailCodeHash: input.emailCodeHash,
+            smsCodeHash: input.smsCodeHash,
+            expiresAt: input.expiresAt
+          })
+          .returning();
+        if (!verification) throw new Error("Admin password verification insert did not return a row.");
+        return verification;
+      });
     },
 
     async findAdminPasswordVerification(schoolId, userId, verificationId) {
@@ -733,19 +737,21 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
     },
 
     async incrementAdminPasswordVerificationAttempts(schoolId, userId, verificationId) {
-      const current = await this.findAdminPasswordVerification(schoolId, userId, verificationId);
-      if (!current) return null;
+      // The increment and attempt ceiling must be enforced in the database:
+      // parallel invalid guesses must not overwrite one another.
+      const challenge = adminPasswordVerifications;
       const [updated] = await db
-        .update(adminPasswordVerifications)
-        .set({ attempts: current.attempts + 1 })
-        .where(
-          and(
-            eq(adminPasswordVerifications.schoolId, schoolId),
-            eq(adminPasswordVerifications.userId, userId),
-            eq(adminPasswordVerifications.id, verificationId),
-            isNull(adminPasswordVerifications.consumedAt)
-          )
-        )
+        .update(challenge)
+        .set({ attempts: sql`${challenge.attempts} + 1` })
+        .where(and(
+          eq(challenge.schoolId, schoolId),
+          eq(challenge.userId, userId),
+          eq(challenge.id, verificationId),
+          lt(challenge.attempts, 5),
+          gt(challenge.expiresAt, new Date()),
+          isNull(challenge.verifiedAt),
+          isNull(challenge.consumedAt)
+        ))
         .returning();
       return updated ?? null;
     },
@@ -762,6 +768,9 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
             eq(adminPasswordVerifications.schoolId, schoolId),
             eq(adminPasswordVerifications.userId, userId),
             eq(adminPasswordVerifications.id, verificationId),
+            lt(adminPasswordVerifications.attempts, 5),
+            gt(adminPasswordVerifications.expiresAt, new Date()),
+            isNull(adminPasswordVerifications.verifiedAt),
             isNull(adminPasswordVerifications.consumedAt)
           )
         )
@@ -926,6 +935,15 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           .update(authSessions)
           .set({ revokedAt: new Date() })
           .where(and(eq(authSessions.schoolId, schoolId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+        // Any unconsumed email proof was established for the old password.
+        await tx
+          .update(adminPasswordVerifications)
+          .set({ consumedAt: new Date() })
+          .where(and(
+            eq(adminPasswordVerifications.schoolId, schoolId),
+            eq(adminPasswordVerifications.userId, userId),
+            isNull(adminPasswordVerifications.consumedAt)
+          ));
 
         const [user] = await tx
           .update(users)
@@ -992,7 +1010,10 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
       return sessionContext(eq(authSessions.refreshTokenHash, refreshTokenHash));
     },
 
-    async rotateSession(sessionId, input) {
+    async rotateSession(sessionId, expectedRefreshTokenHash, input) {
+      // Compare-and-swap the *presented* refresh hash. Without this predicate,
+      // concurrent reuse of one refresh token could mint two successful sessions.
+      // PostgreSQL evaluates the WHERE clause again after a concurrent row lock.
       const [session] = await db
         .update(authSessions)
         .set({
@@ -1002,7 +1023,12 @@ export function createAccountStore(db: FoundationDatabase): AccountStore {
           refreshExpiresAt: input.refreshExpiresAt,
           rotatedAt: new Date()
         })
-        .where(and(eq(authSessions.id, sessionId), isNull(authSessions.revokedAt)))
+        .where(and(
+          eq(authSessions.id, sessionId),
+          eq(authSessions.refreshTokenHash, expectedRefreshTokenHash),
+          gt(authSessions.refreshExpiresAt, new Date()),
+          isNull(authSessions.revokedAt)
+        ))
         .returning();
       return session ?? null;
     },
