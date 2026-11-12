@@ -34,6 +34,7 @@ const attendance = read("apps/web/app/admin/attendance-panel.tsx");
 const learning = read("apps/web/app/admin/learning-panel.tsx");
 const communication = read("apps/web/app/admin/communication-panel.tsx");
 const accounts = read("apps/web/app/admin/(workspace)/accounts/page.tsx");
+const accountCreateCss = read("apps/web/app/admin/account-create-layout.css");
 const staffWork = read("apps/web/app/admin/(workspace)/staff-work/page.tsx");
 
 
@@ -86,6 +87,27 @@ assert.ok(frame.includes('ml-admin-nav-row-academic') &&
   css.includes('.ml-admin-compact .ml-admin-nav-row-academic') &&
   css.includes('.ml-admin-subnav-toggle:focus-visible'),
   "All sidebar expand/collapse buttons must stay in bounded tracks in desktop, compact and RTL/mobile layouts");
+// Account view controls must remain side by side and the actual creation
+// form should present role and account information in parallel at wide widths.
+assert.ok(accounts.includes('import "../../account-create-layout.css"') &&
+  accounts.includes('className="admin-account-view-switch"') &&
+  accounts.includes('className="account-create-step-grid"') &&
+  accounts.includes('className="account-create-step account-create-step-role"') &&
+  accounts.includes('className="account-create-step account-create-step-details"') &&
+  accounts.includes('aria-labelledby="account-create-role-heading"') &&
+  accounts.includes('aria-labelledby="account-create-information-heading"') &&
+  accounts.includes('className="account-create-footer"') &&
+  accounts.includes('noValidate onSubmit={createUser}') &&
+  accounts.includes('disabled={busy || (newRole === "STUDENT"') &&
+  accountCreateCss.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") &&
+  accountCreateCss.includes("width: min(100%, 362px)") &&
+  accountCreateCss.includes("width: min(100%, 1160px)") &&
+  accountCreateCss.includes("grid-template-columns: minmax(0, .84fr) minmax(0, 1.16fr)") &&
+  accountCreateCss.includes("@container (max-width: 780px)") &&
+  accountCreateCss.includes("@media (max-width: 650px)") &&
+  accountCreateCss.includes(".ml-admin-dashboard-shell .account-create-footer > .admin-primary"),
+  "Accounts create layout must have a 2-button switch and 2-column guided form with mobile fallback");
+
 for (const group of ["/admin/academics", "/admin/accounts", "/admin/families",
   "/admin/attendance", "/admin/learning", "/admin/communication",
   "/admin/staff-work", "/admin/pilot"]) {
