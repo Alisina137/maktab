@@ -7,17 +7,25 @@ export type TeacherInboxFilter = "ALL" | "UNREAD" | "READ";
 const normalize=(value:string)=>value.trim().normalize("NFKC").toLocaleLowerCase();
 
 /** Client-only display filter. Never authorize actions or infer class membership from it. */
+/** Full client-side matched collection; count MUST include records past page 100. */
+export function teacherInboxMatches(
+  notifications:readonly ParentNotification[], filter:TeacherInboxFilter, search:string
+):ParentNotification[]{
+  const term=normalize(search);
+  return notifications.filter(item=>
+    (filter==="ALL"||(filter==="UNREAD"&&!item.readAt)||(filter==="READ"&&!!item.readAt)) &&
+    (!term||[item.title,item.message,item.type].some(text=>normalize(text).includes(term)))
+  ).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
+}
+
+/** Progressive display of server-authorized notifications, never a 100-item cap. */
 export function teacherInboxList(
   notifications:readonly ParentNotification[], filter:TeacherInboxFilter, search:string,
   limit=30
 ):ParentNotification[] {
-  const term=normalize(search);
-  const size=Number.isSafeInteger(limit)?Math.max(0,Math.min(limit,100)):30;
-  return notifications.filter(item=>
-    (filter==="ALL"||(filter==="UNREAD"&&!item.readAt)||(filter==="READ"&&!!item.readAt)) &&
-    (!term||[item.title,item.message,item.type].some(text=>normalize(text).includes(term)))
-  ).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id))
-    .slice(0,size);
+  const matched=teacherInboxMatches(notifications,filter,search);
+  const size=Number.isSafeInteger(limit)?Math.max(0,Math.min(limit,matched.length)):30;
+  return matched.slice(0,size);
 }
 export function teacherUnreadCount(notifications:readonly ParentNotification[]):number{
   return notifications.filter(item=>!item.readAt).length;

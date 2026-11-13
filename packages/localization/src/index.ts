@@ -268,6 +268,9 @@ export type TranslationKey =
   | "teacher.inboxSearch"
   | "teacher.inboxRead"
   | "teacher.inboxShowMore"
+  | "teacher.inboxNoMatches"
+  | "teacher.inboxRefresh"
+  | "teacher.notificationUnavailable"
   | "teacher.hubStale"
   | "teacher.hubUnavailable"
   | "teacher.classStudents"
@@ -1107,6 +1110,9 @@ const en: Record<TranslationKey, string> = {
   "teacher.inboxSearch": "Search notifications",
   "teacher.inboxRead": "Read",
   "teacher.inboxShowMore": "Show more notifications",
+  "teacher.inboxNoMatches": "No notifications match the search or selected filter.",
+  "teacher.inboxRefresh": "Refresh notifications",
+  "teacher.notificationUnavailable": "This notification has no available destination. Open the relevant section from the tabs.",
   "teacher.hubStale": "Connection interrupted. Showing previous data; refresh to retry.",
   "teacher.hubUnavailable": "Unable to load from the server. Check your connection and retry.",
   "teacher.classStudents": "Students",
@@ -1962,6 +1968,9 @@ const dari: Record<TranslationKey, string> = {
   "teacher.inboxSearch": "جستجوی اطلاعیه‌ها",
   "teacher.inboxRead": "خوانده‌شده",
   "teacher.inboxShowMore": "نمایش اطلاعیه‌های بیشتر",
+  "teacher.inboxNoMatches": "هیچ اطلاعیه‌ای مطابق جستجو یا فیلتر انتخاب‌شده پیدا نشد.",
+  "teacher.inboxRefresh": "تازه‌سازی اطلاعیه‌ها",
+  "teacher.notificationUnavailable": "مقصد این اطلاعیه در دسترس نیست. بخش مربوط را از زبانه‌ها باز کنید.",
   "teacher.hubStale": "اتصال قطع شده است. معلومات قبلی نمایش داده می‌شود؛ برای تلاش دوباره تازه‌سازی کنید.",
   "teacher.hubUnavailable": "دریافت معلومات از سرور ممکن نیست. اتصال خود را بررسی و دوباره تلاش کنید.",
   "teacher.classStudents": "شاگردان",
@@ -2817,6 +2826,9 @@ const pashto: Record<TranslationKey, string> = {
   "teacher.inboxSearch": "خبرتیاوې ولټوئ",
   "teacher.inboxRead": "لوستل شوې",
   "teacher.inboxShowMore": "نورې خبرتیاوې وښایئ",
+  "teacher.inboxNoMatches": "ستاسې له لټون یا ټاکل شوي چاڼ سره سمون لرونکې خبرتیا ونه موندل شوه.",
+  "teacher.inboxRefresh": "خبرتیاوې تازه کړئ",
+  "teacher.notificationUnavailable": "د دې خبرتیا لپاره اړونده پاڼه نشته. اړوند برخه له ټبونو څخه پرانیزئ.",
   "teacher.hubStale": "اړیکه پرې شوې ده. پخواني معلومات ښکاري؛ د بیا هڅې لپاره تازه کړئ.",
   "teacher.hubUnavailable": "له سرور څخه د معلوماتو ترلاسه کول ممکن نه دي. اړیکه وڅېړئ او بیا هڅه وکړئ.",
   "teacher.classStudents": "زده کوونکي",

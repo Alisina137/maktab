@@ -1,5 +1,12 @@
 # MaktabLink Project State
 
+## Phase 18 — Teacher Inbox Reliability & Navigation Recovery (2026-11-13)
+
+**Six Phase 18 source tasks delivered:** (18.1) independently settle Teacher hub resources; (18.2) remove the hidden 100-item notification truncation while retaining progressive display; (18.3) accessible inbox refresh/search, accurate counts and distinct empty/failure feedback; (18.4) protect notification write tracking across account switches; (18.5) localized feedback for unavailable notification destinations; (18.6) unit and source guards wired into root verification and Linux/Windows CI. See `docs/PHASE18-TEACHER-INBOX-RELIABILITY.md`. No migrations, permission changes or new env vars.
+
+**External release decision: NO-GO.** The independent Phase 11/12 isolated staging, real Android/browser, push/scheduler and restore/operator evidence is still outstanding.
+
+
 ## Phase 17 — Mobile Account Exit & Session Safety (2026-11-13)
 
 **Six Phase 17 source development tasks delivered:** (17.1) visible, confirmed Teacher logout on the More landing and Profile pages; (17.2) visible, confirmed Student logout directly below the More profile card; (17.3) preserve Parent Profile/Preferences signout and each role's More language preferences; (17.4) storage-first shared mobile logout with native SecureStore delete retry, private loading state and localized failure feedback; (17.5) independently attempt push deactivation and refresh-token logout, protecting newly registered account push state from stale old-account deactivation; (17.6) synchronize suspended-account session refs, block stale status callbacks and wire Phase 17 unit/source tests into root `pnpm verify` plus Linux/Windows CI. See `docs/PHASE17-MOBILE-ACCOUNT-EXIT.md`. No migrations, permissions or new env vars.

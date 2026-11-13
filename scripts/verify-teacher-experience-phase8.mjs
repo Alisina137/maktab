@@ -26,11 +26,19 @@ for(const marker of ['testID="teacher-inbox-search"',
  assert.ok(hub.includes(marker),"Phase 8 inbox missing: "+marker);
 for(const marker of ["hubOwner===activeScope","visibleLearning=hubScoped",
  "visibleNotifications=hubScoped","visibleAnnouncements=hubScoped",
- "currentScope.current!==activeScope","Promise.allSettled([",
  "api.notifications(accessToken,true)","api.teacherLearning(accessToken,true)",
  "teacherUnreadCount(visibleNotifications)",'testID="teacher-hub-recovery"',
  "profile={profile}","actionBusy={hubActionBusy}"])
  assert.ok(experience.includes(marker),"Phase 8 session or recovery guard missing: "+marker);
+assert.ok(experience.includes("currentScope.current!==activeScope") ||
+ experience.includes("currentScope.current===activeScope"),
+ "Phase 8/18: hub completion must be scoped to the current account.");
+assert.ok(experience.includes("Promise.allSettled([") ||
+ (experience.includes('void loadResource("learning"') &&
+  experience.includes('void loadResource("announcements"') &&
+  experience.includes('void loadResource("notifications"') &&
+  experience.includes("setHubReady(previous=>({...previous,[key]:true}))")),
+ "Phase 8/18: teacher hub must settle all resources, either together or independently.");
 assert.ok(api.includes("notifications(accessToken: string, fresh = false)"));
 assert.ok(destination.includes('if (role === "PARENT"'));
 for(const key of ["teacher.profileTeacherRole","teacher.profileAssignedSubjects",
