@@ -76,7 +76,7 @@ test('Staging preflight refuses production pooler/direct aliases and wrong stagi
   };
   assert.equal(validateStagingDatabase(env).DATABASE_URL, env.STAGING_DATABASE_URL);
   const calls = [];
-  const check = runStagingPreflight(env, (_bin, args) => { calls.push(args[0]); });
+  const check = runStagingPreflight(env, (_bin, args) => { calls.push(args.at(-1)); });
   assert.equal(check.checks.length, 3);
   assert.deepEqual(calls, ['db:check', 'db:preflight:phase3', 'db:preflight:phase6']);
   for (const patch of [
