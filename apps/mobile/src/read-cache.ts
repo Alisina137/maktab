@@ -38,6 +38,12 @@ export function getReadCacheEpoch(): number {
   return scopeEpoch;
 }
 
+/** Reject GETs already in flight as soon as logout begins, before slow
+ * push-deactivation and server-logout network calls finish. */
+export function invalidateReadCacheRequests(): void {
+  scopeEpoch += 1;
+}
+
 export function setReadCacheScope(nextScope: string | null) {
   // A -> logged out -> A is a new authorization epoch, even when the account
   // and school IDs eventually match. Never accept a late response from A1.
