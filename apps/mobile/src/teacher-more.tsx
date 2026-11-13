@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -19,6 +19,31 @@ type MoreAction = {
 const languageNames: Record<SupportedLocale, string> = {
   "fa-AF": "دری", "ps-AF": "پښتو", en: "English"
 };
+
+/** Both More and Profile offer the same confirmed, accessible exit. */
+function TeacherSignOutButton({ locale, onLogout }: {
+  locale: SupportedLocale;
+  onLogout: () => void;
+}) {
+  return (
+    <Pressable accessibilityRole="button"
+      accessibilityLabel={translate(locale,"auth.logout")}
+      accessibilityHint={translate(locale,"parent.moreLogoutConfirm")}
+      testID="teacher-sign-out"
+      onPress={() => Alert.alert(
+        translate(locale,"parent.moreLogoutTitle"),
+        translate(locale,"parent.moreLogoutConfirm"),
+        [
+          {text:translate(locale,"action.back"),style:"cancel"},
+          {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
+        ]
+      )}
+      style={({pressed})=>[styles.logout,pressed&&styles.pressed]}>
+      <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
+      <Text style={styles.link}>{translate(locale,"auth.logout")}</Text>
+    </Pressable>
+  );
+}
 
 export function TeacherMorePanel({
   section, schoolName, username, fullName, profile, unreadCount, locale, textDirection,
@@ -75,6 +100,7 @@ export function TeacherMorePanel({
           <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={18} color={tokens.color.textMuted}/>
         </Pressable>)}
       </View>
+      <TeacherSignOutButton locale={locale} onLogout={onLogout}/>
       <AdminContactCard contact={contact} locale={locale}/>
     </>:null}
     {section==="ANNOUNCEMENTS"?<View style={styles.stack}>
@@ -127,10 +153,7 @@ export function TeacherMorePanel({
         </View>
       </View>
       <AdminContactCard contact={contact} locale={locale}/>
-      <Pressable accessibilityRole="button" onPress={onLogout} style={[styles.logout,rtl&&styles.rtl]}>
-        <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
-        <Text style={styles.link}>{translate(locale,"auth.logout")}</Text>
-      </Pressable>
+      <TeacherSignOutButton locale={locale} onLogout={onLogout}/>
     </>:null}
   </View>;
 }
