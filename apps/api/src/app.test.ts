@@ -9622,3 +9622,67 @@ test("Database Phase 3: only one academic year activates under concurrent reques
   const other = await activate(yearB, adminB);
   assert.equal(other.statusCode, 200, other.body);
 });
+
+
+test("Final Audit Phase 10: live API route security and readiness smoke", async (t) => {
+  // This uses a fully migrated in-process PGlite database and an injected
+  // Fastify server. It is NOT a deployed Neon or physical-device E2E test.
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  const health = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(health.statusCode, 200);
+  assert.equal(health.json<{ status: string }>().status, "ok");
+  const ready = await app.inject({ method: "GET", url: "/ready" });
+  assert.equal(ready.statusCode, 200);
+  assert.equal(ready.headers["cache-control"], "no-store");
+  assert.equal(ready.json<{ database: string }>().database, "ok");
+
+  const secretMetrics = await app.inject({ method: "GET", url: "/metrics" });
+  assert.equal(secretMetrics.statusCode, 401);
+  assert.ok(!secretMetrics.body.includes("maktablink_process_uptime_seconds"));
+  assert.equal(secretMetrics.headers["cache-control"], "no-store");
+  const allowedMetrics = await app.inject({
+    method: "GET", url: "/metrics",
+    headers: { authorization: `Bearer ${metricsToken}` }
+  });
+  assert.equal(allowedMetrics.statusCode, 200);
+  assert.match(allowedMetrics.body, /maktablink_http_requests_total/);
+
+  const anonymousRoutes = [
+    "/v1/admin/academics", "/v1/admin/families", "/v1/admin/learning",
+    "/v1/admin/fees/invoices", "/v1/admin/attendance/monitor",
+    "/v1/teacher/today", "/v1/teacher/learning",
+    "/v1/parent/home", "/v1/student/home",
+    "/v1/staff/me", "/v1/notifications"
+  ];
+  for (const url of anonymousRoutes) {
+    const response = await app.inject({ method: "GET", url });
+    assert.equal(response.statusCode, 401,
+      "Anonymous access must be denied on " + url);
+    assert.equal(response.headers["cache-control"], "no-store", url);
+    assert.ok(!response.body.includes("passwordHash"), url);
+    assert.ok(!response.body.includes("accessToken"), url);
+  }
+
+  const schoolId = await provisionSchool(app, "FINAL10-ROLE");
+  const adminToken = await bootstrapAdmin(app, schoolId, "final.admin");
+  for (const url of ["/v1/teacher/today", "/v1/parent/home",
+    "/v1/student/home", "/v1/staff/me"]) {
+    const response = await app.inject({
+      method: "GET", url,
+      headers: { authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(response.statusCode, 403,
+      "School administrator should not inherit " + url + " role privileges.");
+  }
+  const own = await app.inject({
+    method: "GET", url: "/v1/admin/academics",
+    headers: { authorization: `Bearer ${adminToken}` }
+  });
+  assert.equal(own.statusCode, 200);
+  assert.equal(own.headers["cache-control"], "no-store");
+});

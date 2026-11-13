@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 10 final release inventory, role isolation and safe staging restore
+        run: pnpm verify:release:phase10
+
       - name: Phase 9 API monitoring, deployment configuration and scheduled-job resilience
         run: pnpm verify:api:phase9
 
@@ -252,6 +255,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Record exact-commit Phase 10 NO-GO and 20 live-journey acceptance matrix
+        if: always()
+        run: node scripts/final-audit-phase10.mjs --output "$RUNNER_TEMP/maktablink-final-audit-phase10-no-go.json"
+
+      - name: Preserve Phase 10 release-readiness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase10-final-audit-no-go
+          path: ${{ runner.temp }}/maktablink-final-audit-phase10-no-go.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Record production NO-GO until independent release evidence is reviewed
         if: always()
         run: node scripts/phase7-release-report.mjs --output "$RUNNER_TEMP/maktablink-step20-no-go.json"
@@ -308,6 +324,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 10 final release inventory, role isolation and safe staging restore
+        run: pnpm verify:release:phase10
+
       - name: Phase 9 API monitoring, deployment configuration and scheduled-job resilience
         run: pnpm verify:api:phase9
 
