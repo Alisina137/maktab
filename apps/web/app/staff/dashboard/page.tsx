@@ -14,6 +14,7 @@ import { StaffAttendancePanel } from "../staff-attendance-panel";
 import { StaffFeesPanel } from "../staff-fees-panel";
 import { StaffWorkPanel } from "../staff-work-panel";
 import { StaffLoadingState } from "../staff-loading-state";
+import { fallbackStaffTab, permittedStaffTabs, type StaffWorkspaceTab } from "../staff-navigation-policy";
 import { StaffWorkPreferences, DEFAULT_STAFF_PREFERENCES, type StaffPreferences } from "../staff-work-preferences";
 import { staffWorkText } from "../staff-work-i18n";
 
@@ -28,7 +29,7 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
-  const [tab,setTab]=useState<"home"|"directory"|"registration"|"attendance"|"fees"|"work"|"notifications"|"settings">("home");
+  const [tab,setTab]=useState<StaffWorkspaceTab>("home");
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -62,19 +63,16 @@ export default function StaffDashboard() {
   const canTasks=profile?.profile?.permissions?.includes("TASKS_VIEW")===true;
   const canDrafts=profile?.profile?.permissions?.includes("COMMUNICATION_DRAFT")===true;
   const canWork=canTasks||canDrafts;
-  const tabs=[
-    {id:"home" as const,label:"Home"},
-    ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
-    ...(canRegister?[{id:"registration" as const,label:"Registration"}]:[]),
-    ...(canAttend?[{id:"attendance" as const,label:"Attendance"}]:[]),
-    ...(canFees?[{id:"fees" as const,label:"Fees"}]:[]),
-    ...(canWork?[{id:"work" as const,label:"Staff work"}]:[]),
-    {id:"notifications" as const,label:"Notifications"},
-    {id:"settings" as const,label:"Profile & Settings"}
-  ];
+  const labels:Record<StaffWorkspaceTab,string>={
+    home:"Home",directory:"Directory",registration:"Registration",
+    attendance:"Attendance",fees:"Fees",work:"Staff work",
+    notifications:"Notifications",settings:"Profile & Settings"
+  };
+  const tabs=permittedStaffTabs(profile?.profile?.permissions)
+    .map(id=>({id,label:labels[id]}));
   // Do not leave staff on a permission-gated module when fresh server profile
   // data no longer grants its navigation entry.
-  const activeTabAllowed=tabs.some(item=>item.id===tab);
+  const activeTabAllowed=fallbackStaffTab(tab,profile?.profile?.permissions)===tab;
   useEffect(()=>{
     if(profile&&!activeTabAllowed)setTab("home");
   },[profile,activeTabAllowed]);
