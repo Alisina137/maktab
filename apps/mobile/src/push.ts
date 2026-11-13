@@ -78,14 +78,19 @@ export async function registerPushForSession(accessToken: string) {
 }
 
 export async function deactivatePushForSession(accessToken: string) {
-  if (!registeredToken || !registeredPlatform) return;
-  try {
-    await api.deactivatePushDevice(accessToken, registeredToken, registeredPlatform);
-  } catch {
-    // Logout must never depend on notification connectivity.
-  } finally {
+  const token = registeredToken;
+  const platform = registeredPlatform;
+  if (!token || !platform) return;
+  // Invalidate the old registration locally BEFORE awaiting the network.
+  // A new account may register its device while the previous logout runs.
+  if (registeredToken === token && registeredPlatform === platform) {
     registeredToken = null;
     registeredPlatform = null;
+  }
+  try {
+    await api.deactivatePushDevice(accessToken, token, platform);
+  } catch {
+    // Logout must never depend on notification connectivity.
   }
 }
 

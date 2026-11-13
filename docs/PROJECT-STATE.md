@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 17 — Mobile Account Exit & Session Safety (2026-11-13)
+
+**Six Phase 17 source development tasks delivered:** (17.1) visible, confirmed Teacher logout on the More landing and Profile pages; (17.2) visible, confirmed Student logout directly below the More profile card; (17.3) preserve Parent Profile/Preferences signout and each role's More language preferences; (17.4) storage-first shared mobile logout with native SecureStore delete retry, private loading state and localized failure feedback; (17.5) independently attempt push deactivation and refresh-token logout, protecting newly registered account push state from stale old-account deactivation; (17.6) synchronize suspended-account session refs, block stale status callbacks and wire Phase 17 unit/source tests into root `pnpm verify` plus Linux/Windows CI. See `docs/PHASE17-MOBILE-ACCOUNT-EXIT.md`. No migrations, permissions or new env vars.
+
+**Production remains NO-GO:** separate Neon staging, actual Android/browser, push/scheduler, restore rehearsal and independent operator evidence for Phase 11/12 release gates are not yet verified.
+
 ## Pre-Phase-17 Parent Profile Sign-Out UX Fix (2026-11-13)
 
 **Implemented:** In Parent → **More → Profile**, add a prominently visible Sign out button directly beneath the Parent account details, above the linked-children list. The new button reuses the same localized Dari/Pashto/English confirmation and existing authenticated `logout()` handler as the Sign out button already available in Parent → **More → Preferences**. A cancel action retains the session; confirmation triggers token logout and existing local session/cache/Parent state cleanup, including network-offline fallback. Preserve profile refresh, children, preferences, and role navigation. `pnpm verify:parent:profile-logout` guards the UX and wiring in root verify and Linux/Windows CI.

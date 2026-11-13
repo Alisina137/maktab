@@ -115,6 +115,7 @@ export type TranslationKey =
   | "parent.navMore"
   | "parent.moreTitle"
   | "auth.logout"
+  | "auth.logoutDeviceFailed"
   | "common.loading"
   | "common.errorTitle"
   | "common.connectionProblemTitle"
@@ -957,6 +958,7 @@ const en: Record<TranslationKey, string> = {
   "parent.navMore": "More",
   "parent.moreTitle": "More",
   "auth.logout": "Log out",
+  "auth.logoutDeviceFailed": "Could not clear this device session. Please try signing out again.",
   "common.loading": "Loading…",
   "common.errorTitle": "Something needs your attention",
   "common.connectionProblemTitle": "Connection interrupted",
@@ -1811,6 +1813,7 @@ const dari: Record<TranslationKey, string> = {
   "parent.navMore": "بیشتر",
   "parent.moreTitle": "بیشتر",
   "auth.logout": "خروج",
+  "auth.logoutDeviceFailed": "نشست این دستگاه پاک نشد. لطفاً دوباره برای خروج تلاش کنید.",
   "common.loading": "در حال بارگذاری…",
   "common.errorTitle": "یک مورد نیاز به توجه شما دارد",
   "common.connectionProblemTitle": "ارتباط موقتاً قطع شده است",
@@ -2665,6 +2668,7 @@ const pashto: Record<TranslationKey, string> = {
   "parent.navMore": "نور",
   "parent.moreTitle": "نور",
   "auth.logout": "وتل",
+  "auth.logoutDeviceFailed": "د دې وسیلې ناسته پاکه نه شوه. مهرباني وکړئ بیا د وتلو هڅه وکړئ.",
   "common.loading": "بارېږي…",
   "common.errorTitle": "یو څه ستاسو پاملرنې ته اړتیا لري",
   "common.connectionProblemTitle": "اړیکه لنډمهاله پرې شوې",

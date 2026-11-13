@@ -88,6 +88,7 @@ import { StudentAttendanceContent } from "./src/student-attendance";
 import { StudentFeesContent } from "./src/student-fees";
 import { ParentBottomNavigation, type ParentTab } from "./src/parent-navigation";
 import { deactivatePushForSession, registerPushForSession, subscribeToPushOpens } from "./src/push";
+import { removeLocalSessionForLogout, revokeSignedOutSession } from "./src/logout-operations";
 import { notificationDestination } from "./src/notification-destination";
 import { appErrorFromCause, type AppErrorKind } from "./src/error-message";
 import {
@@ -717,7 +718,8 @@ function AppContent() {
       try {
         const me = await api.me(activeSession.accessToken);
         const latestSession = sessionRef.current;
-        if (!latestSession || latestSession.user.id !== activeSession.user.id) return;
+        if (logoutInProgressRef.current || !latestSession ||
+            !sameSessionEpoch(latestSession, activeSession, schoolRef.current, activeSchool)) return;
 
         const wasSuspended = latestSession.user.status === "SUSPENDED";
         const isSuspended = me.user.status === "SUSPENDED";
@@ -737,6 +739,8 @@ function AppContent() {
         }
 
         if (isSuspended) {
+          invalidateReadCacheRequests();
+          setPreferCachedReads(false);
           setStudentEnrollmentUnavailable(false);
           setScreen("home");
           setParentHome(null);
@@ -781,15 +785,22 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-          setSession((current) =>
-            current
-              ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
-              : current
-          );
-          setStudentEnrollmentUnavailable(false);
-          setScreen("home");
-          setAppError("auth.accountSuspended");
-          void loadAdminContact(activeSession.accessToken);
+          const latest = sessionRef.current;
+          if (!logoutInProgressRef.current && latest &&
+              sameSessionEpoch(latest, activeSession, schoolRef.current, activeSchool)) {
+            const suspended: SessionPayload = {
+              ...latest, user: {...latest.user,status:"SUSPENDED"}
+            };
+            sessionRef.current = suspended;
+            setSession(suspended);
+            invalidateReadCacheRequests();
+            setPreferCachedReads(false);
+            void saveStoredSession({auth:suspended,school:activeSchool}).catch(()=>null);
+            setStudentEnrollmentUnavailable(false);
+            setScreen("home");
+            setAppError("auth.accountSuspended");
+            void loadAdminContact(activeSession.accessToken);
+          }
         } else if (
           cause instanceof ApiRequestError &&
           cause.code === "account_unavailable" &&
@@ -1001,16 +1012,26 @@ function AppContent() {
       return;
     }
     if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-      const current = session;
-      if (current) {
+      if (logoutInProgressRef.current) return;
+      const current = sessionRef.current;
+      const activeSchool = schoolRef.current;
+      if (current && activeSchool) {
         const suspended: SessionPayload = {
           ...current,
           user: { ...current.user, status: "SUSPENDED" }
         };
+        // Keep both identity sources consistent. Event handlers and request
+        // retries must not keep using the last ACTIVE snapshot after revocation.
+        sessionRef.current = suspended;
         setSession(suspended);
-        if (school) void saveStoredSession({ auth: suspended, school });
+        void saveStoredSession({ auth: suspended, school: activeSchool }).catch(() => {
+          // An unavailable native store must not break the suspended UI.
+        });
         void loadAdminContact(current.accessToken);
       }
+      // Retain the account's authenticated scope for server status probes,
+      // while invalidating older screen reads and disabling offline fallbacks.
+      invalidateReadCacheRequests();
       setPreferCachedReads(false);
       setScreen("home");
       setAppError("auth.accountSuspended");
@@ -1054,12 +1075,18 @@ function AppContent() {
         try {
           const me = await api.me(session.accessToken);
           if (me.user.status === "SUSPENDED") {
+            if (logoutInProgressRef.current || !sessionRef.current ||
+                !schoolRef.current || !school ||
+                !sameSessionEpoch(sessionRef.current, session, schoolRef.current, school))
+              return false;
             const next: SessionPayload = {
-              ...session,
+              ...sessionRef.current,
               user: me.user,
               mustChangePassword: me.mustChangePassword
             };
+            sessionRef.current = next;
             setSession(next);
+            invalidateReadCacheRequests();
             if (school) await saveStoredSession({ auth: next, school });
             setScreen("home");
             setParentHome(null);
@@ -1092,8 +1119,7 @@ function AppContent() {
             return true;
           }
           if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-            setPreferCachedReads(false);
-            setAppError("auth.accountSuspended");
+            showCause(cause);
             return true;
           }
           if (
@@ -1976,16 +2002,20 @@ function AppContent() {
     // already be invalid, even though cleanup still needs the old token.
     invalidateReadCacheRequests();
     setBusy(true);
-    try {
-      if (sessionRef.current?.accessToken) {
-        await deactivatePushForSession(sessionRef.current.accessToken);
-      }
-      const refreshToken = sessionRef.current?.refreshToken;
-      if (refreshToken) await api.logout(refreshToken);
-    } catch {
-      // Local logout still succeeds if the network is unavailable.
-    } finally {
-      await clearStoredSession();
+    const previousAccessToken = sessionRef.current?.accessToken ?? null;
+    const previousRefreshToken = sessionRef.current?.refreshToken ?? null;
+    // FIRST remove persisted credentials. Never report sign-out as finished
+    // if native storage could not clear the previous account's refresh token.
+    const deleted = await removeLocalSessionForLogout(clearStoredSession);
+    if (!deleted) {
+      setAppError("auth.logoutDeviceFailed");
+      setBusy(false);
+      logoutInProgressRef.current = false;
+      return;
+    }
+    // Clear role-specific UI, data and account identity synchronously before
+    // attempting remote device deactivation or network token revocation.
+    {
       setReadCacheScope(null);
       setPreferCachedReads(false);
       sessionRef.current = null;
@@ -2050,6 +2080,12 @@ function AppContent() {
       setBusy(false);
       logoutInProgressRef.current = false;
     }
+    // Perform both remote actions independently: push-service outage cannot
+    // suppress token revocation. Neither may resurface the old account's data.
+    void revokeSignedOutSession(
+      previousAccessToken, previousRefreshToken,
+      deactivatePushForSession, api.logout
+    );
   }
 
   async function changeParentAccountPassword(currentPassword: string, newPassword: string): Promise<boolean> {
@@ -2252,6 +2288,19 @@ function AppContent() {
     ? countAttendance(attendanceSheet.students.map((item) => item.student.id), attendanceDraft)
     : countAttendance([], {});
   const attendanceMarkedCount = attendanceSummary.marked;
+
+  if (logoutInProgressRef.current && busy) {
+    // Hide all previous role data while SecureStore deletes credentials.
+    // On native-storage failure the current session is retained for retry.
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center} accessibilityLabel={translate(locale,"auth.logout")}>
+          <ActivityIndicator size="large" />
+          <Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (busy && screen === "role") {
     return (

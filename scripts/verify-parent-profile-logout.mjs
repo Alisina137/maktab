@@ -48,7 +48,7 @@ const logout = app.slice(app.indexOf("async function logout()"),
 for(const token of [
   "logoutInProgressRef.current = true",
   "invalidateReadCacheRequests()",
-  "await clearStoredSession()",
+  "removeLocalSessionForLogout(clearStoredSession)",
   "setReadCacheScope(null)",
   "sessionRef.current = null",
   "setSession(null)",

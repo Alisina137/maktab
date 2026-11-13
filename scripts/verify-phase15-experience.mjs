@@ -28,7 +28,7 @@ const app=read("apps/mobile/App.tsx");
 const logout=app.slice(app.indexOf("  async function logout() {"),
   app.indexOf("\n  async function changeParentAccountPassword(",app.indexOf("  async function logout() {")));
 assert.ok(logout.includes("invalidateReadCacheRequests();") &&
-  logout.indexOf("invalidateReadCacheRequests();") < logout.indexOf("await deactivatePushForSession("),
+  logout.indexOf("invalidateReadCacheRequests();") < logout.indexOf("removeLocalSessionForLogout(clearStoredSession)"),
   "Logout must invalidate previous GETs before awaiting slow external calls");
 const offline = read("apps/mobile/src/offline-request-policy.ts");
 for(const required of ["/v1/parent/home", "/v1/student/home", "/v1/teacher/today",
