@@ -3,7 +3,7 @@
 // as their language selector; public role/school/login onboarding keeps header picker.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
+const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8").replace(/\r\n/g,"\n");
 const app=read("apps/mobile/App.tsx");
 const headerStart=app.indexOf("<View style={styles.topbar}>");
 const headerEnd=app.indexOf("<OnboardingProgress screen={screen} />",headerStart);
