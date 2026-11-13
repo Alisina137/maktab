@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { adminText, type AdminLocale } from "../admin/admin-i18n";
 import { friendlyAdminError } from "../admin/admin-client";
 import { StaffLoadingState } from "./staff-loading-state";
+import { hasUnsavedRegistrationChanges } from "./staff-registration-policy";
 
 export type RegistrationRow = {
   id:string;createdBy:string;status:"DRAFT"|"SUBMITTED"|"UNDER_REVIEW"|"APPROVED"|"REJECTED";
@@ -68,6 +69,10 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
     finally{setBusy(false);}
   }
   async function submit(id:string) {
+    // An edited local draft is not yet the record the administrator will see.
+    // Never offer to submit its older saved version by mistake.
+    if(busy || !selected || selected.id!==id || selected.status!=="DRAFT" ||
+      selected.createdBy!==userId || editing!==id || unsavedDraft || missing)return;
     if(!window.confirm(t("Submit this registration for administrator review?")))return;
     setBusy(true);setError("");setNotice("");
     try{
@@ -89,6 +94,8 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
   const visible=filter==="ALL"?rows:rows.filter(r=>r.status===filter);
   const missing=selected?.status==="DRAFT"?
     (!selected.documents.identityChecked||!selected.documents.consentChecked):false;
+  const unsavedDraft=selected?.status==="DRAFT"&&editing===selected.id &&
+    hasUnsavedRegistrationChanges(draft,selected);
   return <section className="staff-reg-layout">
     <div className="staff-reg-overview">
       <div><span className="eyebrow">{t("Student registration")}</span>
@@ -160,8 +167,9 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
         {selected?.status==="DRAFT"&&selected.createdBy===userId?
           <div className="staff-reg-submit">
             <p>{missing?t("Verify identity and consent, then save changes before submitting."):
+              unsavedDraft?t("Save draft changes"):
               t("Your saved draft is ready for final submission.")}</p>
-            <button className="admin-secondary" type="button" disabled={busy||missing}
+            <button className="admin-secondary" type="button" disabled={busy||missing||unsavedDraft}
               onClick={()=>void submit(selected.id)}>{t("Submit for review")}</button>
           </div>:null}
       </section>

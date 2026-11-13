@@ -17,3 +17,20 @@ export function cacheIsCurrent(savedAt: unknown, now: number, maxAge: number): b
   return Number.isFinite(timestamp) && timestamp <= now &&
     now - timestamp <= maxAge;
 }
+
+/**
+ * A compact hash is used only to fit the SecureStore key; it is not a
+ * cryptographic identity boundary. The persisted envelope MUST carry the
+ * exact tenant/user namespace and URL path to reject key collisions.
+ */
+export function cacheEnvelopeBelongsTo(
+  envelope: unknown, expectedScope: string | null, expectedPath: string, version: number
+): boolean {
+  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return false;
+  const row = envelope as Record<string, unknown>;
+  return typeof version === "number" && Number.isInteger(version) &&
+    row.version === version &&
+    cacheScopeMatches(expectedScope, row.owner as string | null) &&
+    typeof row.path === "string" && row.path === expectedPath &&
+    Object.prototype.hasOwnProperty.call(row, "data");
+}

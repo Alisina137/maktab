@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
-import { cacheIsCurrent, cacheScopeMatches } from "./read-cache-policy";
+import { cacheEnvelopeBelongsTo, cacheIsCurrent, cacheScopeMatches } from "./read-cache-policy";
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const MAX_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_SERIALIZED_LENGTH = 6000;
 
@@ -10,6 +10,8 @@ let fallbackListener: ((savedAt: string) => void) | null = null;
 
 type Envelope<T> = {
   version: number;
+  owner: string;
+  path: string;
   savedAt: string;
   data: T;
 };
@@ -48,11 +50,13 @@ export async function writeReadCache<T>(
   // write its response into B's cache namespace or repopulate an old screen.
   if (!cacheScopeMatches(expectedScope, scope)) return;
   const key = cacheKey(path, expectedScope);
-  if (!key) return;
+  if (!key || !expectedScope) return;
 
   try {
     const serialized = JSON.stringify({
       version: CACHE_VERSION,
+      owner: expectedScope,
+      path,
       savedAt: new Date().toISOString(),
       data
     } satisfies Envelope<T>);
@@ -75,9 +79,8 @@ export async function readReadCache<T>(
     const serialized = await SecureStore.getItemAsync(key);
     if (!serialized || !cacheScopeMatches(expectedScope, scope)) return null;
     const envelope = JSON.parse(serialized) as Envelope<T>;
-    if (!envelope || typeof envelope !== "object" || envelope.version !== CACHE_VERSION ||
-      !cacheIsCurrent(envelope.savedAt, Date.now(), MAX_CACHE_AGE_MS) ||
-      !Object.prototype.hasOwnProperty.call(envelope, "data")) return null;
+    if (!cacheEnvelopeBelongsTo(envelope, expectedScope, path, CACHE_VERSION) ||
+      !cacheIsCurrent(envelope.savedAt, Date.now(), MAX_CACHE_AGE_MS)) return null;
     return cacheScopeMatches(expectedScope, scope) ? envelope : null;
   } catch {
     return null;
