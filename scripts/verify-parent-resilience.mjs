@@ -21,7 +21,9 @@ function requireOrder(source, first, second, message) {
   if (a < 0 || b < 0 || a >= b) throw new Error(message);
 }
 
-requireText(cache, 'hash(`${scope}|${path}`)', "Read cache must be scoped by signed-in user/school");
+requireText(cache, 'hash(`${expectedScope}|${path}`)', "Read cache must be scoped by the starting signed-in user/school");
+requireText(cache, "cacheScopeMatches(expectedScope, scope)", "Cross-account cache access must be blocked after logout/switch");
+requireText(api, "const requestScope = getReadCacheScope();", "GET must snapshot its cache owner before any async work");
 requireText(cache, "MAX_CACHE_AGE_MS", "Read cache expiry is missing");
 requireText(api, "options.timeoutMs ?? 10_000", "Authenticated request timeout is missing");
 requireText(api, "cachedReadFallback", "Network/tunnel cache fallback is missing");
