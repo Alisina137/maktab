@@ -42,6 +42,18 @@ jobs:
       - name: Phase 12 Step 2 Staff and Teacher integrated permissions and schedule
         run: pnpm verify:phase12:step2
 
+      - name: Phase 12 Step 3 Attendance, homework and exam publication lifecycle
+        run: pnpm verify:phase12:step3
+
+      - name: Phase 12 Step 4 Announcements, AFN invoices, idempotent payments and reversals
+        run: pnpm verify:phase12:step4
+
+      - name: Phase 12 Step 5 Staff and Teacher navigation, accessibility, RTL and retry feedback
+        run: pnpm verify:phase12:step5
+
+      - name: Phase 12 Step 6 Exact-SHA staging pilot release readiness without auto GO
+        run: pnpm verify:phase12:step6
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -338,6 +350,18 @@ jobs:
 
       - name: Phase 12 Step 2 Staff and Teacher integrated permissions and schedule
         run: pnpm verify:phase12:step2
+
+      - name: Phase 12 Step 3 Attendance, homework and exam publication lifecycle
+        run: pnpm verify:phase12:step3
+
+      - name: Phase 12 Step 4 Announcements, AFN invoices, idempotent payments and reversals
+        run: pnpm verify:phase12:step4
+
+      - name: Phase 12 Step 5 Staff and Teacher navigation, accessibility, RTL and retry feedback
+        run: pnpm verify:phase12:step5
+
+      - name: Phase 12 Step 6 Exact-SHA staging pilot release readiness without auto GO
+        run: pnpm verify:phase12:step6
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
