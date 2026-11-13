@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 12 — Controlled Pilot Observability (started 2026-11-13)
+
+**Task 12.1 source implementation:** New staging-only GET canary monitors health/readiness, private metrics and anonymous/optional Admin role isolation over bounded samples; fail-closed report and source regression tests are included in Linux and Windows CI. Run with `pnpm pilot:phase12`; see `docs/PHASE12-PILOT-OBSERVABILITY.md`.
+
+**Remaining:** A real staging deployment, observed canary report, Phase 11 twenty live journeys and eleven independent acceptance gates, physical Android, real Neon, push, restore and operator authorization **remain unverified**. Tasks 12.2–12.6 are planned, not implemented. **Production release: NO-GO.**
+
 ## Post-audit continuation — Phase 11 controlled pilot acceptance (started 2026-11-13)
 
 **Current follow-on phase:** Phase 11, staging validation and controlled pilot acceptance. This is a **new** operational acceptance phase after the ten-phase code audit, not a missing original implementation phase. Phase 10 merged at `becde287a1a78f06914c0f7114415a6d58e9386a`; the detailed new plan is `docs/PILOT-ACCEPTANCE-PHASE11.md`.
