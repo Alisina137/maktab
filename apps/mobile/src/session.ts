@@ -35,18 +35,23 @@ async function loadParentChildPreferences(): Promise<ParentChildPreferences> {
 }
 
 export async function loadStoredSession(): Promise<StoredSession | null> {
-  await sessionWrites.drained();
-  const raw = await SecureStore.getItemAsync(KEY);
-  if (!raw) return null;
-  try {
-    const parsed: unknown = JSON.parse(raw);
+  // Serialize the entire read + corrupted-record cleanup transaction. Simply
+  // draining earlier writes is insufficient: a newer sign-in could write
+  // while getItemAsync is pending and be accidentally erased by a stale read.
+  return sessionWrites.enqueue(async () => {
+    const raw = await SecureStore.getItemAsync(KEY);
+    if (!raw) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      await SecureStore.deleteItemAsync(KEY);
+      return null;
+    }
     if (validStoredSession(parsed)) return parsed;
     await SecureStore.deleteItemAsync(KEY);
     return null;
-  } catch {
-    await SecureStore.deleteItemAsync(KEY);
-    return null;
-  }
+  });
 }
 
 export async function saveStoredSession(value: StoredSession): Promise<void> {
@@ -65,10 +70,13 @@ export async function loadPreferredParentChild(
   schoolId: string,
   parentUserId: string
 ): Promise<string | null> {
-  await parentPreferenceWrites.drained();
-  const preferences = await loadParentChildPreferences();
-  const value = preferences[parentChildPreferenceKey(schoolId, parentUserId)];
-  return typeof value === "string" && value ? value : null;
+  // A read should observe the queue's latest saved selection, without racing
+  // a native write enqueued while SecureStore.getItemAsync is pending.
+  return parentPreferenceWrites.enqueue(async () => {
+    const preferences = await loadParentChildPreferences();
+    const value = preferences[parentChildPreferenceKey(schoolId, parentUserId)];
+    return typeof value === "string" && value ? value : null;
+  });
 }
 
 export async function savePreferredParentChild(
