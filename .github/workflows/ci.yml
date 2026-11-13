@@ -72,6 +72,9 @@ jobs:
       - name: Parent Profile discoverable and confirmed sign-out
         run: pnpm verify:parent:profile-logout
 
+      - name: Phase 17 Secure mobile sign-out, status and account navigation
+        run: pnpm verify:phase17
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -398,6 +401,9 @@ jobs:
 
       - name: Parent Profile discoverable and confirmed sign-out
         run: pnpm verify:parent:profile-logout
+
+      - name: Phase 17 Secure mobile sign-out, status and account navigation
+        run: pnpm verify:phase17
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
