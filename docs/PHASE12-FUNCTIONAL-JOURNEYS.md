@@ -77,7 +77,7 @@ The test provisions **two synthetic schools with overlapping staff and teacher u
 - Staff directory returns permitted summary fields, does not expose password hashes/temporary credentials, rejects invalid pagination and uses private no-store cache policy.
 - Authentication using one school's new teacher password against an identical username in another school is denied.
 
-**Existing screen review:** The Staff web dashboard has an authenticated startup loading status and unavailable-session state; staff Registration and Work views have error/loading/empty content. The mobile Teacher Classes and Schedule views already expose translated loading, empty/search-reset and retry states, role-scoped navigation and scheduled-period details. Step 12.2 does **not** claim these are verified on physical devices. Actual browser/mobile walkthrough and accessibility checks remain part of Steps 12.5–12.6.
+**Existing screen review and correction:** The Staff web dashboard has an authenticated startup loading status and unavailable-session state; staff Registration and Work views have error/loading/empty content. The mobile Teacher Classes and Schedule views expose translated loading, empty/search-reset and retry states, role-scoped navigation and scheduled-period details. Teacher Classes previously displayed loading as text only; it now uses an accessible branded activity spinner with localized status text. A new Step 12.2 UI source guard checks that feedback, reset, navigation and retry states stay present. Step 12.2 does **not** claim these are verified on physical devices. Actual browser/mobile walkthrough and accessibility checks remain part of Steps 12.5–12.6.
 
 Run:
 
