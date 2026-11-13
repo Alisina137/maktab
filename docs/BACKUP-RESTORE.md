@@ -61,29 +61,44 @@ Copy encrypted backups to access-controlled storage outside the application host
 
 The product specification requires encrypted backups but does not define a specific cloud backup provider.
 
-## Restore safety
+## Restore safety — two-factor target verification
 
-A restore is destructive.
+**A restore is destructive.** Phase 10 deliberately forbids using the application's
+usual `DATABASE_URL` as the restore destination. First provision a disposable,
+**separate staging database** in Neon and verify the host, database name and
+access permissions manually. Never restore a backup directly to production.
 
-Test restore first against a non-production database.
-
-Point `DATABASE_URL` to the intended restore target and set explicit confirmation:
+In PowerShell (substitute the actual staging URI and database name):
 
 ```powershell
+$env:RESTORE_DATABASE_URL = "postgresql://STAGING_USER:STAGING_PASSWORD@STAGING_HOST/maktab_staging?sslmode=require"
+$env:RESTORE_TARGET = "staging"
+$env:CONFIRM_RESTORE_DATABASE = "maktab_staging"
 $env:CONFIRM_RESTORE = "YES"
-pnpm restore:db -- backupsmaktablink-<timestamp>.mlbk
-Remove-Item Env:CONFIRM_RESTORE
+pnpm restore:db -- backups/maktablink-<timestamp>.mlbk
+Remove-Item Env:CONFIRM_RESTORE, Env:RESTORE_TARGET, Env:CONFIRM_RESTORE_DATABASE, Env:RESTORE_DATABASE_URL
 ```
 
-The restore script:
+**Safety requirements:** All four `RESTORE_*` / `CONFIRM_RESTORE*` values are
+required; the explicit database-name confirmation must match the staging URI;
+the configured primary `DATABASE_URL` must also be present to detect a direct
+or `-pooler` alias pointing to the same original database. If any check fails,
+the script refuses to launch `pg_restore`. A second staging project with
+the same database name is permitted only after you have verified it is genuinely
+isolated. The guard cannot prove a manually provided hostname is a separate
+project; the operator must inspect that in Neon.
 
-1. validates the MaktabLink backup header
-2. derives the AES key from `BACKUP_ENCRYPTION_KEY`
-3. decrypts as a stream
-4. pipes directly into `pg_restore`
-5. uses `--clean --if-exists --no-owner --no-acl --exit-on-error`
+The script authenticates the **entire AES-GCM archive before launching**
+`pg_restore`, so a wrong encryption key or modified/truncated backup cannot
+start destructive SQL execution. The authenticated archive is decrypted a
+second time and streamed directly to `pg_restore` with
+`--single-transaction --clean --if-exists --no-owner --no-acl --exit-on-error`.
+This avoids intentionally writing plaintext backups to disk and rolls back
+failed SQL operations on PostgreSQL. Do not run this against production.
 
-No plaintext restore file is intentionally written.
+**Note:** Prior instructions that changed the normal `DATABASE_URL` and
+supplied only `CONFIRM_RESTORE=YES` are intentionally obsolete.
+Backups are still created with `pnpm backup:db` from the source database.
 
 ## Restore drill record
 
