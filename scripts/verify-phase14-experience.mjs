@@ -21,10 +21,11 @@ assert.ok(restore.split("if (!isRestoring()) return;").length>=6,
 const session=read("apps/mobile/src/session.ts");
 for(const item of ["const sessionWrites = createSerializedWriteQueue()",
   "const parentPreferenceWrites = createSerializedWriteQueue()",
-  "return sessionWrites.enqueue(async () => {",
+  "return sessionWrites.read(async () => {",
   "sessionWrites.enqueue(() => SecureStore.setItemAsync(KEY",
   "sessionWrites.enqueue(() => SecureStore.deleteItemAsync(KEY)",
   "parentPreferenceWrites.enqueue(async () =>",
+  "parentPreferenceWrites.read(async () =>",
   "updateParentChildPreferences(preferences, schoolId, parentUserId, studentId)"
 ])assert.ok(session.includes(item),"Serialized SecureStore behavior lost: "+item);
 
