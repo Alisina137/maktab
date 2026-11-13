@@ -9686,3 +9686,167 @@ test("Final Audit Phase 10: live API route security and readiness smoke", async 
   assert.equal(own.statusCode, 200);
   assert.equal(own.headers["cache-control"], "no-store");
 });
+
+
+test("Phase 12 Step 1: complete school-to-family onboarding journey is functional and tenant-isolated", async (t) => {
+  // Real API routes + entire production migration chain running in isolated PGlite.
+  // This is deterministic integration validation; NOT a deployed Neon or phone E2E test.
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  type Journey = {
+    schoolId: string;
+    parentToken: string;
+    studentToken: string;
+    studentId: string;
+    classId: string;
+    academicYearId: string;
+    studentCode: string;
+  };
+
+  async function setupSchool(code: string): Promise<Journey> {
+    const schoolId = await provisionSchool(app, "P12-" + code);
+    const adminToken = await bootstrapAdmin(app, schoolId, "p12admin");
+    const admin = { authorization: `Bearer ${adminToken}` };
+
+    const request = async (method: "POST" | "GET", url: string, payload?: object) => {
+      const response = await app.inject({
+        method, url, headers: admin,
+        ...(payload === undefined ? {} : { payload })
+      });
+      assert.ok(response.statusCode >= 200 && response.statusCode < 300,
+        `${code}: ${method} ${url} failed with ${response.statusCode}: ${response.body}`);
+      return response;
+    };
+
+    const year = await request("POST", "/v1/admin/academics/years", {
+      name: "1407 Phase 12 " + code, startDate: "2028-03-20", endDate: "2029-03-19"
+    });
+    const academicYearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+    await request("POST", `/v1/admin/academics/years/${academicYearId}/activate`);
+
+    const grade = await request("POST", "/v1/admin/academics/grades", {
+      code: "G7P12" + code, name: "Grade 7 Phase 12 " + code, sortOrder: 7
+    });
+    const gradeLevelId = grade.json<{ grade: { id: string } }>().grade.id;
+    const klass = await request("POST", "/v1/admin/academics/classes", {
+      academicYearId, gradeLevelId,
+      code: "7P12" + code, name: "Grade 7 Pilot " + code
+    });
+    const classId = klass.json<{ class: { id: string } }>().class.id;
+
+    // Identical username in two schools must be legal and must not merge identities.
+    const parent = await request("POST", "/v1/admin/families/parents", {
+      username: "p12family", fullName: "Pilot Family " + code
+    });
+    const parentAccount = parent.json<{ user: { id: string }; temporaryPassword: string }>();
+    const studentCode = "P12-" + code + "-001";
+    const learner = await request("POST", "/v1/admin/families/students", {
+      parentUserId: parentAccount.user.id, academicYearId, classId,
+      studentCode, fullName: "Pilot Learner " + code
+    });
+    const studentId = learner.json<{ student: { id: string } }>().student.id;
+    const account = await request("POST", `/v1/admin/families/students/${studentId}/account`, {
+      username: "p12learner"
+    });
+    const studentPassword = account.json<{ temporaryPassword: string }>().temporaryPassword;
+
+    async function activateLogin(role: "PARENT" | "STUDENT", username: string, password: string) {
+      const login = await app.inject({
+        method: "POST", url: "/v1/auth/login",
+        payload: { schoolId, expectedRole: role, username, password }
+      });
+      assert.equal(login.statusCode, 200, `${code}: ${role} login: ${login.body}`);
+      const first = login.json<{ accessToken: string; mustChangePassword: boolean }>();
+      assert.equal(first.mustChangePassword, true);
+
+      const blocked = await app.inject({
+        method: "GET",
+        url: role === "PARENT" ? "/v1/parent/home" : "/v1/student/home",
+        headers: { authorization: `Bearer ${first.accessToken}` }
+      });
+      assert.equal(blocked.statusCode, 403, `${role} cannot access data with initial credential`);
+      assert.equal(blocked.json<{ error: string }>().error, "password_change_required");
+
+      const changed = await app.inject({
+        method: "POST", url: "/v1/auth/change-temporary-password",
+        headers: { authorization: `Bearer ${first.accessToken}` },
+        payload: { newPassword: role === "PARENT" ? "ParentP12Secure2026!" : "StudentP12Secure2026!" }
+      });
+      assert.equal(changed.statusCode, 200, changed.body);
+      return changed.json<{ accessToken: string }>().accessToken;
+    }
+
+    const parentToken = await activateLogin("PARENT", "p12family", parentAccount.temporaryPassword);
+    const studentToken = await activateLogin("STUDENT", "p12learner", studentPassword);
+
+    // Both the admin family directory and parent's child view must exclude
+    // credential hashes from every nested User record.
+    const familyOverview = await request("GET", "/v1/admin/families");
+    assert.equal(familyOverview.body.includes('"passwordHash"'), false,
+      "Admin family overview must not include a stored password hash");
+
+    const studentHome = await app.inject({
+      method: "GET", url: "/v1/student/home",
+      headers: { authorization: `Bearer ${studentToken}` }
+    });
+    assert.equal(studentHome.statusCode, 200, studentHome.body);
+    assert.equal(studentHome.json<{ student: { id: string } }>().student.id, studentId);
+
+    const studentTimetable = await app.inject({
+      method: "GET", url: "/v1/student/timetable",
+      headers: { authorization: `Bearer ${studentToken}` }
+    });
+    assert.equal(studentTimetable.statusCode, 200, studentTimetable.body);
+    assert.equal(studentTimetable.json<{ classSection: { id: string } }>().classSection.id, classId);
+
+    return { schoolId, parentToken, studentToken, studentId, classId, academicYearId, studentCode };
+  }
+
+  const a = await setupSchool("A");
+  const b = await setupSchool("B");
+  assert.notEqual(a.schoolId, b.schoolId);
+  assert.notEqual(a.studentId, b.studentId);
+
+  const schoolPairs: Array<[Journey, Journey]> = [[a, b], [b, a]];
+  for (const [own, foreign] of schoolPairs) {
+    const parent = { authorization: `Bearer ${own.parentToken}` };
+    const student = { authorization: `Bearer ${own.studentToken}` };
+    const ownHome = await app.inject({ method: "GET", url: "/v1/parent/home", headers: parent });
+    assert.equal(ownHome.statusCode, 200, ownHome.body);
+    const ownChildren = ownHome.json<{ children: Array<{ student: { id: string; studentCode: string } }> }>().children;
+    assert.deepEqual(ownChildren.map(row => row.student.id), [own.studentId]);
+    assert.deepEqual(ownChildren.map(row => row.student.studentCode), [own.studentCode]);
+
+    for (const suffix of ["timetable", "attendance", "learning", "fees"]) {
+      const foreignChild = await app.inject({
+        method: "GET",
+        url: `/v1/parent/children/${foreign.studentId}/${suffix}`,
+        headers: parent
+      });
+      assert.equal(foreignChild.statusCode, 404,
+        `Parent must not see ${suffix} of a different school`);
+    }
+    for (const url of ["/v1/admin/academics", "/v1/staff/me", "/v1/teacher/today"]) {
+      const blocked = await app.inject({ method: "GET", url, headers: student });
+      assert.equal(blocked.statusCode, 403, `Student role boundary broken: ${url}`);
+    }
+    const wrongSchoolLogin = await app.inject({
+      method: "POST", url: "/v1/auth/login",
+      payload: { schoolId: foreign.schoolId, expectedRole: "STUDENT",
+        username: "p12learner", password: "WrongP12Secure2026!" }
+    });
+    assert.equal(wrongSchoolLogin.statusCode, 401);
+    for (const response of [ownHome]) {
+      assert.equal(response.headers["cache-control"], "no-store");
+      assert.equal(response.body.includes("temporaryPassword"), false, "Parent home must not expose a temporary credential");
+      assert.equal(response.body.includes("passwordHash"), false, "Parent home must not expose a password hash");
+    }
+  }
+
+  const anonymous = await app.inject({ method: "GET", url: "/v1/parent/home" });
+  assert.equal(anonymous.statusCode, 401);
+});
