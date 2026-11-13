@@ -9835,8 +9835,8 @@ test("Phase 12 Step 1: complete school-to-family onboarding journey is functiona
     assert.equal(wrongSchoolLogin.statusCode, 401);
     for (const response of [ownHome]) {
       assert.equal(response.headers["cache-control"], "no-store");
-      assert.ok(!response.body.includes("temporaryPassword"));
-      assert.ok(!response.body.includes("passwordHash"));
+      assert.equal(response.body.includes("temporaryPassword"), false, "Parent home must not expose a temporary credential");
+      assert.equal(response.body.includes("passwordHash"), false, "Parent home must not expose a password hash");
     }
   }
 
