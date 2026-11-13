@@ -69,3 +69,15 @@ Until then, the release state remains **NO-GO**. A controlled school pilot and u
 ## Next action
 
 **Task 11.1:** Set up isolated staging and collect read-only preflight/CI/environment evidence without writing to production. This environment-dependent task is **not** complete merely because this roadmap exists.
+
+## Phase 11 implementation delivery — 2026-11-13
+
+The repository now contains the **automatable scaffolding for all Tasks 11.1–11.6**:
+
+- `pnpm verify:pilot:phase11` runs safety and evidence tests in root verification and Linux/Windows GitHub CI.
+- `pnpm pilot:phase11 preflight` verifies isolated staging identities before executing existing read-only Neon PostgreSQL connectivity and migration checks. It never migrates or alters a database.
+- `pnpm pilot:phase11 probe` checks deployed staging liveness, readiness, metrics privacy, anonymous route access and optional staging administrator cross-role denial via GET-only requests.
+- `pnpm pilot:phase11 init / record / defect / report` handles independently reviewed, immutable external evidence revisions for all 20 live journeys and 11 required gates, tracks defects, blocks stale/mismatched SHA evidence, and never grants release approval.
+- The complete operator workflow, PowerShell commands, browser/mobile journeys, integration verification and disaster-recovery guardrails appear in [the Phase 11 execution runbook](PHASE11-EXECUTION-RUNBOOK.md).
+
+**Critical distinction:** All six tasks have an implemented **execution and verification workflow**, but their **real-world acceptance is still pending**. No remote staging resources, host database migration, Android device, push receipt, external scheduler or separate staging restore was exercised or invented by this source change. All 20 journeys and 11 gates stay UNVERIFIED until independently performed and recorded. Release remains **NO-GO**.

@@ -4,7 +4,7 @@
 
 **Current follow-on phase:** Phase 11, staging validation and controlled pilot acceptance. This is a **new** operational acceptance phase after the ten-phase code audit, not a missing original implementation phase. Phase 10 merged at `becde287a1a78f06914c0f7114415a6d58e9386a`; the detailed new plan is `docs/PILOT-ACCEPTANCE-PHASE11.md`.
 
-**Current task:** 11.1 staging inventory, read-only Neon preflights and evidence baseline — **STARTED, awaiting real environment execution**. Tasks 11.2–11.6 remain pending. No live staging database tests, Android tests, migrations, independent review or production deployment are claimed by this planning commit. The existing `docs/FINAL-AUDIT-PHASE10.md` 20-journey matrix and 11 external evidence gates remain authoritative. **Release decision: NO-GO.**
+**Phase 11 tooling:** Task 11.1–11.6 workflows and evidence tooling have now been implemented and regression-tested in source, including staging preflight/probe, evidence/review, defect tracking and a detailed runbook. **Real-world execution for all six tasks is still PENDING**, since staging credentials/devices/independent operator validation are unavailable. See `docs/PHASE11-EXECUTION-RUNBOOK.md`. No live staging database tests, Android tests, migrations, independent review or production deployment are claimed by this planning commit. The existing `docs/FINAL-AUDIT-PHASE10.md` 20-journey matrix and 11 external evidence gates remain authoritative. **Release decision: NO-GO.**
 
 **Next action:** Complete Task 11.1 against independently isolated staging and record exact-SHA, redacted real-world evidence outside Git. Do not use the production database as a staging rehearsal.
 
