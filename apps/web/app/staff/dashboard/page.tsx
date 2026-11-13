@@ -30,6 +30,7 @@ export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
   const [tab,setTab]=useState<StaffWorkspaceTab>("home");
+  const [registrationDirty,setRegistrationDirty]=useState(false);
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -76,6 +77,11 @@ export default function StaffDashboard() {
   useEffect(()=>{
     if(profile&&!activeTabAllowed)setTab("home");
   },[profile,activeTabAllowed]);
+  function chooseTab(next:StaffWorkspaceTab){
+    if(next!==tab && tab==="registration" && registrationDirty &&
+        !window.confirm(t("Discard unsaved registration changes?"))) return;
+    setTab(next);
+  }
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
@@ -255,7 +261,7 @@ export default function StaffDashboard() {
       <nav className="staff-workspace-nav" aria-label={t("Staff workspace navigation")}>
         {tabs.map(item => (
           <button type="button" key={item.id} className={tab===item.id?"staff-nav-active":""}
-            aria-pressed={tab===item.id} onClick={()=>setTab(item.id)}>{t(item.label)}</button>
+            aria-pressed={tab===item.id} onClick={()=>chooseTab(item.id)}>{t(item.label)}</button>
         ))}
       </nav>
       {tab==="home" ? <StaffHomePanel locale={locale} school={profile.school}
@@ -278,7 +284,7 @@ export default function StaffDashboard() {
         canTasks={canTasks} canDrafts={canDrafts} initialView="notifications"
         compactTaskView={workPrefs.compactTaskView} onUnreadChange={setWorkUnread}/>:null}
       {tab==="registration"&&canRegister?<StaffRegistrationPanel locale={locale}
-        userId={profile.user.id} api={authenticated}/>:null}
+        userId={profile.user.id} api={authenticated} onDirtyChange={setRegistrationDirty}/>:null}
       {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
         {canDirectory ? (
         <section className="admin-panel staff-directory">
