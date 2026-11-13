@@ -10327,3 +10327,156 @@ test("Phase 12 Step 3: attendance correction and homework publication complete t
     assert.ok(!response.body.includes("passwordHash"));
   }
 });
+
+test("Phase 12 Step 4: scoped announcements, fee issuance, payment retry and reversal reach only their family", async (t) => {
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "P12-COMM4");
+  const otherSchoolId = await provisionSchool(app, "P12-COMM4-OTHER");
+  const admin = { authorization: `Bearer ${await bootstrapAdmin(app, schoolId)}` };
+  const otherAdmin = { authorization: `Bearer ${await bootstrapAdmin(app, otherSchoolId)}` };
+  const post = (url: string, payload: object, headers = admin) =>
+    app.inject({ method: "POST", url, headers, payload });
+  const year = await post("/v1/admin/academics/years", {
+    name: "1408 P12 Communication", startDate: "2029-03-20", endDate: "2030-03-19"
+  });
+  assert.equal(year.statusCode, 201, year.body);
+  const academicYearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  const activated = await app.inject({ method: "POST",
+    url: `/v1/admin/academics/years/${academicYearId}/activate`, headers: admin });
+  assert.equal(activated.statusCode, 200, activated.body);
+  const grade = await post("/v1/admin/academics/grades",
+    { code: "G8COMM4", name: "Grade 8", sortOrder: 8 });
+  assert.equal(grade.statusCode, 201, grade.body);
+  const gradeLevelId = grade.json<{ grade: { id: string } }>().grade.id;
+  async function makeClass(code: string) {
+    const response = await post("/v1/admin/academics/classes", {
+      academicYearId, gradeLevelId, code, name: "Class " + code
+    });
+    assert.equal(response.statusCode, 201, response.body);
+    return response.json<{ class: { id: string } }>().class.id;
+  }
+  const classA = await makeClass("COMM4A");
+  const classB = await makeClass("COMM4B");
+  async function makeFamily(code: "A" | "B", classId: string) {
+    const parentResponse = await post("/v1/admin/families/parents", {
+      username: "p12commparent" + code, fullName: "Phase12 Communication Parent " + code
+    });
+    assert.equal(parentResponse.statusCode, 201, parentResponse.body);
+    const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+    const studentResponse = await post("/v1/admin/families/students", {
+      parentUserId: parent.user.id, academicYearId, classId,
+      studentCode: "P12-COMM-" + code, fullName: "Phase12 Communication Student " + code
+    });
+    assert.equal(studentResponse.statusCode, 201, studentResponse.body);
+    const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+    const parentToken = await activateRoleLogin(app, schoolId, "PARENT",
+      "p12commparent" + code, parent.temporaryPassword, "P12CommParentSecure" + code + "2026!");
+    return { studentId, parentAuth: { authorization: `Bearer ${parentToken}` } };
+  }
+  const a = await makeFamily("A", classA);
+  const b = await makeFamily("B", classB);
+  const studentUser = await post(`/v1/admin/families/students/${a.studentId}/account`,
+    { username: "p12commlearner" });
+  assert.equal(studentUser.statusCode, 201, studentUser.body);
+  const studentToken = await activateRoleLogin(app, schoolId, "STUDENT",
+    "p12commlearner", studentUser.json<{ temporaryPassword: string }>().temporaryPassword,
+    "P12CommStudentSecure2026!");
+  const studentAuth = { authorization: `Bearer ${studentToken}` };
+
+  const preview = await post("/v1/admin/announcements/recipients/preview",
+    { audienceScope: "CLASS", classId: classA, audienceRole: "PARENT" });
+  assert.equal(preview.statusCode, 200, preview.body);
+  assert.equal(preview.json<{ recipientCount: number }>().recipientCount, 1);
+  const before = await app.inject({ method: "GET", url: "/v1/announcements", headers: a.parentAuth });
+  assert.equal(before.statusCode, 200, before.body);
+  assert.deepEqual(before.json<{ announcements: unknown[] }>().announcements, []);
+  const parentCannotAnnounce = await post("/v1/admin/announcements",
+    { title: "Unauthorized", content: "Not permitted", audienceScope: "SCHOOL" }, a.parentAuth);
+  assert.equal(parentCannotAnnounce.statusCode, 403);
+  const announcement = await post("/v1/admin/announcements", {
+    title: "Phase12 Class A Meeting", content: "Family meeting for class A only.",
+    audienceScope: "CLASS", classId: classA, audienceRole: "PARENT"
+  });
+  assert.equal(announcement.statusCode, 201, announcement.body);
+  const ownAnnouncement = await app.inject({ method: "GET", url: "/v1/announcements", headers: a.parentAuth });
+  const unrelatedAnnouncement = await app.inject({ method: "GET", url: "/v1/announcements", headers: b.parentAuth });
+  assert.equal(ownAnnouncement.statusCode, 200, ownAnnouncement.body);
+  assert.equal(unrelatedAnnouncement.statusCode, 200, unrelatedAnnouncement.body);
+  assert.equal(ownAnnouncement.json<{ announcements: unknown[] }>().announcements.length, 1);
+  assert.equal(unrelatedAnnouncement.json<{ announcements: unknown[] }>().announcements.length, 0);
+  const otherSchoolAnnouncement = await app.inject({
+    method: "GET", url: "/v1/admin/communication", headers: otherAdmin
+  });
+  assert.equal(otherSchoolAnnouncement.statusCode, 200, otherSchoolAnnouncement.body);
+  assert.equal(otherSchoolAnnouncement.json<{ announcements: unknown[] }>().announcements.length, 0);
+  const alert = await app.inject({ method: "GET", url: "/v1/notifications", headers: a.parentAuth });
+  assert.equal(alert.statusCode, 200, alert.body);
+  assert.equal(alert.json<{ notifications: Array<{ type: string }> }>().notifications.filter(x => x.type === "ANNOUNCEMENT").length, 1);
+  const othersAlert = await app.inject({ method: "GET", url: "/v1/notifications", headers: b.parentAuth });
+  assert.equal(othersAlert.statusCode, 200);
+  assert.equal(othersAlert.json<{ notifications: Array<{ type: string }> }>().notifications.filter(x => x.type === "ANNOUNCEMENT").length, 0);
+
+  const invoice = await post("/v1/admin/fees/invoices", {
+    studentId: a.studentId, amount: 1200, dueDate: "2099-12-31", description: "School fee"
+  });
+  assert.equal(invoice.statusCode, 201, invoice.body);
+  const invoiceId = invoice.json<{ invoice: { id: string } }>().invoice.id;
+  const feeUrl = `/v1/parent/children/${a.studentId}/fees`;
+  const preIssue = await app.inject({ method: "GET", url: feeUrl, headers: a.parentAuth });
+  assert.equal(preIssue.statusCode, 200, preIssue.body);
+  assert.ok(!preIssue.body.includes(invoiceId), "A draft invoice cannot appear in parent balance.");
+  const issue = await app.inject({ method: "POST",
+    url: `/v1/admin/fees/invoices/${invoiceId}/issue`, headers: admin });
+  assert.equal(issue.statusCode, 200, issue.body);
+  const ownFees = await app.inject({ method: "GET", url: feeUrl, headers: a.parentAuth });
+  assert.equal(ownFees.statusCode, 200, ownFees.body);
+  assert.ok(ownFees.body.includes(invoiceId));
+  assert.equal((await app.inject({ method: "GET", url: feeUrl, headers: b.parentAuth })).statusCode, 404);
+  const otherClassFees = await app.inject({
+    method: "GET", url: `/v1/parent/children/${b.studentId}/fees`, headers: b.parentAuth
+  });
+  assert.equal(otherClassFees.statusCode, 200);
+  assert.equal(otherClassFees.json<{ invoices: unknown[] }>().invoices.length, 0);
+  const studentFees = await app.inject({ method: "GET", url: "/v1/student/fees", headers: studentAuth });
+  assert.equal(studentFees.statusCode, 200, studentFees.body);
+  assert.ok(studentFees.body.includes(invoiceId));
+  assert.equal((await app.inject({ method: "POST",
+    url: `/v1/admin/fees/invoices/${invoiceId}/payments`, headers: otherAdmin,
+    payload: { amount: 100, method: "CASH" } })).statusCode, 404);
+
+  const request = { amount: 450, method: "CASH", transactionReference: "P12-REC-1",
+    idempotencyKey: "fc05dc02-125b-4c2b-bf5d-34e4c7d01234" };
+  const payment = await post(`/v1/admin/fees/invoices/${invoiceId}/payments`, request);
+  assert.equal(payment.statusCode, 201, payment.body);
+  const state = payment.json<{ paid: number; outstanding: number; payments: Array<{ id: string; kind: string }> }>();
+  assert.equal(state.paid, 450);
+  assert.equal(state.outstanding, 750);
+  const paymentId = state.payments.find(row => row.kind === "PAYMENT")?.id;
+  assert.ok(paymentId);
+  const retried = await post(`/v1/admin/fees/invoices/${invoiceId}/payments`, request);
+  assert.equal(retried.statusCode, 201, retried.body);
+  assert.equal(retried.json<{ paid: number; payments: unknown[] }>().paid, 450);
+  assert.equal(retried.json<{ paid: number; payments: unknown[] }>().payments.length, 1,
+    "Network retries must not duplicate a payment.");
+  const changedRetry = await post(`/v1/admin/fees/invoices/${invoiceId}/payments`,
+    { ...request, amount: 500 });
+  assert.equal(changedRetry.statusCode, 409);
+  const reversed = await post(`/v1/admin/fees/payments/${paymentId}/reverse`, {
+    reason: "Correction after independent cash count."
+  });
+  assert.equal(reversed.statusCode, 201, reversed.body);
+  assert.equal(reversed.json<{ paid: number; outstanding: number }>().paid, 0);
+  assert.equal(reversed.json<{ paid: number; outstanding: number }>().outstanding, 1200);
+  assert.equal(reversed.json<{ payments: Array<{ kind: string }> }>().payments.length, 2);
+  assert.equal((await post(`/v1/admin/fees/payments/${paymentId}/reverse`,
+    { reason: "Duplicate correction must be rejected." })).statusCode, 409);
+  const balance = await app.inject({ method: "GET", url: feeUrl, headers: a.parentAuth });
+  assert.equal(balance.statusCode, 200, balance.body);
+  assert.equal(balance.json<{ invoices: Array<{ outstanding: number }> }>().invoices[0]?.outstanding, 1200);
+  for (const row of [ownAnnouncement, unrelatedAnnouncement, alert, ownFees, balance, studentFees]) {
+    assert.equal(row.headers["cache-control"], "no-store");
+    assert.equal(row.body.includes("passwordHash"), false);
+    assert.equal(row.body.includes("temporaryPassword"), false);
+  }
+});
