@@ -9850,3 +9850,297 @@ test("Phase 12 Step 1: complete school-to-family onboarding journey is functiona
   const anonymous = await app.inject({ method: "GET", url: "/v1/parent/home" });
   assert.equal(anonymous.statusCode, 401);
 });
+
+
+test("Phase 12 Step 2: school staff permission to teacher class journey is complete and tenant isolated", async (t) => {
+  // Full production-migration PGlite + real Fastify route integration, never
+  // a claim of live Neon/staging or Android/browser usability.
+  const { app, client } = await createTestApp();
+  t.after(async () => {
+    await app.close();
+    await client.close();
+  });
+
+  type Actors = {
+    schoolId: string;
+    admin: { authorization: string };
+    staff: { authorization: string };
+    staffUserId: string;
+    staffPassword: string;
+    teacher: { authorization: string };
+    teacherPassword: string;
+    otherTeacher: { authorization: string };
+    ownAssignmentId: string;
+    otherAssignmentId: string;
+    ownClassId: string;
+    otherClassId: string;
+    teacherId: string;
+  };
+
+  async function makeSchool(suffix: "A" | "B"): Promise<Actors> {
+    const schoolId = await provisionSchool(app, "P12-STAFF-" + suffix);
+    const admin = { authorization: `Bearer ${await bootstrapAdmin(app, schoolId, "p12owner")}` };
+
+    const createAccount = async (username: string, role: "TEACHER" | "SCHOOL_STAFF") => {
+      const response = await app.inject({
+        method: "POST", url: "/v1/admin/users",
+        headers: admin, payload: { username, role }
+      });
+      assert.equal(response.statusCode, 201, response.body);
+      return response.json<{ user: { id: string }; temporaryPassword: string }>();
+    };
+    const schoolStaff = await createAccount("p12staff", "SCHOOL_STAFF");
+    const teacher = await createAccount("p12teacher", "TEACHER");
+    const other = await createAccount("p12other", "TEACHER");
+
+    // Staff cannot inherit permissions from a job title or account creation.
+    const first = await app.inject({
+      method: "POST", url: "/v1/auth/login",
+      payload: {
+        schoolId, expectedRole: "SCHOOL_STAFF",
+        username: "p12staff", password: schoolStaff.temporaryPassword
+      }
+    });
+    assert.equal(first.statusCode, 200, first.body);
+    const temporary = first.json<{ accessToken: string; mustChangePassword: boolean }>();
+    assert.equal(temporary.mustChangePassword, true);
+    const restricted = await app.inject({
+      method: "GET", url: "/v1/staff/me",
+      headers: { authorization: `Bearer ${temporary.accessToken}` }
+    });
+    assert.equal(restricted.statusCode, 403);
+    assert.equal(restricted.json<{ error: string }>().error, "password_change_required");
+
+    const staffPassword = "P12StaffPassword2026!";
+    const updated = await app.inject({
+      method: "POST", url: "/v1/auth/change-temporary-password",
+      headers: { authorization: `Bearer ${temporary.accessToken}` },
+      payload: { newPassword: staffPassword }
+    });
+    assert.equal(updated.statusCode, 200, updated.body);
+    const initial = { authorization: `Bearer ${updated.json<{ accessToken: string }>().accessToken}` };
+    const noGrant = await app.inject({
+      method: "GET", url: "/v1/staff/directory?query=p12teacher&group=TEACHER",
+      headers: initial
+    });
+    assert.equal(noGrant.statusCode, 403);
+
+    const grant = await app.inject({
+      method: "PUT", url: `/v1/admin/staff/${schoolStaff.user.id}/profile`,
+      headers: admin,
+      payload: {
+        fullName: "Staff " + suffix, employeeCode: "STAFF-P12-" + suffix,
+        position: "RECEPTIONIST", department: "Operations",
+        permissions: ["DIRECTORY_VIEW"]
+      }
+    });
+    assert.equal(grant.statusCode, 200, grant.body);
+
+    // Permission changes revoke the old session; a new login picks up grants.
+    const revoked = await app.inject({ method: "GET", url: "/v1/staff/me", headers: initial });
+    assert.equal(revoked.statusCode, 401);
+    const staffLogin = await app.inject({
+      method: "POST", url: "/v1/auth/login",
+      payload: { schoolId, expectedRole: "SCHOOL_STAFF", username: "p12staff",
+        password: staffPassword }
+    });
+    assert.equal(staffLogin.statusCode, 200, staffLogin.body);
+    const staff = { authorization: `Bearer ${staffLogin.json<{ accessToken: string }>().accessToken}` };
+    const me = await app.inject({ method: "GET", url: "/v1/staff/me", headers: staff });
+    assert.equal(me.statusCode, 200, me.body);
+    assert.equal(me.headers["cache-control"], "no-store");
+    assert.equal(me.json<{ school: { id: string } }>().school.id, schoolId);
+    assert.equal(me.body.includes("passwordHash"), false);
+
+    const year = await app.inject({
+      method: "POST", url: "/v1/admin/academics/years", headers: admin,
+      payload: { name: "P12 Teacher Year " + suffix,
+        startDate: "2028-03-20", endDate: "2029-03-19" }
+    });
+    assert.equal(year.statusCode, 201, year.body);
+    const yearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+    const activated = await app.inject({
+      method: "POST", url: `/v1/admin/academics/years/${yearId}/activate`,
+      headers: admin
+    });
+    assert.equal(activated.statusCode, 200, activated.body);
+    const grade = await app.inject({
+      method: "POST", url: "/v1/admin/academics/grades", headers: admin,
+      payload: { code: "G9P12" + suffix, name: "Grade Nine " + suffix, sortOrder: 9 }
+    });
+    assert.equal(grade.statusCode, 201, grade.body);
+    const gradeId = grade.json<{ grade: { id: string } }>().grade.id;
+    const subject = await app.inject({
+      method: "POST", url: "/v1/admin/academics/subjects", headers: admin,
+      payload: { code: "S9P12" + suffix, name: "Mathematics " + suffix }
+    });
+    assert.equal(subject.statusCode, 201, subject.body);
+    const subjectId = subject.json<{ subject: { id: string } }>().subject.id;
+    for (const [account, employeeCode, fullName] of [
+      [teacher, "P12-T-" + suffix, "Teacher " + suffix],
+      [other, "P12-O-" + suffix, "Other teacher " + suffix]
+    ] as const) {
+      const profile = await app.inject({
+        method: "POST", url: "/v1/admin/academics/teachers", headers: admin,
+        payload: { userId: account.user.id, employeeCode, fullName }
+      });
+      assert.equal(profile.statusCode, 201, profile.body);
+    }
+    async function assign(code: string, userId: string, startsAt: string, endsAt: string) {
+      const klass = await app.inject({
+        method: "POST", url: "/v1/admin/academics/classes", headers: admin,
+        payload: { academicYearId: yearId, gradeLevelId: gradeId,
+          code, name: "Class " + code }
+      });
+      assert.equal(klass.statusCode, 201, klass.body);
+      const classId = klass.json<{ class: { id: string } }>().class.id;
+      const assignment = await app.inject({
+        method: "POST", url: "/v1/admin/academics/assignments", headers: admin,
+        payload: { academicYearId: yearId, classId, subjectId, teacherUserId: userId }
+      });
+      assert.equal(assignment.statusCode, 201, assignment.body);
+      const assignmentId = assignment.json<{ assignment: { id: string } }>().assignment.id;
+      const period = await app.inject({
+        method: "POST", url: "/v1/admin/academics/timetable", headers: admin,
+        payload: { academicYearId: yearId, classId, subjectId, teacherUserId: userId,
+          weekday: "SATURDAY", startsAt, endsAt }
+      });
+      assert.equal(period.statusCode, 201, period.body);
+      return { classId, assignmentId };
+    }
+
+    const own = await assign("9A" + suffix, teacher.user.id, "08:00", "08:45");
+    const foreign = await assign("9B" + suffix, other.user.id, "09:00", "09:45");
+    const teacherPassword = "P12TeacherPassword2026!";
+    const teacherToken = await activateRoleLogin(
+      app, schoolId, "TEACHER", "p12teacher", teacher.temporaryPassword, teacherPassword
+    );
+    const otherTeacherToken = await activateRoleLogin(
+      app, schoolId, "TEACHER", "p12other", other.temporaryPassword, "P12OtherTeacher2026!"
+    );
+    return {
+      schoolId, admin, staff, staffUserId: schoolStaff.user.id, staffPassword,
+      teacher: { authorization: `Bearer ${teacherToken}` }, teacherPassword,
+      otherTeacher: { authorization: `Bearer ${otherTeacherToken}` },
+      ownAssignmentId: own.assignmentId, ownClassId: own.classId,
+      otherAssignmentId: foreign.assignmentId, otherClassId: foreign.classId,
+      teacherId: teacher.user.id
+    };
+  }
+
+  const a = await makeSchool("A");
+  const b = await makeSchool("B");
+  for (const [own, foreign] of [[a, b], [b, a]] as Array<[Actors, Actors]>) {
+    const teacherWeek = await app.inject({
+      method: "GET", url: "/v1/teacher/academics", headers: own.teacher
+    });
+    assert.equal(teacherWeek.statusCode, 200, teacherWeek.body);
+    assert.equal(teacherWeek.headers["cache-control"], "no-store");
+    const schedule = teacherWeek.json<{ assignmentDetails: Array<{ classId: string }>;
+      schedule: Array<{ classId: string; startsAt: string; weekday: string }> }>();
+    assert.deepEqual(schedule.assignmentDetails.map(item => item.classId), [own.ownClassId]);
+    assert.deepEqual(schedule.schedule.map(item => [item.classId, item.startsAt, item.weekday]),
+      [[own.ownClassId, "08:00", "SATURDAY"]]);
+
+    const today = await app.inject({
+      method: "GET", url: "/v1/teacher/today", headers: own.teacher
+    });
+    assert.equal(today.statusCode, 200, today.body);
+    assert.equal(today.json<{ teacher: { userId: string } }>().teacher.userId, own.teacherId);
+    assert.equal(today.body.includes("passwordHash"), false);
+
+    const ownClass = await app.inject({
+      method: "GET", url: `/v1/teacher/classes/${own.ownAssignmentId}`,
+      headers: own.teacher
+    });
+    assert.equal(ownClass.statusCode, 200, ownClass.body);
+    for (const assignmentId of [own.otherAssignmentId, foreign.ownAssignmentId]) {
+      const denied = await app.inject({
+        method: "GET", url: `/v1/teacher/classes/${assignmentId}`,
+        headers: own.teacher
+      });
+      assert.equal(denied.statusCode, 404,
+        "A teacher must not access another teacher's class or another school's assignment");
+    }
+    const anotherTeacher = await app.inject({
+      method: "GET", url: "/v1/teacher/academics", headers: own.otherTeacher
+    });
+    assert.equal(anotherTeacher.statusCode, 200, anotherTeacher.body);
+    assert.deepEqual(anotherTeacher.json<{ assignmentDetails: Array<{ classId: string }> }>()
+      .assignmentDetails.map(item => item.classId), [own.otherClassId]);
+
+    const staffDirectory = await app.inject({
+      method: "GET", url: "/v1/staff/directory?query=p12teacher&group=TEACHER",
+      headers: own.staff
+    });
+    assert.equal(staffDirectory.statusCode, 200, staffDirectory.body);
+    assert.equal(staffDirectory.headers["cache-control"], "no-store");
+    assert.equal(staffDirectory.body.includes("passwordHash"), false);
+    assert.equal(staffDirectory.body.includes("temporaryPassword"), false);
+    const entries = staffDirectory.json<{ entries: Array<{ username: string; role: string }> }>().entries;
+    assert.ok(entries.some(row => row.username === "p12teacher" && row.role === "TEACHER"));
+
+    // Directory is a narrowly scoped read only. Neither staff nor teachers
+    // can promote themselves, cross into Admin or inherit one another's role.
+    for (const [headers, forbiddenUrl] of [
+      [own.staff, "/v1/teacher/academics"],
+      [own.teacher, "/v1/staff/me"],
+      [own.staff, "/v1/admin/users"],
+      [own.teacher, "/v1/admin/users"]
+    ] as const) {
+      const denied = await app.inject({ method: "GET", url: forbiddenUrl, headers });
+      assert.equal(denied.statusCode, 403, forbiddenUrl);
+    }
+    const unauthorizedTeacherCreate = await app.inject({
+      method: "POST", url: "/v1/admin/academics/assignments", headers: own.staff,
+      payload: { academicYearId: "00000000-0000-0000-0000-000000000001",
+        classId: own.ownClassId, teacherUserId: own.teacherId, subjectId: own.ownClassId }
+    });
+    assert.equal(unauthorizedTeacherCreate.statusCode, 403);
+
+    const fakeSchoolLogin = await app.inject({
+      method: "POST", url: "/v1/auth/login",
+      payload: { schoolId: foreign.schoolId, username: "p12teacher",
+        expectedRole: "TEACHER", password: own.teacherPassword }
+    });
+    assert.equal(fakeSchoolLogin.statusCode, 401);
+    const invalidFilter = await app.inject({
+      method: "GET", url: "/v1/staff/directory?query=p12teacher&group=TEACHER&pageSize=200",
+      headers: own.staff
+    });
+    assert.equal(invalidFilter.statusCode, 400);
+  }
+
+  // Revoked staff permissions must invalidate the existing access token and
+  // not grant stale directory visibility on the subsequent fresh session.
+  const removed = await app.inject({
+    method: "PUT", url: `/v1/admin/staff/${a.staffUserId}/profile`,
+    headers: a.admin,
+    payload: { fullName: "Staff A", employeeCode: "STAFF-P12-A",
+      position: "RECEPTIONIST", department: "Operations", permissions: [] }
+  });
+  assert.equal(removed.statusCode, 200, removed.body);
+  assert.equal((await app.inject({
+    method: "GET", url: "/v1/staff/directory?query=p12teacher&group=TEACHER",
+    headers: a.staff
+  })).statusCode, 401);
+  const renewed = await app.inject({
+    method: "POST", url: "/v1/auth/login",
+    payload: { schoolId: a.schoolId, expectedRole: "SCHOOL_STAFF",
+      username: "p12staff", password: a.staffPassword }
+  });
+  assert.equal(renewed.statusCode, 200, renewed.body);
+  const renewedHeaders = {
+    authorization: `Bearer ${renewed.json<{ accessToken: string }>().accessToken}`
+  };
+  const noAccess = await app.inject({
+    method: "GET", url: "/v1/staff/directory?query=p12teacher&group=TEACHER",
+    headers: renewedHeaders
+  });
+  assert.equal(noAccess.statusCode, 403);
+  assert.equal(noAccess.json<{ error: string }>().error, "permission_denied");
+  const reauthenticatedMe = await app.inject({
+    method: "GET", url: "/v1/staff/me", headers: renewedHeaders
+  });
+  assert.equal(reauthenticatedMe.statusCode, 200);
+});
