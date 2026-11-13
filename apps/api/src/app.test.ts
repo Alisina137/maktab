@@ -9783,6 +9783,12 @@ test("Phase 12 Step 1: complete school-to-family onboarding journey is functiona
     const parentToken = await activateLogin("PARENT", "p12family", parentAccount.temporaryPassword);
     const studentToken = await activateLogin("STUDENT", "p12learner", studentPassword);
 
+    // Both the admin family directory and parent's child view must exclude
+    // credential hashes from every nested User record.
+    const familyOverview = await request("GET", "/v1/admin/families");
+    assert.equal(familyOverview.body.includes('"passwordHash"'), false,
+      "Admin family overview must not include a stored password hash");
+
     const studentHome = await app.inject({
       method: "GET", url: "/v1/student/home",
       headers: { authorization: `Bearer ${studentToken}` }
