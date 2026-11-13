@@ -25,6 +25,7 @@ import { buildApp } from "./app.js";
 import type { AdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
 
 const provisioningKey = "phase-3-test-provisioning-key";
+const metricsToken = "phase9-metrics-token-test-only-do-not-use-in-production";
 
 async function createTestApp() {
   const client = new PGlite();
@@ -118,7 +119,8 @@ async function createTestApp() {
     pushProvider,
     passwordVerificationDelivery,
     passwordVerificationSecret: "test-password-verification-secret-2026",
-    provisioningKey
+    provisioningKey,
+    metricsToken
   });
   return { app, client, learningExtensionsStore, pilotLaunchStore, passwordVerificationMessages };
 }
@@ -6438,10 +6440,20 @@ test("Phase 8 readiness, audit pagination, import templates, and database readin
   assert.equal(ready.statusCode, 200);
   assert.equal(ready.json<{ database: string }>().database, "ok");
 
-  const metrics = await app.inject({ method: "GET", url: "/metrics" });
+  const blockedMetrics = await app.inject({ method: "GET", url: "/metrics" });
+  assert.equal(blockedMetrics.statusCode, 401, "Process metrics must not be public.");
+  assert.equal(blockedMetrics.headers["cache-control"], "no-store");
+  const wrongMetrics = await app.inject({
+    method: "GET", url: "/metrics", headers: { authorization: "Bearer incorrect-token" }
+  });
+  assert.equal(wrongMetrics.statusCode, 401);
+  const metrics = await app.inject({
+    method: "GET", url: "/metrics", headers: { authorization: `Bearer ${metricsToken}` }
+  });
   assert.equal(metrics.statusCode, 200);
   assert.match(metrics.body, /maktablink_database_ready 1/);
   assert.match(metrics.body, /maktablink_http_requests_total/);
+  assert.equal(metrics.headers["cache-control"], "no-store");
 
   const schoolId = await provisionSchool(app, "READY8");
   const adminToken = await bootstrapAdmin(app, schoolId);
