@@ -5,7 +5,7 @@ import { PHASE10_AUTOMATED_CHECKS, PHASE10_LIVE_JOURNEYS } from "./final-audit-p
 const read = (p) => readFileSync(new URL("../" + p, import.meta.url), "utf8");
 const pkg = JSON.parse(read("package.json"));
 const ci = read(".github/workflows/ci.yml");
-const restore = read("scripts/restore-database.mjs");
+const restore = read("scripts/restore-database.mjs").replace(/\r\n/g, "\n");
 const restorePolicy = read("scripts/restore-target-policy.mjs");
 const api = read("apps/api/src/app.test.ts");
 const docs = read("docs/FINAL-AUDIT-PHASE10.md");
