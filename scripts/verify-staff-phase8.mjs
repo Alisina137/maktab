@@ -39,9 +39,11 @@ for(const part of [
   'cache-control","no-store"',
 ])assert.ok(workflow.includes(part),"API guard missing: "+part);
 assert.ok(!workflow.includes('createAnnouncement('),"Staff cannot publish announcements.");
-assert.ok(dashboard.includes('failure.code!=="permission_denied"'),
+const staffSessionPolicy=read("apps/web/app/staff/staff-session-policy.ts");
+assert.ok(dashboard.includes("staffSessionMustExit(cause,path)") &&
+  staffSessionPolicy.includes('code !== "permission_denied"'),
   "Permission errors should not force staff logout.");
-assert.ok(dashboard.includes('current_password_invalid'),
+assert.ok(staffSessionPolicy.includes('code === "current_password_invalid"'),
   "Password mistakes should not force logout.");
 for(const key of ["<StaffWorkPanel","<StaffWorkPreferences","canTasks","canDrafts","canFees","canAttend","canRegister"]){
  assert.ok(dashboard.includes(key),"Missing dashboard module: "+key);
