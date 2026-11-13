@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -90,8 +90,11 @@ export function TeacherClassesPanel({
         })}
       </View>
     </View>
-    {!academicsReady?<View style={styles.card}><Text style={[styles.muted,textDirection]}>
-      {translate(locale,"common.loading")}</Text></View>
+    {!academicsReady?<View style={[styles.card,styles.loading]} accessibilityLiveRegion="polite">
+      <ActivityIndicator color={tokens.color.brandStrong}
+        accessibilityLabel={translate(locale,"common.loading")}/>
+      <Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+    </View>
     :!academics?<Pressable accessibilityRole="button" style={styles.card} onPress={onRetry}>
       <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.noAssignments")}</Text>
       <Text style={styles.link}>{translate(locale,"action.retry")}</Text>
@@ -155,6 +158,7 @@ export function TeacherClassesPanel({
 }
 const styles=StyleSheet.create({
   stack:{gap:13},flex:{flex:1,minWidth:0},rtl:{flexDirection:"row-reverse"},
+  loading:{minHeight:110,alignItems:"center",justifyContent:"center",flexDirection:"row",gap:12},
   card:{padding:15,borderWidth:1,borderColor:"#e1e7f0",borderRadius:19,backgroundColor:"#fff",gap:12},
   heading:{flexDirection:"row",alignItems:"center",gap:10},
   icon:{width:42,height:42,backgroundColor:"#eaf2ff",borderRadius:13,alignItems:"center",justifyContent:"center"},
