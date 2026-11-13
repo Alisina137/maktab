@@ -197,10 +197,41 @@ export function ParentFeesPanel({
   </View>;
 }
 
+/** One accessible, confirmed sign-out action shared by Parent Profile and Preferences. */
+function ParentSignOutButton({ locale, onLogout }: {
+  locale: SupportedLocale;
+  onLogout: () => void;
+}) {
+  function confirmSignOut() {
+    Alert.alert(
+      translate(locale,"parent.moreLogoutTitle"),
+      translate(locale,"parent.moreLogoutConfirm"),
+      [
+        { text: translate(locale,"action.back"), style: "cancel" },
+        { text: translate(locale,"auth.logout"), style: "destructive", onPress: onLogout }
+      ]
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={translate(locale,"auth.logout")}
+      accessibilityHint={translate(locale,"parent.moreLogoutConfirm")}
+      testID="parent-sign-out"
+      style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
+      onPress={confirmSignOut}
+    >
+      <Ionicons name="log-out-outline" color={tokens.color.danger} size={21} />
+      <Text style={styles.logoutText}>{translate(locale,"auth.logout")}</Text>
+    </Pressable>
+  );
+}
+
 export function ParentProfilePanel({
-  home, username, locale, onRefresh
+  home, username, locale, onRefresh, onLogout
 }: { home: ParentHomePayload | null; username: string; locale: SupportedLocale;
-  onRefresh: () => void }) {
+  onRefresh: () => void; onLogout: () => void }) {
   const rtl = getDirection(locale)==="rtl";
   return <View style={styles.stack}>
     <View style={styles.card}>
@@ -226,6 +257,7 @@ export function ParentProfilePanel({
       <Text style={[styles.sub,rtl && styles.rtlText]}>
         {translate(locale,"parent.moreManagedBySchool")}
       </Text>
+      <ParentSignOutButton locale={locale} onLogout={onLogout} />
     </View>
     <View style={styles.card}>
       <Text style={[styles.title,rtl && styles.rtlText]}>
@@ -355,16 +387,7 @@ export function ParentPreferencesPanel({
         <Text style={styles.primaryText}>{translate(locale,"parent.moreChangePassword")}</Text>
       </Pressable>
     </View>
-    <Pressable accessibilityRole="button" style={styles.logout} onPress={()=>{
-      Alert.alert(translate(locale,"parent.moreLogoutTitle"),
-        translate(locale,"parent.moreLogoutConfirm"),[
-          {text:translate(locale,"action.back"),style:"cancel"},
-          {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
-        ]);
-    }}>
-      <Ionicons name="log-out-outline" color={tokens.color.danger} size={21}/>
-      <Text style={styles.logoutText}>{translate(locale,"auth.logout")}</Text>
-    </Pressable>
+    <ParentSignOutButton locale={locale} onLogout={onLogout} />
   </View>;
 }
 
@@ -423,5 +446,6 @@ const styles=StyleSheet.create({
   disabled:{opacity:.55},
   logout:{minHeight:53,borderRadius:15,borderWidth:1,borderColor:"#f6d3d0",
     backgroundColor:"#fff8f7",flexDirection:"row",gap:9,alignItems:"center",justifyContent:"center"},
-  logoutText:{color:tokens.color.danger,fontSize:14,fontWeight:"800"}
+  logoutText:{color:tokens.color.danger,fontSize:14,fontWeight:"800"},
+  pressed:{opacity:0.8}
 });
