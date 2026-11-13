@@ -158,7 +158,9 @@ export function buildApp(options: BuildAppOptions) {
       method: request.method,
       route: request.routeOptions.url,
       statusCode,
-      error
+      // Raw database/SMTP errors may embed connection URIs or personal data.
+      // Preserve request correlation and a coarse failure class only.
+      errorClass: error instanceof Error ? error.name : "UnknownError"
     });
 
     if (statusCode < 500) {
