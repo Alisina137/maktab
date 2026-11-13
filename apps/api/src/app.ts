@@ -22,6 +22,7 @@ import { registerStaffAttendanceRoutes } from "./staff/attendance-routes.js";
 import { registerStaffFeeRoutes } from "./staff/fee-routes.js";
 import { registerStaffWorkflowRoutes } from "./staff/workflow-routes.js";
 import { ApiMetrics } from "./observability.js";
+import { createReadinessProbe, hasMetricsBearer } from "./operational-readiness.js";
 
 export interface BuildAppOptions {
   schoolStore: PlatformSchoolStore;
@@ -46,11 +47,13 @@ export interface BuildAppOptions {
   provisioningKey: string;
   webOrigin?: string;
   logger?: boolean;
+  metricsToken?: string;
 }
 
 export function buildApp(options: BuildAppOptions) {
   const app = Fastify({ logger: options.logger ?? false });
   const metrics = new ApiMetrics();
+  const databaseIsReady = createReadinessProbe(() => options.schoolStore.healthCheck());
   const webOrigin = options.webOrigin ?? "http://localhost:3000";
 
   void app.register(cors, {
@@ -82,15 +85,24 @@ export function buildApp(options: BuildAppOptions) {
     });
   });
 
-  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 8 }));
-  app.get("/metrics", async (_request, reply) => {
-    const databaseReady = await options.schoolStore.healthCheck();
-    reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
+  // Liveness intentionally does not depend on PostgreSQL; readiness does.
+  app.get("/health", async () => ({ status: "ok", service: "maktablink-api", phase: 9 }));
+  app.get("/metrics", async (request, reply) => {
     reply.header("cache-control", "no-store");
+    if (!options.metricsToken) {
+      return reply.code(404).send({ error: "not_found" });
+    }
+    if (!hasMetricsBearer(request.headers.authorization, options.metricsToken)) {
+      reply.header("www-authenticate", 'Bearer realm="maktablink-metrics"');
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+    const databaseReady = await databaseIsReady();
+    reply.header("content-type", "text/plain; version=0.0.4; charset=utf-8");
     return metrics.render(databaseReady);
   });
   app.get("/ready", async (_request, reply) => {
-    const ready = await options.schoolStore.healthCheck();
+    reply.header("cache-control", "no-store");
+    const ready = await databaseIsReady();
     return reply.code(ready ? 200 : 503).send({
       status: ready ? "ready" : "not_ready",
       service: "maktablink-api",
