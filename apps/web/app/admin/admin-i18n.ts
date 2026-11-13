@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Staff access temporarily unavailable. Check connection and retry.": "دسترسی کارمند موقتاً ممکن نیست. اتصال انترنت را بررسی کنید و دوباره تلاش نمایید.",
+  "Retry loading schools": "تلاش دوباره برای بارگذاری مکتب‌ها",
   "Registration queue pages": "صفحات فهرست درخواست‌های ثبت‌نام",
   "Refreshing…": "در حال تازه‌سازی…",
   "Discard unsaved registration changes?": "تغییرات ذخیره‌نشدهٔ ثبت‌نام را کنار بگذارید؟",
@@ -2640,6 +2642,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Staff access temporarily unavailable. Check connection and retry.": "د کارکوونکي لاسرسی لنډمهاله نه شته. انټرنېټ وګورئ او بیا هڅه وکړئ.",
+  "Retry loading schools": "د ښوونځیو د بیا پورته کولو هڅه",
   "Registration queue pages": "د نوم‌لیکنې غوښتنلیکونو د لړ پاڼې",
   "Refreshing…": "د تازه کولو په حال کې…",
   "Discard unsaved registration changes?": "د نوم‌لیکنې نه‌خوندي شوي بدلونونه لغوه کړئ؟",
