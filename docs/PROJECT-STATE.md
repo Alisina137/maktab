@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Pre-Phase-17 mobile header localization UX fix (2026-11-13)
+
+**Implemented:** After Student, Parent or Teacher login, remove the redundant language selector beside the MaktabLink logo/header. Keep the header's Student notifications bell and unread badge. Preserve the initial onboarding/login language selector for signed-out users. All three authenticated roles retain their language choices from Student **More → Settings**, Parent **More → Preferences**, and Teacher **More → Profile**, using the existing persisted `chooseLocale` behavior. `pnpm verify:mobile:header-language` protects the layout/settings paths, runs under root `pnpm verify`, and is included in Linux/Windows CI. No changes to roles, session schema, database or Phase 16 delivery.
+
+**Release decision:** Production still **NO-GO** until the real staging/device/operator evidence required by Phase 11/12 exists.
+
 ## Phase 16 — Staff Session Integrity and Recoverable Portal Access (2026-11-13)
 
 **Six Phase 16 source tasks implemented:** (16.1) strict browser session validation (active Staff, same school, valid refresh credentials), (16.2) independent `/v1/staff/me` user/school identity verification, (16.3) distinguish terminal revocation from recoverable API outage and per-module permission denial, (16.4) protect authenticated Staff responses and refresh rotation from stale logout/account epochs, (16.5) Staff school-discovery and profile retry, bound first-login password school, Dari/Pashto feedback and login document direction cleanup, (16.6) dedicated `pnpm verify:phase16` tests and guards wired to root verification and Linux/Windows CI. See `docs/PHASE16-STAFF-IDENTITY-RECOVERY.md`. No migrations, new permissions or runtime environment changes.
