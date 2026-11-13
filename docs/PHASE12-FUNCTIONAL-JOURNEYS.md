@@ -32,6 +32,14 @@ This test uses the **full ordered migrations** via the established `createTestAp
 
 **Boundaries:** Fastify/PGlite is an in-process integrated backend test, not browser E2E, real Neon concurrency, a physical Expo app or operational authorization. Existing Phase 11 live-journey/gate statuses stay unverified until independently evidenced.
 
+## Security defect discovered and corrected during Step 12.1
+
+The first CI run of the connected onboarding journey **failed** because the Parent home response included a nested student's `passwordHash` field. This was a real API serialization defect in `GET /v1/parent/home`: the family store correctly uses full database User objects internally, but the route returned them without applying `safeUser`. The corresponding Admin family overview had the same exposure risk.
+
+**Correction:** `apps/api/src/families/routes.ts` now strips authentication hashes from every nested `user` record in Parent home and Admin family parents/students/enrollments. It preserves the original data associations and internal store queries. The new journey asserts that neither response serializes `passwordHash`, ensuring this regression remains visible in CI. First-login temporary credential responses remain intentionally available only to the authorized administrator at account creation and are unaffected.
+
+This finding demonstrates why Phase 12 tests *connected* user flows rather than relying solely on isolated route checks.
+
 ## Verification
 
 This is wired into both Ubuntu and Windows GitHub Actions, and the root `pnpm verify` sequence:
