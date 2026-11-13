@@ -96,7 +96,8 @@ import {
 } from "./src/connection-stability";
 import {
   setReadCacheFallbackListener,
-  setReadCacheScope
+  setReadCacheScope,
+  invalidateReadCacheRequests
 } from "./src/read-cache";
 import {
   clearStoredSession,
@@ -1971,6 +1972,9 @@ function AppContent() {
   async function logout() {
     if (logoutInProgressRef.current) return;
     logoutInProgressRef.current = true;
+    // The server/push logout may be slow. A GET started before this tap must
+    // already be invalid, even though cleanup still needs the old token.
+    invalidateReadCacheRequests();
     setBusy(true);
     try {
       if (sessionRef.current?.accessToken) {
