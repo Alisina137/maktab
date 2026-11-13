@@ -45,6 +45,7 @@ export default function StaffDashboard() {
   const [submitted,setSubmitted]=useState("");
   const [page,setPage]=useState(1);
   const [directory,setDirectory]=useState<Directory|null>(null);
+  const [directoryRetryEpoch,setDirectoryRetryEpoch]=useState(0);
   const [currentPassword,setCurrentPassword]=useState("");
   const [newPassword,setNewPassword]=useState("");
   const [passwordBusy,setPasswordBusy]=useState(false);
@@ -71,6 +72,12 @@ export default function StaffDashboard() {
     {id:"notifications" as const,label:"Notifications"},
     {id:"settings" as const,label:"Profile & Settings"}
   ];
+  // Do not leave staff on a permission-gated module when fresh server profile
+  // data no longer grants its navigation entry.
+  const activeTabAllowed=tabs.some(item=>item.id===tab);
+  useEffect(()=>{
+    if(profile&&!activeTabAllowed)setTab("home");
+  },[profile,activeTabAllowed]);
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
@@ -172,7 +179,7 @@ export default function StaffDashboard() {
   },[locale]);
 
   useEffect(()=>{
-    if(!submitted)return;
+    if(!submitted){setWorking(false);return;}
     let active=true;
     setWorking(true);setDirectory(null);setMessage("");setSelected(null);
     const params=new URLSearchParams({query:submitted,group,status,sortBy,order,
@@ -183,7 +190,7 @@ export default function StaffDashboard() {
       if(active)setMessage(friendlyAdminError(cause,"Could not search school records.",locale));
     }).finally(()=>{if(active)setWorking(false);});
     return()=>{active=false;};
-  },[submitted,group,status,sortBy,order,pageSize,page,authenticated,locale]);
+  },[submitted,group,status,sortBy,order,pageSize,page,directoryRetryEpoch,authenticated,locale]);
 
   async function signOut(){
     const value=current.current;exit();
@@ -288,6 +295,7 @@ export default function StaffDashboard() {
             <label>{t("Account type")}
               <select value={group} onChange={e=>{
                 setGroup(e.target.value as Group);setPage(1);setSubmitted("");setDirectory(null);
+                setSelected(null);setMessage("");setWorking(false);
               }}>
                 <option value="STUDENT">{t("Students")}</option>
                 <option value="PARENT">{t("Parents")}</option>
@@ -336,8 +344,12 @@ export default function StaffDashboard() {
               </button>
             </div>
           </form>
-          {message?<p className="admin-error" role="alert">{message}</p>:null}
-          {working?<p role="status">{t("Searching school records…")}</p>:null}
+          {message?<div className="staff-error-retry">
+            <p className="admin-error" role="alert">{message}</p>
+            {submitted&&!working?<button type="button" className="admin-secondary"
+              onClick={()=>setDirectoryRetryEpoch(x=>x+1)}>{t("Retry")}</button>:null}
+          </div>:null}
+          {working?<p role="status" aria-live="polite">{t("Searching school records…")}</p>:null}
           {!submitted?<div className="staff-empty">
             {t("Enter a name or code to find accounts in your school.")}
           </div>:null}
