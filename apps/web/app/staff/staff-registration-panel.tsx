@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { adminText, type AdminLocale } from "../admin/admin-i18n";
 import { friendlyAdminError } from "../admin/admin-client";
 import { StaffLoadingState } from "./staff-loading-state";
 import { hasUnsavedRegistrationChanges } from "./staff-registration-policy";
+import { registrationQueuePage } from "./staff-registration-queue-model";
 
 export type RegistrationRow = {
   id:string;createdBy:string;status:"DRAFT"|"SUBMITTED"|"UNDER_REVIEW"|"APPROVED"|"REJECTED";
@@ -29,32 +30,49 @@ export function StaffRegistrationPanel({locale,userId,api,onDirtyChange}:Props) 
   const [options,setOptions]=useState<RegistrationOptions|null>(null);
   const [rows,setRows]=useState<RegistrationRow[]>([]);
   const [filter,setFilter]=useState("ALL");
+  const [queuePageNumber,setQueuePageNumber]=useState(1);
   const [draft,setDraft]=useState<Draft>(initial);
   const [editing,setEditing]=useState<string|null>(null);
   const [selected,setSelected]=useState<RegistrationRow|null>(null);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
+  const [queueRefreshing,setQueueRefreshing]=useState(false);
+  const loadEpoch=useRef(0);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   async function reload() {
+    // Older GETs may resolve after a newer mutation or Refresh. Never replace
+    // a committed draft with an obsolete server list.
+    const epoch=++loadEpoch.current;
     const [meta,list]=await Promise.all([
       api<RegistrationOptions>("/v1/staff/registrations/options"),
       api<{requests:RegistrationRow[]}>("/v1/staff/registrations")
     ]);
+    if(epoch!==loadEpoch.current)return;
     setOptions(meta);setRows(list.requests);
     // Resolve the *latest* selected row, not the value captured before the GET.
     setSelected(current=>current?list.requests.find(r=>r.id===current.id)??null:null);
   }
+  async function manualRefresh() {
+    setQueueRefreshing(true);setError("");
+    try { await reload(); }
+    catch(err) { setError(friendlyAdminError(err,"Could not refresh.",locale)); }
+    finally { setQueueRefreshing(false); }
+  }
   useEffect(()=>{
     let active=true;
+    const epoch=++loadEpoch.current;
     setLoading(true);
     void Promise.all([
       api<RegistrationOptions>("/v1/staff/registrations/options"),
       api<{requests:RegistrationRow[]}>("/v1/staff/registrations")
-    ]).then(([meta,data])=>{if(active){setOptions(meta);setRows(data.requests);}})
-      .catch(err=>{if(active)setError(friendlyAdminError(err,"Could not load registration requests.",locale));})
-      .finally(()=>{if(active)setLoading(false);});
-    return()=>{active=false;};
+    ]).then(([meta,data])=>{
+      if(active&&epoch===loadEpoch.current){setOptions(meta);setRows(data.requests);}
+    }).catch(err=>{
+      if(active&&epoch===loadEpoch.current)
+        setError(friendlyAdminError(err,"Could not load registration requests.",locale));
+    }).finally(()=>{if(active)setLoading(false);});
+    return()=>{active=false;loadEpoch.current+=1;};
   },[api,locale]);
 
   async function save(e:FormEvent) {
@@ -103,7 +121,11 @@ export function StaffRegistrationPanel({locale,userId,api,onDirtyChange}:Props) 
         documents:{...row.documents},notes:row.notes});
     } else {setEditing(null);setDraft(initial);}
   }
-  const visible=filter==="ALL"?rows:rows.filter(r=>r.status===filter);
+  const queuePage=registrationQueuePage(rows,filter,queuePageNumber,5);
+  const number=(value:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(value);
+  const pageSummary=t("Showing {start}–{end} of {total}")
+    .replace("{start}",number(queuePage.start)).replace("{end}",number(queuePage.end))
+    .replace("{total}",number(queuePage.total));
   const missing=selected?.status==="DRAFT"?
     (!selected.documents.identityChecked||!selected.documents.consentChecked):false;
   const unsavedDraft=selected?.status==="DRAFT"&&editing===selected.id &&
@@ -205,21 +227,32 @@ export function StaffRegistrationPanel({locale,userId,api,onDirtyChange}:Props) 
       <section className="admin-panel staff-reg-queue">
         <div className="admin-section-header"><div><h3>{t("Application queue")}</h3>
           <p>{t("Track drafts, reviews and decisions.")}</p></div>
-          <button type="button" className="admin-secondary" disabled={busy}
-            onClick={()=>void reload().catch(err=>setError(friendlyAdminError(err,"Could not refresh.",locale)))}>{t("Refresh")}</button>
+          <button type="button" className="admin-secondary" disabled={busy||queueRefreshing}
+            onClick={()=>void manualRefresh()}>{t(queueRefreshing?"Refreshing…":"Refresh")}</button>
         </div>
-        <label>{t("Application status")}<select value={filter} onChange={e=>setFilter(e.target.value)}>
+        <label>{t("Application status")}<select value={filter} onChange={e=>{
+          setFilter(e.target.value);setQueuePageNumber(1);
+        }}>
           <option value="ALL">{t("All statuses")}</option>
           {["DRAFT","SUBMITTED","UNDER_REVIEW","APPROVED","REJECTED"].map(s=>
             <option key={s} value={s}>{t(s.replaceAll("_"," "))}</option>)}
         </select></label>
-        <div className="staff-reg-items">{visible.length===0?<div className="staff-empty">
-          {t("No registration requests in this status.")}</div>:visible.map(r=>
+        <div className="staff-reg-items">{queuePage.total===0?<div className="staff-empty">
+          {t("No registration requests in this status.")}</div>:queuePage.items.map(r=>
           <button type="button" key={r.id} onClick={()=>choose(r)}
             aria-pressed={selected?.id===r.id} className={"staff-reg-item "+(selected?.id===r.id?"staff-reg-item-active":"")}>
             <span><strong>{r.fullName}</strong><small>{r.studentCode} · {r.parentName}</small></span>
             <span className="pilot-badge">{t(r.status.replaceAll("_"," "))}</span>
           </button>)}</div>
+        <nav className="staff-pages" aria-label={t("Registration queue pages")}>
+          <button type="button" className="admin-secondary"
+            disabled={busy||queueRefreshing||queuePage.page<=1}
+            onClick={()=>setQueuePageNumber(value=>Math.max(1,value-1))}>{t("Previous")}</button>
+          <span role="status" aria-live="polite">{pageSummary} · {number(queuePage.page)} / {number(queuePage.pages)}</span>
+          <button type="button" className="admin-secondary"
+            disabled={busy||queueRefreshing||queuePage.page>=queuePage.pages}
+            onClick={()=>setQueuePageNumber(value=>Math.min(queuePage.pages,value+1))}>{t("Next")}</button>
+        </nav>
         {selected?<div className="staff-reg-detail">
           <h4>{selected.fullName} · {selected.studentCode}</h4>
           <p>{t("Status")}: <strong>{t(selected.status.replaceAll("_"," "))}</strong></p>
