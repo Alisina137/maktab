@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 12 staging canary privacy and outage regression
+        run: pnpm verify:pilot:phase12
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -327,6 +330,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 12 staging canary privacy and outage regression
+        run: pnpm verify:pilot:phase12
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
