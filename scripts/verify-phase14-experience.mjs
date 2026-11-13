@@ -36,13 +36,16 @@ for(const item of [
   'setError(t("Saved successfully, but the list could not refresh. Use Refresh."))',
   'setError(t("Submitted successfully, but the list could not refresh. Use Refresh."))',
   "setSelected(current=>current?list.requests.find(",
-  "hasUnsavedRegistrationChanges(draft,initial)"
+  "hasUnsavedRegistrationChanges(draft,initial)",
+  "onDirtyChange?.(hasUnsavedForm)"
 ])assert.ok(reg.includes(item),"Staff form safety behavior lost: "+item);
 
 const web=read("apps/web/app/staff/dashboard/page.tsx");
 for(const item of ["permittedStaffTabs(profile?.profile?.permissions)",
   "fallbackStaffTab(tab,profile?.profile?.permissions)",
-  "setDirectoryRetryEpoch(x=>x+1)", "setWorking(false);return;"])
+  "setDirectoryRetryEpoch(x=>x+1)", "setWorking(false);return;",
+  "registrationDirty", "window.confirm(t(\"Discard unsaved registration changes?\"))",
+  "onDirtyChange={setRegistrationDirty}"])
   assert.ok(web.includes(item),"Staff directory permission/retry behavior lost: "+item);
 const i18n=read("apps/web/app/admin/admin-i18n.ts");
 for(const item of ["Discard unsaved registration changes?",
