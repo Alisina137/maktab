@@ -27,9 +27,11 @@ for (const fragment of [
 for (const fragment of [
   "const requestScope = getReadCacheScope();",
   "readReadCache<T>(path, requestScope)",
-  "cachedReadFallback<T>(path, cacheable, requestScope)",
+  "cachedReadFallback<T>(path, cacheable, requestScope, requestEpoch)",
   "writeReadCache(path, body as T, requestScope)",
-  "requestScope !== getReadCacheScope()",
+  "const requestEpoch = getReadCacheEpoch();",
+  "requestIdentityCurrent(",
+  "ensureIdentity();",
   'code: "session_changed"',
   "response.status >= 400 && response.status < 500",
   'code: "api_invalid_response"'

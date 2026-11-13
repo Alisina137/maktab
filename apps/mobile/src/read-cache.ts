@@ -6,6 +6,7 @@ const MAX_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_SERIALIZED_LENGTH = 6000;
 
 let scope: string | null = null;
+let scopeEpoch = 0;
 let fallbackListener: ((savedAt: string) => void) | null = null;
 
 type Envelope<T> = {
@@ -33,7 +34,20 @@ export function getReadCacheScope(): string | null {
   return scope;
 }
 
+export function getReadCacheEpoch(): number {
+  return scopeEpoch;
+}
+
+/** Reject GETs already in flight as soon as logout begins, before slow
+ * push-deactivation and server-logout network calls finish. */
+export function invalidateReadCacheRequests(): void {
+  scopeEpoch += 1;
+}
+
 export function setReadCacheScope(nextScope: string | null) {
+  // A -> logged out -> A is a new authorization epoch, even when the account
+  // and school IDs eventually match. Never accept a late response from A1.
+  if (scope !== nextScope) scopeEpoch += 1;
   scope = nextScope;
 }
 

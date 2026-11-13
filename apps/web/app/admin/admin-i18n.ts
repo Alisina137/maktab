@@ -10,6 +10,8 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Registration queue pages": "صفحات فهرست درخواست‌های ثبت‌نام",
+  "Refreshing…": "در حال تازه‌سازی…",
   "Discard unsaved registration changes?": "تغییرات ذخیره‌نشدهٔ ثبت‌نام را کنار بگذارید؟",
   "Saved successfully, but the list could not refresh. Use Refresh.": "ثبت‌نام با موفقیت ذخیره شد، اما فهرست تازه نشد. روی «تازه‌سازی» بزنید.",
   "Submitted successfully, but the list could not refresh. Use Refresh.": "درخواست با موفقیت ارسال شد، اما فهرست تازه نشد. روی «تازه‌سازی» بزنید.",
@@ -2638,6 +2640,8 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Registration queue pages": "د نوم‌لیکنې غوښتنلیکونو د لړ پاڼې",
+  "Refreshing…": "د تازه کولو په حال کې…",
   "Discard unsaved registration changes?": "د نوم‌لیکنې نه‌خوندي شوي بدلونونه لغوه کړئ؟",
   "Saved successfully, but the list could not refresh. Use Refresh.": "نوم‌لیکنه په بریالیتوب خوندي شوه، خو لړ نوی نه شو. «تازه کول» ووهئ.",
   "Submitted successfully, but the list could not refresh. Use Refresh.": "غوښتنه په بریالیتوب ولېږل شوه، خو لړ نوی نه شو. «تازه کول» ووهئ.",

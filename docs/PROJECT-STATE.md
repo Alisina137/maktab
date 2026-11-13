@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 15 — Safe Mobile Requests & Staff Registration Queue (2026-11-13)
+
+**Six Phase 15 source tasks implemented:** (15.1) offline cache allowlist for explicitly approved authenticated family/Student/Teacher GETs and no auth/files/push/unknown responses; (15.2) explicit mobile request cancellation distinguished from offline timeout so cancelled requests cannot resurrect stale screens; (15.3) account-scope epoch guards for delayed responses and same-account re-login; (15.4) Staff registration queue five-item pagination with filtered page reset and accessible results count; (15.5) refresh sequencing to prevent older GETs replacing newly saved registration rows, plus translated busy/RTL feedback; (15.6) `pnpm verify:phase15` in root verify and Windows/Linux CI. See `docs/PHASE15-REQUEST-STAFF-QUEUE.md`. No migrations, new permissions or new env vars.
+
+**Production remains NO-GO.** Separate staging/real Neon/physical Android/browser, push/scheduler, backup restore and independent operator evidence required by Phase 11/12 have not been performed by the source implementation.
+
 ## Phase 14 — Session Integrity and Staff Workflow Recovery (2026-11-13)
 
 **Phase 14 development source:** All six defined tasks implemented: guard mobile session restore responses against sign-out/account switches; serialize auth writes and logout deletes; serialize/bound per-parent selected-child preferences; preserve Staff registration saves and submissions on list refresh failures and warn before discarding unsaved edits; unify permission-driven Staff tabs with directory retry and translated feedback; and add `pnpm verify:phase14` to root verification and both OS CI. See `docs/PHASE14-SESSION-STAFF-RECOVERY.md`. No migrations or permission grants are involved.
