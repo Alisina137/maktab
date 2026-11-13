@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Pre-Phase-17 Parent Profile Sign-Out UX Fix (2026-11-13)
+
+**Implemented:** In Parent → **More → Profile**, add a prominently visible Sign out button directly beneath the Parent account details, above the linked-children list. The new button reuses the same localized Dari/Pashto/English confirmation and existing authenticated `logout()` handler as the Sign out button already available in Parent → **More → Preferences**. A cancel action retains the session; confirmation triggers token logout and existing local session/cache/Parent state cleanup, including network-offline fallback. Preserve profile refresh, children, preferences, and role navigation. `pnpm verify:parent:profile-logout` guards the UX and wiring in root verify and Linux/Windows CI.
+
+**Release decision:** NO-GO pending independent external staged Android/browser/Neon/operator evidence (Phase 11/12).
+
 ## Pre-Phase-17 mobile header localization UX fix (2026-11-13)
 
 **Implemented:** After Student, Parent or Teacher login, remove the redundant language selector beside the MaktabLink logo/header. Keep the header's Student notifications bell and unread badge. Preserve the initial onboarding/login language selector for signed-out users. All three authenticated roles retain their language choices from Student **More → Settings**, Parent **More → Preferences**, and Teacher **More → Profile**, using the existing persisted `chooseLocale` behavior. `pnpm verify:mobile:header-language` protects the layout/settings paths, runs under root `pnpm verify`, and is included in Linux/Windows CI. No changes to roles, session schema, database or Phase 16 delivery.
