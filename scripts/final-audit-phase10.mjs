@@ -65,7 +65,8 @@ export function buildFinalAuditReport({
   const missing = declared.filter((entry) => entry.status === "MISSING");
   const root = scripts.verify ?? "";
   const rootMissing = declared.filter((entry) => !root.includes("pnpm " + entry.check));
-  const ciMissing = declared.filter((entry) => !ciWorkflow.includes("pnpm " + entry.check));
+  const ciMissing = declared.filter((entry) =>
+    ciWorkflow.split("pnpm " + entry.check).length - 1 < 2);
   const gitClean = Boolean(isClean);
   const evidence = evaluateReleaseManifest(manifest, sha, gitClean, now);
   const blockers = [
