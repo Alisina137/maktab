@@ -3446,7 +3446,15 @@ function dateFromDisplayValue(value: string): Date | null {
   const date = dateOnly
     ? new Date(`${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}T12:00:00.000Z`)
     : new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (Number.isNaN(date.getTime())) return null;
+  if (dateOnly) {
+    // JS Date silently rolls impossible calendar dates (e.g. Feb 31)
+    // into the following month. Never present that as a valid school date.
+    const [year, month, day] = dateOnly.slice(1).map(Number);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month ||
+        date.getUTCDate() !== day) return null;
+  }
+  return date;
 }
 
 export function formatLocalizedDate(value: string, locale: SupportedLocale): string {
