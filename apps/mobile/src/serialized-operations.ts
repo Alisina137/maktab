@@ -7,9 +7,9 @@ export function createSerializedWriteQueue() {
   let tail: Promise<void> = Promise.resolve();
 
   return {
-    enqueue(write: () => Promise<void>): Promise<void> {
+    enqueue<T>(write: () => Promise<T>): Promise<T> {
       const operation = tail.then(write);
-      tail = operation.catch(() => {});
+      tail = operation.then(() => {}, () => {});
       return operation;
     },
     drained(): Promise<void> {
