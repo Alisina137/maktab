@@ -57,6 +57,9 @@ jobs:
       - name: Phase 13 Mobile identity, offline cache, teacher UI and staff draft safety
         run: pnpm verify:phase13
 
+      - name: Phase 14 Mobile restore ordering, parent selections and Staff safe workflows
+        run: pnpm verify:phase14
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -368,6 +371,9 @@ jobs:
 
       - name: Phase 13 Mobile identity, offline cache, teacher UI and staff draft safety
         run: pnpm verify:phase13
+
+      - name: Phase 14 Mobile restore ordering, parent selections and Staff safe workflows
+        run: pnpm verify:phase14
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
