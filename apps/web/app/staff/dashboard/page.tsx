@@ -157,8 +157,17 @@ export default function StaffDashboard() {
   },[profile?.user.id,authenticated]);
 
   useEffect(()=>{
-    document.documentElement.lang=locale==="en"?"en":locale==="ps-AF"?"ps":"fa";
-    document.documentElement.dir=adminDirection(locale);
+    const root = document.documentElement;
+    const previousLang = root.lang;
+    const previousDir = root.dir;
+    root.lang=locale==="en"?"en":locale==="ps-AF"?"ps":"fa";
+    root.dir=adminDirection(locale);
+    // A client-side navigation from Staff to Admin/landing shares the same
+    // <html> element; never leave Dari/Pashto global RTL behind after exit.
+    return () => {
+      root.lang=previousLang;
+      root.dir=previousDir;
+    };
   },[locale]);
 
   useEffect(()=>{
