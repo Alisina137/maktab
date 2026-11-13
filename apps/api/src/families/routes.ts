@@ -96,7 +96,21 @@ export function registerFamilyRoutes(
   app.get("/v1/admin/families", async (request, reply) => {
     const context = await requireSchoolAdmin(request, reply, accounts);
     if (!context) return;
-    return families.getOverview(context.user.schoolId);
+    const overview = await families.getOverview(context.user.schoolId);
+    // The family store keeps full User rows for internal operations. API
+    // responses must never serialize password hashes, even for an admin.
+    return {
+      ...overview,
+      parents: overview.parents.map((entry) => ({
+        ...entry, user: safeUser(entry.user)
+      })),
+      students: overview.students.map((entry) => ({
+        ...entry, user: entry.user ? safeUser(entry.user) : null
+      })),
+      enrollments: overview.enrollments.map((entry) => ({
+        ...entry, user: entry.user ? safeUser(entry.user) : null
+      }))
+    };
   });
 
   app.post("/v1/admin/families/parents", async (request, reply) => {
@@ -273,7 +287,15 @@ export function registerFamilyRoutes(
       return reply.code(403).send({ error: "forbidden", message: "Parent access is required." });
     }
     try {
-      return await families.getParentHome(context.user.schoolId, context.user.id);
+      const home = await families.getParentHome(context.user.schoolId, context.user.id);
+      // A Parent must not receive the student's authentication hash through
+      // the optional linked user on StudentFamilyView.
+      return {
+        ...home,
+        children: home.children.map((entry) => ({
+          ...entry, user: entry.user ? safeUser(entry.user) : null
+        }))
+      };
     } catch (error) {
       return sendFamilyError(reply, error);
     }
