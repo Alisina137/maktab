@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  TASKS, createLedger, recordObservation, assessLedger, safeReference,
+  TASKS, createLedger, recordObservation, recordDefect, assessLedger, safeReference,
   validateStagingApi, probeStagingApi, validateStagingDatabase, runStagingPreflight
 } from './phase11-pilot.mjs';
 import { PHASE10_LIVE_JOURNEYS } from './final-audit-phase10.mjs';
@@ -122,4 +122,21 @@ test('Staging probe requires HTTPS, refuses production and checks authorization/
   assert.equal(seen.filter(x => x.auth).length, 5);
   const broken = await probeStagingApi(env, async () => ({ status: 200, headers: { get: () => '' } }));
   assert.equal(broken.result, 'PROBE_FAIL');
+});
+
+test('Defect lifecycle is independently reviewed and cannot hide HIGH/CRITICAL blockers', () => {
+  let ledger = createLedger({ sha, deploymentIdentifier: 'staging-standalone', now });
+  const issue = { reference: 'ticket:phase11/error-123', severity: 'HIGH', status: 'OPEN',
+    actor: 'QA tester', reviewer: 'Security reviewer', observedAt: '2026-11-13T09:00:00Z' };
+  ledger = recordDefect(ledger, issue, now);
+  assert.equal(ledger.defects.length, 1);
+  assert.ok(assessLedger(ledger, { sha, now }).blockers.some(x => x.includes('Unresolved critical/high')));
+  assert.throws(() => recordDefect(ledger, { ...issue, status: 'RESOLVED', fixSha: 'b'.repeat(40) }, now));
+  assert.throws(() => recordDefect(ledger, { ...issue, reviewer: 'QA tester' }, now));
+  const fixed = recordDefect(ledger, { ...issue, status: 'RESOLVED', fixSha: sha }, now);
+  assert.equal(fixed.defects.length, 1);
+  assert.ok(!assessLedger(fixed, { sha, now }).blockers.some(x => x.includes('Unresolved critical/high')));
+  const fake = structuredClone(fixed);
+  fake.defects[0].fixSha = 'b'.repeat(40);
+  assert.ok(assessLedger(fake, { sha, now }).blockers.some(x => x.includes('exact release SHA')));
 });
