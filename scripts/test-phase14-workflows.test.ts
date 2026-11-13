@@ -132,3 +132,31 @@ test("Phase 14: read operations return results without delaying or poisoning sub
   await remove;
   await queue.drained();
 });
+
+test("Phase 14: corrupt session cleanup cannot erase a newer login saved while a native read waits",async()=>{
+  const queue=createSerializedWriteQueue();
+  let nativeValue:string|null="corrupt";
+  const events:string[]=[];
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  const restore=queue.read(async()=>{
+    const value=nativeValue;
+    events.push("read-started");
+    await gate;
+    if(value==="corrupt") {
+      nativeValue=null;
+      events.push("corrupt-deleted");
+    }
+    return null;
+  });
+  const laterLogin=queue.enqueue(async()=>{
+    nativeValue="new-user-session";
+    events.push("new-login-saved");
+  });
+  await new Promise<void>(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(events,["read-started"]);
+  release();
+  await Promise.all([restore,laterLogin,queue.drained()]);
+  assert.deepEqual(events,["read-started","corrupt-deleted","new-login-saved"]);
+  assert.equal(nativeValue,"new-user-session");
+});
