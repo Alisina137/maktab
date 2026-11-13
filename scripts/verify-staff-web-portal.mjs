@@ -37,8 +37,13 @@ assert.ok(dashboard.includes('"/v1/staff/me"') &&
   dashboard.includes('"/v1/auth/logout"') &&
   dashboard.includes('"/v1/auth/refresh"') &&
   !dashboard.includes('"/v1/admin/users"'));
+const staffPolicy=read("apps/web/app/staff/staff-session-policy.ts");
 assert.ok(staffSession.includes('maktablink.staff.session.v1') &&
-  staffSession.includes('value.session.user.role!=="SCHOOL_STAFF"'));
+  staffSession.includes('validStoredStaffSession(value)') &&
+  staffPolicy.includes('user.role === "SCHOOL_STAFF"') &&
+  staffPolicy.includes('user.schoolId === school.id') &&
+  staffPolicy.includes('user.status === "ACTIVE"'),
+  "Staff storage must reject inactive and cross-school sessions.");
 assert.ok(admin.includes('session.session.user?.role !== "SCHOOL_ADMIN"') &&
   admin.includes('value.session.user.role !== "SCHOOL_ADMIN"'));
 assert.ok(contracts.includes('mobileRoleSchema = z.enum(["TEACHER", "PARENT", "STUDENT"])'),
