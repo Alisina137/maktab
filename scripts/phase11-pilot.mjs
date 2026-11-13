@@ -187,10 +187,14 @@ export function validateStagingDatabase(env) {
 }
 export function runStagingPreflight(env, runner = execFileSync) {
   const stageEnv = validateStagingDatabase(env);
-  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  // Node's execFile cannot launch .cmd scripts without cmd.exe on Windows.
+  const onWindows = process.platform === 'win32';
+  const command = onWindows ? (env.ComSpec || 'cmd.exe') : 'pnpm';
   for (const task of ['db:check', 'db:preflight:phase3', 'db:preflight:phase6']) {
+    // These are fixed safe task IDs, not shell-supplied input.
+    const argv = onWindows ? ['/d', '/s', '/c', 'pnpm', task] : [task];
     // No connection URLs, passwords, SQL rows or unredacted subprocess output in logs.
-    runner(command, [task], { env: { ...env, ...stageEnv }, stdio: 'ignore' });
+    runner(command, argv, { env: { ...env, ...stageEnv }, stdio: 'ignore' });
   }
   return { checks: ['db:check', 'db:preflight:phase3', 'db:preflight:phase6'], status: 'EXECUTED_REVIEW_OUTPUT_INDEPENDENTLY' };
 }
