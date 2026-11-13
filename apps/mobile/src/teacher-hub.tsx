@@ -20,7 +20,7 @@ function TeacherHubLoading({ locale, textDirection }: {
   return <View style={[styles.loadingRow, rtl && styles.rowRtl]} accessibilityLiveRegion="polite">
     <ActivityIndicator size="small" color={tokens.color.brandStrong}
       accessibilityLabel={translate(locale, "common.loading")} />
-    <TeacherHubLoading locale={locale} textDirection={textDirection} />
+    <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
   </View>;
 }
 
