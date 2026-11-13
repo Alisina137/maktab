@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 9 API monitoring, deployment configuration and scheduled-job resilience
+        run: pnpm verify:api:phase9
+
       - name: Phase 8 localization, RTL/LTR, accessibility and secure offline regression
         run: pnpm verify:localization:phase8
 
@@ -305,6 +308,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 9 API monitoring, deployment configuration and scheduled-job resilience
+        run: pnpm verify:api:phase9
+
       - name: Phase 8 localization, RTL/LTR, accessibility and secure offline regression
         run: pnpm verify:localization:phase8
 

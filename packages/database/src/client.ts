@@ -6,7 +6,12 @@ export function createDatabaseClient(connectionString: string) {
   const client = postgres(connectionString, {
     max: 10,
     prepare: false,
-    idle_timeout: 20
+    // A broken Neon endpoint must not leave new connections waiting forever.
+    // /ready has its own shorter response deadline; this bounds the actual
+    // underlying TCP connection attempts and regularly retires pooled clients.
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max_lifetime: 60 * 30
   });
 
   const db = drizzle(client, { schema });
