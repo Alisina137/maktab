@@ -10145,3 +10145,185 @@ test("Phase 12 Step 2: school staff permission to teacher class journey is compl
   });
   assert.equal(reauthenticatedMe.statusCode, 200);
 });
+
+test("Phase 12 Step 3: attendance correction and homework publication complete the family journey", async (t) => {
+  // Real Fastify route handlers and all ordered SQL migrations in isolated PGlite.
+  // The comprehensive exam/grades publication journey is a second mandatory
+  // case in verify:phase12:step3.
+  const { app, client } = await createTestApp();
+  t.after(async () => { await app.close(); await client.close(); });
+  const schoolId = await provisionSchool(app, "P12-LRN3");
+  const otherSchoolId = await provisionSchool(app, "P12-LRN3-OTHER");
+  const admin = { authorization: `Bearer ${await bootstrapAdmin(app, schoolId)}` };
+  const otherAdmin = { authorization: `Bearer ${await bootstrapAdmin(app, otherSchoolId)}` };
+  const postAdmin = (url: string, payload: object) =>
+    app.inject({ method: "POST", url, headers: admin, payload });
+  const teacherUser = await postAdmin("/v1/admin/users", { username: "teacher.phase12", role: "TEACHER" });
+  assert.equal(teacherUser.statusCode, 201, teacherUser.body);
+  const teacher = teacherUser.json<{ user: { id: string }; temporaryPassword: string }>();
+  const yearNumber = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kabul", year: "numeric" }).format(new Date()));
+  const yearStart = `${yearNumber}-01-01`;
+  const yearEnd = `${yearNumber}-12-31`;
+  const year = await postAdmin("/v1/admin/academics/years", {
+    name: "Phase12-"+yearNumber, startDate: yearStart, endDate: yearEnd
+  });
+  assert.equal(year.statusCode, 201, year.body);
+  const academicYearId = year.json<{ academicYear: { id: string } }>().academicYear.id;
+  const activate = await app.inject({ method: "POST",
+    url: `/v1/admin/academics/years/${academicYearId}/activate`, headers: admin });
+  assert.equal(activate.statusCode, 200, activate.body);
+  const grade = await postAdmin("/v1/admin/academics/grades", { code: "G8P12", name: "Grade 8", sortOrder: 8 });
+  assert.equal(grade.statusCode, 201, grade.body);
+  const gradeLevelId = grade.json<{ grade: { id: string } }>().grade.id;
+  async function makeClass(code: string) {
+    const response = await postAdmin("/v1/admin/academics/classes", {
+      academicYearId, gradeLevelId, code, name: "Class " + code
+    });
+    assert.equal(response.statusCode, 201, response.body);
+    return response.json<{ class: { id: string } }>().class.id;
+  }
+  const classId = await makeClass("8P12A");
+  const unrelatedClassId = await makeClass("8P12B");
+  const subject = await postAdmin("/v1/admin/academics/subjects", { code: "MATHP12", name: "Mathematics" });
+  assert.equal(subject.statusCode, 201, subject.body);
+  const subjectId = subject.json<{ subject: { id: string } }>().subject.id;
+  const profile = await postAdmin("/v1/admin/academics/teachers", {
+    userId: teacher.user.id, employeeCode: "TP12-LRN", fullName: "Phase 12 Teacher"
+  });
+  assert.equal(profile.statusCode, 201, profile.body);
+  const assigned = await postAdmin("/v1/admin/academics/assignments", {
+    academicYearId, classId, subjectId, teacherUserId: teacher.user.id
+  });
+  assert.equal(assigned.statusCode, 201, assigned.body);
+  const assignmentId = assigned.json<{ assignment: { id: string } }>().assignment.id;
+  const supervision = await postAdmin("/v1/admin/academics/negaran", {
+    academicYearId, classId, teacherUserId: teacher.user.id, startDate: yearStart
+  });
+  assert.equal(supervision.statusCode, 201, supervision.body);
+
+  async function addChild(code: string, klass: string) {
+    const parentResponse = await postAdmin("/v1/admin/families/parents", {
+      username: "p12parent" + code, fullName: "Phase 12 Parent " + code
+    });
+    assert.equal(parentResponse.statusCode, 201, parentResponse.body);
+    const parent = parentResponse.json<{ user: { id: string }; temporaryPassword: string }>();
+    const studentResponse = await postAdmin("/v1/admin/families/students", {
+      parentUserId: parent.user.id, academicYearId, classId: klass,
+      studentCode: "P12-LRN-" + code, fullName: "Phase 12 Child " + code
+    });
+    assert.equal(studentResponse.statusCode, 201, studentResponse.body);
+    const studentId = studentResponse.json<{ student: { id: string } }>().student.id;
+    return { parent, studentId };
+  }
+  const child = await addChild("A", classId);
+  const unrelated = await addChild("B", unrelatedClassId);
+  const studentAccount = await postAdmin(`/v1/admin/families/students/${child.studentId}/account`, {
+    username: "p12learningstudent"
+  });
+  assert.equal(studentAccount.statusCode, 201, studentAccount.body);
+
+  const teacherToken = await activateRoleLogin(app, schoolId, "TEACHER", "teacher.phase12",
+    teacher.temporaryPassword, "P12LearningTeacherSecure2026!");
+  const parentToken = await activateRoleLogin(app, schoolId, "PARENT", "p12parentA",
+    child.parent.temporaryPassword, "P12LearningParentSecure2026!");
+  const otherParentToken = await activateRoleLogin(app, schoolId, "PARENT", "p12parentB",
+    unrelated.parent.temporaryPassword, "P12OtherParentSecure2026!");
+  const studentToken = await activateRoleLogin(app, schoolId, "STUDENT", "p12learningstudent",
+    studentAccount.json<{ temporaryPassword: string }>().temporaryPassword, "P12LearningStudentSecure2026!");
+  const teacherAuth = { authorization: `Bearer ${teacherToken}` };
+  const parentAuth = { authorization: `Bearer ${parentToken}` };
+  const otherParentAuth = { authorization: `Bearer ${otherParentToken}` };
+  const studentAuth = { authorization: `Bearer ${studentToken}` };
+
+  const todayResponse = await app.inject({ method: "GET", url: "/v1/teacher/today", headers: teacherAuth });
+  assert.equal(todayResponse.statusCode, 200, todayResponse.body);
+  const today = todayResponse.json<{ date: string; supervisedClasses: Array<{ classId: string }> }>();
+  assert.ok(today.supervisedClasses.some(item => item.classId === classId));
+  const submission = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: { classId, date: today.date, entries: [{ studentId: child.studentId,
+      status: "ABSENT", note: "Reported absent, awaiting school review." }] }
+  });
+  assert.equal(submission.statusCode, 201, submission.body);
+  const attendanceId = submission.json<{ sheet: { attendance: { id: string } } }>().sheet.attendance.id;
+  const retry = await app.inject({
+    method: "POST", url: "/v1/teacher/negaran/attendance", headers: teacherAuth,
+    payload: { classId, date: today.date, entries: [{ studentId: child.studentId,
+      status: "ABSENT", note: "Reported absent, awaiting school review." }] }
+  });
+  assert.equal(retry.statusCode, 200, retry.body);
+  assert.equal(retry.json<{ changed: boolean }>().changed, false);
+  const childAttendance = await app.inject({
+    method: "GET", url: `/v1/parent/children/${child.studentId}/attendance`, headers: parentAuth
+  });
+  assert.equal(childAttendance.statusCode, 200, childAttendance.body);
+  assert.ok(childAttendance.body.includes("ABSENT"));
+  assert.equal((await app.inject({ method: "GET",
+    url: `/v1/parent/children/${unrelated.studentId}/attendance`, headers: parentAuth })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: `/v1/parent/children/${child.studentId}/attendance`, headers: otherParentAuth })).statusCode, 404);
+  assert.equal((await app.inject({ method: "GET",
+    url: `/v1/admin/attendance/report?academicYearId=${academicYearId}`, headers: otherAdmin })).statusCode, 404);
+
+  const report = await app.inject({ method: "GET",
+    url: `/v1/admin/attendance/report?academicYearId=${academicYearId}&from=${today.date}&to=${today.date}`,
+    headers: admin });
+  assert.equal(report.statusCode, 200, report.body);
+  const updatedAt = report.json<{ rows: Array<{ updatedAt: string }> }>().rows[0]?.updatedAt;
+  assert.ok(updatedAt);
+  const correction = await app.inject({
+    method: "PATCH", url: `/v1/admin/attendance/${attendanceId}/students/${child.studentId}`,
+    headers: admin, payload: {
+      status: "PRESENT", reason: "Verified class attendance against teacher register.",
+      expectedUpdatedAt: updatedAt
+    }
+  });
+  assert.equal(correction.statusCode, 200, correction.body);
+  assert.equal(correction.json<{ previousStatus: string; entry: { status: string } }>().previousStatus, "ABSENT");
+  assert.equal(correction.json<{ entry: { status: string } }>().entry.status, "PRESENT");
+  assert.equal((await app.inject({
+    method: "PATCH", url: `/v1/admin/attendance/${attendanceId}/students/${child.studentId}`,
+    headers: teacherAuth, payload: {
+      status: "ABSENT", reason: "Teacher may not override admin correction.", expectedUpdatedAt: updatedAt
+    }
+  })).statusCode, 403);
+
+  const created = await app.inject({
+    method: "POST", url: "/v1/teacher/homework", headers: teacherAuth,
+    payload: { assignmentId, title: "Read Phase 12 Chapter",
+      content: "Read the chapter and prepare two questions.", dueAt: "2099-12-31T12:00:00Z" }
+  });
+  assert.equal(created.statusCode, 201, created.body);
+  const homeworkId = created.json<{ homework: { id: string; status: string } }>().homework.id;
+  assert.equal(created.json<{ homework: { status: string } }>().homework.status, "DRAFT");
+  const draftParent = await app.inject({
+    method: "GET", url: `/v1/parent/children/${child.studentId}/learning`, headers: parentAuth
+  });
+  assert.equal(draftParent.statusCode, 200, draftParent.body);
+  assert.ok(!draftParent.body.includes(homeworkId), "Draft must not be exposed to a linked parent.");
+  const draftStudent = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
+  assert.equal(draftStudent.statusCode, 200, draftStudent.body);
+  assert.ok(!draftStudent.body.includes(homeworkId), "Draft must not be exposed to student.");
+  const publish = await app.inject({
+    method: "POST", url: `/v1/teacher/homework/${homeworkId}/publish`, headers: teacherAuth
+  });
+  assert.equal(publish.statusCode, 200, publish.body);
+  const publishedParent = await app.inject({
+    method: "GET", url: `/v1/parent/children/${child.studentId}/learning`, headers: parentAuth
+  });
+  assert.equal(publishedParent.statusCode, 200, publishedParent.body);
+  assert.ok(publishedParent.body.includes(homeworkId), "Publication must reach the right parent.");
+  const studentHome = await app.inject({ method: "GET", url: "/v1/student/home", headers: studentAuth });
+  assert.equal(studentHome.statusCode, 200, studentHome.body);
+  assert.ok(studentHome.body.includes(homeworkId), "Publication must reach the student.");
+  const wrongClass = await app.inject({
+    method: "GET", url: `/v1/parent/children/${unrelated.studentId}/learning`,
+    headers: otherParentAuth
+  });
+  assert.equal(wrongClass.statusCode, 200, wrongClass.body);
+  assert.ok(!wrongClass.body.includes(homeworkId), "Another class must not inherit homework.");
+  for (const response of [draftParent, draftStudent, publishedParent, studentHome]) {
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.ok(!response.body.includes("passwordHash"));
+  }
+});
