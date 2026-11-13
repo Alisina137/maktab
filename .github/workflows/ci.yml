@@ -69,6 +69,9 @@ jobs:
       - name: Mobile logged-in header language removal and More locale regression
         run: pnpm verify:mobile:header-language
 
+      - name: Parent Profile discoverable and confirmed sign-out
+        run: pnpm verify:parent:profile-logout
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -392,6 +395,9 @@ jobs:
 
       - name: Mobile logged-in header language removal and More locale regression
         run: pnpm verify:mobile:header-language
+
+      - name: Parent Profile discoverable and confirmed sign-out
+        run: pnpm verify:parent:profile-logout
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
