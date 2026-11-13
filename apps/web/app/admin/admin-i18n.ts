@@ -10,6 +10,9 @@ export const adminLocaleOptions: Array<{ value: AdminLocale; label: string }> = 
 ];
 
 const fa: Record<string, string> = {
+  "Discard unsaved registration changes?": "تغییرات ذخیره‌نشدهٔ ثبت‌نام را کنار بگذارید؟",
+  "Saved successfully, but the list could not refresh. Use Refresh.": "ثبت‌نام با موفقیت ذخیره شد، اما فهرست تازه نشد. روی «تازه‌سازی» بزنید.",
+  "Submitted successfully, but the list could not refresh. Use Refresh.": "درخواست با موفقیت ارسال شد، اما فهرست تازه نشد. روی «تازه‌سازی» بزنید.",
   "Showing {start}–{end} of {total}": "نمایش {start} تا {end} از {total}",
   "Parent list pagination": "صفحه‌بندی فهرست والدین",
   "Student list pagination": "صفحه‌بندی فهرست شاگردان",
@@ -2635,6 +2638,9 @@ const fa: Record<string, string> = {
 };
 
 const ps: Record<string, string> = {
+  "Discard unsaved registration changes?": "د نوم‌لیکنې نه‌خوندي شوي بدلونونه لغوه کړئ؟",
+  "Saved successfully, but the list could not refresh. Use Refresh.": "نوم‌لیکنه په بریالیتوب خوندي شوه، خو لړ نوی نه شو. «تازه کول» ووهئ.",
+  "Submitted successfully, but the list could not refresh. Use Refresh.": "غوښتنه په بریالیتوب ولېږل شوه، خو لړ نوی نه شو. «تازه کول» ووهئ.",
   "Showing {start}–{end} of {total}": "له {total} څخه د {start} تر {end} پورې ښودل کېږي",
   "Parent list pagination": "د والدینو د لېست پاڼې",
   "Student list pagination": "د زده کوونکو د لېست پاڼې",
