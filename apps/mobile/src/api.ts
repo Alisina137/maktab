@@ -569,7 +569,7 @@ async function request<T>(
   else callerSignal?.addEventListener("abort", relayCallerAbort, { once: true });
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
   const method = (init?.method ?? "GET").toUpperCase();
-  const hasBearer = /^Bearer\\s+\\S+$/i.test(new Headers(init?.headers).get("Authorization") ?? "");
+  const hasBearer = /^Bearer\s+\S+$/i.test(new Headers(init?.headers).get("Authorization") ?? "");
   // Capture the authenticated owner and generation BEFORE any async read.
   // A -> sign out -> A (same school and user ID) is still a NEW session.
   const requestScope = getReadCacheScope();
