@@ -46,3 +46,16 @@
   .staff-work-bar {align-items:stretch;flex-direction:column;}
   .staff-work-tabs button {padding:10px 6px;}
 }
+
+/* Phase 12: consistent, accessible asynchronous feedback in the staff workspace. */
+.staff-loading-state {display:flex;gap:12px;align-items:center;justify-content:center;
+  min-height:108px;padding:20px;direction:inherit;color:#284967;font-weight:650;}
+.staff-loading-spinner {display:inline-block;flex:0 0 auto;width:23px;height:23px;
+  border-radius:50%;border:3px solid #c4dbf2;border-top-color:#246dae;
+  animation:staff-loading-rotate .85s linear infinite;}
+@keyframes staff-loading-rotate {to {transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce) {
+  .staff-loading-spinner {animation:none;border-style:dotted;}
+}
+.staff-error-retry {display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
+.staff-error-retry .admin-error {flex:1 1 260px;margin:0;}
