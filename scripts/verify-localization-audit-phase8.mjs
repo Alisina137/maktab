@@ -7,6 +7,7 @@ const request = read("apps/mobile/src/api.ts");
 const policy = read("apps/mobile/src/read-cache-policy.ts");
 const locale = read("packages/localization/src/index.ts");
 const adminLocale = read("apps/web/app/admin/admin-i18n.ts");
+const adminWorkspace = read("apps/web/app/admin/admin-workspace.tsx");
 const staff = read("apps/web/app/staff/dashboard/page.tsx");
 const navigation = [
   read("apps/mobile/src/teacher-experience.tsx"),
@@ -47,6 +48,10 @@ assertContains(staff, "const previousLang = root.lang;", "Staff document locale 
 assertContains(staff, "const previousDir = root.dir;", "Staff document direction restoration");
 assertContains(staff, "root.lang=previousLang;", "Staff document locale restoration");
 assertContains(staff, "root.dir=previousDir;", "Staff document direction restoration");
+assertContains(adminWorkspace, "const previousLang = root.lang;", "Admin document locale restoration");
+assertContains(adminWorkspace, "const previousDir = root.dir;", "Admin document direction restoration");
+assertContains(adminWorkspace, "root.lang = previousLang;", "Admin document locale restoration");
+assertContains(adminWorkspace, "root.dir = previousDir;", "Admin document direction restoration");
 assertContains(adminLocale, "window.localStorage.getItem(ADMIN_LOCALE_STORAGE_KEY)",
   "Admin locale persistence");
 assertContains(adminLocale, "window.localStorage.setItem(ADMIN_LOCALE_STORAGE_KEY, locale)",
