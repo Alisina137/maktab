@@ -26,7 +26,7 @@ const checks = {
   "apps/web/app/staff/dashboard/page.tsx": [
     "StaffLoadingState", 't("Checking staff access…")',
     "adminDirection(locale)", "root.dir=adminDirection(locale)",
-    "sessionBlocked", "permission_denied", 'role="alert"'
+    "staffSessionMustExit(cause,path)", "verifiedStaffProfileIdentity(", 'role="alert"'
   ],
   "apps/mobile/src/teacher-classes.tsx": [
     "ActivityIndicator", 'accessibilityLiveRegion="polite"', '"common.loading"',
@@ -47,6 +47,11 @@ for (const [file, needles] of Object.entries(checks)) {
     assert.ok(content.includes(needle), file + " lost a critical Phase 12 user-state: " + needle);
   }
 }
+const staffSessionPolicy=source("apps/web/app/staff/staff-session-policy.ts");
+assert.ok(staffSessionPolicy.includes('code !== "permission_denied"') &&
+  staffSessionPolicy.includes('error.status === 401') &&
+  staffSessionPolicy.includes("return false;"),
+  "Phase 16 centralized Staff session guard must distinguish revoked accounts from a denied module.");
 const translations = source("apps/web/app/admin/admin-i18n.ts");
 for (const key of ['"Refresh":', '"Loading staff work…":',
   '"Checking staff access…":', '"Loading registration requests…":']) {
