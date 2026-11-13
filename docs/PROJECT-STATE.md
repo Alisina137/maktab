@@ -2,7 +2,7 @@
 
 ## Phase 12 — Functional User Journeys & Pilot Quality (started 2026-11-13)
 
-**Current phase:** Phase 12. **Step 12.1** adds a synthetic two-school API integration journey across school setup, active year/grade/class, parent/student account creation, first-login password change, role-specific home/timetable and cross-school denial. CI checks this step on both platforms through `pnpm verify:phase12:step1` and root `pnpm verify`. The roadmap and technical boundaries are documented in `docs/PHASE12-FUNCTIONAL-JOURNEYS.md`. Steps **12.2–12.6 remain planned**, beginning with Staff/Teacher connected journeys.
+**Current phase:** Phase 12. **Step 12.1** adds a synthetic two-school API integration journey across school setup, active year/grade/class, parent/student account creation, first-login password change, role-specific home/timetable and cross-school denial. CI checks this step on both platforms through `pnpm verify:phase12:step1` and root `pnpm verify`. The roadmap and technical boundaries are documented in `docs/PHASE12-FUNCTIONAL-JOURNEYS.md`. **Step 12.2** implements connected Staff/Teacher school-specific profile, permission grant/revocation, active academic year, class assignment, timetable, first login and cross-role/class/school tests. Command: `pnpm verify:phase12:step2` (Linux and Windows CI). Existing loading/empty/retry UI states were inspected in code, but no live browser/device walkthrough is claimed. **Steps 12.3–12.6 remain planned**; next is attendance and learning integration.
 
 **Release status:** Still **NO-GO**. Phase 11 independent staging/Neon/device/push/backup/operator gates remain unverified and no new CI assertion substitutes for physical acceptance.
 

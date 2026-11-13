@@ -39,6 +39,9 @@ jobs:
       - name: Phase 12 Step 1 two-school functional onboarding and tenant isolation
         run: pnpm verify:phase12:step1
 
+      - name: Phase 12 Step 2 Staff and Teacher integrated permissions and schedule
+        run: pnpm verify:phase12:step2
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -332,6 +335,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Phase 12 Step 1 two-school functional onboarding and tenant isolation
         run: pnpm verify:phase12:step1
+
+      - name: Phase 12 Step 2 Staff and Teacher integrated permissions and schedule
+        run: pnpm verify:phase12:step2
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
