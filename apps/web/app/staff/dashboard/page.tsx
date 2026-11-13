@@ -15,6 +15,7 @@ import { StaffFeesPanel } from "../staff-fees-panel";
 import { StaffWorkPanel } from "../staff-work-panel";
 import { StaffLoadingState } from "../staff-loading-state";
 import { fallbackStaffTab, permittedStaffTabs, type StaffWorkspaceTab } from "../staff-navigation-policy";
+import { staffRequestIdentityCurrent, staffSessionMustExit, verifiedStaffProfileIdentity } from "../staff-session-policy";
 import { StaffWorkPreferences, DEFAULT_STAFF_PREFERENCES, type StaffPreferences } from "../staff-work-preferences";
 import { staffWorkText } from "../staff-work-i18n";
 
@@ -33,6 +34,8 @@ export default function StaffDashboard() {
   const [registrationDirty,setRegistrationDirty]=useState(false);
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
+  const sessionEpoch=useRef(0);
+  const [profileRetryEpoch,setProfileRetryEpoch]=useState(0);
   const [profile,setProfile]=useState<StaffMe|null>(null);
   const [loading,setLoading]=useState(true);
   const [working,setWorking]=useState(false);
@@ -84,6 +87,7 @@ export default function StaffDashboard() {
   }
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
+    sessionEpoch.current+=1;
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
     router.replace("/staff");
   },[router]);
@@ -95,6 +99,13 @@ export default function StaffDashboard() {
   const authenticated=useCallback(async <T,>(path:string, init:RequestInit={}):Promise<T>=>{
     let value=current.current;
     if(!value || value.session.user.role!=="SCHOOL_STAFF") throw Error("Staff login is required.");
+    const initialEpoch=sessionEpoch.current;
+    const initialId=value.session.user.id;
+    const initialSchoolId=value.school.id;
+    const stillCurrent=()=>staffRequestIdentityCurrent(
+      initialEpoch,sessionEpoch.current,initialId,initialSchoolId,current.current
+    );
+    const assertCurrent=()=>{if(!stillCurrent())throw Error("Staff account changed during request.");};
     const deadline=Date.parse(value.session.accessExpiresAt??"");
     if(!Number.isFinite(deadline)||deadline<=Date.now()+30_000){
       const original=value;
@@ -103,9 +114,11 @@ export default function StaffDashboard() {
           const next=await adminApi<Session>("/v1/auth/refresh",{
             method:"POST",body:JSON.stringify({refreshToken:original.session.refreshToken})
           });
-          if(next.user.role!=="SCHOOL_STAFF"||next.mustChangePassword||next.user.status!=="ACTIVE")
+          assertCurrent();
+          if(next.user.role!=="SCHOOL_STAFF"||next.mustChangePassword||
+             next.user.status!=="ACTIVE"||next.user.id!==initialId||
+             (next.user as Session["user"] & {schoolId?:string}).schoolId!==initialSchoolId)
             throw Error("Staff login is required.");
-          // Do not restore the session after the user has manually signed out.
           if(current.current?.session.refreshToken!==original.session.refreshToken)
             throw Error("The staff session changed during refresh.");
           const fresh:StaffSession={...original,session:next};
@@ -119,24 +132,22 @@ export default function StaffDashboard() {
           if(refreshFlight.current===operation)refreshFlight.current=null;
         });
       }
-      try{value=await refreshFlight.current!;}
-      catch{exit();throw Error("Your staff session has expired.");}
+      try{value=await refreshFlight.current!;assertCurrent();}
+      catch(cause){
+        if(stillCurrent()&&staffSessionMustExit(cause,"/v1/auth/refresh"))exit();
+        throw cause;
+      }
     }
     try{
-      return await adminApi<T>(path,{...init,headers:{
+      const result=await adminApi<T>(path,{...init,headers:{
         ...init.headers,Authorization:`Bearer ${value.session.accessToken}`
       },cache:"no-store"});
+      assertCurrent();
+      return result;
     }catch(cause){
-      if(cause && typeof cause==="object" && "status" in cause) {
-        const failure=cause as {status:number;code?:string};
-        const sessionBlocked=(failure.status===401||failure.status===503||
-          (failure.status===403&&failure.code!=="permission_denied"))&&
-          !(path==="/v1/auth/change-password"&&failure.status===401&&
-            failure.code==="current_password_invalid");
-        // Page-specific permission failures remain visible without signing out.
-        // Suspended, revoked, invalid and unavailable sessions are cleared.
-        if(sessionBlocked)exit();
-      }
+      if(stillCurrent()&&staffSessionMustExit(cause,path))exit();
+      // A transient network or 503 is retryable. Do not erase valid
+      // credentials on a tunnel outage or one denied module permission.
       throw cause;
     }
   },[exit]);
@@ -147,13 +158,19 @@ export default function StaffDashboard() {
     if(!value){router.replace("/staff");return;}
     current.current=value;setStored(value);
     let active=true;
+    setLoading(true);setMessage("");
     void authenticated<StaffMe>("/v1/staff/me").then(data=>{
-      if(active){setProfile(data);setMessage("");}
+      if(!active)return;
+      if(!current.current||!verifiedStaffProfileIdentity(current.current,data)){
+        exit();return;
+      }
+      setProfile(data);setMessage("");
     }).catch(cause=>{
-      if(active)setMessage(cause instanceof Error?cause.message:"Could not verify staff account.");
+      if(active&&current.current)
+        setMessage(friendlyAdminError(cause,"Staff access temporarily unavailable. Check connection and retry.",locale));
     }).finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;};
-  },[authenticated,router]);
+  },[authenticated,router,profileRetryEpoch]);
   // Phase 7: home notification count and display preferences are available
   // immediately after successful staff login; opening Work is not required.
   useEffect(()=>{
@@ -229,8 +246,9 @@ export default function StaffDashboard() {
   );
   if(!profile)return (
     <main className="admin-shell staff-shell" dir={adminDirection(locale)}>
-      <div className="admin-error" role="alert">{message||t("Staff access is unavailable.")}</div>
-      <button className="admin-secondary" onClick={exit}>{t("Back to staff sign in")}</button>
+      <div className="admin-error" role="alert">{message||t("Staff access temporarily unavailable. Check connection and retry.")}</div>
+      <button className="admin-primary" type="button" onClick={()=>setProfileRetryEpoch(epoch=>epoch+1)}>{t("Retry")}</button>
+      <button className="admin-secondary" type="button" onClick={exit}>{t("Back to staff sign in")}</button>
     </main>
   );
   return(

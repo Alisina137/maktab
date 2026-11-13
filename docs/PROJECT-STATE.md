@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 16 — Staff Session Integrity and Recoverable Portal Access (2026-11-13)
+
+**Six Phase 16 source tasks implemented:** (16.1) strict browser session validation (active Staff, same school, valid refresh credentials), (16.2) independent `/v1/staff/me` user/school identity verification, (16.3) distinguish terminal revocation from recoverable API outage and per-module permission denial, (16.4) protect authenticated Staff responses and refresh rotation from stale logout/account epochs, (16.5) Staff school-discovery and profile retry, bound first-login password school, Dari/Pashto feedback and login document direction cleanup, (16.6) dedicated `pnpm verify:phase16` tests and guards wired to root verification and Linux/Windows CI. See `docs/PHASE16-STAFF-IDENTITY-RECOVERY.md`. No migrations, new permissions or runtime environment changes.
+
+**External release still NO-GO:** No evidence yet of independently signed off real Neon staging, actual Android/browser multi-role acceptance, push/scheduler or backup/restore rehearsal under the Phase 11/12 release gates.
+
 ## Phase 15 — Safe Mobile Requests & Staff Registration Queue (2026-11-13)
 
 **Six Phase 15 source tasks implemented:** (15.1) offline cache allowlist for explicitly approved authenticated family/Student/Teacher GETs and no auth/files/push/unknown responses; (15.2) explicit mobile request cancellation distinguished from offline timeout so cancelled requests cannot resurrect stale screens; (15.3) account-scope epoch guards for delayed responses and same-account re-login; (15.4) Staff registration queue five-item pagination with filtered page reset and accessible results count; (15.5) refresh sequencing to prevent older GETs replacing newly saved registration rows, plus translated busy/RTL feedback; (15.6) `pnpm verify:phase15` in root verify and Windows/Linux CI. See `docs/PHASE15-REQUEST-STAFF-QUEUE.md`. No migrations, new permissions or new env vars.
