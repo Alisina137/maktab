@@ -20,11 +20,18 @@ Checks database connectivity.
 
 Use readiness rather than liveness to decide whether the API should receive production traffic.
 
-### Metrics
+### Metrics — private only
 
 ```text
 GET /metrics
+Authorization: Bearer <API_METRICS_TOKEN>
 ```
+
+Configure a **separate** `API_METRICS_TOKEN` of at least 32 characters through
+the deployment secret manager. Never use provisioning credentials or 2FA
+secrets as monitoring credentials. If no metrics token is configured, the
+endpoint returns 404; invalid or missing bearer tokens return 401.
+`/health` and `/ready` remain public probe endpoints.
 
 Prometheus text output currently includes:
 
@@ -36,7 +43,7 @@ Prometheus text output currently includes:
 
 Metrics deliberately avoid school/user/student labels to prevent sensitive/high-cardinality telemetry.
 
-A Prometheus server or OpenTelemetry Collector can scrape this endpoint at deployment level.
+A Prometheus server or OpenTelemetry Collector can scrape this endpoint **only with a protected monitoring bearer token**.
 
 ## Structured logs
 
@@ -107,7 +114,10 @@ Deployment checks should include:
 - `/ready` returns ready
 - backup key configured
 - encrypted backup succeeds
-- restore drill completed before launch
+- restore drill completed before launch on a **disposable staging database**
+- `RESTORE_DATABASE_URL` and exact staging-name confirmation; never target the normal application `DATABASE_URL`
+- full AES-GCM archive authentication before starting `pg_restore`
+- preflight and rehearse pending migrations 0032 and 0033 on staged Neon
 
 ## Push
 
@@ -137,7 +147,7 @@ For a pilot incident:
 2. check `/health`
 3. check `/ready`
 4. inspect structured error logs
-5. inspect `/metrics` 5xx/database signals
+5. inspect authenticated `/metrics` 5xx/database signals using the protected monitoring token
 6. check platform health summary if appropriate
 7. avoid destructive database edits
 8. export school data/audit history for investigation when needed
