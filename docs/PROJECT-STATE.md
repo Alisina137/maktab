@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 14 — Session Integrity and Staff Workflow Recovery (2026-11-13)
+
+**Phase 14 development source:** All six defined tasks implemented: guard mobile session restore responses against sign-out/account switches; serialize auth writes and logout deletes; serialize/bound per-parent selected-child preferences; preserve Staff registration saves and submissions on list refresh failures and warn before discarding unsaved edits; unify permission-driven Staff tabs with directory retry and translated feedback; and add `pnpm verify:phase14` to root verification and both OS CI. See `docs/PHASE14-SESSION-STAFF-RECOVERY.md`. No migrations or permission grants are involved.
+
+**External release decision:** Still **NO-GO**. Real staging/Android/browser/Neon/push/scheduler/backup/operator evidence remains independently unverified under Phase 11/12 acceptance. Source correctness is not a pilot rollout.
+
 ## Phase 13 — Mobile Stability, Offline Privacy & Staff Workflow Safety (2026-11-13)
 
 **Phase 13 source implementation:** All 6 source tasks implemented: (13.1) fixed recursive Teacher Hub loading crash; (13.2) validated persisted mobile sessions and matching school identity before restore; (13.3) sanitized/bounded stored Parent child selection; (13.4) v2 offline cached reads bind exact account namespace and request path; (13.5) Staff registration cannot submit unsaved edits; (13.6) runtime regression and source guards included as `pnpm verify:phase13` in root verification and Linux/Windows CI. See `docs/PHASE13-RUNTIME-RESILIENCE.md`.

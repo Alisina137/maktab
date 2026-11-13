@@ -1137,7 +1137,9 @@ function AppContent() {
   async function restore() {
     try {
       const stored = await loadStoredSession();
-      if (!stored) return;
+      // A delayed SecureStore read must not revive the last account after
+      // a different account signs in or logout begins.
+      if (!stored || sessionRef.current || logoutInProgressRef.current) return;
 
       setSchool(stored.school);
       setReadCacheScope(`${stored.school.id}:${stored.auth.user.id}`);
@@ -1155,10 +1157,16 @@ function AppContent() {
       setSession(stored.auth);
       setScreen(screenForSession(stored.auth));
       setBusy(false);
+      // No network reply from this restoration may overwrite a rotated token,
+      // a newer login, or an explicit sign-out.
+      const isRestoring = () => !logoutInProgressRef.current &&
+        sameSessionEpoch(sessionRef.current, stored.auth, schoolRef.current, stored.school);
 
       try {
         await api.health(1_500);
+        if (!isRestoring()) return;
       } catch {
+        if (!isRestoring()) return;
         setNotice(null);
         setAppError("common.apiUnavailable", "network");
         return;
@@ -1168,6 +1176,7 @@ function AppContent() {
 
       try {
         const me = await api.me(stored.auth.accessToken);
+        if (!isRestoring()) return;
         const restored = {
           ...stored.auth,
           user: me.user,
@@ -1176,10 +1185,13 @@ function AppContent() {
         sessionRef.current = restored;
         setSession(restored);
         await saveStoredSession({ auth: restored, school: stored.school });
+        if (logoutInProgressRef.current ||
+            !sameSessionEpoch(sessionRef.current, restored, schoolRef.current, stored.school)) return;
         setScreen(screenForSession(restored));
         setReconnectEpoch((current) => current + 1);
         return;
       } catch (cause) {
+        if (!isRestoring()) return;
         if (isNetworkApiError(cause)) {
           setPreferCachedReads(true);
           setNotice(null);
@@ -1194,12 +1206,16 @@ function AppContent() {
 
       try {
         const refreshed = await api.refresh(stored.auth.refreshToken);
-        await saveStoredSession({ auth: refreshed, school: stored.school });
+        if (!isRestoring()) return;
         sessionRef.current = refreshed;
         setSession(refreshed);
+        await saveStoredSession({ auth: refreshed, school: stored.school });
+        if (logoutInProgressRef.current ||
+            !sameSessionEpoch(sessionRef.current, refreshed, schoolRef.current, stored.school)) return;
         setScreen(screenForSession(refreshed));
         setReconnectEpoch((current) => current + 1);
       } catch (cause) {
+        if (!isRestoring()) return;
         if (isNetworkApiError(cause)) {
           setPreferCachedReads(true);
           setSession(stored.auth);
@@ -1223,9 +1239,12 @@ function AppContent() {
         setAppError("common.sessionExpired");
       }
     } catch {
-      await clearStoredSession();
-      setReadCacheScope(null);
-      setPreferCachedReads(false);
+      // Unexpected restoration failures must not clear a newer active session.
+      if (!sessionRef.current && !logoutInProgressRef.current) {
+        await clearStoredSession();
+        setReadCacheScope(null);
+        setPreferCachedReads(false);
+      }
     } finally {
       setBusy(false);
     }

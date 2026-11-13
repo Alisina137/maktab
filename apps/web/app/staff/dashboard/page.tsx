@@ -14,6 +14,7 @@ import { StaffAttendancePanel } from "../staff-attendance-panel";
 import { StaffFeesPanel } from "../staff-fees-panel";
 import { StaffWorkPanel } from "../staff-work-panel";
 import { StaffLoadingState } from "../staff-loading-state";
+import { fallbackStaffTab, permittedStaffTabs, type StaffWorkspaceTab } from "../staff-navigation-policy";
 import { StaffWorkPreferences, DEFAULT_STAFF_PREFERENCES, type StaffPreferences } from "../staff-work-preferences";
 import { staffWorkText } from "../staff-work-i18n";
 
@@ -28,7 +29,8 @@ type Group="STUDENT"|"PARENT"|"TEACHER";
 export default function StaffDashboard() {
   const router=useRouter();
   const [locale,setLocale]=useState<AdminLocale>(ADMIN_DEFAULT_LOCALE);
-  const [tab,setTab]=useState<"home"|"directory"|"registration"|"attendance"|"fees"|"work"|"notifications"|"settings">("home");
+  const [tab,setTab]=useState<StaffWorkspaceTab>("home");
+  const [registrationDirty,setRegistrationDirty]=useState(false);
   const [stored,setStored]=useState<StaffSession|null>(null);
   const current=useRef<StaffSession|null>(null);
   const [profile,setProfile]=useState<StaffMe|null>(null);
@@ -45,6 +47,7 @@ export default function StaffDashboard() {
   const [submitted,setSubmitted]=useState("");
   const [page,setPage]=useState(1);
   const [directory,setDirectory]=useState<Directory|null>(null);
+  const [directoryRetryEpoch,setDirectoryRetryEpoch]=useState(0);
   const [currentPassword,setCurrentPassword]=useState("");
   const [newPassword,setNewPassword]=useState("");
   const [passwordBusy,setPasswordBusy]=useState(false);
@@ -61,16 +64,24 @@ export default function StaffDashboard() {
   const canTasks=profile?.profile?.permissions?.includes("TASKS_VIEW")===true;
   const canDrafts=profile?.profile?.permissions?.includes("COMMUNICATION_DRAFT")===true;
   const canWork=canTasks||canDrafts;
-  const tabs=[
-    {id:"home" as const,label:"Home"},
-    ...(canDirectory?[{id:"directory" as const,label:"Directory"}]:[]),
-    ...(canRegister?[{id:"registration" as const,label:"Registration"}]:[]),
-    ...(canAttend?[{id:"attendance" as const,label:"Attendance"}]:[]),
-    ...(canFees?[{id:"fees" as const,label:"Fees"}]:[]),
-    ...(canWork?[{id:"work" as const,label:"Staff work"}]:[]),
-    {id:"notifications" as const,label:"Notifications"},
-    {id:"settings" as const,label:"Profile & Settings"}
-  ];
+  const labels:Record<StaffWorkspaceTab,string>={
+    home:"Home",directory:"Directory",registration:"Registration",
+    attendance:"Attendance",fees:"Fees",work:"Staff work",
+    notifications:"Notifications",settings:"Profile & Settings"
+  };
+  const tabs=permittedStaffTabs(profile?.profile?.permissions)
+    .map(id=>({id,label:labels[id]}));
+  // Do not leave staff on a permission-gated module when fresh server profile
+  // data no longer grants its navigation entry.
+  const activeTabAllowed=fallbackStaffTab(tab,profile?.profile?.permissions)===tab;
+  useEffect(()=>{
+    if(profile&&!activeTabAllowed)setTab("home");
+  },[profile,activeTabAllowed]);
+  function chooseTab(next:StaffWorkspaceTab){
+    if(next!==tab && tab==="registration" && registrationDirty &&
+        !window.confirm(t("Discard unsaved registration changes?"))) return;
+    setTab(next);
+  }
   const number=(v:number)=>new Intl.NumberFormat(locale==="en"?"en-US":locale).format(v);
   const exit=useCallback(()=>{
     current.current=null;clearStaffSession();setStored(null);setProfile(null);
@@ -172,7 +183,7 @@ export default function StaffDashboard() {
   },[locale]);
 
   useEffect(()=>{
-    if(!submitted)return;
+    if(!submitted){setWorking(false);return;}
     let active=true;
     setWorking(true);setDirectory(null);setMessage("");setSelected(null);
     const params=new URLSearchParams({query:submitted,group,status,sortBy,order,
@@ -183,7 +194,7 @@ export default function StaffDashboard() {
       if(active)setMessage(friendlyAdminError(cause,"Could not search school records.",locale));
     }).finally(()=>{if(active)setWorking(false);});
     return()=>{active=false;};
-  },[submitted,group,status,sortBy,order,pageSize,page,authenticated,locale]);
+  },[submitted,group,status,sortBy,order,pageSize,page,directoryRetryEpoch,authenticated,locale]);
 
   async function signOut(){
     const value=current.current;exit();
@@ -250,7 +261,7 @@ export default function StaffDashboard() {
       <nav className="staff-workspace-nav" aria-label={t("Staff workspace navigation")}>
         {tabs.map(item => (
           <button type="button" key={item.id} className={tab===item.id?"staff-nav-active":""}
-            aria-pressed={tab===item.id} onClick={()=>setTab(item.id)}>{t(item.label)}</button>
+            aria-pressed={tab===item.id} onClick={()=>chooseTab(item.id)}>{t(item.label)}</button>
         ))}
       </nav>
       {tab==="home" ? <StaffHomePanel locale={locale} school={profile.school}
@@ -273,7 +284,7 @@ export default function StaffDashboard() {
         canTasks={canTasks} canDrafts={canDrafts} initialView="notifications"
         compactTaskView={workPrefs.compactTaskView} onUnreadChange={setWorkUnread}/>:null}
       {tab==="registration"&&canRegister?<StaffRegistrationPanel locale={locale}
-        userId={profile.user.id} api={authenticated}/>:null}
+        userId={profile.user.id} api={authenticated} onDirtyChange={setRegistrationDirty}/>:null}
       {tab==="directory" ? <div className="staff-workspace-grid staff-directory-layout">
         {canDirectory ? (
         <section className="admin-panel staff-directory">
@@ -288,6 +299,7 @@ export default function StaffDashboard() {
             <label>{t("Account type")}
               <select value={group} onChange={e=>{
                 setGroup(e.target.value as Group);setPage(1);setSubmitted("");setDirectory(null);
+                setSelected(null);setMessage("");setWorking(false);
               }}>
                 <option value="STUDENT">{t("Students")}</option>
                 <option value="PARENT">{t("Parents")}</option>
@@ -336,8 +348,12 @@ export default function StaffDashboard() {
               </button>
             </div>
           </form>
-          {message?<p className="admin-error" role="alert">{message}</p>:null}
-          {working?<p role="status">{t("Searching school records…")}</p>:null}
+          {message?<div className="staff-error-retry">
+            <p className="admin-error" role="alert">{message}</p>
+            {submitted&&!working?<button type="button" className="admin-secondary"
+              onClick={()=>setDirectoryRetryEpoch(x=>x+1)}>{t("Retry")}</button>:null}
+          </div>:null}
+          {working?<p role="status" aria-live="polite">{t("Searching school records…")}</p>:null}
           {!submitted?<div className="staff-empty">
             {t("Enter a name or code to find accounts in your school.")}
           </div>:null}

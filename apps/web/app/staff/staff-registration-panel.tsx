@@ -22,8 +22,9 @@ type Draft = Pick<RegistrationRow,"fullName"|"studentCode"|"parentName"|"academi
 const initial:Draft={fullName:"",studentCode:"",parentName:"",academicYearId:"",gradeLevelId:"",
   documents:{identityChecked:false,consentChecked:false,priorRecordChecked:false},notes:""};
 type Props = { locale:AdminLocale; userId:string;
-  api:<T>(path:string,init?:RequestInit)=>Promise<T> };
-export function StaffRegistrationPanel({locale,userId,api}:Props) {
+  api:<T>(path:string,init?:RequestInit)=>Promise<T>;
+  onDirtyChange?:(dirty:boolean)=>void };
+export function StaffRegistrationPanel({locale,userId,api,onDirtyChange}:Props) {
   const t=(key:string)=>adminText(locale,key);
   const [options,setOptions]=useState<RegistrationOptions|null>(null);
   const [rows,setRows]=useState<RegistrationRow[]>([]);
@@ -41,7 +42,8 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
       api<{requests:RegistrationRow[]}>("/v1/staff/registrations")
     ]);
     setOptions(meta);setRows(list.requests);
-    if(selected)setSelected(list.requests.find(r=>r.id===selected.id)??null);
+    // Resolve the *latest* selected row, not the value captured before the GET.
+    setSelected(current=>current?list.requests.find(r=>r.id===current.id)??null:null);
   }
   useEffect(()=>{
     let active=true;
@@ -61,10 +63,14 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
       const result=await api<{request:RegistrationRow}>(editing
         ? "/v1/staff/registrations/"+editing : "/v1/staff/registrations",
       {method:editing?"PUT":"POST",body:JSON.stringify(draft)});
-      await reload();
+      // The POST/PUT has already committed. Preserve the saved record even if
+      // the subsequent list refresh fails (otherwise retrying can duplicate it).
       setEditing(result.request.id);
       setSelected(result.request);
+      setRows(current=>[result.request,...current.filter(r=>r.id!==result.request.id)]);
       setNotice(t("Registration draft saved."));
+      try { await reload(); }
+      catch { setError(t("Saved successfully, but the list could not refresh. Use Refresh.")); }
     }catch(err){setError(friendlyAdminError(err,"Could not save registration.",locale));}
     finally{setBusy(false);}
   }
@@ -76,13 +82,19 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
     if(!window.confirm(t("Submit this registration for administrator review?")))return;
     setBusy(true);setError("");setNotice("");
     try{
-      await api("/v1/staff/registrations/"+id+"/submit",{method:"POST"});
-      await reload();setEditing(null);setDraft(initial);
+      const result=await api<{request:RegistrationRow}>("/v1/staff/registrations/"+id+"/submit",{method:"POST"});
+      setRows(current=>current.map(row=>row.id===id?result.request:row));
+      setSelected(result.request);
+      setEditing(null);setDraft(initial);
       setNotice(t("Submitted for administrator review."));
+      try { await reload(); }
+      catch { setError(t("Submitted successfully, but the list could not refresh. Use Refresh.")); }
     }catch(err){setError(friendlyAdminError(err,"Could not submit registration.",locale));}
     finally{setBusy(false);}
   }
   function choose(row:RegistrationRow){
+    if(row.id!==selected?.id && hasUnsavedForm &&
+      !window.confirm(t("Discard unsaved registration changes?")))return;
     setSelected(row);setError("");setNotice("");
     if(row.status==="DRAFT"&&row.createdBy===userId){
       setEditing(row.id);
@@ -96,6 +108,20 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
     (!selected.documents.identityChecked||!selected.documents.consentChecked):false;
   const unsavedDraft=selected?.status==="DRAFT"&&editing===selected.id &&
     hasUnsavedRegistrationChanges(draft,selected);
+  const hasUnsavedForm=editing
+    ? (selected?.id===editing ? !!unsavedDraft : hasUnsavedRegistrationChanges(draft,initial))
+    : hasUnsavedRegistrationChanges(draft,initial);
+  // Let the parent workspace confirm before switching tabs and losing edits.
+  useEffect(()=>{
+    onDirtyChange?.(hasUnsavedForm);
+    return()=>onDirtyChange?.(false);
+  },[onDirtyChange,hasUnsavedForm]);
+  useEffect(()=>{
+    if(!hasUnsavedForm)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+    window.addEventListener("beforeunload",warn);
+    return()=>window.removeEventListener("beforeunload",warn);
+  },[hasUnsavedForm]);
   return <section className="staff-reg-layout">
     <div className="staff-reg-overview">
       <div><span className="eyebrow">{t("Student registration")}</span>
@@ -124,7 +150,10 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
         <div className="admin-section-header"><div><h3>{t(editing?"Edit draft":"New registration")}</h3>
           <p>{t("Information stays a draft until you explicitly submit it.")}</p></div>
           <button type="button" className="admin-secondary" disabled={busy}
-            onClick={()=>{setEditing(null);setSelected(null);setDraft(initial);setError("");}}>
+            onClick={()=>{
+              if(hasUnsavedForm&&!window.confirm(t("Discard unsaved registration changes?")))return;
+              setEditing(null);setSelected(null);setDraft(initial);setError("");
+            }}>
             {t("Start new")}</button></div>
         <form className="admin-form staff-reg-fields" onSubmit={save}>
           <label>{t("Student full name")}<input value={draft.fullName} required minLength={2} maxLength={160}
