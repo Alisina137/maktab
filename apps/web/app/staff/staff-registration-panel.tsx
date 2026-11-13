@@ -22,8 +22,9 @@ type Draft = Pick<RegistrationRow,"fullName"|"studentCode"|"parentName"|"academi
 const initial:Draft={fullName:"",studentCode:"",parentName:"",academicYearId:"",gradeLevelId:"",
   documents:{identityChecked:false,consentChecked:false,priorRecordChecked:false},notes:""};
 type Props = { locale:AdminLocale; userId:string;
-  api:<T>(path:string,init?:RequestInit)=>Promise<T> };
-export function StaffRegistrationPanel({locale,userId,api}:Props) {
+  api:<T>(path:string,init?:RequestInit)=>Promise<T>;
+  onDirtyChange?:(dirty:boolean)=>void };
+export function StaffRegistrationPanel({locale,userId,api,onDirtyChange}:Props) {
   const t=(key:string)=>adminText(locale,key);
   const [options,setOptions]=useState<RegistrationOptions|null>(null);
   const [rows,setRows]=useState<RegistrationRow[]>([]);
@@ -110,6 +111,11 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
   const hasUnsavedForm=editing
     ? (selected?.id===editing ? !!unsavedDraft : hasUnsavedRegistrationChanges(draft,initial))
     : hasUnsavedRegistrationChanges(draft,initial);
+  // Let the parent workspace confirm before switching tabs and losing edits.
+  useEffect(()=>{
+    onDirtyChange?.(hasUnsavedForm);
+    return()=>onDirtyChange?.(false);
+  },[onDirtyChange,hasUnsavedForm]);
   useEffect(()=>{
     if(!hasUnsavedForm)return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
