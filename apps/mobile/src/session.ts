@@ -38,7 +38,7 @@ export async function loadStoredSession(): Promise<StoredSession | null> {
   // Serialize the entire read + corrupted-record cleanup transaction. Simply
   // draining earlier writes is insufficient: a newer sign-in could write
   // while getItemAsync is pending and be accidentally erased by a stale read.
-  return sessionWrites.enqueue(async () => {
+  return sessionWrites.read(async () => {
     const raw = await SecureStore.getItemAsync(KEY);
     if (!raw) return null;
     let parsed: unknown;
@@ -72,7 +72,7 @@ export async function loadPreferredParentChild(
 ): Promise<string | null> {
   // A read should observe the queue's latest saved selection, without racing
   // a native write enqueued while SecureStore.getItemAsync is pending.
-  return parentPreferenceWrites.enqueue(async () => {
+  return parentPreferenceWrites.read(async () => {
     const preferences = await loadParentChildPreferences();
     const value = preferences[parentChildPreferenceKey(schoolId, parentUserId)];
     return typeof value === "string" && value ? value : null;
