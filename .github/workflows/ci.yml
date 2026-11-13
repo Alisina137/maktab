@@ -60,6 +60,9 @@ jobs:
       - name: Phase 14 Mobile restore ordering, parent selections and Staff safe workflows
         run: pnpm verify:phase14
 
+      - name: Phase 15 Secure offline reads, request lifecycle and Staff queue pagination
+        run: pnpm verify:phase15
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -374,6 +377,9 @@ jobs:
 
       - name: Phase 14 Mobile restore ordering, parent selections and Staff safe workflows
         run: pnpm verify:phase14
+
+      - name: Phase 15 Secure offline reads, request lifecycle and Staff queue pagination
+        run: pnpm verify:phase15
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
