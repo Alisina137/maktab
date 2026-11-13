@@ -2292,6 +2292,7 @@ function AppContent() {
             </View>
           </View>
 
+          {(showStudentNavigation || !session) ? (
           <View style={[styles.studentHeaderActions,direction==="rtl"&&styles.rowRtl]}>
             {showStudentNavigation?<Pressable accessibilityRole="button"
               testID="student-header-notifications"
@@ -2310,6 +2311,7 @@ function AppContent() {
                 </Text>
               </View>:null}
             </Pressable>:null}
+          {!session ? (
           <View style={styles.languageSelectWrap}>
             <Pressable
               accessibilityRole="button"
@@ -2360,7 +2362,9 @@ function AppContent() {
               </View>
             ) : null}
           </View>
+          ) : null}
           </View>
+          ) : null}
         </View>
 
         <OnboardingProgress screen={screen} />
