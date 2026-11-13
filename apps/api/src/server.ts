@@ -22,25 +22,15 @@ import {
 } from "@maktablink/database";
 import { buildApp } from "./app.js";
 import { createAdminPasswordVerificationDelivery } from "./auth/admin-password-2fa.js";
+import { createNonOverlappingJob } from "./periodic-job.js";
+import { readApiRuntimeConfig } from "./runtime-config.js";
 
 loadEnv({
   path: fileURLToPath(new URL("../../../.env", import.meta.url))
 });
 
-const databaseUrl = process.env.DATABASE_URL;
-const provisioningKey = process.env.PLATFORM_PROVISIONING_KEY;
-const host = process.env.API_HOST ?? "0.0.0.0";
-const port = Number(process.env.API_PORT ?? 4000);
-const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required. Add it to the repository root .env file.");
-}
-if (!provisioningKey || provisioningKey.length < 24) {
-  throw new Error("PLATFORM_PROVISIONING_KEY must be at least 24 characters in the repository root .env file.");
-}
-
-const database = createDatabaseClient(databaseUrl);
+const runtime = readApiRuntimeConfig(process.env);
+const database = createDatabaseClient(runtime.databaseUrl);
 const learningExtensionsStore = createLearningExtensionsStore(database.db);
 const app = buildApp({
   schoolStore: createSchoolStore(database.db),
@@ -61,33 +51,61 @@ const app = buildApp({
   pilotLaunchStore: createPilotLaunchStore(database.db),
   pushProvider: createExpoPushProvider(),
   passwordVerificationDelivery: createAdminPasswordVerificationDelivery(),
-  passwordVerificationSecret: process.env.PASSWORD_2FA_SECRET ?? provisioningKey,
-  provisioningKey,
-  webOrigin,
+  passwordVerificationSecret: runtime.passwordVerificationSecret,
+  provisioningKey: runtime.provisioningKey,
+  webOrigin: runtime.webOrigin,
+  metricsToken: runtime.metricsToken,
   logger: process.env.NODE_ENV === "production" || process.env.API_STRUCTURED_LOGS === "true"
 });
 
+const publishingJob = createNonOverlappingJob(async () => {
+  const published = await learningExtensionsStore.publishDueHomeworks();
+  if (published) app.log.info({ event: "scheduled_homework_published", count: published });
+}, () => {
+  app.log.error({ event: "scheduled_homework_publish_failed" });
+});
+
 let scheduleTimer: ReturnType<typeof setInterval> | null = null;
-const close = async () => {
-  if (scheduleTimer) clearInterval(scheduleTimer);
-  await app.close();
-  await database.close();
-};
+let shutdownFlight: Promise<void> | null = null;
 
-process.once("SIGINT", () => void close().finally(() => process.exit(0)));
-process.once("SIGTERM", () => void close().finally(() => process.exit(0)));
-
-await app.listen({ host, port });
-// Scheduled publications persist in PostgreSQL; repeatable atomic claims
-// prevent duplicate publishing across API instances and server restarts.
-async function publishScheduled() {
-  try {
-    const published = await learningExtensionsStore.publishDueHomeworks();
-    if (published) app.log.info({ event: "scheduled_homework_published", count: published });
-  } catch (error) {
-    app.log.error({ event: "scheduled_homework_publish_failed", error });
-  }
+function shutdown(): Promise<void> {
+  if (shutdownFlight) return shutdownFlight;
+  shutdownFlight = (async () => {
+    if (scheduleTimer) clearInterval(scheduleTimer);
+    scheduleTimer = null;
+    const drained = await publishingJob.stop(5_000);
+    if (!drained) {
+      app.log.warn({ event: "scheduled_homework_shutdown_timeout" });
+    }
+    try {
+      await app.close();
+    } finally {
+      // Even if the HTTP listener fails to close, release PostgreSQL handles.
+      await database.close();
+    }
+  })();
+  return shutdownFlight;
 }
-void publishScheduled();
-scheduleTimer = setInterval(() => void publishScheduled(), 60_000);
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    void shutdown().catch(() => {
+      process.exitCode = 1;
+      // A generic event avoids emitting connection URLs or account data.
+      app.log.error({ event: "api_shutdown_failed" });
+    });
+  });
+}
+
+try {
+  await app.listen({ host: runtime.host, port: runtime.port });
+} catch (error) {
+  await database.close().catch(() => undefined);
+  throw error;
+}
+
+void publishingJob.trigger();
+scheduleTimer = setInterval(() => {
+  void publishingJob.trigger();
+}, 60_000);
 scheduleTimer.unref();
