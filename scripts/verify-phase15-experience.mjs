@@ -22,8 +22,14 @@ for (const required of [
 assert.ok(!request.includes("signal: init?.signal ?? controller.signal"),
   "Caller signal must always be relayed to a timeout-controlled request");
 const cache = read("apps/mobile/src/read-cache.ts");
-for(const required of ["let scopeEpoch = 0", "getReadCacheEpoch()", "if (scope !== nextScope) scopeEpoch += 1"])
+for(const required of ["let scopeEpoch = 0", "getReadCacheEpoch()", "invalidateReadCacheRequests()", "if (scope !== nextScope) scopeEpoch += 1"])
   assert.ok(cache.includes(required), "Mobile request epoch guard removed: " + required);
+const app=read("apps/mobile/App.tsx");
+const logout=app.slice(app.indexOf("  async function logout() {"),
+  app.indexOf("\n  async function changeParentAccountPassword(",app.indexOf("  async function logout() {")));
+assert.ok(logout.includes("invalidateReadCacheRequests();") &&
+  logout.indexOf("invalidateReadCacheRequests();") < logout.indexOf("await deactivatePushForSession("),
+  "Logout must invalidate previous GETs before awaiting slow external calls");
 const offline = read("apps/mobile/src/offline-request-policy.ts");
 for(const required of ["/v1/parent/home", "/v1/student/home", "/v1/teacher/today",
   "offlineReadPathAllowed", "hasBearer && hasScope"])
