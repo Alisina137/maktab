@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   validStoredSession, validStudentPreferenceId, parseParentChildPreferences
 } from "../apps/mobile/src/stored-session-policy.js";
+import { cacheEnvelopeBelongsTo } from "../apps/mobile/src/read-cache-policy.js";
 
 const schoolId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const parentId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -68,4 +69,22 @@ test("Phase 13 13.3 malformed preference maps cannot grow without bound", () => 
   ]));
   const clean = parseParentChildPreferences(entries);
   assert.equal(Object.keys(clean).length, 100);
+});
+
+test("Phase 13 13.4 offline cache rejects hash collisions and cross-school or URL payload reuse", () => {
+  const path = "/v1/parent/home";
+  const entry = { version: 2, owner: schoolId + ":" + parentId, path,
+    savedAt: "2026-11-13T09:00:00Z", data: { children: [] } };
+  const owner = schoolId + ":" + parentId;
+  assert.equal(cacheEnvelopeBelongsTo(entry, owner, path, 2), true);
+  assert.equal(cacheEnvelopeBelongsTo(entry, schoolId + ":" + childId, path, 2), false);
+  assert.equal(cacheEnvelopeBelongsTo(entry, owner, "/v1/parent/fees", 2), false);
+  assert.equal(cacheEnvelopeBelongsTo(entry, owner, path, 1), false);
+  assert.equal(cacheEnvelopeBelongsTo({ ...entry, owner: "evil" }, owner, path, 2), false);
+  assert.equal(cacheEnvelopeBelongsTo({ ...entry, path: "/v1/student/home" }, owner, path, 2), false);
+  assert.equal(cacheEnvelopeBelongsTo({ ...entry, data: undefined }, owner, path, 2), true);
+  const noData = { ...entry } as Record<string, unknown>;
+  delete noData.data;
+  assert.equal(cacheEnvelopeBelongsTo(noData, owner, path, 2), false);
+  assert.equal(cacheEnvelopeBelongsTo(null, owner, path, 2), false);
 });
