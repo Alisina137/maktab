@@ -9811,7 +9811,8 @@ test("Phase 12 Step 1: complete school-to-family onboarding journey is functiona
   assert.notEqual(a.schoolId, b.schoolId);
   assert.notEqual(a.studentId, b.studentId);
 
-  for (const [own, foreign] of [[a, b], [b, a]]) {
+  const schoolPairs: Array<[Journey, Journey]> = [[a, b], [b, a]];
+  for (const [own, foreign] of schoolPairs) {
     const parent = { authorization: `Bearer ${own.parentToken}` };
     const student = { authorization: `Bearer ${own.studentToken}` };
     const ownHome = await app.inject({ method: "GET", url: "/v1/parent/home", headers: parent });
