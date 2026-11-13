@@ -54,6 +54,9 @@ jobs:
       - name: Phase 12 Step 6 Exact-SHA staging pilot release readiness without auto GO
         run: pnpm verify:phase12:step6
 
+      - name: Phase 13 Mobile identity, offline cache, teacher UI and staff draft safety
+        run: pnpm verify:phase13
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -362,6 +365,9 @@ jobs:
 
       - name: Phase 12 Step 6 Exact-SHA staging pilot release readiness without auto GO
         run: pnpm verify:phase12:step6
+
+      - name: Phase 13 Mobile identity, offline cache, teacher UI and staff draft safety
+        run: pnpm verify:phase13
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
