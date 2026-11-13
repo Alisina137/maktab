@@ -10262,8 +10262,16 @@ test("Phase 12 Step 3: attendance correction and homework publication complete t
     url: `/v1/parent/children/${unrelated.studentId}/attendance`, headers: parentAuth })).statusCode, 404);
   assert.equal((await app.inject({ method: "GET",
     url: `/v1/parent/children/${child.studentId}/attendance`, headers: otherParentAuth })).statusCode, 404);
-  assert.equal((await app.inject({ method: "GET",
-    url: `/v1/admin/attendance/report?academicYearId=${academicYearId}`, headers: otherAdmin })).statusCode, 404);
+  const otherSchoolReport = await app.inject({ method: "GET",
+    url: `/v1/admin/attendance/report?academicYearId=${academicYearId}`, headers: otherAdmin });
+  // A foreign academic-year filter may legitimately produce an empty report
+  // (200) rather than a not-found response; never leak another school's rows.
+  assert.equal(otherSchoolReport.statusCode, 200, otherSchoolReport.body);
+  const otherSchoolData = otherSchoolReport.json<{
+    rows: unknown[]; summary: { totalMarks: number };
+  }>();
+  assert.deepEqual(otherSchoolData.rows, []);
+  assert.equal(otherSchoolData.summary.totalMarks, 0);
 
   const report = await app.inject({ method: "GET",
     url: `/v1/admin/attendance/report?academicYearId=${academicYearId}&from=${today.date}&to=${today.date}`,
