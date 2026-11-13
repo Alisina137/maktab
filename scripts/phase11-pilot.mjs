@@ -91,6 +91,25 @@ export function recordObservation(ledger, { kind, id, status, actor, reviewer, d
   const target = kind === 'journey' ? 'journeys' : 'gates';
   return { ...ledger, [target]: { ...ledger[target], [id]: row } };
 }
+export function recordDefect(ledger, { reference, severity, status, actor, reviewer, observedAt, fixSha }, now = new Date()) {
+  const ref = safeReference(reference);
+  if (!['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(severity)) throw new Error('Defect severity is invalid.');
+  if (!['OPEN', 'RESOLVED'].includes(status)) throw new Error('Defect status must be OPEN or RESOLVED.');
+  const entry = { reference: ref, severity, status,
+    actor: value(actor, 'Defect operator'), reviewer: value(reviewer, 'Defect reviewer'),
+    observedAt };
+  if (entry.actor.toLowerCase() === entry.reviewer.toLowerCase()) throw new Error('Independent defect reviewer required.');
+  if (!isRecent(observedAt, now)) throw new Error('Defect update requires recent UTC observation.');
+  if (status === 'RESOLVED') {
+    if (!SHA.test(fixSha ?? '') || fixSha !== ledger.releaseSha) {
+      throw new Error('Resolution must be retested on the exact current release SHA.');
+    }
+    entry.fixSha = fixSha;
+  }
+  if (!Array.isArray(ledger.defects)) throw new Error('Invalid defects ledger.');
+  const defects = ledger.defects.filter(item => item.reference !== ref);
+  return { ...ledger, defects: [...defects, entry] };
+}
 export function assessLedger(ledger, { sha, now = new Date(), worktreeClean = true } = {}) {
   const blockers = [];
   if (!ledger || ledger.schemaVersion !== 1 || ledger.environment !== 'staging' || !SHA.test(ledger.releaseSha ?? '')) {
@@ -109,8 +128,21 @@ export function assessLedger(ledger, { sha, now = new Date(), worktreeClean = tr
       if (row && row.status !== 'UNVERIFIED') blockers.push(...validateObservation(row, `${kind}:${id}`, ledger.releaseSha, now));
     }
   }
-  for (const defect of ledger.defects ?? []) {
-    if (defect && ['CRITICAL', 'HIGH'].includes(defect.severity) && defect.status !== 'RESOLVED') {
+  if (!Array.isArray(ledger.defects)) blockers.push('Defects list is invalid.');
+  for (const defect of Array.isArray(ledger.defects) ? ledger.defects : []) {
+    if (!defect || !['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(defect.severity) ||
+        !['OPEN', 'RESOLVED'].includes(defect.status)) {
+      blockers.push('Malformed defect entry.'); continue;
+    }
+    try { safeReference(defect.reference); value(defect.actor, 'Defect operator'); value(defect.reviewer, 'Defect reviewer'); }
+    catch { blockers.push('Defect entry requires safe reference and independent reviewer.'); }
+    if (defect.actor === defect.reviewer || !isRecent(defect.observedAt, now)) {
+      blockers.push('Defect review is invalid, stale or not independent.');
+    }
+    if (defect.status === 'RESOLVED' && defect.fixSha !== ledger.releaseSha) {
+      blockers.push('Resolved defect lacks a retest on the exact release SHA.');
+    }
+    if (['CRITICAL', 'HIGH'].includes(defect.severity) && defect.status !== 'RESOLVED') {
       blockers.push('Unresolved critical/high defect referenced in release ledger.');
     }
   }
@@ -252,6 +284,15 @@ function main(argv) {
     });
     save(opt.output, recorded);
     console.log('New evidence revision written (original preserved); no automatic release authorization.');
+  } else if (cmd === 'defect') {
+    if (!opt.attest) throw new Error('Defect changes require independent --attest.');
+    const ledger = JSON.parse(readFileSync(outsideRepo(opt.input), 'utf8'));
+    if (ledger.releaseSha !== gitSha()) throw new Error('Defect evidence SHA does not match current checkout.');
+    save(opt.output, recordDefect(ledger, {
+      reference: opt.reference, severity: opt.severity, status: opt.status,
+      actor: opt.actor, reviewer: opt.reviewer, observedAt: opt['observed-at'], fixSha: opt['fix-sha']
+    }));
+    console.log('New immutable defect evidence revision recorded outside the repository.');
   } else if (cmd === 'report') {
     const ledger = JSON.parse(readFileSync(outsideRepo(opt.input), 'utf8'));
     const report = assessLedger(ledger, { sha: gitSha(), worktreeClean: gitClean() });
@@ -265,7 +306,7 @@ function main(argv) {
   } else if (cmd === 'preflight') {
     const result = runStagingPreflight(process.env);
     if (opt.output) save(opt.output, result); else console.log(JSON.stringify(result, null, 2));
-  } else throw new Error('Use init, record, report, probe, or preflight. See docs/PILOT-ACCEPTANCE-PHASE11.md.');
+  } else throw new Error('Use init, record, defect, report, probe, or preflight. See docs/PILOT-ACCEPTANCE-PHASE11.md.');
 }
 if (process.argv[1] && basename(process.argv[1]) === 'phase11-pilot.mjs') {
   Promise.resolve().then(() => main(process.argv.slice(2))).catch(error => {
