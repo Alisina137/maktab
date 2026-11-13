@@ -12,6 +12,11 @@ export function createSerializedWriteQueue() {
       tail = operation.then(() => {}, () => {});
       return operation;
     },
+    read<T>(operation: () => Promise<T>): Promise<T> {
+      const result = tail.then(operation);
+      tail = result.then(() => {}, () => {});
+      return result;
+    },
     drained(): Promise<void> {
       return tail;
     }
