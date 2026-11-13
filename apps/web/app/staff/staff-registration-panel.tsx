@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { adminText, type AdminLocale } from "../admin/admin-i18n";
 import { friendlyAdminError } from "../admin/admin-client";
+import { StaffLoadingState } from "./staff-loading-state";
 
 export type RegistrationRow = {
   id:string;createdBy:string;status:"DRAFT"|"SUBMITTED"|"UNDER_REVIEW"|"APPROVED"|"REJECTED";
@@ -101,7 +102,7 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
     </div>
     {error?<p className="admin-error" role="alert">{error}</p>:null}
     {notice?<p className="staff-reg-success" role="status">{notice}</p>:null}
-    {loading?<div className="admin-panel" role="status">{t("Loading registration requests…")}</div>:
+    {loading?<StaffLoadingState label={t("Loading registration requests…")}/>: 
     <div className="staff-reg-columns">
       <section className="admin-panel staff-reg-form">
         <div className="admin-section-header"><div><h3>{t(editing?"Edit draft":"New registration")}</h3>
