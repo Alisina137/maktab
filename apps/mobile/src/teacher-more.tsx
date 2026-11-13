@@ -38,7 +38,7 @@ function TeacherSignOutButton({ locale, onLogout }: {
           {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
         ]
       )}
-      style={({pressed})=>[styles.logout,pressed&&styles.pressed]}>
+      style={({pressed})=>[styles.logout,getDirection(locale)==="rtl"&&styles.rtl,pressed&&styles.pressed]}>
       <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
       <Text style={styles.link}>{translate(locale,"auth.logout")}</Text>
     </Pressable>
