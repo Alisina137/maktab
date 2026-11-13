@@ -21,7 +21,7 @@ assert.ok(restore.split("if (!isRestoring()) return;").length>=6,
 const session=read("apps/mobile/src/session.ts");
 for(const item of ["const sessionWrites = createSerializedWriteQueue()",
   "const parentPreferenceWrites = createSerializedWriteQueue()",
-  "await sessionWrites.drained()",
+  "return sessionWrites.enqueue(async () => {",
   "sessionWrites.enqueue(() => SecureStore.setItemAsync(KEY",
   "sessionWrites.enqueue(() => SecureStore.deleteItemAsync(KEY)",
   "parentPreferenceWrites.enqueue(async () =>",
