@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { adminApi, friendlyAdminError, type School, type Session } from "../admin/admin-client";
 import { AdminPasswordInput } from "../admin/admin-password-input";
@@ -18,6 +18,9 @@ export default function StaffLoginPage() {
   const [password,setPassword]=useState("");
   const [newPassword,setNewPassword]=useState("");
   const [pending,setPending]=useState<Session|null>(null);
+  const pendingSchool=useRef<School|null>(null);
+  const [schoolRetryEpoch,setSchoolRetryEpoch]=useState(0);
+  const [schoolsLoading,setSchoolsLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const t=(word:string)=>adminText(locale,word);
@@ -27,15 +30,21 @@ export default function StaffLoginPage() {
     setLocale(readAdminLocale());
     if(readStaffSession()){router.replace("/staff/dashboard");return;}
     let active=true;
+    setSchoolsLoading(true);setError("");
     void adminApi<{schools:School[]}>("/v1/public/schools").then(data=>{
       if(!active)return;
-      setSchools(data.schools);setSchoolId(data.schools[0]?.id??"");
-    }).catch(()=>{if(active)setError("Could not load schools. Please try again.");});
+      setSchools(data.schools);setSchoolId(data.schools[0]?.id??"");setError("");
+    }).catch(()=>{if(active)setError("Could not load schools. Please try again.");})
+      .finally(()=>{if(active)setSchoolsLoading(false);});
     return()=>{active=false;};
-  },[router]);
+  },[router,schoolRetryEpoch]);
   useEffect(()=>{
-    document.documentElement.lang=locale==="en"?"en":locale==="ps-AF"?"ps":"fa";
-    document.documentElement.dir=adminDirection(locale);
+    const root=document.documentElement;
+    const previousLang=root.lang;
+    const previousDir=root.dir;
+    root.lang=locale==="en"?"en":locale==="ps-AF"?"ps":"fa";
+    root.dir=adminDirection(locale);
+    return()=>{root.lang=previousLang;root.dir=previousDir;};
   },[locale]);
 
   async function signIn(e:FormEvent){
@@ -45,23 +54,25 @@ export default function StaffLoginPage() {
       const result=await adminApi<Session>("/v1/auth/login",{method:"POST",
         body:JSON.stringify({schoolId,expectedRole:"SCHOOL_STAFF",username,password})});
       setPassword("");
-      if(result.user.role!=="SCHOOL_STAFF")throw new Error("Access denied.");
-      if(result.mustChangePassword){setPending(result);return;}
+      if(result.user.role!=="SCHOOL_STAFF" ||
+          (result.user as Session["user"] & {schoolId?:string}).schoolId!==school.id)
+        throw new Error("Access denied.");
+      if(result.mustChangePassword){pendingSchool.current=school;setPending(result);return;}
       storeStaffSession({session:result,school});
       router.replace("/staff/dashboard");
     } catch(cause){setError(friendlyAdminError(cause,"Please check your school, username and password.",locale));}
     finally{setBusy(false);}
   }
   async function activate(e:FormEvent){
-    e.preventDefault();if(!pending||!school)return;
+    e.preventDefault();if(!pending||!pendingSchool.current)return;
     setBusy(true);setError("");
     try{
       const result=await adminApi<Session>("/v1/auth/change-temporary-password",{
         method:"POST",headers:{Authorization:`Bearer ${pending.accessToken}`},
         body:JSON.stringify({newPassword})
       });
-      storeStaffSession({session:result,school});
-      setNewPassword("");setPending(null);
+      storeStaffSession({session:result,school:pendingSchool.current});
+      setNewPassword("");setPending(null);pendingSchool.current=null;
       router.replace("/staff/dashboard");
     } catch(cause){setError(friendlyAdminError(cause,"Unable to set your password.",locale));}
     finally{setBusy(false);}
@@ -101,6 +112,10 @@ export default function StaffLoginPage() {
           <p>{t(pending?"Your temporary password must be changed before you can open staff records.":"Choose your school and enter your staff credentials.")}</p>
         </div>
         {error?<div className="admin-error" role="alert">{t(error)}</div>:null}
+        {!pending && !schoolsLoading && schools.length===0 ?
+          <button type="button" className="admin-secondary" onClick={()=>setSchoolRetryEpoch(epoch=>epoch+1)}>
+            {t("Retry loading schools")}
+          </button> : null}
         {pending?(
           <form className="admin-form admin-form-premium" onSubmit={activate}>
             <label>{t("New password")}
@@ -115,7 +130,8 @@ export default function StaffLoginPage() {
         ):(
           <form className="admin-form admin-form-premium" onSubmit={signIn}>
             <label>{t("School")}
-              <select value={schoolId} onChange={e=>setSchoolId(e.target.value)} required>
+              <select value={schoolId} onChange={e=>setSchoolId(e.target.value)}
+                disabled={busy||schoolsLoading} required>
                 <option value="">{t("Select a school")}</option>
                 {schools.map(s=><option key={s.id} value={s.id}>{s.name} · {s.code}</option>)}
               </select>
@@ -129,7 +145,7 @@ export default function StaffLoginPage() {
                 autoComplete="current-password" required
                 showLabel={t("Show password")} hideLabel={t("Hide password")}/>
             </label>
-            <button type="submit" className="admin-primary admin-primary-large" disabled={busy||!schoolId}>
+            <button type="submit" className="admin-primary admin-primary-large" disabled={busy||schoolsLoading||!schoolId}>
               {t(busy?"Signing in…":"Sign in to staff dashboard")}
             </button>
           </form>
