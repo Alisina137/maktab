@@ -1,10 +1,12 @@
 import Constants from "expo-constants";
 import {
   getReadCacheScope,
+  getReadCacheEpoch,
   notifyReadCacheFallback,
   readReadCache,
   writeReadCache
 } from "./read-cache";
+import { canPersistOfflineRead, requestIdentityCurrent } from "./offline-request-policy";
 
 declare const process: { env: { EXPO_PUBLIC_API_URL?: string } };
 
@@ -532,11 +534,15 @@ function withAuthorization(init: RequestInit | undefined, accessToken: string): 
 async function cachedReadFallback<T>(
   path: string,
   cacheable: boolean,
-  requestScope: string | null
+  requestScope: string | null,
+  requestEpoch: number
 ): Promise<T | null> {
-  if (!cacheable || !requestScope) return null;
+  if (!cacheable ||
+      !requestIdentityCurrent(requestScope, requestEpoch, getReadCacheScope(), getReadCacheEpoch()))
+    return null;
   const cached = await readReadCache<T>(path, requestScope);
-  if (!cached || getReadCacheScope() !== requestScope) return null;
+  if (!cached || !requestIdentityCurrent(requestScope, requestEpoch, getReadCacheScope(), getReadCacheEpoch()))
+    return null;
   notifyReadCacheFallback(cached.savedAt);
   return cached.data;
 }
@@ -556,17 +562,43 @@ async function request<T>(
   options: { cache?: boolean; timeoutMs?: number; allowSessionRefresh?: boolean } = {}
 ): Promise<T> {
   const controller = new AbortController();
+  const callerSignal = init?.signal;
+  const callerCancelled = () => callerSignal?.aborted === true;
+  const relayCallerAbort = () => controller.abort();
+  if (callerSignal?.aborted) relayCallerAbort();
+  else callerSignal?.addEventListener("abort", relayCallerAbort, { once: true });
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
   const method = (init?.method ?? "GET").toUpperCase();
-  const cacheable = method === "GET" && options.cache !== false;
-  // Capture the authenticated owner BEFORE any async read or network work.
-  // Logging out while a request is in flight must not allow account A's
-  // response to write to or fall back to account B's offline cache.
+  const hasBearer = /^Bearer\\s+\\S+$/i.test(new Headers(init?.headers).get("Authorization") ?? "");
+  // Capture the authenticated owner and generation BEFORE any async read.
+  // A -> sign out -> A (same school and user ID) is still a NEW session.
   const requestScope = getReadCacheScope();
+  const requestEpoch = getReadCacheEpoch();
+  const cacheable = canPersistOfflineRead(path, method, hasBearer,
+    requestScope !== null, options.cache !== false);
+  const identityValid = () => requestIdentityCurrent(
+    requestScope, requestEpoch, getReadCacheScope(), getReadCacheEpoch()
+  );
+  const ensureIdentity = () => {
+    if (hasBearer && !identityValid()) {
+      throw new ApiRequestError("Account changed during the request.", {
+        code: "session_changed"
+      });
+    }
+  };
+  const ensureNotCancelled = () => {
+    if (callerCancelled()) {
+      throw new ApiRequestError("Request cancelled.", { code: "request_cancelled" });
+    }
+  };
 
   try {
+    ensureNotCancelled();
+    ensureIdentity();
     if (cacheable && preferCachedReads) {
       const cached = await readReadCache<T>(path, requestScope);
+      ensureNotCancelled();
+      ensureIdentity();
       if (cached) return cached.data;
     }
 
@@ -584,16 +616,26 @@ async function request<T>(
 
       response = await fetch(`${baseUrl}${path}`, {
         ...init,
-        signal: init?.signal ?? controller.signal,
+        signal: controller.signal,
         headers
       });
     } catch {
-      const cached = await cachedReadFallback<T>(path, cacheable, requestScope);
+      // Caller cancellation is intentional; showing a stale offline screen is
+      // misleading. Only a genuine timeout/offline failure may use snapshots.
+      ensureNotCancelled();
+      ensureIdentity();
+      const cached = await cachedReadFallback<T>(path, cacheable, requestScope, requestEpoch);
+      ensureNotCancelled();
+      ensureIdentity();
       if (cached !== null) return cached;
       throw new ApiRequestError("Network unavailable.", { network: true });
     }
 
+    ensureNotCancelled();
+    ensureIdentity();
     const text = await response.text();
+    ensureNotCancelled();
+    ensureIdentity();
     let body: unknown = null;
     if (text) {
       try {
@@ -609,7 +651,11 @@ async function request<T>(
         }
         // A proxy's HTML outage response (or a broken 200 payload) may use
         // a last-good snapshot only for the SAME authenticated account.
-        const cached = await cachedReadFallback<T>(path, cacheable, requestScope);
+        ensureNotCancelled();
+        ensureIdentity();
+        const cached = await cachedReadFallback<T>(path, cacheable, requestScope, requestEpoch);
+        ensureNotCancelled();
+        ensureIdentity();
         if (cached !== null) return cached;
         throw new ApiRequestError("MaktabLink service unavailable.", {
           status: response.status, code: "api_unavailable", network: true
@@ -639,6 +685,8 @@ async function request<T>(
         refreshHandler
       ) {
         const nextAccessToken = await refreshHandler();
+        ensureNotCancelled();
+        ensureIdentity();
         if (nextAccessToken) {
           return request<T>(
             path,
@@ -651,17 +699,15 @@ async function request<T>(
       throw new ApiRequestError(message, { status: response.status, code });
     }
 
-    if (cacheable && requestScope && requestScope !== getReadCacheScope()) {
-      // The response belongs to the old session: reject it rather than
-      // passing an old student's/parent's private record to the next screen.
-      throw new ApiRequestError("Account changed during the request.", {
-        code: "session_changed"
-      });
-    }
+    ensureNotCancelled();
+    ensureIdentity();
     if (cacheable) await writeReadCache(path, body as T, requestScope);
+    ensureNotCancelled();
+    ensureIdentity();
     return body as T;
   } finally {
     clearTimeout(timeout);
+    callerSignal?.removeEventListener("abort", relayCallerAbort);
   }
 }
 
