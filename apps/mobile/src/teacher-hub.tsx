@@ -9,7 +9,7 @@ import {
 import type { AnnouncementPayload, ParentNotification, TeacherLearningPayload, TeacherTodayPayload } from "./api";
 import { teacherTaskCounts, teacherTime12 } from "./teacher-hub-data";
 import { teacherDayTimeline, type TodayPeriod } from "./teacher-today-model";
-import { teacherInboxList, teacherUnreadCount, teacherAnnouncementPreview, type TeacherInboxFilter } from "./teacher-phase8-model";
+import { teacherInboxList, teacherInboxMatches, teacherUnreadCount, teacherAnnouncementPreview, type TeacherInboxFilter } from "./teacher-phase8-model";
 
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
 
@@ -260,7 +260,7 @@ export function TeacherInboxModal({
   const [limit,setLimit]=useState(30);
   useEffect(()=>{if(!open){setFilter("ALL");setSearch("");setLimit(30);}},[open]);
   const listed=teacherInboxList(notifications,filter,search,limit);
-  const available=teacherInboxList(notifications,filter,search,100).length;
+  const available=teacherInboxMatches(notifications,filter,search).length;
   const announcementPreview=teacherAnnouncementPreview(announcements);
   return (
     <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
@@ -273,6 +273,10 @@ export function TeacherInboxModal({
                 {translate(locale, "teacher.unreadNotifications")}: {formatLocalizedNumber(unreadCount, locale)}
               </Text>
             </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={translate(locale, "teacher.inboxRefresh")}
+              onPress={onRetry} style={styles.closeButton} testID="teacher-inbox-refresh">
+              <Ionicons name="refresh-outline" size={21} color={tokens.color.brandStrong} />
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={translate(locale, "teacher.closeNotifications")}
               onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={tokens.color.text} />
@@ -281,11 +285,14 @@ export function TeacherInboxModal({
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.inboxScroll}>
             <View style={[styles.inboxFooter,rtl&&styles.rowRtl]}>
               <Text style={[styles.heading,styles.flex,textDirection]}>{translate(locale,"notifications.title")}</Text>
-              <Text style={[styles.muted,textDirection]}>{formatLocalizedNumber(available,locale)}</Text>
+              <Text style={[styles.muted,textDirection]}>{formatLocalizedNumber(listed.length,locale)} / {formatLocalizedNumber(available,locale)}</Text>
             </View>
             <TextInput testID="teacher-inbox-search" value={search} onChangeText={value=>{
               setSearch(value);setLimit(30);
             }} placeholder={translate(locale,"teacher.inboxSearch")}
+              accessibilityLabel={translate(locale,"teacher.inboxSearch")}
+              returnKeyType="search" autoCorrect={false}
+              placeholderTextColor={tokens.color.textMuted}
               autoCapitalize="none" style={[styles.inboxSearch,textDirection]}/>
             <View style={[styles.inboxFilters,rtl&&styles.rowRtl]} accessibilityRole="tablist">
               {(["ALL","UNREAD","READ"] as TeacherInboxFilter[]).map(next=>
@@ -306,7 +313,9 @@ export function TeacherInboxModal({
               </Pressable>
             ) : null}
             {!notificationsReady ? <TeacherHubLoading locale={locale} textDirection={textDirection} />
-              : listed.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noNotifications")}</Text>
+              : listed.length === 0 ? <Text accessibilityLiveRegion="polite" style={[styles.muted, textDirection]}>{translate(locale,
+                  notificationsError && !notifications.length ? "teacher.hubUnavailable" :
+                  filter!=="ALL"||search.trim() ? "teacher.inboxNoMatches" : "teacher.noNotifications")}</Text>
               : listed.map((item) => (
                 <View style={[styles.inboxItem, !item.readAt && styles.inboxUnread]} key={item.id}>
                   <Pressable accessibilityRole="button" accessibilityLabel={item.title}
@@ -325,7 +334,7 @@ export function TeacherInboxModal({
                 </View>
               ))}
             {available>listed.length?<Pressable accessibilityRole="button" style={styles.readButton}
-              onPress={()=>setLimit(value=>Math.min(100,value+30))}>
+              onPress={()=>setLimit(value=>Math.min(available,value+30))}>
               <Text style={styles.actionText}>{translate(locale,"teacher.inboxShowMore")}</Text>
             </Pressable>:null}
             {announcementsError?<Text style={[styles.hubWarning,textDirection]}>
@@ -341,7 +350,8 @@ export function TeacherInboxModal({
                   <Text style={[styles.inboxDate, textDirection]}>{formatLocalizedDate(item.publishAt, locale)}</Text>
                 </View>
               ))}
-            <Action label={translate(locale, "action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry} />
+            {(notificationsError||announcementsError) ?
+              <Action label={translate(locale, "action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry} /> : null}
           </ScrollView>
         </View>
       </View>

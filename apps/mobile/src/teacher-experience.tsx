@@ -186,37 +186,48 @@ export function TeacherExperience({
   useEffect(() => {
     const requestId=++hubRequestId.current;
     currentToken.current=accessToken;
-    const belongs=hubOwner===activeScope;
-    if(!belongs){
+    if(hubOwner!==activeScope){
       setHubLearning(null);
       setHubAnnouncements([]);
       setHubNotifications([]);
       setHubReady({learning:false,announcements:false,notifications:false});
       setHubFailures({learning:false,announcements:false,notifications:false});
       setHubOwner(activeScope);
-      notificationWrites.current.clear();
+      // Replace the Set instead of clearing it: an OLD request's finally
+      // must never delete a new account's in-flight notification write.
+      notificationWrites.current=new Set<string>();
       notificationVersion.current++;
       allReadWrite.current=false;
       setHubActionBusy(false);
     }
     const notificationSnapshot=notificationVersion.current;
-    const read=async()=>{
-      const [learning,announcements,notifications]=await Promise.allSettled([
-        api.teacherLearning(accessToken,true),
-        api.announcements(accessToken,true),
-        api.notifications(accessToken,true)
-      ] as const);
-      if(hubRequestId.current!==requestId||currentScope.current!==activeScope)return;
-      if(learning.status==="fulfilled")setHubLearning(learning.value);
-      if(announcements.status==="fulfilled")setHubAnnouncements(announcements.value.announcements);
-      if(notifications.status==="fulfilled" && notificationSnapshot===notificationVersion.current)
-        setHubNotifications(notifications.value.notifications);
-      setHubFailures({learning:learning.status==="rejected",
-        announcements:announcements.status==="rejected",
-        notifications:notifications.status==="rejected"});
-      setHubReady({learning:true,announcements:true,notifications:true});
+    const isCurrent=()=>hubRequestId.current===requestId&&currentScope.current===activeScope;
+    // Each resource settles independently. A slow Learning request must not
+    // keep the Notifications or Announcements inbox behind a loading spinner.
+    const loadResource=async <T,>(
+      key:"learning"|"announcements"|"notifications",
+      request:Promise<T>,
+      apply:(value:T)=>void
+    )=>{
+      try{
+        const value=await request;
+        if(!isCurrent())return;
+        // Never overwrite a recently marked notification with an old GET.
+        if(key!=="notifications"||notificationSnapshot===notificationVersion.current)
+          apply(value);
+        setHubFailures(previous=>({...previous,[key]:false}));
+      }catch{
+        if(!isCurrent())return;
+        setHubFailures(previous=>({...previous,[key]:true}));
+      }finally{
+        if(isCurrent())setHubReady(previous=>({...previous,[key]:true}));
+      }
     };
-    void read();
+    void loadResource("learning",api.teacherLearning(accessToken,true),setHubLearning);
+    void loadResource("announcements",api.announcements(accessToken,true),
+      value=>setHubAnnouncements(value.announcements));
+    void loadResource("notifications",api.notifications(accessToken,true),
+      value=>setHubNotifications(value.notifications));
     return()=>{hubRequestId.current+=1;};
   },[activeScope,reconnectEpoch,hubRefresh]);
 
@@ -229,7 +240,6 @@ export function TeacherExperience({
       await api.teacherMarkAllNotificationsRead(token);
       if(currentToken.current!==token||currentScope.current!==scope)return;
       const now=new Date().toISOString();
-      notificationVersion.current++;
       notificationVersion.current++;
       setHubNotifications(current=>current.map(item=>item.readAt?item:{...item,readAt:now}));
       setHubRefresh(count=>count+1);
@@ -248,23 +258,28 @@ export function TeacherExperience({
   }
   async function markTeacherNotificationRead(notificationId:string) {
     if(!hubScoped||allReadWrite.current||notificationWrites.current.has(notificationId))return;
-    const token=accessToken;
-    notificationWrites.current.add(notificationId);
+    const token=accessToken,scope=activeScope;
+    const writes=notificationWrites.current;
+    writes.add(notificationId);
     notificationVersion.current++;
     setHubActionBusy(true);
     try {
       const result=await api.markNotificationRead(token,notificationId);
-      if(currentToken.current!==token||currentScope.current!==activeScope)return;
+      if(currentToken.current!==token||currentScope.current!==scope||
+        notificationWrites.current!==writes)return;
       setHubNotifications(current=>current.map(item=>
         item.id===notificationId?result.notification:item));
     }catch(cause){
-      if(currentToken.current===token){
+      if(currentToken.current===token&&currentScope.current===scope){
         const failure=appErrorFromCause(cause);
         onError(failure.key,failure.kind);
       }
     }finally{
-      notificationWrites.current.delete(notificationId);
-      if(currentToken.current===token)setHubActionBusy(notificationWrites.current.size>0);
+      if(notificationWrites.current===writes){
+        writes.delete(notificationId);
+        if(currentToken.current===token&&currentScope.current===scope)
+          setHubActionBusy(writes.size>0||allReadWrite.current);
+      }
     }
   }
 
@@ -554,8 +569,12 @@ export function TeacherExperience({
         onMarkRead={(notificationId) => void markTeacherNotificationRead(notificationId)}
         onOpenNotification={(item) => {
           void markTeacherNotificationRead(item.id);
-          setInboxOpen(false);
           const target = notificationDestination("TEACHER", item);
+          setInboxOpen(false);
+          if(!target){
+            onNotice(translate(locale,"teacher.notificationUnavailable"));
+            return;
+          }
           if (target === "TEACHER_ANNOUNCEMENTS") goToWorkflow("ANNOUNCEMENTS");
           else if (target === "TEACHER_HOMEWORK") goToWorkflow("HOMEWORK");
           else if (target === "TEACHER_GRADES") goToWorkflow("GRADES");
