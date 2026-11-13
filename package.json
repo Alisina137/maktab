@@ -120,7 +120,7 @@
     "pilot:phase11": "node scripts/phase11-pilot.mjs",
     "verify:pilot:phase11": "node --check scripts/phase11-pilot.mjs && node --test scripts/test-phase11-pilot.mjs",
     "verify:phase12:step1": "pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Phase 12 Step 1\" src/app.test.ts",
-    "verify:phase12:step2": "pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Phase 12 Step 2\" src/app.test.ts"
+    "verify:phase12:step2": "node scripts/verify-phase12-step2-experience.mjs && pnpm --filter @maktablink/api exec tsx --test --test-name-pattern=\"Phase 12 Step 2\" src/app.test.ts"
   },
   "devDependencies": {
     "typescript": "^6.0.0"
