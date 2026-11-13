@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import type { AdminLocale } from "../admin/admin-i18n";
 import { friendlyAdminError } from "../admin/admin-client";
 import { staffWorkText } from "./staff-work-i18n";
+import { StaffLoadingState } from "./staff-loading-state";
 import { formatAdminHijriDate } from "../admin/admin-hijri-date-picker";
 import "./staff-work.css";
 
@@ -128,7 +129,7 @@ export function StaffWorkPanel({locale,api,canTasks,canDrafts,
   </div>
   {error?<p className="admin-error" role="alert">{error}</p>:null}
   {success?<p className="staff-reg-success" role="status">{success}</p>:null}
-  {loading?<p role="status" className="admin-panel">{t("Loading staff work…")}</p>:null}
+  {loading?<StaffLoadingState label={t("Loading staff work…")}/>:null}
   {!loading&&view==="tasks"&&canTasks?<div className="admin-panel staff-work-area" role="tabpanel">
    <div className="staff-work-bar"><h3>{t("My assigned tasks")}</h3>
     <label>{t("Status")}<select value={taskFilter} onChange={e=>setTaskFilter(e.target.value)}>
