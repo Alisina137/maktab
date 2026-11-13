@@ -48,7 +48,9 @@ export function StudentBottomNavigation({
                 color={selected ? tokens.color.brandStrong : tokens.color.textMuted}
               />
             </View>
-            <Text style={[styles.label, selected && styles.selectedLabel]}>
+            <Text numberOfLines={2} ellipsizeMode="tail"
+              style={[styles.label, selected && styles.selectedLabel,
+                rtl && styles.rtlLabel]}>
               {translate(locale, tab.label)}
             </Text>
           </Pressable>
@@ -65,7 +67,9 @@ const styles = StyleSheet.create({
   selectedTab: { backgroundColor: "#f3f6fc" },
   iconShell: { width: 32, height: 28, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   selectedIcon: { backgroundColor: "#e7efff" },
-  label: { color: tokens.color.textMuted, fontSize: 9.5, fontWeight: "700", textAlign: "center" },
+  label: { color: tokens.color.textMuted, fontSize: 10, fontWeight: "700",
+    textAlign: "center", lineHeight: 14, minWidth: 0, paddingHorizontal: 3 },
+  rtlLabel: { writingDirection: "rtl" },
   selectedLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
   pressed: { opacity: 0.72 }
 });

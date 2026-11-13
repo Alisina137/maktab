@@ -31,6 +31,14 @@ test("Afghan RTL locales use Solar Hijri dates while English stays Gregorian", (
   assert.equal(formatLocalizedDate("2026-10-02", "ps-AF"), "۱۴۰۵/۰۷/۱۰");
 });
 
+test("Phase 8: invalid calendar values are never silently displayed as another day", () => {
+  assert.equal(formatLocalizedDate("2026-02-31", "en"), "2026-02-31");
+  assert.equal(formatLocalizedDate("2026-02-31", "fa-AF"), "2026-02-31");
+  assert.equal(formatLocalizedDate("2026-13-02", "ps-AF"), "2026-13-02");
+  assert.equal(formatLocalizedDate("2025-02-29", "en"), "2025-02-29");
+  assert.notEqual(formatLocalizedDate("2024-02-29", "en"), "2024-02-29");
+});
+
 test("numbers, time ranges, and AFN amounts follow the selected locale", () => {
   assert.equal(localizeDigits("S-0005", "fa-AF"), "S-۰۰۰۵");
   assert.equal(formatLocalizedNumber(86, "fa-AF"), "۸۶");

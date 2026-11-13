@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 8 localization, RTL/LTR, accessibility and secure offline regression
+        run: pnpm verify:localization:phase8
+
       - name: Phase 7 communication, fee ledger and notification reliability regression
         run: pnpm verify:communication:phase7
 
@@ -302,6 +305,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 8 localization, RTL/LTR, accessibility and secure offline regression
+        run: pnpm verify:localization:phase8
+
       - name: Phase 7 communication, fee ledger and notification reliability regression
         run: pnpm verify:communication:phase7
 

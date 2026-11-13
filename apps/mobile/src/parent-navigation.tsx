@@ -85,8 +85,9 @@ export function ParentBottomNavigation({
                 color={active ? tokens.color.brandStrong : tokens.color.textMuted}
               />
             </View>
-            <Text numberOfLines={1} adjustsFontSizeToFit
-              style={[styles.bottomTabText, active && styles.bottomTabTextActive]}>
+            <Text numberOfLines={2} ellipsizeMode="tail"
+              style={[styles.bottomTabText, active && styles.bottomTabTextActive,
+                rtl && styles.rtlNavLabel]}>
               {translate(locale, tab.label)}
             </Text>
           </Pressable>
@@ -422,8 +423,13 @@ const styles = StyleSheet.create({
   bottomTabText: {
     color: tokens.color.textMuted,
     fontSize: 10.5,
-    fontWeight: "700"
+    fontWeight: "700",
+    lineHeight: 15,
+    minWidth: 0,
+    textAlign: "center",
+    paddingHorizontal: 3
   },
+  rtlNavLabel: { writingDirection: "rtl" },
   bottomTabTextActive: {
     color: tokens.color.brandStrong,
     fontWeight: "900"

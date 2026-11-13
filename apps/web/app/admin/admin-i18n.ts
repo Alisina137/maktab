@@ -5256,13 +5256,21 @@ export function adminDirection(locale: AdminLocale): "rtl" | "ltr" {
 
 export function readAdminLocale(): AdminLocale {
   if (typeof window === "undefined") return ADMIN_DEFAULT_LOCALE;
-  const value = window.localStorage.getItem(ADMIN_LOCALE_STORAGE_KEY);
-  return value === "fa-AF" || value === "ps-AF" || value === "en" ? value : ADMIN_DEFAULT_LOCALE;
+  try {
+    const value = window.localStorage.getItem(ADMIN_LOCALE_STORAGE_KEY);
+    return value === "fa-AF" || value === "ps-AF" || value === "en" ? value : ADMIN_DEFAULT_LOCALE;
+  } catch {
+    // Storage may be unavailable in private-browsing or embedded contexts.
+    return ADMIN_DEFAULT_LOCALE;
+  }
 }
 
 export function saveAdminLocale(locale: AdminLocale) {
-  if (typeof window !== "undefined") {
+  if (typeof window === "undefined") return;
+  try {
     window.localStorage.setItem(ADMIN_LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // Keep the active session's language even when preference persistence fails.
   }
 }
 
@@ -5274,7 +5282,13 @@ export function adminFormat(
 ): string {
   let result = adminText(locale, englishTemplate);
   for (const [key, value] of Object.entries(values)) {
-    result = result.replaceAll(`{${key}}`, String(value));
+    // Count/amount placeholders should not unexpectedly remain Western digits
+    // in a Dari/Pashto sentence. Preserve strings such as class codes as-is.
+    const formatted = typeof value === "number" && locale !== "en"
+      ? String(value).replace(/[0-9]/g, digit =>
+          "۰۱۲۳۴۵۶۷۸۹"[Number(digit)] ?? digit)
+      : String(value);
+    result = result.replaceAll(`{${key}}`, formatted);
   }
   return result;
 }

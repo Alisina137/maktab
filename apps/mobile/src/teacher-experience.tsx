@@ -60,7 +60,9 @@ export function TeacherBottomNavigation({
             <View style={[styles.navIcon, active && styles.navIconActive]}>
               <Ionicons name={active ? item.activeIcon : item.icon} size={20} color={active ? tokens.color.brandStrong : tokens.color.textMuted} />
             </View>
-            <Text style={[styles.navLabel, active && styles.activeNavLabel]}>{translate(locale, item.label)}</Text>
+            <Text numberOfLines={2} ellipsizeMode="tail"
+              style={[styles.navLabel, active && styles.activeNavLabel,
+                rtl && styles.rtlNavLabel]}>{translate(locale, item.label)}</Text>
           </Pressable>
         );
       })}
@@ -592,7 +594,9 @@ const styles = StyleSheet.create({
   activeBottomTab: { backgroundColor: "#f3f6fc" },
   navIcon: { width: 32, height: 28, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   navIconActive: { backgroundColor: "#e7efff" },
-  navLabel: { color: tokens.color.textMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
+  navLabel: { color: tokens.color.textMuted, fontSize: 10, fontWeight: "700",
+    textAlign: "center", lineHeight: 14, minWidth: 0, paddingHorizontal: 3 },
+  rtlNavLabel: { writingDirection: "rtl" },
   activeNavLabel: { color: tokens.color.brandStrong, fontWeight: "900" },
   inboxButton: { width: 49, height: 49, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: "#e7efff" },
   inboxBadge: { position: "absolute", top: 1, right: 0, minWidth: 20, height: 20, paddingHorizontal: 3, borderRadius: 11, backgroundColor: "#c53549", alignItems: "center", justifyContent: "center" },
