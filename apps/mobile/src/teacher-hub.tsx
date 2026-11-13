@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { tokens } from "@maktablink/design-tokens";
 import {
@@ -12,6 +12,18 @@ import { teacherDayTimeline, type TodayPeriod } from "./teacher-today-model";
 import { teacherInboxList, teacherUnreadCount, teacherAnnouncementPreview, type TeacherInboxFilter } from "./teacher-phase8-model";
 
 type Direction = { textAlign: "right" | "left"; writingDirection: "rtl" | "ltr" };
+
+function TeacherHubLoading({ locale, textDirection }: {
+  locale: SupportedLocale; textDirection: Direction;
+}) {
+  const rtl = getDirection(locale) === "rtl";
+  return <View style={[styles.loadingRow, rtl && styles.rowRtl]} accessibilityLiveRegion="polite">
+    <ActivityIndicator size="small" color={tokens.color.brandStrong}
+      accessibilityLabel={translate(locale, "common.loading")} />
+    <TeacherHubLoading locale={locale} textDirection={textDirection} />
+  </View>;
+}
+
 type Icon = keyof typeof Ionicons.glyphMap;
 export type TeacherWorkflowSection = "HOMEWORK" | "GRADES" | "TEACHING" | "TASKS";
 
@@ -97,7 +109,7 @@ export function TeacherTodayInsights({
           <Text style={[styles.metricLabel,textDirection]}>{translate(locale,"teacher.lessonsRemaining")}</Text>
         </View>
       </View>
-      {!todayReady?<Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+      {!todayReady?<TeacherHubLoading locale={locale} textDirection={textDirection} />
       :!today?<Action label={translate(locale,"action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry}/>
       :plan.stage==="UNAVAILABLE"?<>
         <Text style={[styles.muted,textDirection]}>{translate(locale,"teacher.dayNotCurrent")}</Text>
@@ -131,7 +143,7 @@ export function TeacherTodayInsights({
           </View>
           <Ionicons name={rtl?"chevron-back":"chevron-forward"} size={20} color={tokens.color.brandStrong}/>
         </Pressable>
-      ):!todayReady?<Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+      ):!todayReady?<TeacherHubLoading locale={locale} textDirection={textDirection} />
       :<Text style={[styles.muted,textDirection]}>{translate(locale,
         plan.stage==="EMPTY"?"teacher.noClassesToday":
         plan.stage==="UNAVAILABLE"?"teacher.dayNotCurrent":"teacher.noUpcomingLesson")}</Text>}
@@ -181,7 +193,7 @@ export function TeacherTodayInsights({
           count={unreadCount} rtl={rtl} locale={locale}
           icon="notifications-outline" textDirection={textDirection} onPress={onNotifications}/>
       ):null}
-      {!learningReady?<Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>:null}
+      {!learningReady?<TeacherHubLoading locale={locale} textDirection={textDirection} />:null}
       {learningReady&&!learning?
         <Action label={translate(locale,"action.retry")} icon="refresh-outline" rtl={rtl} onPress={onRetry}/>:null}
       {todayReady&&today&&learningReady&&learning&&priorityCount===0?
@@ -206,7 +218,7 @@ export function TeacherTodayInsights({
         <View style={styles.iconShell}><Ionicons name="megaphone-outline" size={21} color={tokens.color.brandStrong}/></View>
         <Text style={[styles.heading,textDirection]}>{translate(locale,"teacher.latestAnnouncements")}</Text>
       </View>
-      {!announcementsReady?<Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+      {!announcementsReady?<TeacherHubLoading locale={locale} textDirection={textDirection} />
       :latestAnnouncements.length?latestAnnouncements.map(item=>(
         <Pressable key={item.id} accessibilityRole="button" onPress={onAnnouncements}
           style={({pressed})=>[styles.update,pressed&&styles.pressed]}>
@@ -293,7 +305,7 @@ export function TeacherInboxModal({
                 <Text style={styles.actionText}>{translate(locale, "teacher.markAllRead")}</Text>
               </Pressable>
             ) : null}
-            {!notificationsReady ? <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
+            {!notificationsReady ? <TeacherHubLoading locale={locale} textDirection={textDirection} />
               : listed.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noNotifications")}</Text>
               : listed.map((item) => (
                 <View style={[styles.inboxItem, !item.readAt && styles.inboxUnread]} key={item.id}>
@@ -320,7 +332,7 @@ export function TeacherInboxModal({
               {translate(locale,announcements.length?"teacher.hubStale":"teacher.hubUnavailable")}
             </Text>:null}
             <Text style={[styles.heading, textDirection]}>{translate(locale, "teacher.latestAnnouncements")}</Text>
-            {!announcementsReady ? <Text style={[styles.muted, textDirection]}>{translate(locale, "common.loading")}</Text>
+            {!announcementsReady ? <TeacherHubLoading locale={locale} textDirection={textDirection} />
               : announcements.length === 0 ? <Text style={[styles.muted, textDirection]}>{translate(locale, "teacher.noAnnouncements")}</Text>
               : announcementPreview.map((item) => (
                 <View style={styles.inboxItem} key={item.id}>
@@ -338,6 +350,7 @@ export function TeacherInboxModal({
 }
 
 const styles = StyleSheet.create({
+  loadingRow:{flexDirection:"row",alignItems:"center",gap:10,minHeight:42},
   stack: { gap: 14 },
   flex: { flex: 1, minWidth: 0 },
   rowRtl: { flexDirection: "row-reverse" },

@@ -13,6 +13,7 @@ import { StaffRegistrationPanel } from "../staff-registration-panel";
 import { StaffAttendancePanel } from "../staff-attendance-panel";
 import { StaffFeesPanel } from "../staff-fees-panel";
 import { StaffWorkPanel } from "../staff-work-panel";
+import { StaffLoadingState } from "../staff-loading-state";
 import { StaffWorkPreferences, DEFAULT_STAFF_PREFERENCES, type StaffPreferences } from "../staff-work-preferences";
 import { staffWorkText } from "../staff-work-i18n";
 
@@ -212,7 +213,7 @@ export default function StaffDashboard() {
   }
   if(!stored || loading)return (
     <main className="admin-shell staff-shell" dir={adminDirection(locale)}>
-      <div className="admin-panel" role="status">{t("Checking staff access…")}</div>
+      <StaffLoadingState label={t("Checking staff access…")}/>
     </main>
   );
   if(!profile)return (

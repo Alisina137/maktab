@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { adminText, type AdminLocale } from "../admin/admin-i18n";
 import { friendlyAdminError } from "../admin/admin-client";
+import { StaffLoadingState } from "./staff-loading-state";
 
 export type RegistrationRow = {
   id:string;createdBy:string;status:"DRAFT"|"SUBMITTED"|"UNDER_REVIEW"|"APPROVED"|"REJECTED";
@@ -99,9 +100,18 @@ export function StaffRegistrationPanel({locale,userId,api}:Props) {
         <strong>{rows.filter(r=>r.status==="APPROVED").length}<small>{t("Approved")}</small></strong>
       </div>
     </div>
-    {error?<p className="admin-error" role="alert">{error}</p>:null}
+    {error?<div className="staff-error-retry">
+      <p className="admin-error" role="alert">{error}</p>
+      <button type="button" className="admin-secondary" disabled={loading||busy}
+        onClick={()=>{
+          setLoading(true);setError("");
+          void reload().catch(err=>setError(friendlyAdminError(
+            err,"Could not load registration requests.",locale)))
+            .finally(()=>setLoading(false));
+        }}>{t("Refresh")}</button>
+    </div>:null}
     {notice?<p className="staff-reg-success" role="status">{notice}</p>:null}
-    {loading?<div className="admin-panel" role="status">{t("Loading registration requests…")}</div>:
+    {loading?<StaffLoadingState label={t("Loading registration requests…")}/>: 
     <div className="staff-reg-columns">
       <section className="admin-panel staff-reg-form">
         <div className="admin-section-header"><div><h3>{t(editing?"Edit draft":"New registration")}</h3>
