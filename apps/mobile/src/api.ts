@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import {
+  getReadCacheScope,
   notifyReadCacheFallback,
   readReadCache,
   writeReadCache
@@ -530,11 +531,12 @@ function withAuthorization(init: RequestInit | undefined, accessToken: string): 
 
 async function cachedReadFallback<T>(
   path: string,
-  cacheable: boolean
+  cacheable: boolean,
+  requestScope: string | null
 ): Promise<T | null> {
-  if (!cacheable) return null;
-  const cached = await readReadCache<T>(path);
-  if (!cached) return null;
+  if (!cacheable || !requestScope) return null;
+  const cached = await readReadCache<T>(path, requestScope);
+  if (!cached || getReadCacheScope() !== requestScope) return null;
   notifyReadCacheFallback(cached.savedAt);
   return cached.data;
 }
@@ -557,10 +559,14 @@ async function request<T>(
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
   const method = (init?.method ?? "GET").toUpperCase();
   const cacheable = method === "GET" && options.cache !== false;
+  // Capture the authenticated owner BEFORE any async read or network work.
+  // Logging out while a request is in flight must not allow account A's
+  // response to write to or fall back to account B's offline cache.
+  const requestScope = getReadCacheScope();
 
   try {
     if (cacheable && preferCachedReads) {
-      const cached = await readReadCache<T>(path);
+      const cached = await readReadCache<T>(path, requestScope);
       if (cached) return cached.data;
     }
 
@@ -582,7 +588,7 @@ async function request<T>(
         headers
       });
     } catch {
-      const cached = await cachedReadFallback<T>(path, cacheable);
+      const cached = await cachedReadFallback<T>(path, cacheable, requestScope);
       if (cached !== null) return cached;
       throw new ApiRequestError("Network unavailable.", { network: true });
     }
@@ -593,15 +599,20 @@ async function request<T>(
       try {
         body = JSON.parse(text);
       } catch {
-        // Tunnels/proxies can return an HTML outage page even though this is an
-        // API request. For read-only requests, keep the Parent experience usable
-        // with the last scoped cache instead of replacing it with a blank screen.
-        const cached = await cachedReadFallback<T>(path, cacheable);
+        // An HTML 401/403 or any other client-side error must NEVER be
+        // treated as a network outage: doing so could display data from a
+        // session the server has explicitly rejected.
+        if (response.status >= 400 && response.status < 500) {
+          throw new ApiRequestError("Unexpected API response.", {
+            status: response.status, code: "api_invalid_response"
+          });
+        }
+        // A proxy's HTML outage response (or a broken 200 payload) may use
+        // a last-good snapshot only for the SAME authenticated account.
+        const cached = await cachedReadFallback<T>(path, cacheable, requestScope);
         if (cached !== null) return cached;
         throw new ApiRequestError("MaktabLink service unavailable.", {
-          status: response.status,
-          code: "api_unavailable",
-          network: true
+          status: response.status, code: "api_unavailable", network: true
         });
       }
     }
@@ -640,7 +651,14 @@ async function request<T>(
       throw new ApiRequestError(message, { status: response.status, code });
     }
 
-    if (cacheable) await writeReadCache(path, body as T);
+    if (cacheable && requestScope && requestScope !== getReadCacheScope()) {
+      // The response belongs to the old session: reject it rather than
+      // passing an old student's/parent's private record to the next screen.
+      throw new ApiRequestError("Account changed during the request.", {
+        code: "session_changed"
+      });
+    }
+    if (cacheable) await writeReadCache(path, body as T, requestScope);
     return body as T;
   } finally {
     clearTimeout(timeout);
