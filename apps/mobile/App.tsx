@@ -718,7 +718,8 @@ function AppContent() {
       try {
         const me = await api.me(activeSession.accessToken);
         const latestSession = sessionRef.current;
-        if (!latestSession || latestSession.user.id !== activeSession.user.id) return;
+        if (logoutInProgressRef.current || !latestSession ||
+            !sameSessionEpoch(latestSession, activeSession, schoolRef.current, activeSchool)) return;
 
         const wasSuspended = latestSession.user.status === "SUSPENDED";
         const isSuspended = me.user.status === "SUSPENDED";
@@ -738,6 +739,8 @@ function AppContent() {
         }
 
         if (isSuspended) {
+          invalidateReadCacheRequests();
+          setPreferCachedReads(false);
           setStudentEnrollmentUnavailable(false);
           setScreen("home");
           setParentHome(null);
@@ -782,15 +785,22 @@ function AppContent() {
           return;
         }
         if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-          setSession((current) =>
-            current
-              ? { ...current, user: { ...current.user, status: "SUSPENDED" } }
-              : current
-          );
-          setStudentEnrollmentUnavailable(false);
-          setScreen("home");
-          setAppError("auth.accountSuspended");
-          void loadAdminContact(activeSession.accessToken);
+          const latest = sessionRef.current;
+          if (!logoutInProgressRef.current && latest &&
+              sameSessionEpoch(latest, activeSession, schoolRef.current, activeSchool)) {
+            const suspended: SessionPayload = {
+              ...latest, user: {...latest.user,status:"SUSPENDED"}
+            };
+            sessionRef.current = suspended;
+            setSession(suspended);
+            invalidateReadCacheRequests();
+            setPreferCachedReads(false);
+            void saveStoredSession({auth:suspended,school:activeSchool}).catch(()=>null);
+            setStudentEnrollmentUnavailable(false);
+            setScreen("home");
+            setAppError("auth.accountSuspended");
+            void loadAdminContact(activeSession.accessToken);
+          }
         } else if (
           cause instanceof ApiRequestError &&
           cause.code === "account_unavailable" &&
@@ -1019,7 +1029,9 @@ function AppContent() {
         });
         void loadAdminContact(current.accessToken);
       }
-      setReadCacheScope(null);
+      // Retain the account's authenticated scope for server status probes,
+      // while invalidating older screen reads and disabling offline fallbacks.
+      invalidateReadCacheRequests();
       setPreferCachedReads(false);
       setScreen("home");
       setAppError("auth.accountSuspended");
@@ -1063,12 +1075,18 @@ function AppContent() {
         try {
           const me = await api.me(session.accessToken);
           if (me.user.status === "SUSPENDED") {
+            if (logoutInProgressRef.current || !sessionRef.current ||
+                !schoolRef.current ||
+                !sameSessionEpoch(sessionRef.current, session, schoolRef.current, school))
+              return false;
             const next: SessionPayload = {
-              ...session,
+              ...sessionRef.current,
               user: me.user,
               mustChangePassword: me.mustChangePassword
             };
+            sessionRef.current = next;
             setSession(next);
+            invalidateReadCacheRequests();
             if (school) await saveStoredSession({ auth: next, school });
             setScreen("home");
             setParentHome(null);
@@ -1101,8 +1119,7 @@ function AppContent() {
             return true;
           }
           if (cause instanceof ApiRequestError && cause.code === "account_suspended") {
-            setPreferCachedReads(false);
-            setAppError("auth.accountSuspended");
+            showCause(cause);
             return true;
           }
           if (
@@ -2271,6 +2288,19 @@ function AppContent() {
     ? countAttendance(attendanceSheet.students.map((item) => item.student.id), attendanceDraft)
     : countAttendance([], {});
   const attendanceMarkedCount = attendanceSummary.marked;
+
+  if (logoutInProgressRef.current && busy) {
+    // Hide all previous role data while SecureStore deletes credentials.
+    // On native-storage failure the current session is retained for retry.
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center} accessibilityLabel={translate(locale,"auth.logout")}>
+          <ActivityIndicator size="large" />
+          <Text style={[styles.muted,textDirection]}>{translate(locale,"common.loading")}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (busy && screen === "role") {
     return (
