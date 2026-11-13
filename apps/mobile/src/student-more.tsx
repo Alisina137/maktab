@@ -88,6 +88,21 @@ export function StudentMorePanel({
           </View>)}
       </View>
     </View>
+    <Pressable accessibilityRole="button"
+      accessibilityLabel={translate(locale,"auth.logout")}
+      accessibilityHint={translate(locale,"parent.moreLogoutConfirm")}
+      testID="student-sign-out"
+      onPress={()=>{
+        Alert.alert(translate(locale,"parent.moreLogoutTitle"),
+          translate(locale,"parent.moreLogoutConfirm"),[
+            {text:translate(locale,"action.back"),style:"cancel"},
+            {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
+          ]);
+      }}
+      style={({pressed})=>[styles.logout,rtl&&styles.rtl,pressed&&styles.pressed]}>
+      <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
+      <Text style={styles.logoutText}>{translate(locale,"auth.logout")}</Text>
+    </Pressable>
     <View style={styles.card} testID="student-phase8-enrollment">
       <Text style={[styles.heading,textDirection]}>{translate(locale,"student.profileEnrollment")}</Text>
       <View style={styles.infoRow}>
@@ -147,16 +162,7 @@ export function StudentMorePanel({
       <Text style={[styles.heading,textDirection]}>{translate(locale,"student.moreHelp")}</Text>
       <AdminContactCard contact={contact} locale={locale}/>
     </View>
-    <Pressable accessibilityRole="button" onPress={()=>{
-      Alert.alert(translate(locale,"parent.moreLogoutTitle"),
-        translate(locale,"parent.moreLogoutConfirm"),[
-          {text:translate(locale,"action.back"),style:"cancel"},
-          {text:translate(locale,"auth.logout"),style:"destructive",onPress:onLogout}
-        ]);
-    }} style={[styles.logout,rtl&&styles.rtl]}>
-      <Ionicons name="log-out-outline" size={20} color={tokens.color.brandStrong}/>
-      <Text style={styles.logoutText}>{translate(locale,"auth.logout")}</Text>
-    </Pressable>
+
   </View>;
 }
 
