@@ -1076,7 +1076,7 @@ function AppContent() {
           const me = await api.me(session.accessToken);
           if (me.user.status === "SUSPENDED") {
             if (logoutInProgressRef.current || !sessionRef.current ||
-                !schoolRef.current ||
+                !schoolRef.current || !school ||
                 !sameSessionEpoch(sessionRef.current, session, schoolRef.current, school))
               return false;
             const next: SessionPayload = {
