@@ -51,3 +51,20 @@ export function parseParentChildPreferences(input: unknown): Record<string, stri
   }
   return prefs;
 }
+
+/**
+ * Save the newly selected child without allowing unbounded per-account keys.
+ * Reinsert an existing key at the end so it is counted as recently touched.
+ */
+export function updateParentChildPreferences(
+  source: unknown, schoolId: string, parentId: string, studentId: string
+): Record<string, string> {
+  if (![schoolId, parentId, studentId].every(validStudentPreferenceId)) {
+    throw new Error("Invalid school, guardian or student identifier.");
+  }
+  const preferences = parseParentChildPreferences(source);
+  const key = `${schoolId}:${parentId}`;
+  delete preferences[key];
+  preferences[key] = studentId;
+  return parseParentChildPreferences(preferences);
+}
