@@ -10011,7 +10011,8 @@ test("Phase 12 Step 2: school staff permission to teacher class journey is compl
 
     const own = await assign("9A" + suffix, teacher.user.id, "08:00", "08:45");
     const foreign = await assign("9B" + suffix, other.user.id, "09:00", "09:45");
-    const teacherPassword = "P12TeacherPassword2026!";
+    // Different private passwords for the same username at each school.
+    const teacherPassword = "P12TeacherPassword" + suffix + "2026!";
     const teacherToken = await activateRoleLogin(
       app, schoolId, "TEACHER", "p12teacher", teacher.temporaryPassword, teacherPassword
     );
