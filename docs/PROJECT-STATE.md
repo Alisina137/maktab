@@ -1,5 +1,11 @@
 # MaktabLink Project State
 
+## Phase 12 — Functional User Journeys & Pilot Quality (started 2026-11-13)
+
+**Current phase:** Phase 12. **Step 12.1** adds a synthetic two-school API integration journey across school setup, active year/grade/class, parent/student account creation, first-login password change, role-specific home/timetable and cross-school denial. CI checks this step on both platforms through `pnpm verify:phase12:step1` and root `pnpm verify`. The roadmap and technical boundaries are documented in `docs/PHASE12-FUNCTIONAL-JOURNEYS.md`. Steps **12.2–12.6 remain planned**, beginning with Staff/Teacher connected journeys.
+
+**Release status:** Still **NO-GO**. Phase 11 independent staging/Neon/device/push/backup/operator gates remain unverified and no new CI assertion substitutes for physical acceptance.
+
 ## Post-audit continuation — Phase 11 controlled pilot acceptance (started 2026-11-13)
 
 **Current follow-on phase:** Phase 11, staging validation and controlled pilot acceptance. This is a **new** operational acceptance phase after the ten-phase code audit, not a missing original implementation phase. Phase 10 merged at `becde287a1a78f06914c0f7114415a6d58e9386a`; the detailed new plan is `docs/PILOT-ACCEPTANCE-PHASE11.md`.
