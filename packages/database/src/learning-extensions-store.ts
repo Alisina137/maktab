@@ -177,19 +177,42 @@ export function createLearningExtensionsStore(db: FoundationDatabase): LearningE
     },
     async publishDueHomeworks() {
       const now = new Date();
-      const due = await db.select({ id: homeworks.id, schoolId: homeworks.schoolId, assignmentId: homeworks.assignmentId })
-        .from(homeworks).where(and(eq(homeworks.status, "DRAFT"), lte(homeworks.scheduledAt, now),
-          gt(homeworks.dueAt, now)));
+      // Bound each poll: one school with a large backlog must not block the
+      // API scheduler indefinitely or perform an unbounded N+1 query scan.
+      // Fetch only eligible assignments and use stable chronological ordering.
+      const due = await db.select({
+        id: homeworks.id, schoolId: homeworks.schoolId,
+        assignmentId: homeworks.assignmentId, academicYearId: homeworks.academicYearId
+      }).from(homeworks)
+        .innerJoin(teacherAssignments, and(eq(teacherAssignments.id, homeworks.assignmentId),
+          eq(teacherAssignments.schoolId, homeworks.schoolId),
+          eq(teacherAssignments.academicYearId, homeworks.academicYearId)))
+        .innerJoin(academicYears, and(eq(academicYears.id, homeworks.academicYearId),
+          eq(academicYears.schoolId, homeworks.schoolId),
+          eq(academicYears.status, "ACTIVE")))
+        .where(and(eq(homeworks.status, "DRAFT"), lte(homeworks.scheduledAt, now),
+          gt(homeworks.dueAt, now)))
+        .orderBy(asc(homeworks.scheduledAt), asc(homeworks.id))
+        .limit(100);
       let completed = 0;
       for (const item of due) {
         try {
-          const [assignment] = await db.select({ id: teacherAssignments.id }).from(teacherAssignments)
-            .innerJoin(academicYears, and(eq(academicYears.id, teacherAssignments.academicYearId),
-              eq(academicYears.status, "ACTIVE")))
-            .where(and(eq(teacherAssignments.id, item.assignmentId),
-              eq(teacherAssignments.schoolId, item.schoolId))).limit(1);
-          if (!assignment) continue;
           const published = await db.transaction(async (tx) => {
+            // Academic-year status may change between the selection and the
+            // write. Lock the year first (the same order as other academic
+            // mutations) and verify teacher authorization again inside tx.
+            const [year] = await tx.select({ id: academicYears.id }).from(academicYears)
+              .where(and(eq(academicYears.id, item.academicYearId),
+                eq(academicYears.schoolId, item.schoolId),
+                eq(academicYears.status, "ACTIVE"))).limit(1).for("update");
+            if (!year) return false;
+            const [assignment] = await tx.select({ id: teacherAssignments.id })
+              .from(teacherAssignments).where(and(
+                eq(teacherAssignments.id, item.assignmentId),
+                eq(teacherAssignments.schoolId, item.schoolId),
+                eq(teacherAssignments.academicYearId, item.academicYearId)
+              )).limit(1);
+            if (!assignment) return false;
             // Publication and fan-out are ONE atomic transaction. If notifying
             // recipients fails, the draft remains scheduled and is retried.
             const [changed] = await tx.update(homeworks)
