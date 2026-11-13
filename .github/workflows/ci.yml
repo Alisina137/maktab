@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
+        run: pnpm verify:pilot:phase11
+
       - name: Phase 10 final release inventory, role isolation and safe staging restore
         run: pnpm verify:release:phase10
 
@@ -324,6 +327,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
+        run: pnpm verify:pilot:phase11
+
       - name: Phase 10 final release inventory, role isolation and safe staging restore
         run: pnpm verify:release:phase10
 
