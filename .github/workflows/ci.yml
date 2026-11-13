@@ -66,6 +66,9 @@ jobs:
       - name: Phase 16 Staff identity, refresh recovery and school selection safety
         run: pnpm verify:phase16
 
+      - name: Mobile logged-in header language removal and More locale regression
+        run: pnpm verify:mobile:header-language
+
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
 
@@ -386,6 +389,9 @@ jobs:
 
       - name: Phase 16 Staff identity, refresh recovery and school selection safety
         run: pnpm verify:phase16
+
+      - name: Mobile logged-in header language removal and More locale regression
+        run: pnpm verify:mobile:header-language
 
       - name: Phase 11 staging acceptance policy, live probe and evidence safety tests
         run: pnpm verify:pilot:phase11
