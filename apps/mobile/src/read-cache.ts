@@ -50,7 +50,7 @@ export async function writeReadCache<T>(
   // write its response into B's cache namespace or repopulate an old screen.
   if (!cacheScopeMatches(expectedScope, scope)) return;
   const key = cacheKey(path, expectedScope);
-  if (!key) return;
+  if (!key || !expectedScope) return;
 
   try {
     const serialized = JSON.stringify({
