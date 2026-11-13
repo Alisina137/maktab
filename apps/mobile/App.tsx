@@ -3064,6 +3064,7 @@ function AppContent() {
                     key={session.user.id + ":profile"}
                     home={parentHome} username={session.user.username} locale={locale}
                     onRefresh={() => void loadParentHome(session.accessToken)}
+                    onLogout={() => void logout()}
                   />
                 ) : parentMoreTab === "SCHOOL" ? (
                   <ParentSchoolPanel
