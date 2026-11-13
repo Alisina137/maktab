@@ -299,9 +299,19 @@ export function AdminWorkspaceShell({ children }: { children: ReactNode }) {
   }, [stored?.school.id, stored?.session.accessToken]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const previousLang = root.lang;
+    const previousDir = root.dir;
     const direction = adminDirection(locale);
-    document.documentElement.lang = locale === "en" ? "en" : locale === "ps-AF" ? "ps" : "fa";
-    document.documentElement.dir = direction;
+    root.lang = locale === "en" ? "en" : locale === "ps-AF" ? "ps" : "fa";
+    root.dir = direction;
+    // The Next.js root <html> survives client-side route changes. Restore
+    // its previous values so a later English landing/staff page does not
+    // inherit a stale RTL setting from this school-admin workspace.
+    return () => {
+      root.lang = previousLang;
+      root.dir = previousDir;
+    };
   }, [locale]);
 
   useEffect(() => {
