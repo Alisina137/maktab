@@ -21,7 +21,8 @@ const session = read("apps/mobile/src/session.ts");
 const sessionGuard = read("apps/mobile/src/stored-session-policy.ts");
 for (const token of [
   "validStoredSession(parsed)", "SecureStore.deleteItemAsync(KEY)",
-  "parseParentChildPreferences(JSON.parse(raw))", "validStudentPreferenceId"
+  "parseParentChildPreferences(JSON.parse(raw))",
+  "updateParentChildPreferences(preferences, schoolId, parentUserId, studentId)"
 ]) assert.ok(session.includes(token), "Saved session or preference policy removed: " + token);
 for (const token of ["user.schoolId === school.id", "ROLES", "validStudentPreferenceId"]) {
   assert.ok(sessionGuard.includes(token), "Storage validation policy removed: " + token);
