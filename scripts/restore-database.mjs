@@ -1,9 +1,11 @@
 import { createDecipheriv, scryptSync } from "node:crypto";
 import { open, stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
+import { Writable } from "node:stream";
 import { resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { spawn } from "node:child_process";
+import { validateRestoreTarget } from "./restore-target-policy.mjs";
 import {
   loadRootEnv,
   postgresEnvironment,
@@ -31,9 +33,9 @@ async function readRange(file, start, length) {
 
 async function run() {
   await loadRootEnv();
-  if (process.env.CONFIRM_RESTORE !== "YES") {
-    throw new Error("Restore is destructive. Set CONFIRM_RESTORE=YES to continue.");
-  }
+  // The root .env still holds the application's normal DATABASE_URL.
+  // A restore MUST use a separately supplied staging endpoint.
+  const restoreUrl = validateRestoreTarget(process.env);
 
   const backupArgument = process.argv[2];
   if (!backupArgument) {
@@ -41,7 +43,6 @@ async function run() {
   }
 
   const inputPath = resolve(repoRoot, backupArgument);
-  const databaseUrl = requireSecret("DATABASE_URL");
   const encryptionSecret = requireSecret("BACKUP_ENCRYPTION_KEY", 32);
   const info = await stat(inputPath);
   if (info.size <= HEADER_BYTES + TAG_BYTES) throw new Error("Backup file is too small.");
@@ -54,10 +55,29 @@ async function run() {
   const iv = header.subarray(MAGIC.length + SALT_BYTES, HEADER_BYTES);
   const tag = await readRange(inputPath, info.size - TAG_BYTES, TAG_BYTES);
   const key = scryptSync(encryptionSecret, salt, 32);
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
+  const encryptedStream = () => createReadStream(inputPath, {
+    start: HEADER_BYTES,
+    end: info.size - TAG_BYTES - 1
+  });
+  const decrypt = () => {
+    const stream = createDecipheriv("aes-256-gcm", key, iv);
+    stream.setAuthTag(tag);
+    return stream;
+  };
 
-  const { env, database } = postgresEnvironment(databaseUrl);
+  // GCM authentication is only complete at EOF. Piping straight into
+  // pg_restore before verifying the tag could execute destructive DDL from
+  // a corrupted/forged backup. Authenticate the ENTIRE encrypted archive
+  // first, using a discard stream (no plaintext dump is written to disk).
+  await pipeline(encryptedStream(), decrypt(), new Writable({
+    write(_chunk, _encoding, done) { done(); }
+  }));
+  const current = await stat(inputPath);
+  if (current.size !== info.size || current.mtimeMs !== info.mtimeMs) {
+    throw new Error("Encrypted backup changed during authentication. No restore was attempted.");
+  }
+
+  const { env, database } = postgresEnvironment(restoreUrl);
   const restore = spawn(
     "pg_restore",
     [
@@ -67,7 +87,8 @@ async function run() {
       "--if-exists",
       "--no-owner",
       "--no-acl",
-      "--exit-on-error"
+      "--exit-on-error",
+      "--single-transaction"
     ],
     { env, stdio: ["pipe", "inherit", "inherit"], windowsHide: true }
   );
@@ -81,12 +102,8 @@ async function run() {
   });
 
   try {
-    const encryptedInput = createReadStream(inputPath, {
-      start: HEADER_BYTES,
-      end: info.size - TAG_BYTES - 1
-    });
     await Promise.all([
-      pipeline(encryptedInput, decipher, restore.stdin),
+      pipeline(encryptedStream(), decrypt(), restore.stdin),
       restoreDone
     ]);
     console.log("Encrypted database backup restored successfully.");
