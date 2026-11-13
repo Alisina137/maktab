@@ -91,3 +91,44 @@ test("Phase 14: staff role never grants workspace capabilities without explicit 
   assert.deepEqual(permittedStaffTabs(["DIRECTORY_VIEW","DIRECTORY_VIEW"]),
     ["home","directory","notifications","settings"]);
 });
+
+
+test("Phase 14: a queued corrupted-session read cannot delete a newer login", async () => {
+  const queue = createSerializedWriteQueue();
+  let value: string | null = "{broken";
+  const steps: string[] = [];
+  let release!: () => void;
+  const readGate = new Promise<void>(resolve => { release = resolve; });
+
+  const restore = queue.enqueue(async (): Promise<null> => {
+    const snapshot = value;
+    steps.push("read-started");
+    await readGate;
+    if (snapshot === "{broken") {
+      value = null;
+      steps.push("invalid-record-removed");
+    }
+    return null;
+  });
+  const signIn = queue.enqueue(async () => {
+    value = "new-session";
+    steps.push("new-session-saved");
+  });
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(steps, ["read-started"]);
+  release();
+  await Promise.all([restore, signIn]);
+  assert.deepEqual(steps, [
+    "read-started", "invalid-record-removed", "new-session-saved"
+  ]);
+  assert.equal(value, "new-session");
+});
+
+test("Phase 14: read operations return results without delaying or poisoning subsequent logout", async () => {
+  const queue = createSerializedWriteQueue();
+  const read = queue.enqueue(async () => ({ id: "current" }));
+  const remove = queue.enqueue(async () => undefined);
+  assert.deepEqual(await read, { id: "current" });
+  await remove;
+  await queue.drained();
+});
